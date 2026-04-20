@@ -69,7 +69,7 @@ export default function TrainingSettingsPanel({
                   {t(`training.schedules.${scheduleId}.label`)}
                 </p>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                  {t(`training.schedules.${scheduleId}.summary`)}
+                  {t(`training.schedules.${scheduleId}.desc`)}
                 </p>
               </button>
             ))}
