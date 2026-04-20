@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "kind": "teams",
+  "extracted_at": "2026-04-16T23:19:29.733Z",
+  "data": {
+    "teams": [
+      {
+        "id": "fnc",
+        "name": "Fnatic",
+        "shortName": "FNC",
+        "logo": "/images/teams/FNC.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 3,
+        "transferBudget": 200000,
+        "salaryBudget": 1300000,
+        "startingBudget": 1500000
+      },
+      {
+        "id": "g2",
+        "name": "G2 Esports",
+        "shortName": "G2",
+        "logo": "/images/teams/G2.webp",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 1,
+        "transferBudget": 300000,
+        "salaryBudget": 1600000,
+        "startingBudget": 1900000
+      },
+      {
+        "id": "gx",
+        "name": "GIANTX",
+        "shortName": "GX",
+        "logo": "/images/teams/GX.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 2,
+        "transferBudget": 150000,
+        "salaryBudget": 1100000,
+        "startingBudget": 1250000
+      },
+      {
+        "id": "kc",
+        "name": "Karmine Corp",
+        "shortName": "KC",
+        "logo": "/images/teams/KC.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 1,
+        "transferBudget": 200000,
+        "salaryBudget": 1600000,
+        "startingBudget": 1800000
+      },
+      {
+        "id": "mkoi",
+        "name": "Movistar KOI",
+        "shortName": "MKOI",
+        "logo": "/images/teams/MKOI.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 2,
+        "transferBudget": 300000,
+        "salaryBudget": 1400000,
+        "startingBudget": 1700000
+      },
+      {
+        "id": "navi",
+        "name": "Natus Vincere",
+        "shortName": "NAVI",
+        "logo": "/images/teams/NAVI.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 2,
+        "transferBudget": 250000,
+        "salaryBudget": 1300000,
+        "startingBudget": 1550000
+      },
+      {
+        "id": "sft",
+        "name": "Shifters",
+        "shortName": "SFT",
+        "logo": "/images/teams/SFT.webp",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 2,
+        "transferBudget": 200000,
+        "salaryBudget": 1000000,
+        "startingBudget": 1200000
+      },
+      {
+        "id": "sk",
+        "name": "SK Gaming",
+        "shortName": "SK",
+        "logo": "/images/teams/SK.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 3,
+        "transferBudget": 200000,
+        "salaryBudget": 1000000,
+        "startingBudget": 1200000
+      },
+      {
+        "id": "th",
+        "name": "Team Heretics",
+        "shortName": "TH",
+        "logo": "/images/teams/TH.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 3,
+        "transferBudget": 150000,
+        "salaryBudget": 900000,
+        "startingBudget": 1050000
+      },
+      {
+        "id": "vit",
+        "name": "Team Vitality",
+        "shortName": "VIT",
+        "logo": "/images/teams/VIT.png",
+        "region": "EMEA",
+        "competition": "LEC",
+        "tier": 2,
+        "transferBudget": 250000,
+        "salaryBudget": 1300000,
+        "startingBudget": 1550000
+      }
+    ],
+    "free_agent_team": {
+      "id": "fa",
+      "name": "Free Agent",
+      "shortName": "FA",
+      "logo": "/images/teams/default.svg",
+      "region": "EMEA",
+      "competition": "",
+      "tier": 3,
+      "transferBudget": 0,
+      "salaryBudget": 0,
+      "startingBudget": 0
+    }
+  }
+}

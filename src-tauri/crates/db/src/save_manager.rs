@@ -1,0 +1,1186 @@
+use chrono::Utc;
+use domain::stats::StatsState;
+use log::{debug, info};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use domain::player::{Player, Position};
+use ofm_core::game::Game;
+use ofm_core::player_identity;
+use ofm_core::player_rating::{effective_rating_for_assignment, formation_slots};
+
+use crate::game_database::GameDatabase;
+use crate::game_persistence::{GamePersistenceReader, GamePersistenceWriter};
+use crate::repositories::league_repo;
+use crate::save_index::{SaveEntry, compute_checksum};
+use crate::save_index_manager::SaveIndexManager;
+
+/// Manages save sessions: creating, loading, saving, deleting, and listing.
+pub struct SaveManager {
+    saves_dir: PathBuf,
+    save_index: SaveIndexManager,
+}
+
+impl SaveManager {
+    /// Initialize the SaveManager, loading or rebuilding the save index.
+    pub fn init(saves_dir: &Path) -> Result<Self, String> {
+        fs::create_dir_all(saves_dir)
+            .map_err(|e| format!("Failed to create saves directory: {}", e))?;
+        let save_index = SaveIndexManager::init(saves_dir)?;
+
+        Ok(Self {
+            saves_dir: saves_dir.to_path_buf(),
+            save_index,
+        })
+    }
+
+    /// List all save entries.
+    pub fn list_saves(&self) -> &[SaveEntry] {
+        self.save_index.list_saves()
+    }
+
+    /// Create a new save from the current in-memory Game state.
+    /// Returns the save_id.
+    pub fn create_save(&mut self, game: &Game, save_name: &str) -> Result<String, String> {
+        let save_id = uuid::Uuid::new_v4().to_string();
+        let db_filename = format!("{}.db", save_id);
+        let db_path = self.saves_dir.join(&db_filename);
+        let mut persisted_game = game.clone();
+
+        canonicalize_game_starting_xi_ids(&mut persisted_game);
+
+        debug!("[save_manager] creating save {} at {:?}", save_id, db_path);
+
+        let db = GameDatabase::open(&db_path)?;
+        GamePersistenceWriter::write_game(&db, &persisted_game, &save_id, save_name)?;
+        drop(db);
+
+        let checksum = compute_checksum(&db_path)?;
+        let now = Utc::now().to_rfc3339();
+        let manager_name = game.manager.display_name();
+
+        let entry = SaveEntry {
+            id: save_id.clone(),
+            name: save_name.to_string(),
+            manager_name,
+            db_filename,
+            checksum,
+            created_at: now.clone(),
+            last_played_at: now,
+        };
+
+        self.save_index.record_new_save(entry)?;
+
+        info!("[save_manager] created save {}", save_id);
+        Ok(save_id)
+    }
+
+    /// Save the current Game state to an existing save.
+    pub fn save_game(&mut self, game: &Game, save_id: &str) -> Result<(), String> {
+        let entry = self
+            .save_index
+            .find(save_id)
+            .ok_or_else(|| format!("Save '{}' not found", save_id))?;
+
+        let db_path = self.saves_dir.join(&entry.db_filename);
+        let save_name = entry.name.clone();
+        let mut persisted_game = game.clone();
+
+        canonicalize_game_starting_xi_ids(&mut persisted_game);
+
+        debug!("[save_manager] saving game to {}", save_id);
+
+        let db = GameDatabase::open(&db_path)?;
+        GamePersistenceWriter::write_game(&db, &persisted_game, save_id, &save_name)?;
+        drop(db);
+
+        let checksum = compute_checksum(&db_path)?;
+        let now = Utc::now().to_rfc3339();
+        let manager_name = game.manager.display_name();
+
+        self.save_index.update_save(SaveEntry {
+            id: save_id.to_string(),
+            name: save_name,
+            manager_name,
+            db_filename: entry.db_filename.clone(),
+            checksum,
+            created_at: entry.created_at.clone(),
+            last_played_at: now,
+        })?;
+
+        info!("[save_manager] saved game to {}", save_id);
+        Ok(())
+    }
+
+    pub fn save_stats_state(&mut self, stats: &StatsState, save_id: &str) -> Result<(), String> {
+        let entry = self
+            .save_index
+            .find(save_id)
+            .ok_or_else(|| format!("Save '{}' not found", save_id))?
+            .clone();
+
+        let db_path = self.saves_dir.join(&entry.db_filename);
+        let db = GameDatabase::open(&db_path)?;
+        GamePersistenceWriter::write_stats_state(&db, stats)?;
+        drop(db);
+
+        let checksum = compute_checksum(&db_path)?;
+        let now = Utc::now().to_rfc3339();
+        self.save_index.update_save(SaveEntry {
+            id: save_id.to_string(),
+            name: entry.name,
+            manager_name: entry.manager_name,
+            db_filename: entry.db_filename,
+            checksum,
+            created_at: entry.created_at,
+            last_played_at: now,
+        })?;
+
+        Ok(())
+    }
+
+    pub fn load_stats_state(&mut self, save_id: &str) -> Result<StatsState, String> {
+        let entry = self
+            .save_index
+            .find(save_id)
+            .ok_or_else(|| format!("Save '{}' not found", save_id))?
+            .clone();
+
+        let db_path = self.saves_dir.join(&entry.db_filename);
+        let db = GameDatabase::open(&db_path)?;
+        GamePersistenceReader::read_stats_state(&db)
+    }
+
+    /// Load a Game from a save database.
+    pub fn load_game(&mut self, save_id: &str) -> Result<Game, String> {
+        let entry = self
+            .save_index
+            .find(save_id)
+            .ok_or_else(|| format!("Save '{}' not found", save_id))?
+            .clone();
+
+        let db_path = self.saves_dir.join(&entry.db_filename);
+        let save_name = entry.name.clone();
+        debug!("[save_manager] loading game from {}", save_id);
+
+        let db = GameDatabase::open(&db_path)?;
+        let mut game = GamePersistenceReader::read_game(&db)?;
+        let mut needs_resave = false;
+
+        if canonicalize_game_starting_xi_ids(&mut game) {
+            info!(
+                "[save_manager] canonicalized saved starting XI order for save {}",
+                save_id
+            );
+            needs_resave = true;
+        }
+
+        if player_identity::upgrade_game_player_identities(&mut game) {
+            info!(
+                "[save_manager] upgraded legacy player identities for save {}",
+                save_id
+            );
+            needs_resave = true;
+        }
+
+        if ofm_core::football_identity::upgrade_game_football_identities(&mut game) {
+            info!(
+                "[save_manager] upgraded football identity fields for save {}",
+                save_id
+            );
+            needs_resave = true;
+        }
+
+        if league_repo::needs_cleanup(
+            db.conn(),
+            game.league.as_ref().map(|league| league.id.as_str()),
+        )? {
+            info!(
+                "[save_manager] cleaning stale league rows for save {}",
+                save_id
+            );
+            needs_resave = true;
+        }
+
+        drop(db);
+
+        if needs_resave {
+            let db = GameDatabase::open(&db_path)?;
+            GamePersistenceWriter::write_game(&db, &game, save_id, &save_name)?;
+            drop(db);
+
+            let checksum = compute_checksum(&db_path)?;
+            let now = Utc::now().to_rfc3339();
+            let manager_name = game.manager.display_name();
+
+            self.save_index.update_save(SaveEntry {
+                id: save_id.to_string(),
+                name: save_name,
+                manager_name,
+                db_filename: entry.db_filename.clone(),
+                checksum,
+                created_at: entry.created_at.clone(),
+                last_played_at: now,
+            })?;
+        }
+
+        Ok(game)
+    }
+
+    /// Delete a save (removes DB file and index entry).
+    pub fn delete_save(&mut self, save_id: &str) -> Result<bool, String> {
+        let entry = match self.save_index.find(save_id) {
+            Some(e) => e.clone(),
+            None => return Ok(false),
+        };
+
+        let db_path = self.saves_dir.join(&entry.db_filename);
+        if db_path.exists() {
+            fs::remove_file(&db_path).map_err(|e| format!("Failed to delete save file: {}", e))?;
+            debug!("[save_manager] deleted file {:?}", db_path);
+        }
+
+        self.save_index.remove_save(save_id)?;
+        info!("[save_manager] deleted save {}", save_id);
+        Ok(true)
+    }
+
+    /// Create a new game by loading an existing save, stripping session data,
+    /// and resetting the clock. Returns the loaded Game with clean session state.
+    /// This does NOT create a new save — the caller should use `create_save` afterwards.
+    pub fn new_game_from_save(&mut self, source_save_id: &str) -> Result<Game, String> {
+        let mut game = self.load_game(source_save_id)?;
+
+        // Strip session-specific data
+        game.messages.clear();
+        game.news.clear();
+        game.scouting_assignments.clear();
+        game.board_objectives.clear();
+
+        // Reset clock to start date
+        game.clock.current_date = game.clock.start_date;
+
+        // Reset manager
+        game.manager.satisfaction = 100;
+        game.manager.fan_approval = 50;
+        game.manager.career_stats = Default::default();
+        game.manager.career_history.clear();
+
+        // Reset team season data
+        for team in &mut game.teams {
+            team.form.clear();
+            team.season_income = 0;
+            team.season_expenses = 0;
+        }
+
+        // Reset player stats
+        for player in &mut game.players {
+            player.stats = Default::default();
+            player.transfer_listed = false;
+            player.loan_listed = false;
+            player.transfer_offers.clear();
+        }
+
+        // Clear league (will be regenerated)
+        game.league = None;
+
+        info!(
+            "[save_manager] created new game template from save {}",
+            source_save_id
+        );
+        Ok(game)
+    }
+}
+
+pub(crate) fn canonicalize_game_starting_xi_ids(game: &mut Game) -> bool {
+    let players_by_id: HashMap<String, Player> = game
+        .players
+        .iter()
+        .cloned()
+        .map(|player| (player.id.clone(), player))
+        .collect();
+    let mut changed = false;
+
+    for team in &mut game.teams {
+        changed |= canonicalize_team_starting_xi_ids(team, &players_by_id);
+    }
+
+    changed
+}
+
+fn canonicalize_team_starting_xi_ids(
+    team: &mut domain::team::Team,
+    players_by_id: &HashMap<String, Player>,
+) -> bool {
+    let row_lengths = formation_row_lengths(&team.formation);
+    let slots = formation_slots(&team.formation);
+    let mut row_start_index = 0;
+    let mut changed = false;
+
+    for row_length in row_lengths {
+        if row_length < 2 {
+            row_start_index += row_length;
+            continue;
+        }
+
+        let left_index = row_start_index;
+        let right_index = row_start_index + row_length - 1;
+        let left_slot = slots.get(left_index);
+        let right_slot = slots.get(right_index);
+
+        row_start_index += row_length;
+
+        let (Some(left_slot), Some(right_slot)) = (left_slot, right_slot) else {
+            continue;
+        };
+
+        if !is_mirrored_side_pair(left_slot, right_slot) {
+            continue;
+        }
+
+        let left_player = team
+            .starting_xi_ids
+            .get(left_index)
+            .and_then(|id| players_by_id.get(id));
+        let right_player = team
+            .starting_xi_ids
+            .get(right_index)
+            .and_then(|id| players_by_id.get(id));
+
+        let (Some(left_player), Some(right_player)) = (left_player, right_player) else {
+            continue;
+        };
+
+        let current_fit = effective_rating_for_assignment(left_player, left_slot)
+            + effective_rating_for_assignment(right_player, right_slot);
+        let swapped_fit = effective_rating_for_assignment(left_player, right_slot)
+            + effective_rating_for_assignment(right_player, left_slot);
+
+        if swapped_fit > current_fit {
+            team.starting_xi_ids.swap(left_index, right_index);
+            changed = true;
+        }
+    }
+
+    changed
+}
+
+fn formation_row_lengths(formation: &str) -> Vec<usize> {
+    let parts: Vec<usize> = formation
+        .split('-')
+        .filter_map(|part| part.parse::<usize>().ok())
+        .collect();
+
+    match parts.as_slice() {
+        [defenders, midfielders, forwards] => vec![1, *defenders, *midfielders, *forwards],
+        [defenders, deep_midfielders, attacking_midfielders, forwards] => {
+            vec![
+                1,
+                *defenders,
+                *deep_midfielders,
+                *attacking_midfielders,
+                *forwards,
+            ]
+        }
+        _ => formation_row_lengths("4-4-2"),
+    }
+}
+
+fn is_mirrored_side_pair(left_position: &Position, right_position: &Position) -> bool {
+    matches!(
+        (left_position, right_position),
+        (Position::LeftBack, Position::RightBack)
+            | (Position::LeftWingBack, Position::RightWingBack)
+            | (Position::LeftMidfielder, Position::RightMidfielder)
+            | (Position::LeftWinger, Position::RightWinger)
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+    use domain::league::{Fixture, FixtureCompetition, FixtureStatus, League, StandingEntry};
+    use domain::player::{Footedness, Player, PlayerAttributes, Position};
+    use domain::staff::{StaffAttributes, StaffRole};
+    use domain::stats::{PlayerMatchStatsRecord, StatsState, TeamMatchStatsRecord};
+    use domain::team::Team;
+    use ofm_core::clock::GameClock;
+    use ofm_core::game::{BoardObjective, ObjectiveType, ScoutingAssignment};
+    use rusqlite::params;
+
+    fn sample_game() -> Game {
+        let start = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+        let mut clock = GameClock::new(start);
+        clock.current_date = Utc.with_ymd_and_hms(2026, 8, 15, 0, 0, 0).unwrap();
+
+        let mut manager = domain::manager::Manager::new(
+            "mgr-user".to_string(),
+            "John".to_string(),
+            "Smith".to_string(),
+            "1990-01-15".to_string(),
+            "British".to_string(),
+        );
+        manager.hire("team-001".to_string());
+
+        let team = Team::new(
+            "team-001".to_string(),
+            "London FC".to_string(),
+            "LFC".to_string(),
+            "GB".to_string(),
+            "London".to_string(),
+            "London Stadium".to_string(),
+            50000,
+        );
+
+        let player = domain::player::Player::new(
+            "p-001".to_string(),
+            "J. Doe".to_string(),
+            "John Doe".to_string(),
+            "2000-01-01".to_string(),
+            "GB".to_string(),
+            Position::Midfielder,
+            PlayerAttributes {
+                pace: 70,
+                stamina: 75,
+                strength: 65,
+                agility: 72,
+                passing: 80,
+                shooting: 60,
+                tackling: 55,
+                dribbling: 68,
+                defending: 50,
+                positioning: 65,
+                vision: 78,
+                decisions: 70,
+                composure: 60,
+                aggression: 55,
+                teamwork: 80,
+                leadership: 45,
+                handling: 20,
+                reflexes: 25,
+                aerial: 40,
+            },
+        );
+
+        let staff = domain::staff::Staff::new(
+            "staff-001".to_string(),
+            "Alice".to_string(),
+            "Coach".to_string(),
+            "1980-05-10".to_string(),
+            StaffRole::Coach,
+            StaffAttributes {
+                coaching: 75,
+                judging_ability: 60,
+                judging_potential: 55,
+                physiotherapy: 40,
+            },
+        );
+
+        Game {
+            clock,
+            manager,
+            teams: vec![team],
+            players: vec![player],
+            staff: vec![staff],
+            messages: vec![],
+            news: vec![],
+            league: None,
+            scouting_assignments: vec![],
+            board_objectives: vec![],
+            season_context: domain::season::SeasonContext::default(),
+        }
+    }
+
+    fn sample_game_with_league() -> Game {
+        let start = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+        let clock = GameClock::new(start);
+        let mut manager = domain::manager::Manager::new(
+            "mgr-user".to_string(),
+            "John".to_string(),
+            "Smith".to_string(),
+            "1990-01-15".to_string(),
+            "British".to_string(),
+        );
+        manager.hire("team-001".to_string());
+
+        let team_one = Team::new(
+            "team-001".to_string(),
+            "London FC".to_string(),
+            "LFC".to_string(),
+            "GB".to_string(),
+            "London".to_string(),
+            "London Stadium".to_string(),
+            50000,
+        );
+        let team_two = Team::new(
+            "team-002".to_string(),
+            "Rivals FC".to_string(),
+            "RFC".to_string(),
+            "GB".to_string(),
+            "Manchester".to_string(),
+            "Rivals Stadium".to_string(),
+            42000,
+        );
+
+        let league = League {
+            id: "league-current".to_string(),
+            name: "Premier Division".to_string(),
+            season: 2027,
+            fixtures: vec![Fixture {
+                id: "fix-current".to_string(),
+                matchday: 1,
+                date: "2027-08-15".to_string(),
+                home_team_id: "team-001".to_string(),
+                away_team_id: "team-002".to_string(),
+                competition: FixtureCompetition::League,
+                status: FixtureStatus::Scheduled,
+                result: None,
+            }],
+            standings: vec![
+                StandingEntry::new("team-001".to_string()),
+                StandingEntry::new("team-002".to_string()),
+            ],
+        };
+
+        let mut game = Game::new(
+            clock,
+            manager,
+            vec![team_one, team_two],
+            vec![],
+            vec![],
+            vec![],
+        );
+        game.league = Some(league);
+        game
+    }
+
+    fn sample_stats_state() -> StatsState {
+        StatsState {
+            player_matches: vec![PlayerMatchStatsRecord {
+                fixture_id: "fix-current".to_string(),
+                season: 2027,
+                matchday: 1,
+                date: "2027-08-15".to_string(),
+                competition: FixtureCompetition::League,
+                player_id: "p-001".to_string(),
+                team_id: "team-001".to_string(),
+                opponent_team_id: "team-002".to_string(),
+                home_team_id: "team-001".to_string(),
+                away_team_id: "team-002".to_string(),
+                home_goals: 2,
+                away_goals: 1,
+                minutes_played: 90,
+                goals: 1,
+                assists: 1,
+                shots: 4,
+                shots_on_target: 2,
+                passes_completed: 38,
+                passes_attempted: 44,
+                tackles_won: 3,
+                interceptions: 2,
+                fouls_committed: 1,
+                yellow_cards: 0,
+                red_cards: 0,
+                rating: 7.8,
+            }],
+            team_matches: vec![TeamMatchStatsRecord {
+                fixture_id: "fix-current".to_string(),
+                season: 2027,
+                matchday: 1,
+                date: "2027-08-15".to_string(),
+                competition: FixtureCompetition::League,
+                team_id: "team-001".to_string(),
+                opponent_team_id: "team-002".to_string(),
+                home_team_id: "team-001".to_string(),
+                away_team_id: "team-002".to_string(),
+                goals_for: 2,
+                goals_against: 1,
+                possession_pct: 54,
+                shots: 12,
+                shots_on_target: 6,
+                passes_completed: 410,
+                passes_attempted: 470,
+                tackles_won: 15,
+                interceptions: 9,
+                fouls_committed: 11,
+                yellow_cards: 2,
+                red_cards: 0,
+            }],
+        }
+    }
+
+    fn make_lineup_player(id: &str, position: Position, footedness: Footedness) -> Player {
+        let mut player = Player::new(
+            id.to_string(),
+            id.to_uppercase(),
+            format!("Player {}", id),
+            "2000-01-01".to_string(),
+            "GB".to_string(),
+            position.clone(),
+            PlayerAttributes {
+                pace: 70,
+                stamina: 70,
+                strength: 70,
+                agility: 70,
+                passing: 70,
+                shooting: 70,
+                tackling: 70,
+                dribbling: 70,
+                defending: 70,
+                positioning: 70,
+                vision: 70,
+                decisions: 70,
+                composure: 70,
+                aggression: 70,
+                teamwork: 70,
+                leadership: 70,
+                handling: 20,
+                reflexes: 20,
+                aerial: 70,
+            },
+        );
+        player.natural_position = position;
+        player.footedness = footedness;
+        player.weak_foot = 1;
+        player.team_id = Some("team-001".to_string());
+        player
+    }
+
+    fn sample_game_with_side_specific_starting_xi(mirrored: bool) -> Game {
+        let start = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();
+        let clock = GameClock::new(start);
+        let mut manager = domain::manager::Manager::new(
+            "mgr-user".to_string(),
+            "John".to_string(),
+            "Smith".to_string(),
+            "1990-01-15".to_string(),
+            "British".to_string(),
+        );
+        manager.hire("team-001".to_string());
+
+        let mut team = Team::new(
+            "team-001".to_string(),
+            "London FC".to_string(),
+            "LFC".to_string(),
+            "GB".to_string(),
+            "London".to_string(),
+            "London Stadium".to_string(),
+            50000,
+        );
+        team.formation = "4-4-2".to_string();
+        team.starting_xi_ids = if mirrored {
+            vec![
+                "gk", "rb", "cb1", "cb2", "lb", "rm", "cm1", "cm2", "lm", "st1", "st2",
+            ]
+        } else {
+            vec![
+                "gk", "lb", "cb1", "cb2", "rb", "lm", "cm1", "cm2", "rm", "st1", "st2",
+            ]
+        }
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+
+        let players = vec![
+            make_lineup_player("gk", Position::Goalkeeper, Footedness::Right),
+            make_lineup_player("lb", Position::LeftBack, Footedness::Left),
+            make_lineup_player("cb1", Position::CenterBack, Footedness::Right),
+            make_lineup_player("cb2", Position::CenterBack, Footedness::Right),
+            make_lineup_player("rb", Position::RightBack, Footedness::Right),
+            make_lineup_player("lm", Position::LeftMidfielder, Footedness::Left),
+            make_lineup_player("cm1", Position::CentralMidfielder, Footedness::Right),
+            make_lineup_player("cm2", Position::CentralMidfielder, Footedness::Right),
+            make_lineup_player("rm", Position::RightMidfielder, Footedness::Right),
+            make_lineup_player("st1", Position::Striker, Footedness::Right),
+            make_lineup_player("st2", Position::Striker, Footedness::Right),
+        ];
+
+        Game::new(clock, manager, vec![team], players, vec![], vec![])
+    }
+
+    #[test]
+    fn test_init_creates_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let sm = SaveManager::init(&saves_dir).unwrap();
+        assert!(saves_dir.exists());
+        assert!(sm.list_saves().is_empty());
+    }
+
+    #[test]
+    fn test_create_and_list_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game();
+
+        let save_id = sm.create_save(&game, "John's Career").unwrap();
+        assert!(!save_id.is_empty());
+
+        let saves = sm.list_saves();
+        assert_eq!(saves.len(), 1);
+        assert_eq!(saves[0].name, "John's Career");
+        assert_eq!(saves[0].manager_name, "John Smith");
+        assert!(!saves[0].checksum.is_empty());
+    }
+
+    #[test]
+    fn test_create_and_load_game() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game();
+
+        let save_id = sm.create_save(&game, "Test Career").unwrap();
+        let loaded = sm.load_game(&save_id).unwrap();
+
+        assert_eq!(loaded.manager.id, "mgr-user");
+        assert_eq!(loaded.manager.first_name, "John");
+        assert_eq!(loaded.manager.last_name, "Smith");
+        assert_eq!(loaded.teams.len(), 1);
+        assert_eq!(loaded.teams[0].name, "London FC");
+        assert_eq!(loaded.players.len(), 1);
+        assert_eq!(loaded.staff.len(), 1);
+        assert_eq!(loaded.clock.start_date, game.clock.start_date);
+        assert_eq!(loaded.clock.current_date, game.clock.current_date);
+    }
+
+    #[test]
+    fn test_load_game_upgrades_football_identity_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let mut game = sample_game();
+        game.manager.football_nation.clear();
+        game.manager.birth_country = None;
+        game.teams[0].football_nation.clear();
+        game.players[0].football_nation.clear();
+        game.players[0].birth_country = None;
+
+        let save_id = sm.create_save(&game, "Legacy Identity Career").unwrap();
+        let loaded = sm.load_game(&save_id).unwrap();
+
+        assert_eq!(loaded.manager.football_nation, "ENG");
+        assert_eq!(loaded.manager.birth_country, None);
+        assert_eq!(loaded.teams[0].football_nation, "ENG");
+        assert_eq!(loaded.players[0].football_nation, "GB");
+        assert_eq!(loaded.players[0].birth_country, None);
+    }
+
+    #[test]
+    fn test_save_game_updates_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let mut game = sample_game();
+
+        let save_id = sm.create_save(&game, "Career").unwrap();
+        let old_checksum = sm.list_saves()[0].checksum.clone();
+
+        // Advance the game
+        game.clock.advance_days(7);
+        game.manager.reputation = 999;
+
+        sm.save_game(&game, &save_id).unwrap();
+
+        let saves = sm.list_saves();
+        assert_eq!(saves.len(), 1);
+        // Checksum should change since data changed
+        assert_ne!(saves[0].checksum, old_checksum);
+
+        // Reload and verify
+        let loaded = sm.load_game(&save_id).unwrap();
+        assert_eq!(loaded.manager.reputation, 999);
+    }
+
+    #[test]
+    fn test_save_and_load_stats_state_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game_with_league();
+        let stats = sample_stats_state();
+
+        let save_id = sm.create_save(&game, "Stats Career").unwrap();
+        sm.save_stats_state(&stats, &save_id).unwrap();
+
+        let loaded_stats = sm.load_stats_state(&save_id).unwrap();
+
+        assert_eq!(loaded_stats.player_matches.len(), 1);
+        assert_eq!(loaded_stats.team_matches.len(), 1);
+        assert_eq!(loaded_stats.player_matches[0].player_id, "p-001");
+        assert_eq!(loaded_stats.player_matches[0].shots, 4);
+        assert_eq!(loaded_stats.team_matches[0].team_id, "team-001");
+        assert_eq!(loaded_stats.team_matches[0].shots_on_target, 6);
+    }
+
+    #[test]
+    fn test_load_stats_state_without_saved_history_returns_empty_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game();
+        let save_id = sm.create_save(&game, "Legacy Style Career").unwrap();
+
+        let loaded_stats = sm.load_stats_state(&save_id).unwrap();
+
+        assert!(loaded_stats.player_matches.is_empty());
+        assert!(loaded_stats.team_matches.is_empty());
+    }
+
+    #[test]
+    fn test_create_save_canonicalizes_mirrored_starting_xi_order_on_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game_with_side_specific_starting_xi(true);
+
+        let save_id = sm.create_save(&game, "Mirrored XI Career").unwrap();
+        let db_path = saves_dir.join(format!("{}.db", save_id));
+        let db = GameDatabase::open(&db_path).unwrap();
+        let starting_xi_json: String = db
+            .conn()
+            .query_row(
+                "SELECT starting_xi_ids FROM teams WHERE id = ?1",
+                params!["team-001"],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let starting_xi_ids: Vec<String> = serde_json::from_str(&starting_xi_json).unwrap();
+
+        assert_eq!(
+            starting_xi_ids,
+            vec![
+                "gk", "lb", "cb1", "cb2", "rb", "lm", "cm1", "cm2", "rm", "st1", "st2"
+            ]
+            .into_iter()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_load_game_repairs_existing_mirrored_starting_xi_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game_with_side_specific_starting_xi(false);
+        let save_id = sm.create_save(&game, "Repair XI Career").unwrap();
+        let db_path = saves_dir.join(format!("{}.db", save_id));
+
+        {
+            let db = GameDatabase::open(&db_path).unwrap();
+            let mirrored_xi_json = serde_json::to_string(&vec![
+                "gk", "rb", "cb1", "cb2", "lb", "rm", "cm1", "cm2", "lm", "st1", "st2",
+            ])
+            .unwrap();
+            db.conn()
+                .execute(
+                    "UPDATE teams SET starting_xi_ids = ?1 WHERE id = ?2",
+                    params![mirrored_xi_json, "team-001"],
+                )
+                .unwrap();
+        }
+
+        let loaded = sm.load_game(&save_id).unwrap();
+        let team = loaded
+            .teams
+            .iter()
+            .find(|team| team.id == "team-001")
+            .unwrap();
+
+        assert_eq!(
+            team.starting_xi_ids,
+            vec![
+                "gk", "lb", "cb1", "cb2", "rb", "lm", "cm1", "cm2", "rm", "st1", "st2"
+            ]
+            .into_iter()
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+        );
+
+        let db = GameDatabase::open(&db_path).unwrap();
+        let starting_xi_json: String = db
+            .conn()
+            .query_row(
+                "SELECT starting_xi_ids FROM teams WHERE id = ?1",
+                params!["team-001"],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let starting_xi_ids: Vec<String> = serde_json::from_str(&starting_xi_json).unwrap();
+
+        assert_eq!(starting_xi_ids, team.starting_xi_ids);
+    }
+
+    #[test]
+    fn test_delete_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game();
+
+        let save_id = sm.create_save(&game, "To Delete").unwrap();
+        assert_eq!(sm.list_saves().len(), 1);
+
+        let deleted = sm.delete_save(&save_id).unwrap();
+        assert!(deleted);
+        assert!(sm.list_saves().is_empty());
+
+        // File should be gone
+        let db_path = saves_dir.join(format!("{}.db", save_id));
+        assert!(!db_path.exists());
+    }
+
+    #[test]
+    fn test_delete_nonexistent_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let deleted = sm.delete_save("nonexistent").unwrap();
+        assert!(!deleted);
+    }
+
+    #[test]
+    fn test_load_nonexistent_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let result = sm.load_game("nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_to_nonexistent_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game();
+        let result = sm.save_game(&game, "nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_multiple_saves() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game();
+
+        let id1 = sm.create_save(&game, "Career 1").unwrap();
+        let id2 = sm.create_save(&game, "Career 2").unwrap();
+        let id3 = sm.create_save(&game, "Career 3").unwrap();
+
+        assert_eq!(sm.list_saves().len(), 3);
+        assert_ne!(id1, id2);
+        assert_ne!(id2, id3);
+
+        // Delete one
+        sm.delete_save(&id2).unwrap();
+        assert_eq!(sm.list_saves().len(), 2);
+
+        // Others still loadable
+        sm.load_game(&id1).unwrap();
+        sm.load_game(&id3).unwrap();
+    }
+
+    #[test]
+    fn test_index_persists_across_reinit() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        // Create a save
+        {
+            let mut sm = SaveManager::init(&saves_dir).unwrap();
+            let game = sample_game();
+            sm.create_save(&game, "Persistent Career").unwrap();
+        }
+
+        // Re-init — should find the save in the index
+        let sm = SaveManager::init(&saves_dir).unwrap();
+        assert_eq!(sm.list_saves().len(), 1);
+        assert_eq!(sm.list_saves()[0].name, "Persistent Career");
+    }
+
+    #[test]
+    fn test_game_with_objectives_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let mut game = sample_game();
+        game.board_objectives.push(BoardObjective {
+            id: "obj-001".to_string(),
+            description: "Finish top 4".to_string(),
+            target: 4,
+            objective_type: ObjectiveType::LeaguePosition,
+            met: false,
+        });
+
+        let save_id = sm.create_save(&game, "With Objectives").unwrap();
+        let loaded = sm.load_game(&save_id).unwrap();
+
+        assert_eq!(loaded.board_objectives.len(), 1);
+        assert_eq!(loaded.board_objectives[0].description, "Finish top 4");
+    }
+
+    #[test]
+    fn test_game_with_scouting_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let mut game = sample_game();
+        game.scouting_assignments.push(ScoutingAssignment {
+            id: "sa-001".to_string(),
+            scout_id: "staff-001".to_string(),
+            player_id: "p-001".to_string(),
+            days_remaining: 7,
+        });
+
+        let save_id = sm.create_save(&game, "With Scouting").unwrap();
+        let loaded = sm.load_game(&save_id).unwrap();
+
+        assert_eq!(loaded.scouting_assignments.len(), 1);
+        assert_eq!(loaded.scouting_assignments[0].days_remaining, 7);
+    }
+
+    #[test]
+    fn test_new_game_from_save_strips_session_data() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let mut game = sample_game();
+
+        // Add session-specific data
+        game.clock.advance_days(30);
+        game.board_objectives.push(BoardObjective {
+            id: "obj-1".to_string(),
+            description: "Win".to_string(),
+            target: 10,
+            objective_type: ObjectiveType::Wins,
+            met: false,
+        });
+        game.scouting_assignments.push(ScoutingAssignment {
+            id: "sa-1".to_string(),
+            scout_id: "staff-001".to_string(),
+            player_id: "p-001".to_string(),
+            days_remaining: 5,
+        });
+        game.manager.reputation = 999;
+
+        let save_id = sm.create_save(&game, "Source Save").unwrap();
+
+        // Create new game from this save
+        let new_game = sm.new_game_from_save(&save_id).unwrap();
+
+        // Session data should be stripped
+        assert!(new_game.messages.is_empty());
+        assert!(new_game.news.is_empty());
+        assert!(new_game.scouting_assignments.is_empty());
+        assert!(new_game.board_objectives.is_empty());
+        assert!(new_game.league.is_none());
+
+        // Clock should be reset
+        assert_eq!(new_game.clock.current_date, new_game.clock.start_date);
+
+        // World data should be preserved
+        assert_eq!(new_game.teams.len(), 1);
+        assert_eq!(new_game.teams[0].name, "London FC");
+        assert_eq!(new_game.players.len(), 1);
+        assert_eq!(new_game.staff.len(), 1);
+
+        // Manager should be reset
+        assert_eq!(new_game.manager.satisfaction, 100);
+        assert_eq!(new_game.manager.fan_approval, 50);
+
+        // Player stats should be reset
+        assert!(!new_game.players[0].transfer_listed);
+        assert!(!new_game.players[0].loan_listed);
+    }
+
+    #[test]
+    fn test_new_game_from_nonexistent_save() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let result = sm.new_game_from_save("nonexistent");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_load_game_cleans_stale_league_rows() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let game = sample_game_with_league();
+        let save_id = sm.create_save(&game, "League Cleanup Career").unwrap();
+        let db_path = saves_dir.join(format!("{}.db", save_id));
+
+        {
+            let db = GameDatabase::open(&db_path).unwrap();
+            db.conn()
+                .execute(
+                    "INSERT INTO league (id, name, season) VALUES (?1, ?2, ?3)",
+                    rusqlite::params!["league-stale", "Premier Division", 2026],
+                )
+                .unwrap();
+            db.conn()
+                .execute(
+                    "INSERT INTO fixtures (id, league_id, matchday, date, home_team_id, away_team_id, status, result)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    rusqlite::params![
+                        "fix-stale",
+                        "league-stale",
+                        1,
+                        "2026-08-15",
+                        "team-001",
+                        "team-002",
+                        "Completed",
+                        None::<String>,
+                    ],
+                )
+                .unwrap();
+        }
+
+        let loaded = sm.load_game(&save_id).unwrap();
+        let loaded_league = loaded.league.expect("league should load");
+
+        assert_eq!(loaded_league.id, "league-current");
+        assert_eq!(loaded_league.season, 2027);
+        assert_eq!(loaded_league.fixtures.len(), 1);
+        assert_eq!(loaded_league.fixtures[0].id, "fix-current");
+
+        let db = GameDatabase::open(&db_path).unwrap();
+        let league_count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM league", [], |row| row.get(0))
+            .unwrap();
+        let fixture_count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM fixtures", [], |row| row.get(0))
+            .unwrap();
+
+        assert_eq!(league_count, 1);
+        assert_eq!(fixture_count, 1);
+    }
+}

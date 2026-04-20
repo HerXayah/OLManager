@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Rounded square frame (matches champion icon shape) -->
+  <rect x="2" y="2" width="60" height="60" rx="6" fill="#12121e" stroke="#2a2a3a" stroke-width="1.2"/>
+  <!-- Subtle gradient glow behind -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#C9A84C" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#C9A84C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="6" fill="url(#glow)"/>
+  <!-- Stylized arcane silhouette (hooded figure) -->
+  <g stroke="#c9a84c" stroke-opacity="0.9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Head -->
+    <circle cx="32" cy="27" r="7"/>
+    <!-- Shoulders -->
+    <path d="M18 56 C18 44, 46 44, 46 56"/>
+    <!-- Hood curve -->
+    <path d="M23 25 Q32 15 41 25" stroke-opacity="0.55"/>
+    <!-- Central rune dot -->
+    <circle cx="32" cy="45" r="1.5" fill="#c9a84c" stroke="none" fill-opacity="0.9"/>
+  </g>
+</svg>

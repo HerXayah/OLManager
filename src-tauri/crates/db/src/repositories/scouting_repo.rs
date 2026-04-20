@@ -1,0 +1,124 @@
+use rusqlite::{Connection, params};
+use serde::{Deserialize, Serialize};
+
+/// Mirrors ofm_core::game::ScoutingAssignment but avoids coupling db to ofm_core.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScoutingAssignmentRow {
+    pub id: String,
+    pub scout_id: String,
+    pub player_id: String,
+    pub days_remaining: u32,
+}
+
+/// Insert or replace a scouting assignment row.
+pub fn upsert_scouting(conn: &Connection, sa: &ScoutingAssignmentRow) -> Result<(), String> {
+    conn.execute(
+        "INSERT OR REPLACE INTO scouting_assignments (id, scout_id, player_id, days_remaining)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![sa.id, sa.scout_id, sa.player_id, sa.days_remaining],
+    )
+    .map_err(|e| format!("Failed to upsert scouting assignment: {}", e))?;
+    Ok(())
+}
+
+/// Replace all scouting assignments (clear + re-insert).
+pub fn upsert_scouting_list(
+    conn: &Connection,
+    assignments: &[ScoutingAssignmentRow],
+) -> Result<(), String> {
+    conn.execute("DELETE FROM scouting_assignments", [])
+        .map_err(|e| format!("Failed to clear scouting assignments: {}", e))?;
+    for sa in assignments {
+        upsert_scouting(conn, sa)?;
+    }
+    Ok(())
+}
+
+/// Load all scouting assignments.
+pub fn load_all_scouting(conn: &Connection) -> Result<Vec<ScoutingAssignmentRow>, String> {
+    let mut stmt = conn
+        .prepare("SELECT id, scout_id, player_id, days_remaining FROM scouting_assignments")
+        .map_err(|e| format!("Failed to prepare scouting query: {}", e))?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(ScoutingAssignmentRow {
+                id: row.get(0)?,
+                scout_id: row.get(1)?,
+                player_id: row.get(2)?,
+                days_remaining: row.get(3)?,
+            })
+        })
+        .map_err(|e| format!("Failed to query scouting: {}", e))?;
+
+    let mut assignments = Vec::new();
+    for row in rows {
+        assignments.push(row.map_err(|e| format!("Failed to read scouting: {}", e))?);
+    }
+    Ok(assignments)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::game_database::GameDatabase;
+
+    fn test_db() -> GameDatabase {
+        GameDatabase::open_in_memory().unwrap()
+    }
+
+    #[test]
+    fn test_upsert_and_load_scouting() {
+        let db = test_db();
+        let assignments = vec![
+            ScoutingAssignmentRow {
+                id: "sa-001".to_string(),
+                scout_id: "scout-001".to_string(),
+                player_id: "p-001".to_string(),
+                days_remaining: 7,
+            },
+            ScoutingAssignmentRow {
+                id: "sa-002".to_string(),
+                scout_id: "scout-001".to_string(),
+                player_id: "p-002".to_string(),
+                days_remaining: 14,
+            },
+        ];
+
+        upsert_scouting_list(db.conn(), &assignments).unwrap();
+        let loaded = load_all_scouting(db.conn()).unwrap();
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].days_remaining, 7);
+    }
+
+    #[test]
+    fn test_upsert_scouting_clears_old() {
+        let db = test_db();
+        let old = vec![ScoutingAssignmentRow {
+            id: "sa-old".to_string(),
+            scout_id: "s-1".to_string(),
+            player_id: "p-1".to_string(),
+            days_remaining: 3,
+        }];
+        upsert_scouting_list(db.conn(), &old).unwrap();
+
+        let new = vec![ScoutingAssignmentRow {
+            id: "sa-new".to_string(),
+            scout_id: "s-2".to_string(),
+            player_id: "p-2".to_string(),
+            days_remaining: 10,
+        }];
+        upsert_scouting_list(db.conn(), &new).unwrap();
+
+        let loaded = load_all_scouting(db.conn()).unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert_eq!(loaded[0].id, "sa-new");
+    }
+
+    #[test]
+    fn test_load_empty_scouting() {
+        let db = test_db();
+        let loaded = load_all_scouting(db.conn()).unwrap();
+        assert!(loaded.is_empty());
+    }
+}

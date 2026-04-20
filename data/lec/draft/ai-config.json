@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "kind": "draft_ai_config",
+  "data": {
+    "pick": {
+      "masteryWeight": 1.15,
+      "metaWeight": 1.1,
+      "counterAdvantageWeight": 4,
+      "counterRiskWeight": 3
+    },
+    "ban": {
+      "enemyMasteryWeight": 1.15,
+      "metaWeight": 0.9
+    },
+    "score": {
+      "counterAdvantageWeight": 2,
+      "counterRiskWeight": 2
+    },
+    "timing": {
+      "userTurnSeconds": 30,
+      "aiMinSeconds": 3,
+      "aiMaxSeconds": 10
+    }
+  }
+}

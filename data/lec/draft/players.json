@@ -1,0 +1,5339 @@
+{
+  "schema_version": "1.0",
+  "kind": "players",
+  "extracted_at": "2026-04-17T00:15:47.613Z",
+  "data": {
+    "rostered_seeds": [
+      {
+        "ign": "Empyros",
+        "firstName": "Panagiotis",
+        "lastName": "Tantis",
+        "dob": "2004-04-01",
+        "nationality": "GR",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "fnc",
+        "rating": 72,
+        "potential": 77,
+        "salary": 77000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 150000,
+        "reputation": 72,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Darius",
+            100
+          ],
+          [
+            "Gangplank",
+            100
+          ],
+          [
+            "Jax",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Rumble",
+            100
+          ],
+          [
+            "Gwen",
+            75
+          ],
+          [
+            "K'Sante",
+            75
+          ],
+          [
+            "Ambessa",
+            50
+          ],
+          [
+            "Gnar",
+            50
+          ],
+          [
+            "Ornn",
+            50
+          ],
+          [
+            "Sett",
+            50
+          ],
+          [
+            "Irelia",
+            25
+          ],
+          [
+            "Sion",
+            25
+          ]
+        ],
+        "photo": "/images/players/Empyros.webp"
+      },
+      {
+        "ign": "Razork",
+        "firstName": "Iván",
+        "lastName": "Martín Díaz",
+        "dob": "2000-10-07",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "fnc",
+        "rating": 77,
+        "potential": 77,
+        "salary": 269000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 250000,
+        "reputation": 82,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Gragas",
+            100
+          ],
+          [
+            "Poppy",
+            100
+          ],
+          [
+            "Trundle",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Xin Zhao",
+            100
+          ],
+          [
+            "Elise",
+            75
+          ],
+          [
+            "Jarvan IV",
+            75
+          ],
+          [
+            "Lee Sin",
+            75
+          ],
+          [
+            "Maokai",
+            75
+          ],
+          [
+            "Volibear",
+            75
+          ],
+          [
+            "Sejuani",
+            50
+          ],
+          [
+            "Skarner",
+            50
+          ],
+          [
+            "Wukong",
+            50
+          ],
+          [
+            "Zac",
+            50
+          ],
+          [
+            "Zyra",
+            50
+          ],
+          [
+            "Pantheon",
+            25
+          ],
+          [
+            "Viego",
+            25
+          ]
+        ],
+        "photo": "/images/players/Razork.webp"
+      },
+      {
+        "ign": "Vladi",
+        "firstName": "Vladimiros",
+        "lastName": "Kourtidis",
+        "dob": "2005-08-12",
+        "nationality": "GR",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fnc",
+        "rating": 74,
+        "potential": 85,
+        "salary": 328000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 300000,
+        "reputation": 82,
+        "personality": "hothead",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Sylas",
+            100
+          ],
+          [
+            "Taliyah",
+            100
+          ],
+          [
+            "Viktor",
+            100
+          ],
+          [
+            "Yone",
+            100
+          ],
+          [
+            "Corki",
+            75
+          ],
+          [
+            "Jayce",
+            75
+          ],
+          [
+            "Ahri",
+            50
+          ],
+          [
+            "Orianna",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Tristana",
+            50
+          ]
+        ],
+        "photo": "/images/players/Vladi.webp"
+      },
+      {
+        "ign": "Upset",
+        "firstName": "Elias",
+        "lastName": "Lipp",
+        "dob": "1999-12-16",
+        "nationality": "DE",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "fnc",
+        "rating": 80,
+        "potential": 80,
+        "salary": 248000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 226000,
+        "reputation": 84,
+        "personality": "hothead",
+        "champions": [
+          [
+            "Jhin",
+            100
+          ],
+          [
+            "Kai'Sa",
+            100
+          ],
+          [
+            "Zeri",
+            100
+          ],
+          [
+            "Sivir",
+            75
+          ],
+          [
+            "Xayah",
+            75
+          ],
+          [
+            "Yunara",
+            75
+          ],
+          [
+            "Caitlyn",
+            50
+          ],
+          [
+            "Ezreal",
+            50
+          ],
+          [
+            "Kalista",
+            50
+          ],
+          [
+            "Miss Fortune",
+            50
+          ],
+          [
+            "Tristana",
+            50
+          ],
+          [
+            "Aphelios",
+            25
+          ],
+          [
+            "Jinx",
+            25
+          ],
+          [
+            "Lucian",
+            25
+          ],
+          [
+            "Senna",
+            25
+          ],
+          [
+            "Varus",
+            25
+          ]
+        ],
+        "photo": "/images/players/Upset.webp"
+      },
+      {
+        "ign": "Lospa",
+        "firstName": "Joon-hyeong",
+        "lastName": "Park",
+        "dob": "2002-09-30",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Support",
+        "teamId": "fnc",
+        "rating": 68,
+        "potential": 70,
+        "salary": 60000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 100000,
+        "reputation": 74,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Alistar",
+            100
+          ],
+          [
+            "Rell",
+            100
+          ],
+          [
+            "Leona",
+            75
+          ],
+          [
+            "Nautilus",
+            75
+          ],
+          [
+            "Rakan",
+            75
+          ],
+          [
+            "Braum",
+            50
+          ],
+          [
+            "Lulu",
+            25
+          ],
+          [
+            "Nami",
+            25
+          ]
+        ],
+        "photo": "/images/players/Lospa.webp"
+      },
+      {
+        "ign": "BrokenBlade",
+        "firstName": "Sergen",
+        "lastName": "Çelik",
+        "dob": "2000-01-19",
+        "nationality": "DE",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "g2",
+        "rating": 83,
+        "potential": 83,
+        "salary": 268000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 250000,
+        "reputation": 84,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Jax",
+            100
+          ],
+          [
+            "K'Sante",
+            100
+          ],
+          [
+            "Ornn",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Sion",
+            100
+          ],
+          [
+            "Dr. Mundo",
+            75
+          ],
+          [
+            "Gwen",
+            75
+          ],
+          [
+            "Kennen",
+            75
+          ],
+          [
+            "Kled",
+            75
+          ],
+          [
+            "Olaf",
+            75
+          ],
+          [
+            "Sett",
+            75
+          ],
+          [
+            "Shen",
+            75
+          ],
+          [
+            "Vladimir",
+            75
+          ],
+          [
+            "Yasuo",
+            75
+          ],
+          [
+            "Yone",
+            75
+          ],
+          [
+            "Camille",
+            50
+          ],
+          [
+            "Darius",
+            50
+          ],
+          [
+            "Gnar",
+            50
+          ],
+          [
+            "Gragas",
+            50
+          ],
+          [
+            "Irelia",
+            50
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Poppy",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Aatrox",
+            25
+          ],
+          [
+            "Gangplank",
+            25
+          ],
+          [
+            "Urgot",
+            25
+          ]
+        ],
+        "photo": "/images/players/BrokenBlade.webp"
+      },
+      {
+        "ign": "SkewMond",
+        "firstName": "Rudy",
+        "lastName": "Semaan",
+        "dob": "2002-06-15",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "g2",
+        "rating": 88,
+        "potential": 94,
+        "salary": 310000,
+        "contractEnd": "2028-11-18",
+        "marketValue": 840000,
+        "reputation": 88,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Dr. Mundo",
+            100
+          ],
+          [
+            "Jarvan IV",
+            100
+          ],
+          [
+            "Nunu",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Xin Zhao",
+            100
+          ],
+          [
+            "Brand",
+            75
+          ],
+          [
+            "Maokai",
+            75
+          ],
+          [
+            "Pantheon",
+            75
+          ],
+          [
+            "Trundle",
+            75
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Volibear",
+            75
+          ],
+          [
+            "Zyra",
+            75
+          ],
+          [
+            "Wukong",
+            50
+          ],
+          [
+            "Sejuani",
+            25
+          ]
+        ],
+        "photo": "/images/players/SkewMond.webp"
+      },
+      {
+        "ign": "Caps",
+        "firstName": "Rasmus",
+        "lastName": "Winther",
+        "dob": "1999-11-17",
+        "nationality": "DK",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "g2",
+        "rating": 87,
+        "potential": 87,
+        "salary": 356000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 350000,
+        "reputation": 90,
+        "personality": "leader",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "LeBlanc",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Ryze",
+            100
+          ],
+          [
+            "Syndra",
+            100
+          ],
+          [
+            "Ahri",
+            75
+          ],
+          [
+            "Akali",
+            75
+          ],
+          [
+            "Aurelion Sol",
+            75
+          ],
+          [
+            "Galio",
+            75
+          ],
+          [
+            "Lissandra",
+            75
+          ],
+          [
+            "Neeko",
+            75
+          ],
+          [
+            "Sylas",
+            75
+          ],
+          [
+            "Taliyah",
+            75
+          ],
+          [
+            "Tristana",
+            75
+          ],
+          [
+            "Yasuo",
+            75
+          ],
+          [
+            "Yone",
+            75
+          ],
+          [
+            "Zoe",
+            75
+          ],
+          [
+            "Annie",
+            50
+          ],
+          [
+            "Aurora",
+            50
+          ],
+          [
+            "Cassiopeia",
+            50
+          ],
+          [
+            "Corki",
+            50
+          ],
+          [
+            "Irelia",
+            50
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Twisted Fate",
+            50
+          ],
+          [
+            "Viktor",
+            50
+          ]
+        ],
+        "photo": "/images/players/Caps.webp"
+      },
+      {
+        "ign": "Hans Sama",
+        "firstName": "Steven",
+        "lastName": "Liv",
+        "dob": "1999-09-02",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "g2",
+        "rating": 84,
+        "potential": 84,
+        "salary": 350000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 350000,
+        "reputation": 88,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Ashe",
+            100
+          ],
+          [
+            "Draven",
+            100
+          ],
+          [
+            "Kai'Sa",
+            100
+          ],
+          [
+            "Kalista",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "Aphelios",
+            75
+          ],
+          [
+            "Caitlyn",
+            75
+          ],
+          [
+            "Jhin",
+            75
+          ],
+          [
+            "Jinx",
+            75
+          ],
+          [
+            "Kog'Maw",
+            75
+          ],
+          [
+            "Lucian",
+            75
+          ],
+          [
+            "Miss Fortune",
+            75
+          ],
+          [
+            "Senna",
+            75
+          ],
+          [
+            "Sivir",
+            75
+          ],
+          [
+            "Yunara",
+            75
+          ],
+          [
+            "Ezreal",
+            50
+          ],
+          [
+            "Tristana",
+            50
+          ],
+          [
+            "Xayah",
+            50
+          ],
+          [
+            "Zeri",
+            50
+          ],
+          [
+            "Corki",
+            25
+          ]
+        ],
+        "photo": "/images/players/HansSama.webp"
+      },
+      {
+        "ign": "Labrov",
+        "firstName": "Labros",
+        "lastName": "Papoutsakis",
+        "dob": "2002-02-12",
+        "nationality": "GR",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "g2",
+        "rating": 84,
+        "potential": 87,
+        "salary": 182000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 170000,
+        "reputation": 81,
+        "personality": "prankster",
+        "champions": [
+          [
+            "Alistar",
+            100
+          ],
+          [
+            "Blitzcrank",
+            100
+          ],
+          [
+            "Braum",
+            100
+          ],
+          [
+            "Lulu",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Bard",
+            75
+          ],
+          [
+            "Rell",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Tahm Kench",
+            75
+          ],
+          [
+            "Karma",
+            50
+          ],
+          [
+            "Nautilus",
+            50
+          ],
+          [
+            "Neeko",
+            50
+          ],
+          [
+            "Thresh",
+            50
+          ],
+          [
+            "Leona",
+            25
+          ]
+        ],
+        "photo": "/images/players/Labrov.webp"
+      },
+      {
+        "ign": "Lot",
+        "firstName": "Eren",
+        "lastName": "Yıldız",
+        "dob": "2004-01-02",
+        "nationality": "TR",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "gx",
+        "rating": 74,
+        "potential": 78,
+        "salary": 147000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 130000,
+        "reputation": 78,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Gnar",
+            100
+          ],
+          [
+            "K'Sante",
+            100
+          ],
+          [
+            "Gwen",
+            75
+          ],
+          [
+            "Rumble",
+            75
+          ],
+          [
+            "Sion",
+            75
+          ],
+          [
+            "Jax",
+            50
+          ],
+          [
+            "Renekton",
+            50
+          ],
+          [
+            "Aatrox",
+            25
+          ],
+          [
+            "Ornn",
+            25
+          ]
+        ],
+        "photo": "/images/players/Lot.webp"
+      },
+      {
+        "ign": "ISMA",
+        "firstName": "Ismaïl",
+        "lastName": "Boualem",
+        "dob": "2001-06-20",
+        "nationality": "BE",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "gx",
+        "rating": 75,
+        "potential": 78,
+        "salary": 147000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 130000,
+        "reputation": 79,
+        "personality": "volatile",
+        "champions": [
+          [
+            "Maokai",
+            100
+          ],
+          [
+            "Sejuani",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Wukong",
+            100
+          ],
+          [
+            "Xin Zhao",
+            100
+          ],
+          [
+            "Diana",
+            75
+          ],
+          [
+            "Hecarim",
+            75
+          ],
+          [
+            "Nocturne",
+            75
+          ],
+          [
+            "Poppy",
+            75
+          ],
+          [
+            "Rell",
+            75
+          ],
+          [
+            "Nidalee",
+            50
+          ]
+        ],
+        "photo": "/images/players/Isma.webp"
+      },
+      {
+        "ign": "Jackies",
+        "firstName": "Adam",
+        "lastName": "Jeřábek",
+        "dob": "2004-10-06",
+        "nationality": "CZ",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "gx",
+        "rating": 74,
+        "potential": 82,
+        "salary": 274000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 250000,
+        "reputation": 80,
+        "personality": "prankster",
+        "champions": [
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Yone",
+            100
+          ],
+          [
+            "Azir",
+            75
+          ],
+          [
+            "Ryze",
+            75
+          ],
+          [
+            "Ahri",
+            50
+          ],
+          [
+            "LeBlanc",
+            50
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "Taliyah",
+            50
+          ],
+          [
+            "Tristana",
+            50
+          ],
+          [
+            "Syndra",
+            25
+          ]
+        ],
+        "photo": "/images/players/Jackies.webp"
+      },
+      {
+        "ign": "Noah",
+        "firstName": "Hyeon-taek",
+        "lastName": "Oh",
+        "dob": "2001-10-04",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Bot",
+        "teamId": "gx",
+        "rating": 80,
+        "potential": 80,
+        "salary": 200000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 180000,
+        "reputation": 81,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Aphelios",
+            100
+          ],
+          [
+            "Caitlyn",
+            100
+          ],
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Kai'Sa",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "Kalista",
+            75
+          ],
+          [
+            "Xayah",
+            75
+          ],
+          [
+            "Zeri",
+            75
+          ],
+          [
+            "Corki",
+            50
+          ],
+          [
+            "Jinx",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Jhin",
+            25
+          ],
+          [
+            "Senna",
+            25
+          ]
+        ],
+        "photo": "/images/players/Noah.webp"
+      },
+      {
+        "ign": "Jun",
+        "firstName": "Se-jun",
+        "lastName": "Yoon",
+        "dob": "2000-08-02",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Support",
+        "teamId": "gx",
+        "rating": 80,
+        "potential": 80,
+        "salary": 228000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 200000,
+        "reputation": 82,
+        "personality": "leader",
+        "champions": [
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Rell",
+            100
+          ],
+          [
+            "Ashe",
+            75
+          ],
+          [
+            "Gragas",
+            75
+          ],
+          [
+            "Neeko",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Alistar",
+            50
+          ],
+          [
+            "Leona",
+            50
+          ],
+          [
+            "Lulu",
+            50
+          ],
+          [
+            "Thresh",
+            50
+          ],
+          [
+            "Karma",
+            25
+          ]
+        ],
+        "photo": "/images/players/Jun.webp"
+      },
+      {
+        "ign": "Canna",
+        "firstName": "Chang-dong",
+        "lastName": "Kim",
+        "dob": "2000-02-11",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Top",
+        "teamId": "kc",
+        "rating": 85,
+        "potential": 85,
+        "salary": 330000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 600000,
+        "reputation": 88,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Camille",
+            100
+          ],
+          [
+            "Jayce",
+            100
+          ],
+          [
+            "Kennen",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Rumble",
+            100
+          ],
+          [
+            "Ambessa",
+            75
+          ],
+          [
+            "Gnar",
+            75
+          ],
+          [
+            "Jax",
+            75
+          ],
+          [
+            "Sett",
+            75
+          ],
+          [
+            "Sion",
+            75
+          ],
+          [
+            "Yone",
+            75
+          ],
+          [
+            "Ornn",
+            50
+          ],
+          [
+            "Akali",
+            25
+          ],
+          [
+            "Gangplank",
+            25
+          ],
+          [
+            "Gragas",
+            25
+          ],
+          [
+            "Gwen",
+            25
+          ],
+          [
+            "K'Sante",
+            25
+          ]
+        ],
+        "photo": "/images/players/Canna.webp"
+      },
+      {
+        "ign": "Yike",
+        "firstName": "Martin",
+        "lastName": "Sundelin",
+        "dob": "2000-11-11",
+        "nationality": "SE",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "kc",
+        "rating": 87,
+        "potential": 87,
+        "salary": 340000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 310000,
+        "reputation": 86,
+        "personality": "leader",
+        "champions": [
+          [
+            "Ivern",
+            100
+          ],
+          [
+            "Lillia",
+            100
+          ],
+          [
+            "Maokai",
+            100
+          ],
+          [
+            "Viego",
+            100
+          ],
+          [
+            "Xin Zhao",
+            100
+          ],
+          [
+            "Bel'Veth",
+            75
+          ],
+          [
+            "Brand",
+            75
+          ],
+          [
+            "Jarvan IV",
+            75
+          ],
+          [
+            "Kha'Zix",
+            75
+          ],
+          [
+            "Rell",
+            75
+          ],
+          [
+            "Sejuani",
+            75
+          ],
+          [
+            "Wukong",
+            75
+          ],
+          [
+            "Zyra",
+            75
+          ],
+          [
+            "Graves",
+            50
+          ],
+          [
+            "Vi",
+            50
+          ],
+          [
+            "Volibear",
+            50
+          ],
+          [
+            "Pantheon",
+            25
+          ]
+        ],
+        "photo": "/images/players/Yike.webp"
+      },
+      {
+        "ign": "kyeahoo",
+        "firstName": "Yea-hoo",
+        "lastName": "Kang",
+        "dob": "2005-08-13",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Mid",
+        "teamId": "kc",
+        "rating": 82,
+        "potential": 89,
+        "salary": 285000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 255000,
+        "reputation": 81,
+        "personality": "prankster",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Taliyah",
+            100
+          ],
+          [
+            "Galio",
+            75
+          ],
+          [
+            "Viktor",
+            75
+          ],
+          [
+            "Ahri",
+            50
+          ],
+          [
+            "Aurora",
+            50
+          ],
+          [
+            "Orianna",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "Hwei",
+            25
+          ],
+          [
+            "Tristana",
+            25
+          ]
+        ],
+        "photo": "/images/players/kyeahoo.webp"
+      },
+      {
+        "ign": "Caliste",
+        "firstName": "Caliste",
+        "lastName": "Henry-Hennebert",
+        "dob": "2006-08-28",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "kc",
+        "rating": 82,
+        "potential": 92,
+        "salary": 295000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 270000,
+        "reputation": 88,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Kalista",
+            100
+          ],
+          [
+            "Miss Fortune",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Ashe",
+            75
+          ],
+          [
+            "Jhin",
+            75
+          ],
+          [
+            "Kai'Sa",
+            75
+          ],
+          [
+            "Zeri",
+            75
+          ],
+          [
+            "Aphelios",
+            50
+          ],
+          [
+            "Draven",
+            50
+          ]
+        ],
+        "photo": "/images/players/caliste.webp"
+      },
+      {
+        "ign": "Busio",
+        "firstName": "Alan",
+        "lastName": "Cwalina",
+        "dob": "2003-10-23",
+        "nationality": "US",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "kc",
+        "rating": 83,
+        "potential": 88,
+        "salary": 280000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 510000,
+        "reputation": 84,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Bard",
+            100
+          ],
+          [
+            "Leona",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Renata",
+            100
+          ],
+          [
+            "Braum",
+            75
+          ],
+          [
+            "Karma",
+            75
+          ],
+          [
+            "Nami",
+            75
+          ],
+          [
+            "Neeko",
+            75
+          ],
+          [
+            "Rell",
+            75
+          ],
+          [
+            "Seraphine",
+            75
+          ],
+          [
+            "Tahm Kench",
+            75
+          ],
+          [
+            "Alistar",
+            50
+          ],
+          [
+            "Lulu",
+            50
+          ],
+          [
+            "Nautilus",
+            50
+          ],
+          [
+            "Thresh",
+            25
+          ]
+        ],
+        "photo": "/images/players/busio.webp"
+      },
+      {
+        "ign": "Myrwn",
+        "firstName": "Alex",
+        "lastName": "Pastor Villarejo",
+        "dob": "2003-06-13",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "mkoi",
+        "rating": 76,
+        "potential": 79,
+        "salary": 167000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 150000,
+        "reputation": 80,
+        "personality": "volatile",
+        "champions": [
+          [
+            "Ambessa",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "K'Sante",
+            75
+          ],
+          [
+            "Karma",
+            75
+          ],
+          [
+            "Rumble",
+            75
+          ],
+          [
+            "Twisted Fate",
+            75
+          ],
+          [
+            "Gwen",
+            50
+          ],
+          [
+            "Ornn",
+            50
+          ],
+          [
+            "Renekton",
+            50
+          ],
+          [
+            "Sion",
+            50
+          ],
+          [
+            "Aurora",
+            25
+          ],
+          [
+            "Gnar",
+            25
+          ],
+          [
+            "Gragas",
+            25
+          ],
+          [
+            "Jayce",
+            25
+          ]
+        ],
+        "photo": "/images/players/Myrwn.webp"
+      },
+      {
+        "ign": "Elyoya",
+        "firstName": "Javier",
+        "lastName": "Prades Batalla",
+        "dob": "2000-03-13",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "mkoi",
+        "rating": 84,
+        "potential": 84,
+        "salary": 356000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 315000,
+        "reputation": 88,
+        "personality": "leader",
+        "champions": [
+          [
+            "Graves",
+            100
+          ],
+          [
+            "Sejuani",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Viego",
+            100
+          ],
+          [
+            "Xin Zhao",
+            100
+          ],
+          [
+            "Pantheon",
+            75
+          ],
+          [
+            "Poppy",
+            75
+          ],
+          [
+            "Qiyana",
+            75
+          ],
+          [
+            "Volibear",
+            75
+          ],
+          [
+            "Ivern",
+            50
+          ],
+          [
+            "Maokai",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Trundle",
+            50
+          ],
+          [
+            "Udyr",
+            50
+          ],
+          [
+            "Jarvan IV",
+            25
+          ],
+          [
+            "Lee Sin",
+            25
+          ],
+          [
+            "Wukong",
+            25
+          ]
+        ],
+        "photo": "/images/players/Elyoya.webp"
+      },
+      {
+        "ign": "Jojopyun",
+        "firstName": "Joseph Joon",
+        "lastName": "Pyun",
+        "dob": "2004-10-01",
+        "nationality": "CA",
+        "residency": "NA",
+        "role": "Mid",
+        "teamId": "mkoi",
+        "rating": 82,
+        "potential": 91,
+        "salary": 352000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 315000,
+        "reputation": 84,
+        "personality": "prankster",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Sylas",
+            100
+          ],
+          [
+            "Taliyah",
+            100
+          ],
+          [
+            "Ahri",
+            75
+          ],
+          [
+            "Akali",
+            75
+          ],
+          [
+            "Lucian",
+            75
+          ],
+          [
+            "Viktor",
+            75
+          ],
+          [
+            "Corki",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Yone",
+            50
+          ],
+          [
+            "Jayce",
+            25
+          ],
+          [
+            "LeBlanc",
+            25
+          ],
+          [
+            "Orianna",
+            25
+          ],
+          [
+            "Twisted Fate",
+            25
+          ]
+        ],
+        "photo": "/images/players/Jojopyun.webp"
+      },
+      {
+        "ign": "Supa",
+        "firstName": "David",
+        "lastName": "Martínez García",
+        "dob": "2000-10-23",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "mkoi",
+        "rating": 80,
+        "potential": 80,
+        "salary": 155000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 140000,
+        "reputation": 80,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Kai'Sa",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Zeri",
+            100
+          ],
+          [
+            "Ashe",
+            75
+          ],
+          [
+            "Kalista",
+            75
+          ],
+          [
+            "Sivir",
+            75
+          ],
+          [
+            "Caitlyn",
+            50
+          ],
+          [
+            "Corki",
+            50
+          ],
+          [
+            "Varus",
+            50
+          ],
+          [
+            "Yunara",
+            50
+          ],
+          [
+            "Aphelios",
+            25
+          ],
+          [
+            "Jinx",
+            25
+          ],
+          [
+            "Miss Fortune",
+            25
+          ],
+          [
+            "Senna",
+            25
+          ]
+        ],
+        "photo": "/images/players/Supa.webp"
+      },
+      {
+        "ign": "Alvaro",
+        "firstName": "Álvaro",
+        "lastName": "Fernández del Amo",
+        "dob": "2003-07-15",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "mkoi",
+        "rating": 78,
+        "potential": 86,
+        "salary": 155000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 140000,
+        "reputation": 80,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Rell",
+            100
+          ],
+          [
+            "Alistar",
+            75
+          ],
+          [
+            "Braum",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Neeko",
+            50
+          ],
+          [
+            "Leona",
+            25
+          ],
+          [
+            "Lulu",
+            25
+          ]
+        ],
+        "photo": "/images/players/Alvaro.webp"
+      },
+      {
+        "ign": "Maynter",
+        "firstName": "Volodymyr",
+        "lastName": "Sorokin",
+        "dob": "2000-12-15",
+        "nationality": "UA",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "navi",
+        "rating": 75,
+        "potential": 80,
+        "salary": 140000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 125000,
+        "reputation": 78,
+        "personality": "quiet",
+        "champions": [
+          [
+            "K'Sante",
+            100
+          ],
+          [
+            "Ornn",
+            100
+          ],
+          [
+            "Rumble",
+            100
+          ],
+          [
+            "Sion",
+            100
+          ],
+          [
+            "Ambessa",
+            75
+          ],
+          [
+            "Jax",
+            75
+          ],
+          [
+            "Renekton",
+            75
+          ],
+          [
+            "Aatrox",
+            50
+          ],
+          [
+            "Gnar",
+            50
+          ],
+          [
+            "Gwen",
+            50
+          ]
+        ],
+        "photo": "/images/players/Maynter.webp"
+      },
+      {
+        "ign": "Rhilech",
+        "firstName": "Enes",
+        "lastName": "Uçan",
+        "dob": "2005-10-15",
+        "nationality": "TR",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "navi",
+        "rating": 78,
+        "potential": 87,
+        "salary": 155000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 280000,
+        "reputation": 78,
+        "personality": "volatile",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Amumu",
+            100
+          ],
+          [
+            "Sejuani",
+            100
+          ],
+          [
+            "Maokai",
+            75
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Volibear",
+            75
+          ],
+          [
+            "Xin Zhao",
+            75
+          ],
+          [
+            "Vi",
+            50
+          ],
+          [
+            "Wukong",
+            50
+          ]
+        ],
+        "photo": "/images/players/Rhilech.webp"
+      },
+      {
+        "ign": "Poby",
+        "firstName": "Sung-won",
+        "lastName": "Yun",
+        "dob": "2006-02-07",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Mid",
+        "teamId": "navi",
+        "rating": 75,
+        "potential": 81,
+        "salary": 260000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 480000,
+        "reputation": 78,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Ryze",
+            100
+          ],
+          [
+            "Aurora",
+            75
+          ],
+          [
+            "Taliyah",
+            75
+          ],
+          [
+            "Tristana",
+            50
+          ],
+          [
+            "Viktor",
+            50
+          ],
+          [
+            "Ahri",
+            25
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "Jayce",
+            25
+          ],
+          [
+            "LeBlanc",
+            25
+          ],
+          [
+            "Yone",
+            25
+          ]
+        ],
+        "photo": "/images/players/Poby.webp"
+      },
+      {
+        "ign": "SamD",
+        "firstName": "Jae-hoon",
+        "lastName": "Lee",
+        "dob": "2001-03-14",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Bot",
+        "teamId": "navi",
+        "rating": 80,
+        "potential": 80,
+        "salary": 118000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 105000,
+        "reputation": 80,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Aphelios",
+            100
+          ],
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Jhin",
+            100
+          ],
+          [
+            "Kalista",
+            75
+          ],
+          [
+            "Miss Fortune",
+            75
+          ],
+          [
+            "Xayah",
+            75
+          ],
+          [
+            "Ashe",
+            50
+          ],
+          [
+            "Caitlyn",
+            50
+          ],
+          [
+            "Jinx",
+            50
+          ],
+          [
+            "Kai'Sa",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Sivir",
+            50
+          ],
+          [
+            "Varus",
+            50
+          ],
+          [
+            "Zeri",
+            50
+          ],
+          [
+            "Corki",
+            25
+          ]
+        ],
+        "photo": "/images/players/SamD.webp"
+      },
+      {
+        "ign": "Parus",
+        "firstName": "Polat",
+        "lastName": "Çiçek",
+        "dob": "2003-02-22",
+        "nationality": "TR",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "navi",
+        "rating": 76,
+        "potential": 87,
+        "salary": 120000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 220000,
+        "reputation": 78,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Leona",
+            100
+          ],
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Pyke",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Rell",
+            100
+          ],
+          [
+            "Alistar",
+            75
+          ],
+          [
+            "Bard",
+            50
+          ],
+          [
+            "Braum",
+            50
+          ],
+          [
+            "Thresh",
+            50
+          ],
+          [
+            "Renata",
+            25
+          ]
+        ],
+        "photo": "/images/players/Parus.webp"
+      },
+      {
+        "ign": "Rooster",
+        "firstName": "Yun-hwan",
+        "lastName": "Shin",
+        "dob": "2005-04-28",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Top",
+        "teamId": "sft",
+        "rating": 76,
+        "potential": 87,
+        "salary": 155000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 140000,
+        "reputation": 79,
+        "personality": "volatile",
+        "champions": [
+          [
+            "Gnar",
+            100
+          ],
+          [
+            "K'Sante",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Jax",
+            75
+          ],
+          [
+            "Rek'Sai",
+            75
+          ],
+          [
+            "Rumble",
+            75
+          ],
+          [
+            "Ambessa",
+            50
+          ],
+          [
+            "Gangplank",
+            50
+          ],
+          [
+            "Gwen",
+            50
+          ],
+          [
+            "Sion",
+            50
+          ],
+          [
+            "Aatrox",
+            25
+          ],
+          [
+            "Jayce",
+            25
+          ]
+        ],
+        "photo": "/images/players/Rooster.webp"
+      },
+      {
+        "ign": "Boukada",
+        "firstName": "Mehdi",
+        "lastName": "Lahlou",
+        "dob": "2002-10-01",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "sft",
+        "rating": 68,
+        "potential": 70,
+        "salary": 130000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 115000,
+        "reputation": 75,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Maokai",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Wukong",
+            75
+          ],
+          [
+            "Sejuani",
+            50
+          ],
+          [
+            "Xin Zhao",
+            25
+          ]
+        ],
+        "photo": "/images/players/Boukada.webp"
+      },
+      {
+        "ign": "nuc",
+        "firstName": "Ilias",
+        "lastName": "Bizriken",
+        "dob": "2002-10-02",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "sft",
+        "rating": 75,
+        "potential": 78,
+        "salary": 275000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 250000,
+        "reputation": 81,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Cassiopeia",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Taliyah",
+            75
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "Tristana",
+            50
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "LeBlanc",
+            25
+          ],
+          [
+            "Syndra",
+            25
+          ],
+          [
+            "Viktor",
+            25
+          ]
+        ],
+        "photo": "/images/players/nuc.webp"
+      },
+      {
+        "ign": "Paduck",
+        "firstName": "Seok-hyeon",
+        "lastName": "Park",
+        "dob": "2005-02-12",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Bot",
+        "teamId": "sft",
+        "rating": 76,
+        "potential": 82,
+        "salary": 100000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 80000,
+        "reputation": 78,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "Ashe",
+            75
+          ],
+          [
+            "Jhin",
+            75
+          ],
+          [
+            "Lucian",
+            75
+          ],
+          [
+            "Kai'Sa",
+            50
+          ],
+          [
+            "Aphelios",
+            25
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "Xayah",
+            25
+          ],
+          [
+            "Zeri",
+            25
+          ]
+        ],
+        "photo": "/images/players/Paduck.webp"
+      },
+      {
+        "ign": "Trymbi",
+        "firstName": "Adrian",
+        "lastName": "Trybus",
+        "dob": "2000-10-20",
+        "nationality": "PL",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "sft",
+        "rating": 71,
+        "potential": 71,
+        "salary": 147000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 135000,
+        "reputation": 80,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Lulu",
+            100
+          ],
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Rell",
+            100
+          ],
+          [
+            "Thresh",
+            100
+          ],
+          [
+            "Alistar",
+            75
+          ],
+          [
+            "Bard",
+            75
+          ],
+          [
+            "Braum",
+            75
+          ],
+          [
+            "Leona",
+            75
+          ],
+          [
+            "Nami",
+            75
+          ],
+          [
+            "Yuumi",
+            75
+          ],
+          [
+            "Lux",
+            50
+          ],
+          [
+            "Soraka",
+            50
+          ],
+          [
+            "Karma",
+            25
+          ]
+        ],
+        "photo": "/images/players/Trymbi.webp"
+      },
+      {
+        "ign": "Wunder",
+        "firstName": "Martin",
+        "lastName": "Nordahl Hansen",
+        "dob": "1999-01-07",
+        "nationality": "DK",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "sk",
+        "rating": 74,
+        "potential": 74,
+        "salary": 115000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 95000,
+        "reputation": 86,
+        "personality": "leader",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Camille",
+            100
+          ],
+          [
+            "Gnar",
+            100
+          ],
+          [
+            "Gragas",
+            100
+          ],
+          [
+            "Ornn",
+            100
+          ],
+          [
+            "Akali",
+            75
+          ],
+          [
+            "Neeko",
+            75
+          ],
+          [
+            "Shen",
+            75
+          ],
+          [
+            "Urgot",
+            75
+          ],
+          [
+            "Fiora",
+            50
+          ],
+          [
+            "Gangplank",
+            50
+          ],
+          [
+            "Irelia",
+            50
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Kennen",
+            50
+          ],
+          [
+            "Kled",
+            50
+          ],
+          [
+            "Renekton",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Cho'Gath",
+            25
+          ],
+          [
+            "Gwen",
+            25
+          ],
+          [
+            "K'Sante",
+            25
+          ],
+          [
+            "Karma",
+            25
+          ],
+          [
+            "Sion",
+            25
+          ]
+        ],
+        "photo": "/images/players/Wunder.webp"
+      },
+      {
+        "ign": "Skeanz",
+        "firstName": "Duncan",
+        "lastName": "Marquet",
+        "dob": "2000-09-25",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "sk",
+        "rating": 73,
+        "potential": 73,
+        "salary": 104000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 90000,
+        "reputation": 76,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Nidalee",
+            100
+          ],
+          [
+            "Viego",
+            100
+          ],
+          [
+            "Olaf",
+            75
+          ],
+          [
+            "Vi",
+            75
+          ],
+          [
+            "Xin Zhao",
+            75
+          ],
+          [
+            "Gragas",
+            50
+          ],
+          [
+            "Lillia",
+            50
+          ],
+          [
+            "Poppy",
+            50
+          ],
+          [
+            "Sejuani",
+            50
+          ],
+          [
+            "Trundle",
+            50
+          ],
+          [
+            "Volibear",
+            50
+          ],
+          [
+            "Wukong",
+            50
+          ],
+          [
+            "Jarvan IV",
+            25
+          ],
+          [
+            "Pantheon",
+            25
+          ],
+          [
+            "Zyra",
+            25
+          ]
+        ],
+        "photo": "/images/players/Skeanz.webp"
+      },
+      {
+        "ign": "LIDER",
+        "firstName": "Adam",
+        "lastName": "Ilyasov",
+        "dob": "1999-07-03",
+        "nationality": "NO",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "sk",
+        "rating": 65,
+        "potential": 65,
+        "salary": 136000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 105000,
+        "reputation": 73,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Akali",
+            100
+          ],
+          [
+            "Irelia",
+            100
+          ],
+          [
+            "Yasuo",
+            100
+          ],
+          [
+            "Zed",
+            100
+          ],
+          [
+            "Ryze",
+            75
+          ],
+          [
+            "Ekko",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "Yone",
+            50
+          ],
+          [
+            "Azir",
+            25
+          ]
+        ],
+        "photo": "/images/players/LIDER.webp"
+      },
+      {
+        "ign": "Jopa",
+        "firstName": "Josip",
+        "lastName": "Čančar",
+        "dob": "2003-11-03",
+        "nationality": "HR",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "sk",
+        "rating": 77,
+        "potential": 81,
+        "salary": 92000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 75000,
+        "reputation": 77,
+        "personality": "volatile",
+        "champions": [
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Zeri",
+            100
+          ],
+          [
+            "Ashe",
+            75
+          ],
+          [
+            "Kai'Sa",
+            75
+          ],
+          [
+            "Seraphine",
+            75
+          ],
+          [
+            "Smolder",
+            75
+          ],
+          [
+            "Nilah",
+            50
+          ],
+          [
+            "Caitlyn",
+            25
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "Sivir",
+            25
+          ],
+          [
+            "Yunara",
+            25
+          ]
+        ],
+        "photo": "/images/players/Jopa.webp"
+      },
+      {
+        "ign": "Mikyx",
+        "firstName": "Mihael",
+        "lastName": "Mehle",
+        "dob": "1998-11-02",
+        "nationality": "SI",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "sk",
+        "rating": 79,
+        "potential": 79,
+        "salary": 157000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 130000,
+        "reputation": 89,
+        "personality": "leader",
+        "champions": [
+          [
+            "Braum",
+            100
+          ],
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Rell",
+            100
+          ],
+          [
+            "Thresh",
+            100
+          ],
+          [
+            "Bard",
+            75
+          ],
+          [
+            "Gragas",
+            75
+          ],
+          [
+            "Karma",
+            75
+          ],
+          [
+            "Leona",
+            75
+          ],
+          [
+            "Lulu",
+            75
+          ],
+          [
+            "Morgana",
+            75
+          ],
+          [
+            "Nami",
+            75
+          ],
+          [
+            "Poppy",
+            75
+          ],
+          [
+            "Pyke",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Taric",
+            75
+          ],
+          [
+            "Yuumi",
+            75
+          ],
+          [
+            "Alistar",
+            50
+          ],
+          [
+            "Neeko",
+            50
+          ],
+          [
+            "Tahm Kench",
+            50
+          ],
+          [
+            "Galio",
+            25
+          ]
+        ],
+        "photo": "/images/players/Mikyx.webp"
+      },
+      {
+        "ign": "Tracyn",
+        "firstName": "Sebastian",
+        "lastName": "Wojtoń",
+        "dob": "2005-09-16",
+        "nationality": "PL",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "th",
+        "rating": 75,
+        "potential": 81,
+        "salary": 98000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 170000,
+        "reputation": 76,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Gnar",
+            100
+          ],
+          [
+            "Gwen",
+            100
+          ],
+          [
+            "Ambessa",
+            75
+          ],
+          [
+            "Camille",
+            75
+          ],
+          [
+            "Jax",
+            75
+          ],
+          [
+            "K'Sante",
+            75
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Renekton",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Sion",
+            25
+          ]
+        ],
+        "photo": "/images/players/Tracyn.webp"
+      },
+      {
+        "ign": "Sheo",
+        "firstName": "Théo",
+        "lastName": "Borile",
+        "dob": "2001-07-05",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "th",
+        "rating": 76,
+        "potential": 76,
+        "salary": 146000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 120000,
+        "reputation": 80,
+        "personality": "leader",
+        "champions": [
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Maokai",
+            100
+          ],
+          [
+            "Sejuani",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Xin Zhao",
+            100
+          ],
+          [
+            "Ivern",
+            75
+          ],
+          [
+            "Poppy",
+            75
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Volibear",
+            25
+          ],
+          [
+            "Wukong",
+            25
+          ]
+        ],
+        "photo": "/images/players/Sheo.webp"
+      },
+      {
+        "ign": "Serin",
+        "firstName": "Tolga",
+        "lastName": "Ölmez",
+        "dob": "2002-04-10",
+        "nationality": "TR",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "th",
+        "rating": 74,
+        "potential": 76,
+        "salary": 230000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 380000,
+        "reputation": 78,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Ahri",
+            100
+          ],
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Corki",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Aurelion Sol",
+            75
+          ],
+          [
+            "Jayce",
+            75
+          ],
+          [
+            "Ryze",
+            75
+          ],
+          [
+            "Taliyah",
+            75
+          ],
+          [
+            "Akali",
+            50
+          ],
+          [
+            "Hwei",
+            50
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "Viktor",
+            50
+          ],
+          [
+            "LeBlanc",
+            25
+          ]
+        ],
+        "photo": "/images/players/Serin.webp"
+      },
+      {
+        "ign": "Ice",
+        "firstName": "Sang-hoon",
+        "lastName": "Yoon",
+        "dob": "2001-04-09",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Bot",
+        "teamId": "th",
+        "rating": 74,
+        "potential": 74,
+        "salary": 135000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 215000,
+        "reputation": 79,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Aphelios",
+            100
+          ],
+          [
+            "Jinx",
+            100
+          ],
+          [
+            "Zeri",
+            100
+          ],
+          [
+            "Ezreal",
+            50
+          ],
+          [
+            "Jhin",
+            50
+          ],
+          [
+            "Varus",
+            50
+          ],
+          [
+            "Xayah",
+            50
+          ],
+          [
+            "Ashe",
+            25
+          ],
+          [
+            "Kai'Sa",
+            25
+          ]
+        ],
+        "photo": "/images/players/Ice.webp"
+      },
+      {
+        "ign": "Way",
+        "firstName": "Gil",
+        "lastName": "Han",
+        "dob": "2002-06-29",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Support",
+        "teamId": "th",
+        "rating": 74,
+        "potential": 82,
+        "salary": 98000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 80000,
+        "reputation": 76,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Alistar",
+            100
+          ],
+          [
+            "Leona",
+            100
+          ],
+          [
+            "Lulu",
+            100
+          ],
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Braum",
+            75
+          ],
+          [
+            "Nami",
+            75
+          ],
+          [
+            "Neeko",
+            75
+          ],
+          [
+            "Poppy",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Karma",
+            50
+          ],
+          [
+            "Rell",
+            50
+          ],
+          [
+            "Tahm Kench",
+            50
+          ]
+        ],
+        "photo": "/images/players/Way.webp"
+      },
+      {
+        "ign": "Naak Nako",
+        "firstName": "Kaan",
+        "lastName": "Okan",
+        "dob": "2005-03-24",
+        "nationality": "TR",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "vit",
+        "rating": 82,
+        "potential": 91,
+        "salary": 213000,
+        "contractEnd": "2027-11-18",
+        "marketValue": 340000,
+        "reputation": 84,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Yone",
+            100
+          ],
+          [
+            "Gragas",
+            75
+          ],
+          [
+            "Gnar",
+            50
+          ],
+          [
+            "K'Sante",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Yasuo",
+            50
+          ]
+        ],
+        "photo": "/images/players/NaakNako.webp"
+      },
+      {
+        "ign": "Lyncas",
+        "firstName": "Linas",
+        "lastName": "Nauncikas",
+        "dob": "2003-12-10",
+        "nationality": "LT",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "vit",
+        "rating": 78,
+        "potential": 85,
+        "salary": 143000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 120000,
+        "reputation": 79,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Maokai",
+            100
+          ],
+          [
+            "Poppy",
+            100
+          ],
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Wukong",
+            100
+          ],
+          [
+            "Ivern",
+            75
+          ],
+          [
+            "Pantheon",
+            75
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Xin Zhao",
+            75
+          ],
+          [
+            "Graves",
+            50
+          ],
+          [
+            "Jarvan IV",
+            50
+          ],
+          [
+            "Lee Sin",
+            50
+          ],
+          [
+            "Sejuani",
+            25
+          ],
+          [
+            "Taliyah",
+            25
+          ]
+        ],
+        "photo": "/images/players/Lyncas.webp"
+      },
+      {
+        "ign": "Humanoid",
+        "firstName": "Marek",
+        "lastName": "Brázda",
+        "dob": "2000-03-14",
+        "nationality": "CZ",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "vit",
+        "rating": 76,
+        "potential": 76,
+        "salary": 354000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 320000,
+        "reputation": 86,
+        "personality": "hothead",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "LeBlanc",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Ryze",
+            100
+          ],
+          [
+            "Taliyah",
+            100
+          ],
+          [
+            "Akali",
+            75
+          ],
+          [
+            "Aurelion Sol",
+            75
+          ],
+          [
+            "Corki",
+            75
+          ],
+          [
+            "Lissandra",
+            75
+          ],
+          [
+            "Syndra",
+            75
+          ],
+          [
+            "Tristana",
+            75
+          ],
+          [
+            "Twisted Fate",
+            75
+          ],
+          [
+            "Yone",
+            75
+          ],
+          [
+            "Hwei",
+            50
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "Viktor",
+            50
+          ],
+          [
+            "Zoe",
+            50
+          ],
+          [
+            "Ahri",
+            25
+          ]
+        ],
+        "photo": "/images/players/Humanoid.webp"
+      },
+      {
+        "ign": "Carzzy",
+        "firstName": "Matyáš",
+        "lastName": "Orság",
+        "dob": "2002-01-31",
+        "nationality": "CZ",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "vit",
+        "rating": 80,
+        "potential": 82,
+        "salary": 147000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 130000,
+        "reputation": 84,
+        "personality": "prankster",
+        "champions": [
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Kai'Sa",
+            100
+          ],
+          [
+            "Kalista",
+            75
+          ],
+          [
+            "Sivir",
+            75
+          ],
+          [
+            "Varus",
+            75
+          ],
+          [
+            "Xayah",
+            75
+          ],
+          [
+            "Miss Fortune",
+            50
+          ],
+          [
+            "Senna",
+            50
+          ],
+          [
+            "Aphelios",
+            25
+          ],
+          [
+            "Ashe",
+            25
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "Jhin",
+            25
+          ],
+          [
+            "Jinx",
+            25
+          ],
+          [
+            "Lucian",
+            25
+          ],
+          [
+            "Zeri",
+            25
+          ]
+        ],
+        "photo": "/images/players/Carzzy.webp"
+      },
+      {
+        "ign": "Fleshy",
+        "firstName": "Kadir",
+        "lastName": "Kemiksiz",
+        "dob": "2000-11-24",
+        "nationality": "TR",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "vit",
+        "rating": 75,
+        "potential": 78,
+        "salary": 82000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 75000,
+        "reputation": 79,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Leona",
+            100
+          ],
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Pyke",
+            100
+          ],
+          [
+            "Alistar",
+            75
+          ],
+          [
+            "Bard",
+            75
+          ],
+          [
+            "Rell",
+            75
+          ],
+          [
+            "Nami",
+            50
+          ],
+          [
+            "Lulu",
+            25
+          ]
+        ],
+        "photo": "/images/players/Fleshy.webp"
+      }
+    ],
+    "free_agent_seeds": [
+      {
+        "ign": "Adam",
+        "firstName": "Adam",
+        "lastName": "Maanane",
+        "dob": "2001-12-30",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "fa",
+        "rating": 76,
+        "potential": 76,
+        "salary": 145000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 125000,
+        "reputation": 83,
+        "personality": "hothead",
+        "champions": [
+          [
+            "Garen",
+            100
+          ],
+          [
+            "Olaf",
+            100
+          ],
+          [
+            "Darius",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Sett",
+            100
+          ],
+          [
+            "Camille",
+            75
+          ],
+          [
+            "Gnar",
+            75
+          ],
+          [
+            "Sion",
+            75
+          ],
+          [
+            "K'Sante",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Aatrox",
+            20
+          ],
+          [
+            "Dr. Mundo",
+            20
+          ],
+          [
+            "Jayce",
+            20
+          ]
+        ],
+        "photo": "/images/players/Adam.webp"
+      },
+      {
+        "ign": "Bwipo",
+        "firstName": "Gabriel",
+        "lastName": "Rau",
+        "dob": "1998-12-24",
+        "nationality": "BE",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "fa",
+        "rating": 83,
+        "potential": 83,
+        "salary": 280000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 250000,
+        "reputation": 85,
+        "personality": "leader",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Gangplank",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Sion",
+            100
+          ],
+          [
+            "Urgot",
+            100
+          ],
+          [
+            "Gragas",
+            75
+          ],
+          [
+            "Jarvan IV",
+            75
+          ],
+          [
+            "K'Sante",
+            75
+          ],
+          [
+            "Olaf",
+            75
+          ],
+          [
+            "Ornn",
+            75
+          ],
+          [
+            "Swain",
+            75
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Volibear",
+            75
+          ],
+          [
+            "Graves",
+            50
+          ],
+          [
+            "Jayce",
+            50
+          ],
+          [
+            "Cho'Gath",
+            25
+          ],
+          [
+            "Rumble",
+            25
+          ],
+          [
+            "Sett",
+            25
+          ],
+          [
+            "Shen",
+            25
+          ]
+        ],
+        "photo": "/images/players/Bwipo.webp"
+      },
+      {
+        "ign": "Oscarinin",
+        "firstName": "Oscar",
+        "lastName": "Munoz Jimenez",
+        "dob": "2003-06-11",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "fa",
+        "rating": 75,
+        "potential": 80,
+        "salary": 140000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 120000,
+        "reputation": 80,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Camille",
+            100
+          ],
+          [
+            "Gangplank",
+            100
+          ],
+          [
+            "K'Sante",
+            100
+          ],
+          [
+            "Ornn",
+            100
+          ],
+          [
+            "Rumble",
+            100
+          ],
+          [
+            "Gnar",
+            75
+          ],
+          [
+            "Gwen",
+            75
+          ],
+          [
+            "Jayce",
+            75
+          ],
+          [
+            "Poppy",
+            75
+          ],
+          [
+            "Ambessa",
+            50
+          ],
+          [
+            "Jax",
+            50
+          ],
+          [
+            "Malphite",
+            50
+          ],
+          [
+            "Renekton",
+            50
+          ],
+          [
+            "Zac",
+            50
+          ],
+          [
+            "Fiora",
+            25
+          ],
+          [
+            "Sion",
+            25
+          ]
+        ],
+        "photo": "/images/players/Oscarinin.webp"
+      },
+      {
+        "ign": "Summit",
+        "firstName": "Woo-tae",
+        "lastName": "Park",
+        "dob": "1998-12-08",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Top",
+        "teamId": "fa",
+        "rating": 75,
+        "potential": 75,
+        "salary": 130000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 110000,
+        "reputation": 79,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Gnar",
+            100
+          ],
+          [
+            "Jayce",
+            100
+          ],
+          [
+            "Kennen",
+            100
+          ],
+          [
+            "Renekton",
+            100
+          ],
+          [
+            "Camille",
+            75
+          ],
+          [
+            "Gwen",
+            75
+          ],
+          [
+            "Jax",
+            75
+          ],
+          [
+            "K'Sante",
+            75
+          ],
+          [
+            "Sion",
+            75
+          ],
+          [
+            "Sylas",
+            75
+          ],
+          [
+            "Gangplank",
+            50
+          ],
+          [
+            "Ornn",
+            50
+          ],
+          [
+            "Rumble",
+            50
+          ],
+          [
+            "Irelia",
+            25
+          ],
+          [
+            "Sett",
+            25
+          ]
+        ],
+        "photo": "/images/players/Summit.webp"
+      },
+      {
+        "ign": "Malrang",
+        "firstName": "Geun-Seong",
+        "lastName": "Kim",
+        "dob": "2000-02-09",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Jungle",
+        "teamId": "fa",
+        "rating": 73,
+        "potential": 73,
+        "salary": 115000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 95000,
+        "reputation": 79,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Jarvan IV",
+            100
+          ],
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Trundle",
+            100
+          ],
+          [
+            "Gragas",
+            75
+          ],
+          [
+            "Sejuani",
+            75
+          ],
+          [
+            "Skarner",
+            75
+          ],
+          [
+            "Vi",
+            75
+          ],
+          [
+            "Xin Zhao",
+            75
+          ],
+          [
+            "Volibear",
+            50
+          ],
+          [
+            "Wukong",
+            50
+          ],
+          [
+            "Elise",
+            20
+          ],
+          [
+            "Maokai",
+            20
+          ],
+          [
+            "Olaf",
+            20
+          ]
+        ],
+        "photo": "/images/players/Malrang.webp"
+      },
+      {
+        "ign": "Jankos",
+        "firstName": "Marcin",
+        "lastName": "Jankowski",
+        "dob": "1995-07-23",
+        "nationality": "PL",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "fa",
+        "rating": 75,
+        "potential": 75,
+        "salary": 150000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 130000,
+        "reputation": 86,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Elise",
+            100
+          ],
+          [
+            "Gragas",
+            100
+          ],
+          [
+            "Jarvan IV",
+            100
+          ],
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Rek'Sai",
+            100
+          ],
+          [
+            "Graves",
+            75
+          ],
+          [
+            "Hecarim",
+            75
+          ],
+          [
+            "Nidalee",
+            75
+          ],
+          [
+            "Nocturne",
+            75
+          ],
+          [
+            "Olaf",
+            75
+          ],
+          [
+            "Pantheon",
+            75
+          ],
+          [
+            "Sejuani",
+            75
+          ],
+          [
+            "Skarner",
+            75
+          ],
+          [
+            "Kha'Zix",
+            50
+          ],
+          [
+            "Sett",
+            50
+          ],
+          [
+            "Trundle",
+            50
+          ],
+          [
+            "Volibear",
+            50
+          ],
+          [
+            "Wukong",
+            50
+          ],
+          [
+            "Zac",
+            50
+          ],
+          [
+            "Ivern",
+            25
+          ],
+          [
+            "Kindred",
+            25
+          ],
+          [
+            "Maokai",
+            25
+          ],
+          [
+            "Vi",
+            25
+          ],
+          [
+            "Viego",
+            25
+          ]
+        ],
+        "photo": "/images/players/Jankos.webp"
+      },
+      {
+        "ign": "Bo",
+        "firstName": "Yang-Bo",
+        "lastName": "Zhou",
+        "dob": "2002-03-02",
+        "nationality": "CN",
+        "residency": "CN",
+        "role": "Jungle",
+        "teamId": "fa",
+        "rating": 79,
+        "potential": 85,
+        "salary": 200000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 180000,
+        "reputation": 83,
+        "personality": "leader",
+        "champions": [
+          [
+            "Graves",
+            100
+          ],
+          [
+            "Jayce",
+            100
+          ],
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Qiyana",
+            100
+          ],
+          [
+            "Talon",
+            100
+          ],
+          [
+            "Ambessa",
+            75
+          ],
+          [
+            "Hecarim",
+            75
+          ],
+          [
+            "Kha'Zix",
+            75
+          ],
+          [
+            "Nidalee",
+            75
+          ],
+          [
+            "Olaf",
+            75
+          ],
+          [
+            "Taliyah",
+            75
+          ],
+          [
+            "Viego",
+            75
+          ],
+          [
+            "Kindred",
+            50
+          ],
+          [
+            "Vi",
+            50
+          ],
+          [
+            "Wukong",
+            50
+          ],
+          [
+            "Xin Zhao",
+            50
+          ],
+          [
+            "Maokai",
+            25
+          ],
+          [
+            "Sejuani",
+            25
+          ]
+        ],
+        "photo": "/images/players/Bo.webp"
+      },
+      {
+        "ign": "Nattynatt",
+        "firstName": "Isak",
+        "lastName": "Elgh",
+        "dob": "2005-03-20",
+        "nationality": "SE",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "fa",
+        "rating": 68,
+        "potential": 80,
+        "salary": 78000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 60000,
+        "reputation": 74,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Dr. Mundo",
+            100
+          ],
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Rengar",
+            100
+          ],
+          [
+            "Aatrox",
+            75
+          ],
+          [
+            "Jarvan IV",
+            75
+          ],
+          [
+            "Jax",
+            75
+          ],
+          [
+            "Pantheon",
+            75
+          ],
+          [
+            "Sylas",
+            75
+          ],
+          [
+            "Xin Zhao",
+            75
+          ],
+          [
+            "Olaf",
+            50
+          ],
+          [
+            "Skarner",
+            25
+          ],
+          [
+            "Vi",
+            25
+          ],
+          [
+            "Wukong",
+            25
+          ]
+        ],
+        "photo": "/images/players/Nattynatt.webp"
+      },
+      {
+        "ign": "Larssen",
+        "firstName": "Emil",
+        "lastName": "Larsson",
+        "dob": "2000-03-30",
+        "nationality": "SE",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fa",
+        "rating": 73,
+        "potential": 73,
+        "salary": 210000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 180000,
+        "reputation": 78,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Corki",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Akali",
+            75
+          ],
+          [
+            "Lucian",
+            75
+          ],
+          [
+            "Syndra",
+            75
+          ],
+          [
+            "Twisted Fate",
+            75
+          ],
+          [
+            "Viktor",
+            75
+          ],
+          [
+            "Ahri",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "LeBlanc",
+            20
+          ],
+          [
+            "Tristana",
+            20
+          ]
+        ],
+        "photo": "/images/players/Larssen.webp"
+      },
+      {
+        "ign": "Vetheo",
+        "firstName": "Vincent",
+        "lastName": "Berrié",
+        "dob": "2002-07-26",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fa",
+        "rating": 73,
+        "potential": 80,
+        "salary": 230000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 200000,
+        "reputation": 78,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Akali",
+            100
+          ],
+          [
+            "LeBlanc",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Yone",
+            100
+          ],
+          [
+            "Zoe",
+            100
+          ],
+          [
+            "Ahri",
+            75
+          ],
+          [
+            "Ezreal",
+            75
+          ],
+          [
+            "Sylas",
+            75
+          ],
+          [
+            "Syndra",
+            75
+          ],
+          [
+            "Azir",
+            50
+          ],
+          [
+            "Corki",
+            50
+          ],
+          [
+            "Ryze",
+            50
+          ],
+          [
+            "Viktor",
+            50
+          ],
+          [
+            "Taliyah",
+            25
+          ]
+        ],
+        "photo": "/images/players/Vetheo.webp"
+      },
+      {
+        "ign": "Saken",
+        "firstName": "Lucas",
+        "lastName": "Fayard",
+        "dob": "1998-11-05",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fa",
+        "rating": 72,
+        "potential": 72,
+        "salary": 180000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 150000,
+        "reputation": 76,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "LeBlanc",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Ryze",
+            100
+          ],
+          [
+            "Viktor",
+            100
+          ],
+          [
+            "Ahri",
+            75
+          ],
+          [
+            "Corki",
+            75
+          ],
+          [
+            "Neeko",
+            75
+          ],
+          [
+            "Syndra",
+            75
+          ],
+          [
+            "Sylas",
+            50
+          ],
+          [
+            "Taliyah",
+            50
+          ],
+          [
+            "Twisted Fate",
+            50
+          ],
+          [
+            "Jayce",
+            25
+          ],
+          [
+            "Zoe",
+            25
+          ]
+        ],
+        "photo": "/images/players/Saken.webp"
+      },
+      {
+        "ign": "Nemesis",
+        "firstName": "Tim",
+        "lastName": "Lipovsek",
+        "dob": "1999-07-26",
+        "nationality": "SI",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fa",
+        "rating": 79,
+        "potential": 79,
+        "salary": 270000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 240000,
+        "reputation": 83,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Corki",
+            100
+          ],
+          [
+            "Orianna",
+            100
+          ],
+          [
+            "Ryze",
+            100
+          ],
+          [
+            "Ahri",
+            75
+          ],
+          [
+            "Cassiopeia",
+            75
+          ],
+          [
+            "Galio",
+            75
+          ],
+          [
+            "Twisted Fate",
+            75
+          ],
+          [
+            "Akali",
+            50
+          ]
+        ],
+        "photo": "/images/players/Nemesis.webp"
+      },
+      {
+        "ign": "3XA",
+        "firstName": "Thomas",
+        "lastName": "Foucou",
+        "dob": "2003-09-28",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "fa",
+        "rating": 76,
+        "potential": 80,
+        "salary": 145000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 125000,
+        "reputation": 79,
+        "personality": "prankster",
+        "champions": [
+          [
+            "Aphelios",
+            100
+          ],
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Jhin",
+            100
+          ],
+          [
+            "Kalista",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Corki",
+            75
+          ],
+          [
+            "Draven",
+            75
+          ],
+          [
+            "Jinx",
+            75
+          ],
+          [
+            "Kai'Sa",
+            75
+          ],
+          [
+            "Lucian",
+            75
+          ],
+          [
+            "Miss Fortune",
+            75
+          ],
+          [
+            "Varus",
+            75
+          ],
+          [
+            "Yunara",
+            75
+          ],
+          [
+            "Ashe",
+            50
+          ],
+          [
+            "Zeri",
+            50
+          ],
+          [
+            "Senna",
+            25
+          ],
+          [
+            "Sivir",
+            25
+          ]
+        ],
+        "photo": "/images/players/3XA.webp"
+      },
+      {
+        "ign": "Unforgiven",
+        "firstName": "William",
+        "lastName": "Nieminen",
+        "dob": "2000-08-23",
+        "nationality": "SE",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "fa",
+        "rating": 74,
+        "potential": 74,
+        "salary": 115000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 95000,
+        "reputation": 72,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Corki",
+            100
+          ],
+          [
+            "Draven",
+            100
+          ],
+          [
+            "Jinx",
+            100
+          ],
+          [
+            "Karthus",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Aphelios",
+            75
+          ],
+          [
+            "Ezreal",
+            75
+          ],
+          [
+            "Varus",
+            75
+          ],
+          [
+            "Zeri",
+            75
+          ],
+          [
+            "Kai'Sa",
+            50
+          ],
+          [
+            "Lucian",
+            50
+          ],
+          [
+            "Miss Fortune",
+            50
+          ]
+        ],
+        "photo": "/images/players/Unforgiven.webp"
+      },
+      {
+        "ign": "Crownie",
+        "firstName": "Jus",
+        "lastName": "Marusic",
+        "dob": "1998-04-17",
+        "nationality": "SI",
+        "residency": "EMEA",
+        "role": "Bot",
+        "teamId": "fa",
+        "rating": 69,
+        "potential": 69,
+        "salary": 75000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 60000,
+        "reputation": 74,
+        "personality": "hothead",
+        "champions": [
+          [
+            "Aphelios",
+            100
+          ],
+          [
+            "Ezreal",
+            100
+          ],
+          [
+            "Varus",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Zeri",
+            100
+          ],
+          [
+            "Caitlyn",
+            75
+          ],
+          [
+            "Corki",
+            75
+          ],
+          [
+            "Jhin",
+            75
+          ],
+          [
+            "Jinx",
+            75
+          ],
+          [
+            "Lucian",
+            75
+          ],
+          [
+            "Sivir",
+            75
+          ],
+          [
+            "Tristana",
+            75
+          ],
+          [
+            "Ashe",
+            50
+          ],
+          [
+            "Kai'Sa",
+            25
+          ],
+          [
+            "Kog'Maw",
+            25
+          ]
+        ],
+        "photo": "/images/players/Crownie.webp"
+      },
+      {
+        "ign": "Light",
+        "firstName": "Guang-Yu",
+        "lastName": "Wang",
+        "dob": "2001-02-21",
+        "nationality": "CN",
+        "residency": "CN",
+        "role": "Bot",
+        "teamId": "fa",
+        "rating": 80,
+        "potential": 80,
+        "salary": 205000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 185000,
+        "reputation": 80,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Aphelios",
+            100
+          ],
+          [
+            "Caitlyn",
+            100
+          ],
+          [
+            "Lucian",
+            100
+          ],
+          [
+            "Xayah",
+            100
+          ],
+          [
+            "Zeri",
+            100
+          ],
+          [
+            "Varus",
+            75
+          ],
+          [
+            "Ezreal",
+            50
+          ],
+          [
+            "Kai'Sa",
+            50
+          ],
+          [
+            "Ashe",
+            25
+          ],
+          [
+            "Corki",
+            25
+          ],
+          [
+            "Jhin",
+            25
+          ],
+          [
+            "Jinx",
+            25
+          ],
+          [
+            "Kalista",
+            25
+          ],
+          [
+            "Miss Fortune",
+            25
+          ],
+          [
+            "Senna",
+            25
+          ],
+          [
+            "Sivir",
+            25
+          ],
+          [
+            "Tristana",
+            25
+          ],
+          [
+            "Ziggs",
+            25
+          ]
+        ],
+        "photo": "/images/players/Light.webp"
+      },
+      {
+        "ign": "Hylissang",
+        "firstName": "Zdravets",
+        "lastName": "Iliev Galabov",
+        "dob": "1995-04-30",
+        "nationality": "BG",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 77,
+        "potential": 77,
+        "salary": 155000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 135000,
+        "reputation": 86,
+        "personality": "loyal",
+        "champions": [
+          [
+            "Bard",
+            100
+          ],
+          [
+            "Braum",
+            100
+          ],
+          [
+            "Pyke",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Thresh",
+            100
+          ],
+          [
+            "Alistar",
+            75
+          ],
+          [
+            "Morgana",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Tahm Kench",
+            75
+          ],
+          [
+            "Zilean",
+            75
+          ],
+          [
+            "Annie",
+            50
+          ],
+          [
+            "Blitzcrank",
+            50
+          ],
+          [
+            "Leona",
+            50
+          ],
+          [
+            "Lulu",
+            50
+          ],
+          [
+            "Rell",
+            50
+          ],
+          [
+            "Yuumi",
+            50
+          ],
+          [
+            "Karma",
+            25
+          ],
+          [
+            "Nami",
+            25
+          ],
+          [
+            "Nautilus",
+            25
+          ],
+          [
+            "Shen",
+            25
+          ],
+          [
+            "Taric",
+            25
+          ],
+          [
+            "Trundle",
+            25
+          ]
+        ],
+        "photo": "/images/players/Hylissang.webp"
+      },
+      {
+        "ign": "Targamas",
+        "firstName": "Raphaël",
+        "lastName": "Crabbé",
+        "dob": "2000-06-30",
+        "nationality": "BE",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 78,
+        "potential": 80,
+        "salary": 165000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 145000,
+        "reputation": 82,
+        "personality": "leader",
+        "champions": [
+          [
+            "Braum",
+            100
+          ],
+          [
+            "Nautilus",
+            100
+          ],
+          [
+            "Pyke",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Senna",
+            100
+          ],
+          [
+            "Alistar",
+            75
+          ],
+          [
+            "Bard",
+            75
+          ],
+          [
+            "Galio",
+            75
+          ],
+          [
+            "Leona",
+            75
+          ],
+          [
+            "Renata",
+            75
+          ],
+          [
+            "Sett",
+            75
+          ],
+          [
+            "Tahm Kench",
+            75
+          ],
+          [
+            "Taric",
+            75
+          ],
+          [
+            "Thresh",
+            75
+          ],
+          [
+            "Karma",
+            50
+          ],
+          [
+            "Lulu",
+            50
+          ],
+          [
+            "Nami",
+            25
+          ],
+          [
+            "Rell",
+            25
+          ]
+        ],
+        "photo": "/images/players/Targamas.webp"
+      },
+      {
+        "ign": "Rekkles",
+        "firstName": "Martin",
+        "lastName": "Larsson",
+        "dob": "1996-09-20",
+        "nationality": "SE",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 73,
+        "potential": 73,
+        "salary": 125000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 110000,
+        "reputation": 90,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Braum",
+            100
+          ],
+          [
+            "Janna",
+            100
+          ],
+          [
+            "Nami",
+            100
+          ],
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Renata",
+            100
+          ],
+          [
+            "Karma",
+            75
+          ],
+          [
+            "Lulu",
+            75
+          ],
+          [
+            "Senna",
+            75
+          ],
+          [
+            "Alistar",
+            50
+          ],
+          [
+            "Rell",
+            50
+          ],
+          [
+            "Bard",
+            25
+          ],
+          [
+            "Leona",
+            25
+          ],
+          [
+            "Milio",
+            25
+          ],
+          [
+            "Neeko",
+            25
+          ]
+        ],
+        "photo": "/images/players/Rekkles.webp"
+      },
+      {
+        "ign": "Execute",
+        "firstName": "Jeong-Hoon",
+        "lastName": "Lee",
+        "dob": "2000-02-22",
+        "nationality": "KR",
+        "residency": "KR",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 72,
+        "potential": 72,
+        "salary": 100000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 80000,
+        "reputation": 76,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Leona",
+            100
+          ],
+          [
+            "Pyke",
+            100
+          ],
+          [
+            "Rakan",
+            75
+          ],
+          [
+            "Bard",
+            50
+          ],
+          [
+            "Nami",
+            50
+          ],
+          [
+            "Nautilus",
+            50
+          ],
+          [
+            "Rell",
+            50
+          ],
+          [
+            "Alistar",
+            25
+          ],
+          [
+            "Tahm Kench",
+            25
+          ],
+          [
+            "Thresh",
+            25
+          ]
+        ],
+        "photo": "/images/players/Execute.webp"
+      }
+    ]
+  }
+}

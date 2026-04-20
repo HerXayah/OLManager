@@ -1,0 +1,570 @@
+{
+  "source": "lolesports-api",
+  "fetchedAt": "2026-04-17T14:51:49.3617167-03:00",
+  "league": "LEC",
+  "leagueId": "98767991302996019",
+  "tournamentId": "115548681802226458",
+  "teamCount": 10,
+  "teams": [
+    {
+      "id": "98767991866488695",
+      "slug": "fnatic",
+      "name": "Fnatic",
+      "code": "FNC",
+      "image": "http://static.lolesports.com/teams/1631819669150_fnc-2021-worlds.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1592591295310_FnaticFNC-03-FullonLight.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "99322214653265200",
+          "summonerName": "Upset",
+          "firstName": "Elias",
+          "lastName": "Lipp",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774652671712_upset.png"
+        },
+        {
+          "id": "100238780551262852",
+          "summonerName": "Razork",
+          "firstName": "Ivǭn",
+          "lastName": "Mart��n",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774652486277_razork.png"
+        },
+        {
+          "id": "109705412728201213",
+          "summonerName": "Empyros",
+          "firstName": "Panagiotis",
+          "lastName": "Tantis",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774651449505_empyros.png"
+        },
+        {
+          "id": "107045034481599547",
+          "summonerName": "Vladi",
+          "firstName": "Vladimiros",
+          "lastName": "Kourtidis",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774652694212_vladi.png"
+        },
+        {
+          "id": "107492067202132417",
+          "summonerName": "Lospa",
+          "firstName": "Joon Hyung",
+          "lastName": "Park",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774652050575_lospa.png"
+        }
+      ]
+    },
+    {
+      "id": "98767991926151025",
+      "slug": "g2-esports",
+      "name": "G2 Esports",
+      "code": "G2",
+      "image": "http://static.lolesports.com/teams/G2-FullonDark.png",
+      "alternativeImage": "http://static.lolesports.com/teams/G2-FullonLight.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "98767975968177297",
+          "summonerName": "Caps",
+          "firstName": "Rasmus",
+          "lastName": "Borregaard Winther",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1768549998426_Caps-01.png"
+        },
+        {
+          "id": "99566406047571736",
+          "summonerName": "BrokenBlade",
+          "firstName": "Sergen",
+          "lastName": "�?elik",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1768550002850_BrokenBlade-01.png"
+        },
+        {
+          "id": "98767975961872793",
+          "summonerName": "Hans Sama",
+          "firstName": "Steven",
+          "lastName": "Liv",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1768549994123_HansSama-01.png"
+        },
+        {
+          "id": "105554439426664062",
+          "summonerName": "Rodrigo",
+          "firstName": "Rodrigo",
+          "lastName": "Domingues Oliveira",
+          "role": "none",
+          "image": "http://static.lolesports.com/players/default-headshot.png"
+        },
+        {
+          "id": "107128052280762804",
+          "summonerName": "SkewMond",
+          "firstName": "Rudy",
+          "lastName": "Semaan",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1768549980779_Skewmond-01.png"
+        },
+        {
+          "id": "102787200059605684",
+          "summonerName": "Labrov",
+          "firstName": "Labros",
+          "lastName": "Papoutsakis",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1768549989298_Labrov-01.png"
+        }
+      ]
+    },
+    {
+      "id": "101383793572656373",
+      "slug": "giantx-lec",
+      "name": "GIANTX",
+      "code": "GX",
+      "image": "http://static.lolesports.com/teams/1765897105091_GIANTX-logotype-white.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1765897105092_GIANTX-logotype-white.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "107464179845128878",
+          "summonerName": "ISMA",
+          "firstName": "Isma��l",
+          "lastName": "Boualem",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774651596907_isma.png"
+        },
+        {
+          "id": "103495716738607011",
+          "summonerName": "Lot",
+          "firstName": "Eren",
+          "lastName": "Y��ld��z",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774652144804_lot.png"
+        },
+        {
+          "id": "105501717406803640",
+          "summonerName": "Noah",
+          "firstName": "Hyuntaek",
+          "lastName": "O",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774652391494_noah.png"
+        },
+        {
+          "id": "105501802535116331",
+          "summonerName": "Jun",
+          "firstName": "Sejun",
+          "lastName": "Yoon",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774651978347_jun.png"
+        },
+        {
+          "id": "105647947016264573",
+          "summonerName": "Jackies",
+          "firstName": "Adam",
+          "lastName": "Je�?ǭbek",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774651628897_jackies.png"
+        }
+      ]
+    },
+    {
+      "id": "111692118851466302",
+      "slug": "karmine-corp",
+      "name": "Karmine Corp",
+      "code": "KC",
+      "image": "http://static.lolesports.com/teams/1704714951336_KC.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1704714951337_KC.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "103495716771322725",
+          "summonerName": "Canna",
+          "firstName": "Changdong",
+          "lastName": "Kim",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774651372836_canna.png"
+        },
+        {
+          "id": "108205130709313212",
+          "summonerName": "kyeahoo",
+          "firstName": "Yeahoo",
+          "lastName": "Kang",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774652002153_kyeahoo.png"
+        },
+        {
+          "id": "106625308523122120",
+          "summonerName": "Busio",
+          "firstName": "Alan",
+          "lastName": "Cwalina",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774651329556_busio.png"
+        },
+        {
+          "id": "105537190986692036",
+          "summonerName": "Yike",
+          "firstName": "Martin",
+          "lastName": "Sundelin",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1768550195190_Yike-01.png"
+        },
+        {
+          "id": "109461265532592848",
+          "summonerName": "Caliste",
+          "firstName": "Caliste",
+          "lastName": "Henry-Hennebert",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774651348279_caliste.png"
+        }
+      ]
+    },
+    {
+      "id": "103461966965149786",
+      "slug": "mad-lions",
+      "name": "Movistar KOI",
+      "code": "MKOI",
+      "image": "http://static.lolesports.com/teams/1734012609283_MKOI_FullColor_Blue.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1734012609284_MKOI_FullColor_Blue.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "103877629120745120",
+          "summonerName": "Elyoya",
+          "firstName": "Javier",
+          "lastName": "Prades",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774651428253_elyoya.png"
+        },
+        {
+          "id": "110350224593953686",
+          "summonerName": "Myrwn",
+          "firstName": "�?lex",
+          "lastName": "Villarejo Pastor",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774652336923_myrwn.png"
+        },
+        {
+          "id": "103536968833612789",
+          "summonerName": "Supa",
+          "firstName": "David",
+          "lastName": "Mart��nez Garc��a",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774652617630_supa.png"
+        },
+        {
+          "id": "107564404490889053",
+          "summonerName": "Alvaro",
+          "firstName": "Alvaro",
+          "lastName": "Fernǭndez del Amo",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774651304778_alvaro.png"
+        },
+        {
+          "id": "105504920899018806",
+          "summonerName": "Jojopyun",
+          "firstName": "Joseph Joon",
+          "lastName": "Pyun",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774651666226_jojopyun.png"
+        }
+      ]
+    },
+    {
+      "id": "114868016111590239",
+      "slug": "natus-vincere",
+      "name": "Natus Vincere",
+      "code": "NAVI",
+      "image": "http://static.lolesports.com/teams/1752746833620_NAVI_FullColor.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1752746833620_NAVI_FullColor.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "104287359934240404",
+          "summonerName": "SamD",
+          "firstName": "Jaehoon",
+          "lastName": "Lee",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774652529720_samd.png"
+        },
+        {
+          "id": "105700869624784693",
+          "summonerName": "Maynter",
+          "firstName": "Volodymyr",
+          "lastName": "Sorokin",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774652211219_maynter.png"
+        },
+        {
+          "id": "105548731617719496",
+          "summonerName": "Rhilech",
+          "firstName": "Enes",
+          "lastName": "U��an",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774652507939_rhilech.png"
+        },
+        {
+          "id": "107840393299826151",
+          "summonerName": "Poby",
+          "firstName": "Sungwon",
+          "lastName": "Yoon",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774652447812_poby.png"
+        },
+        {
+          "id": "103805069759346933",
+          "summonerName": "Parus",
+          "firstName": "Polat Furkan",
+          "lastName": "�?i��ek",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774652426360_parus.png"
+        },
+        {
+          "id": "100482247959137902",
+          "summonerName": "Larssen",
+          "firstName": "Emil",
+          "lastName": "Larsson",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1754473073908_image6331.png"
+        }
+      ]
+    },
+    {
+      "id": "101383793567806688",
+      "slug": "sk-gaming",
+      "name": "SK Gaming",
+      "code": "SK",
+      "image": "http://static.lolesports.com/teams/1643979272144_SK_Monochrome.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1643979272151_SK_Monochrome.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "99322214618656216",
+          "summonerName": "Wunder",
+          "firstName": "Martin",
+          "lastName": "Hansen",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774652747959_wunder.png"
+        },
+        {
+          "id": "103889902476986558",
+          "summonerName": "LIDER",
+          "firstName": "Adam",
+          "lastName": "Ilyasov",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774652028497_lider.png"
+        },
+        {
+          "id": "105553696718837337",
+          "summonerName": "Jopa",
+          "firstName": "Josip",
+          "lastName": "�?an�?ar",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774651949013_jopa.png"
+        },
+        {
+          "id": "99322214629661297",
+          "summonerName": "Mikyx",
+          "firstName": "Mihael",
+          "lastName": "Mehle",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774652311878_mikyx.png"
+        },
+        {
+          "id": "101389808348806587",
+          "summonerName": "Skeanz",
+          "firstName": "Duncan",
+          "lastName": "Marquet",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774652595033_skeanz.png"
+        }
+      ]
+    },
+    {
+      "id": "107563714667537640",
+      "slug": "team-bds",
+      "name": "Shifters",
+      "code": "SHFT",
+      "image": "http://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "105554437688383476",
+          "summonerName": "nuc",
+          "firstName": "Ilias",
+          "lastName": "Bizriken",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1768550938446_Nuc-01.png"
+        },
+        {
+          "id": "107767810249714879",
+          "summonerName": "Rooster",
+          "firstName": "Yunhwan",
+          "lastName": "Shin",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1768550928914_Rooster-01.png"
+        },
+        {
+          "id": "105515296576479523",
+          "summonerName": "Boukada",
+          "firstName": "Lahlou",
+          "lastName": "Mehdi",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1768550943317_Boukada-01.png"
+        },
+        {
+          "id": "107492114500277895",
+          "summonerName": "Paduck",
+          "firstName": "Seokhyeon",
+          "lastName": "Park",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1768550934005_Paduck-01.png"
+        },
+        {
+          "id": "102181528883745160",
+          "summonerName": "Trymbi",
+          "firstName": "Adrian",
+          "lastName": "Trybus",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1768550915779_Trymbi-01.png"
+        },
+        {
+          "id": "107455908655055017",
+          "summonerName": "JuJuTw0",
+          "firstName": "Julien",
+          "lastName": "IZZO",
+          "role": "none",
+          "image": "http://static.lolesports.com/players/1639647042551_placeholder.png"
+        }
+      ]
+    },
+    {
+      "id": "109637393694097670",
+      "slug": "team-heretics-lec",
+      "name": "Team Heretics",
+      "code": "TH",
+      "image": "http://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1672933861879_Heretics-Full-Color.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "105830645287286396",
+          "summonerName": "Sheo",
+          "firstName": "ThǸo",
+          "lastName": "Borile",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774652573563_sheo.png"
+        },
+        {
+          "id": "107156544177574787",
+          "summonerName": "Tracyn",
+          "firstName": "Sebastian",
+          "lastName": "Wojto�?",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774652650240_tracyn.png"
+        },
+        {
+          "id": "105501834624360050",
+          "summonerName": "Ice",
+          "firstName": "Sang-hoon",
+          "lastName": "Yoon",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774651565551_ice.png"
+        },
+        {
+          "id": "102174699705191142",
+          "summonerName": "Serin",
+          "firstName": "Tolga",
+          "lastName": "�?lmez",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774652550234_serin.png"
+        },
+        {
+          "id": "107621095379170267",
+          "summonerName": "Daglas",
+          "firstName": "Kacper",
+          "lastName": "Dagiel",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1705027284789_daglas.png"
+        },
+        {
+          "id": "107492119089043087",
+          "summonerName": "Way",
+          "firstName": "Han",
+          "lastName": "Kil",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774652723449_way.png"
+        }
+      ]
+    },
+    {
+      "id": "99322214695067838",
+      "slug": "team-vitality",
+      "name": "Team Vitality",
+      "code": "VIT",
+      "image": "http://static.lolesports.com/teams/1675865863968_Vitality_FullColor.png",
+      "alternativeImage": "http://static.lolesports.com/teams/1675865863970_Vitality_FullColor.png",
+      "homeLeague": "LEC",
+      "region": "EMEA",
+      "players": [
+        {
+          "id": "102787200044335760",
+          "summonerName": "Carzzy",
+          "firstName": "Matyǭ��",
+          "lastName": "Orsǭg",
+          "role": "bottom",
+          "image": "http://static.lolesports.com/players/1774651395852_carzzy.png"
+        },
+        {
+          "id": "105503548109547493",
+          "summonerName": "Lyncas",
+          "firstName": "Linas",
+          "lastName": "Naun�?ikas",
+          "role": "jungle",
+          "image": "http://static.lolesports.com/players/1774652185682_lyncas.png"
+        },
+        {
+          "id": "107605583684952312",
+          "summonerName": "Fleshy",
+          "firstName": "Kadir",
+          "lastName": "Kemiksiz",
+          "role": "support",
+          "image": "http://static.lolesports.com/players/1774651476897_fleshy.png"
+        },
+        {
+          "id": "107605411481021064",
+          "summonerName": "Naak Nako",
+          "firstName": "Kaan",
+          "lastName": "Okan",
+          "role": "top",
+          "image": "http://static.lolesports.com/players/1774652368701_naaknako.png"
+        },
+        {
+          "id": "100356590519370319",
+          "summonerName": "Humanoid",
+          "firstName": "Marek",
+          "lastName": "Brǭzda",
+          "role": "mid",
+          "image": "http://static.lolesports.com/players/1774651500920_humanoid.png"
+        },
+        {
+          "id": "103935359525547325",
+          "summonerName": "Lukezy",
+          "firstName": "Luka",
+          "lastName": "Trumbic",
+          "role": "none",
+          "image": "https://static.lolesports.com/players/download.png"
+        }
+      ]
+    }
+  ]
+}

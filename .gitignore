@@ -1,0 +1,67 @@
+`# =========================
+# Dependencies
+# =========================
+node_modules/
+.pnpm-store/
+.npm/
+
+# Yarn Berry
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# =========================
+# Frontend build outputs
+# =========================
+dist/
+build/
+.out/
+.next/
+.nuxt/
+.svelte-kit/
+.vite/
+coverage/
+
+# =========================
+# Tauri / Rust
+# =========================
+target/
+src-tauri/target/
+**/*.rs.bk
+
+# =========================
+# Logs
+# =========================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Editor / IDE
+# =========================
+.vscode/
+!.vscode/extensions.json
+.idea/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Tauri mobile generated files (optional, Tauri v2)
+# =========================
+src-tauri/gen/`

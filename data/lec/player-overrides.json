@@ -1,0 +1,282 @@
+{
+  "generatedAt": "2026-04-18T00:06:23.438Z",
+  "source": "leaguepedia",
+  "players": {
+    "Alvaro": {
+      "date_of_birth": "2003-07-15",
+      "leaguepedia_page": "Alvaro (Álvaro Fernández)",
+      "strategy": "search"
+    },
+    "Boukada": {
+      "date_of_birth": "2002-10-01",
+      "leaguepedia_page": "Boukada",
+      "strategy": "direct"
+    },
+    "BrokenBlade": {
+      "date_of_birth": "2000-01-19",
+      "leaguepedia_page": "BrokenBlade",
+      "strategy": "direct"
+    },
+    "Busio": {
+      "date_of_birth": "2003-10-22",
+      "leaguepedia_page": "Busio",
+      "strategy": "direct"
+    },
+    "Caliste": {
+      "date_of_birth": "2006-08-28",
+      "leaguepedia_page": "Caliste",
+      "strategy": "direct"
+    },
+    "Canna": {
+      "date_of_birth": "2000-02-11",
+      "leaguepedia_page": "Canna",
+      "strategy": "direct"
+    },
+    "Caps": {
+      "date_of_birth": "1999-11-17",
+      "leaguepedia_page": "Caps",
+      "strategy": "direct"
+    },
+    "Carzzy": {
+      "date_of_birth": "2002-01-31",
+      "leaguepedia_page": "Carzzy",
+      "strategy": "direct"
+    },
+    "Daglas": {
+      "date_of_birth": "2005-10-23",
+      "leaguepedia_page": "Daglas",
+      "strategy": "direct"
+    },
+    "Elyoya": {
+      "date_of_birth": "2000-03-13",
+      "leaguepedia_page": "Elyoya",
+      "strategy": "direct"
+    },
+    "Empyros": {
+      "date_of_birth": "2004-04-01",
+      "leaguepedia_page": "Empyros",
+      "strategy": "direct"
+    },
+    "Fleshy": {
+      "date_of_birth": "2000-11-24",
+      "leaguepedia_page": "Fleshy",
+      "strategy": "direct"
+    },
+    "Hans Sama": {
+      "date_of_birth": "1999-09-02",
+      "leaguepedia_page": "Hans Sama",
+      "strategy": "direct"
+    },
+    "Humanoid": {
+      "date_of_birth": "2000-03-14",
+      "leaguepedia_page": "Humanoid",
+      "strategy": "direct"
+    },
+    "Ice": {
+      "date_of_birth": "2001-04-09",
+      "leaguepedia_page": "Ice",
+      "strategy": "manual"
+    },
+    "ISMA": {
+      "date_of_birth": "2001-06-20",
+      "leaguepedia_page": "ISMA",
+      "strategy": "direct"
+    },
+    "Jackies": {
+      "date_of_birth": "2004-10-06",
+      "leaguepedia_page": "Jackies",
+      "strategy": "direct"
+    },
+    "Jojopyun": {
+      "date_of_birth": "2004-10-01",
+      "leaguepedia_page": "Jojopyun",
+      "strategy": "direct"
+    },
+    "Jopa": {
+      "date_of_birth": "2003-11-03",
+      "leaguepedia_page": "Jopa",
+      "strategy": "direct"
+    },
+    "JuJuTw0": {
+      "date_of_birth": "1998-11-24",
+      "leaguepedia_page": "Jujutw0",
+      "strategy": "direct"
+    },
+    "Jun": {
+      "date_of_birth": "2000-08-02",
+      "leaguepedia_page": "Jun (Yoon Se-jun)",
+      "strategy": "search"
+    },
+    "kyeahoo": {
+      "date_of_birth": "2005-08-13",
+      "leaguepedia_page": "Kyeahoo",
+      "strategy": "direct"
+    },
+    "Labrov": {
+      "date_of_birth": "2002-02-12",
+      "leaguepedia_page": "Labrov",
+      "strategy": "direct"
+    },
+    "Larssen": {
+      "date_of_birth": "2000-03-30",
+      "leaguepedia_page": "Larssen",
+      "strategy": "direct"
+    },
+    "LIDER": {
+      "date_of_birth": "1999-07-03",
+      "leaguepedia_page": "LIDER",
+      "strategy": "direct"
+    },
+    "Lospa": {
+      "date_of_birth": "2002-09-30",
+      "leaguepedia_page": "Lospa",
+      "strategy": "direct"
+    },
+    "Lot": {
+      "date_of_birth": "2004-01-02",
+      "leaguepedia_page": "Lot",
+      "strategy": "direct"
+    },
+    "Lukezy": {
+      "date_of_birth": "1997-02-26",
+      "leaguepedia_page": "Lukezy",
+      "strategy": "direct"
+    },
+    "Lyncas": {
+      "date_of_birth": "2003-12-10",
+      "leaguepedia_page": "Lyncas",
+      "strategy": "direct"
+    },
+    "Maynter": {
+      "date_of_birth": "2000-12-15",
+      "leaguepedia_page": "Maynter",
+      "strategy": "direct"
+    },
+    "Mikyx": {
+      "date_of_birth": "1998-11-02",
+      "leaguepedia_page": "Mikyx",
+      "strategy": "direct"
+    },
+    "Myrwn": {
+      "date_of_birth": "2003-06-13",
+      "leaguepedia_page": "Myrwn",
+      "strategy": "direct"
+    },
+    "Naak Nako": {
+      "date_of_birth": "2005-03-24",
+      "leaguepedia_page": "Naak Nako",
+      "strategy": "direct"
+    },
+    "Noah": {
+      "date_of_birth": "2001-10-04",
+      "leaguepedia_page": "Noah (Oh Hyeon-taek)",
+      "strategy": "search"
+    },
+    "nuc": {
+      "date_of_birth": "2002-10-17",
+      "leaguepedia_page": "Nuc",
+      "strategy": "direct"
+    },
+    "Paduck": {
+      "date_of_birth": "2005-02-12",
+      "leaguepedia_page": "Paduck",
+      "strategy": "direct"
+    },
+    "Parus": {
+      "date_of_birth": "2003-02-22",
+      "leaguepedia_page": "Parus",
+      "strategy": "direct"
+    },
+    "Poby": {
+      "date_of_birth": "2006-02-07",
+      "leaguepedia_page": "Poby",
+      "strategy": "direct"
+    },
+    "Razork": {
+      "date_of_birth": "2000-10-07",
+      "leaguepedia_page": "Razork",
+      "strategy": "direct"
+    },
+    "Rhilech": {
+      "date_of_birth": "2005-10-15",
+      "leaguepedia_page": "Rhilech",
+      "strategy": "direct"
+    },
+    "Rodrigo": {
+      "date_of_birth": "1997-05-04",
+      "leaguepedia_page": "Rodrigo",
+      "strategy": "direct"
+    },
+    "Rooster": {
+      "date_of_birth": "2005-04-28",
+      "leaguepedia_page": "Rooster",
+      "strategy": "direct"
+    },
+    "SamD": {
+      "date_of_birth": "2001-03-14",
+      "leaguepedia_page": "SamD",
+      "strategy": "direct"
+    },
+    "Serin": {
+      "date_of_birth": "2002-04-10",
+      "leaguepedia_page": "Serin",
+      "strategy": "direct"
+    },
+    "Sheo": {
+      "date_of_birth": "2001-07-05",
+      "leaguepedia_page": "Sheo",
+      "strategy": "direct"
+    },
+    "Skeanz": {
+      "date_of_birth": "2000-09-25",
+      "leaguepedia_page": "Skeanz",
+      "strategy": "direct"
+    },
+    "SkewMond": {
+      "date_of_birth": "2004-08-09",
+      "leaguepedia_page": "SkewMond",
+      "strategy": "direct"
+    },
+    "Supa": {
+      "date_of_birth": "2000-10-23",
+      "leaguepedia_page": "Supa",
+      "strategy": "direct"
+    },
+    "Tracyn": {
+      "date_of_birth": "2005-09-16",
+      "leaguepedia_page": "Tracyn",
+      "strategy": "direct"
+    },
+    "Trymbi": {
+      "date_of_birth": "2000-10-20",
+      "leaguepedia_page": "Trymbi",
+      "strategy": "direct"
+    },
+    "Upset": {
+      "date_of_birth": "1999-12-16",
+      "leaguepedia_page": "Upset",
+      "strategy": "direct"
+    },
+    "Vladi": {
+      "date_of_birth": "2005-08-12",
+      "leaguepedia_page": "Vladi",
+      "strategy": "direct"
+    },
+    "Way": {
+      "date_of_birth": "2002-06-29",
+      "leaguepedia_page": "Way (Han Gil)",
+      "strategy": "search"
+    },
+    "Wunder": {
+      "date_of_birth": "1998-11-09",
+      "leaguepedia_page": "Wunder",
+      "strategy": "direct"
+    },
+    "Yike": {
+      "date_of_birth": "2000-11-11",
+      "leaguepedia_page": "Yike",
+      "strategy": "direct"
+    }
+  },
+  "missing": []
+}
