@@ -156,7 +156,7 @@ export default function DashboardSidebar({
           >
             <div className="w-8 h-8 flex items-center justify-center">
               <img
-                src="../../openfootball.svg"
+                src="../../lec-logo.svg"
                 alt="Logo"
                 className="w-8 h-8"
               />
@@ -164,7 +164,7 @@ export default function DashboardSidebar({
             {collapsed ? null : (
               <div>
                 <h1 className="text-sm font-heading font-semibold text-white uppercase tracking-wider">
-                  OpenFoot
+                  Open League
                 </h1>
                 <h1 className="font-bold font-heading text-accent-400 uppercase tracking-wider">
                   Manager
