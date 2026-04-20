@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Open League Manager",
-    "version": "v0.2.0-alpha"
+    "version": "pre-alpha"
   },
   "menu": {
     "newGame": "Novo Jogo",

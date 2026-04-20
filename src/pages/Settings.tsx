@@ -408,7 +408,7 @@ export default function Settings() {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                Openfoot Manager
+                Open League Manager
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {t("app.version")}
