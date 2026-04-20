@@ -1,11 +1,11 @@
 {
   "app": {
-    "name": "OpenFoot Manager",
+    "name": "Open League Manager",
     "version": "v0.2.0-alpha"
   },
   "menu": {
-    "newGame": "Nuevo Juego",
-    "loadGame": "Cargar Juego",
+    "newGame": "Nueva Partida",
+    "loadGame": "Cargar Partida",
     "settings": "Configuración",
     "exitGame": "Salir del juego",
     "noSaves": "No se encontraron partidas guardadas.",
