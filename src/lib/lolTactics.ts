@@ -1,8 +1,8 @@
 import type { LolTacticsData } from "../store/types";
 
-export type DraftRole = "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT";
+export type DraftRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
-export const ROLE_ORDER: DraftRole[] = ["TOP", "JUNGLA", "MID", "ADC", "SUPPORT"];
+export const ROLE_ORDER: DraftRole[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
 
 export const DEFAULT_LOL_TACTICS: LolTacticsData = {
   strong_side: "Bot",
@@ -16,7 +16,7 @@ export const DEFAULT_LOL_TACTICS: LolTacticsData = {
 export function computeRoleModifiers(tactics: LolTacticsData): Record<DraftRole, number> {
   const mod: Record<DraftRole, number> = {
     TOP: 0,
-    JUNGLA: 0,
+    JUNGLE: 0,
     MID: 0,
     ADC: 0,
     SUPPORT: 0,
@@ -40,20 +40,20 @@ export function computeRoleModifiers(tactics: LolTacticsData): Record<DraftRole,
     mod.TOP -= 1;
   } else {
     mod.TOP += 1;
-    mod.JUNGLA += 1;
+    mod.JUNGLE += 1;
     mod.ADC -= 1;
   }
 
   if (tactics.jungle_style === "Ganker") {
-    mod.JUNGLA += 1;
+    mod.JUNGLE += 1;
     if (tactics.strong_side === "Top") mod.TOP += 1;
     if (tactics.strong_side === "Mid") mod.MID += 1;
     if (tactics.strong_side === "Bot") mod.ADC += 1;
   } else if (tactics.jungle_style === "Invader") {
-    mod.JUNGLA += 1;
+    mod.JUNGLE += 1;
     mod.SUPPORT += 1;
   } else if (tactics.jungle_style === "Farmer") {
-    mod.JUNGLA += 2;
+    mod.JUNGLE += 2;
     mod.TOP -= 0.5;
   } else {
     mod.SUPPORT += 1;
@@ -61,7 +61,7 @@ export function computeRoleModifiers(tactics: LolTacticsData): Record<DraftRole,
   }
 
   if (tactics.game_timing === "Early") {
-    mod.JUNGLA += 1;
+    mod.JUNGLE += 1;
     mod.MID += 1;
   } else if (tactics.game_timing === "Late") {
     mod.ADC += 1;
@@ -77,12 +77,12 @@ export function computeRoleModifiers(tactics: LolTacticsData): Record<DraftRole,
     mod.MID -= 0.5;
   } else if (tactics.fight_plan === "Pick") {
     mod.MID += 1;
-    mod.JUNGLA += 1;
+    mod.JUNGLE += 1;
     mod.SUPPORT += 0.5;
     mod.TOP -= 0.5;
   } else if (tactics.fight_plan === "Dive") {
     mod.TOP += 1;
-    mod.JUNGLA += 1;
+    mod.JUNGLE += 1;
     mod.MID += 1;
     mod.ADC -= 1;
   } else {
@@ -113,19 +113,19 @@ export function computeCoherenceBreakdown(tactics: LolTacticsData): Array<{ labe
 
   if (tactics.strong_side === "Bot") {
     checks.push({
-      label: "Ruta de jungla hacia bot side",
+      label: "Ruta de JUNGLE hacia bot side",
       delta: tactics.jungle_pathing === "TopToBot" ? 0.5 : -0.5,
     });
   }
   if (tactics.strong_side === "Top") {
     checks.push({
-      label: "Ruta de jungla hacia top side",
+      label: "Ruta de JUNGLE hacia top side",
       delta: tactics.jungle_pathing === "BotToTop" ? 0.5 : -0.5,
     });
   }
 
   checks.push({
-    label: "Timing vs estilo de jungla",
+    label: "Timing vs estilo de JUNGLE",
     delta:
       tactics.game_timing === "Early"
         ? tactics.jungle_style === "Ganker" || tactics.jungle_style === "Invader"

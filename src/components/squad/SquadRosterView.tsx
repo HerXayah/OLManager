@@ -10,15 +10,15 @@ import { AlertTriangle, ChevronRight, Repeat, ShoppingCart, User } from "lucide-
 import { calcAge, formatVal } from "../../lib/helpers";
 import { useTranslation } from "react-i18next";
 import ContextMenu from "../ContextMenu";
-import playersSeed from "../../../Nueva carpeta/players.json";
+import playersSeed from "../../../data/lec/draft/players.json";
 import { buildStartingXIIds, isPlayerOutOfPosition } from "./SquadTab.helpers";
 
-type LolRole = "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT";
+type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 type SortKey = "pos" | "ovr" | "condition" | "morale" | "age";
 
 const LOL_ROLE_ORDER: Record<LolRole, number> = {
   TOP: 1,
-  JUNGLA: 2,
+  JUNGLE: 2,
   MID: 3,
   ADC: 4,
   SUPPORT: 5,
@@ -26,7 +26,7 @@ const LOL_ROLE_ORDER: Record<LolRole, number> = {
 
 const ROLE_LABEL: Record<LolRole, string> = {
   TOP: "Top",
-  JUNGLA: "Jungla",
+  JUNGLE: "JUNGLE",
   MID: "Mid",
   ADC: "Bot",
   SUPPORT: "Support",
@@ -34,7 +34,7 @@ const ROLE_LABEL: Record<LolRole, string> = {
 
 const ROLE_ICON_URLS: Record<LolRole, string> = {
   TOP: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png",
-  JUNGLA:
+  JUNGLE:
     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-jungle.png",
   MID: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-middle.png",
   ADC: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-bottom.png",
@@ -58,7 +58,7 @@ function normalizeKey(value: string): string {
 function seedRoleToDraftRole(role: string): LolRole | null {
   const normalized = normalizeKey(role);
   if (normalized === "top") return "TOP";
-  if (normalized === "jungle") return "JUNGLA";
+  if (normalized === "jungle") return "JUNGLE";
   if (normalized === "mid" || normalized === "middle") return "MID";
   if (normalized === "bot" || normalized === "bottom" || normalized === "adc") return "ADC";
   if (normalized === "support" || normalized === "sup") return "SUPPORT";
@@ -88,8 +88,8 @@ function roleFromPosition(position: string): LolRole {
   if (normalized.includes("defensivemidfielder") || normalized.includes("goalkeeper") || normalized.includes("support")) {
     return "SUPPORT";
   }
-  if (normalized.includes("jungle")) return "JUNGLA";
-  if (normalized.includes("midfielder")) return "JUNGLA";
+  if (normalized.includes("jungle")) return "JUNGLE";
+  if (normalized.includes("midfielder")) return "JUNGLE";
   return "TOP";
 }
 

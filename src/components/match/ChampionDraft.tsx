@@ -4,13 +4,13 @@ import type { MatchSnapshot } from "./types";
 import type { GameStateData } from "../../store/gameStore";
 import { getChampionTiming } from "../../lib/championTiming";
 import teamsSeed from "../../../data/lec/draft/teams.json";
-import playersSeed from "../../../Nueva carpeta/players.json";
+import playersSeed from "../../../data/lec/draft/players.json";
 import championsSeed from "../../../data/lec/draft/champions.json";
 import aiConfigSeed from "../../../data/lec/draft/ai-config.json";
 
 type Side = "blue" | "red";
 type DraftActionType = "ban" | "pick";
-type Role = "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT";
+type Role = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
 interface ChampionData {
   id: string;
@@ -125,6 +125,8 @@ interface ChampionDraftProps {
   gameState?: GameStateData;
 }
 
+
+// This should be put in another place. Cruncky to edit and test. Should we get real mastery and meta scores? This will be removed anyway.
 const META_CHAMPION_SCORES: Record<string, number> = {
   ahri: 18,
   ambessa: 20,
@@ -165,12 +167,12 @@ const META_CHAMPION_SCORES: Record<string, number> = {
   yone: 14,
 };
 
-const ROLE_ORDER: Role[] = ["TOP", "JUNGLA", "MID", "ADC", "SUPPORT"];
+const ROLE_ORDER: Role[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
 const ASSISTANT_COACH_PLACEHOLDER = "/player-photos/103935359525547325.png";
 const LEC_LOGO_URL = "/lec-logo.svg";
 const ROLE_ICON_URLS: Record<Role, string> = {
   TOP: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png",
-  JUNGLA:
+  JUNGLE:
     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-jungle.png",
   MID: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-middle.png",
   ADC: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-bottom.png",
@@ -264,11 +266,11 @@ function inferRoleHints(tags: string[]): Role[] {
   if (tags.includes("Mage")) set.add("MID");
   if (tags.includes("Assassin")) {
     set.add("MID");
-    set.add("JUNGLA");
+    set.add("JUNGLE");
   }
   if (tags.includes("Tank") || tags.includes("Fighter")) {
     set.add("TOP");
-    set.add("JUNGLA");
+    set.add("JUNGLE");
   }
   if (set.size === 0) set.add("MID");
   return [...set];
@@ -345,7 +347,7 @@ function normalizeKey(value: string): string {
 function mapSeedRoleToDraftRole(role: string): Role | null {
   const key = normalizeKey(role);
   if (key === "top") return "TOP";
-  if (key === "jungle") return "JUNGLA";
+  if (key === "jungle") return "JUNGLE";
   if (key === "mid" || key === "middle") return "MID";
   if (key === "bot" || key === "bottom" || key === "adc") return "ADC";
   if (key === "support" || key === "sup") return "SUPPORT";

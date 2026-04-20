@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Fragment } from "react";
-import playersSeed from "../../Nueva carpeta/players.json";
+import playersSeed from "../../data/lec/draft/players.json";
 
 import { GameStateData } from "../store/gameStore";
 import { Badge } from "./ui";
@@ -13,9 +13,9 @@ import {
   isSeasonComplete,
 } from "../lib/helpers";
 
-type DraftRole = "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT";
+type DraftRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
-const ROLE_ORDER: DraftRole[] = ["TOP", "JUNGLA", "MID", "ADC", "SUPPORT"];
+const ROLE_ORDER: DraftRole[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
 
 interface PlayerSeed {
   ign: string;
@@ -36,7 +36,7 @@ function normalizeKey(value: string): string {
 function positionToDraftRole(position: string): DraftRole | null {
   const normalized = normalizeKey(position);
   if (normalized === "defender") return "TOP";
-  if (normalized === "midfielder") return "JUNGLA";
+  if (normalized === "midfielder") return "JUNGLE";
   if (normalized === "attackingmidfielder") return "MID";
   if (normalized === "forward") return "ADC";
   if (normalized === "defensivemidfielder" || normalized === "goalkeeper") return "SUPPORT";
@@ -46,7 +46,7 @@ function positionToDraftRole(position: string): DraftRole | null {
 function seedRoleToDraftRole(role: string): DraftRole | null {
   const key = normalizeKey(role);
   if (key === "top") return "TOP";
-  if (key === "jungle") return "JUNGLA";
+  if (key === "jungle") return "JUNGLE";
   if (key === "mid") return "MID";
   if (key === "bot" || key === "bottom" || key === "adc") return "ADC";
   if (key === "support" || key === "sup") return "SUPPORT";
@@ -57,7 +57,7 @@ function roleToOvrPosition(role: DraftRole): string {
   switch (role) {
     case "TOP":
       return "Defender";
-    case "JUNGLA":
+    case "JUNGLE":
       return "Midfielder";
     case "MID":
       return "AttackingMidfielder";

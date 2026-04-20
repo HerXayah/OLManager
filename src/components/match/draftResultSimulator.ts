@@ -2,7 +2,7 @@ import type { GameStateData } from "../../store/gameStore";
 import type { ChampionDraftResultPayload } from "./ChampionDraft";
 import type { MatchSnapshot } from "./types";
 import teamsSeed from "../../../data/lec/draft/teams.json";
-import playersSeed from "../../../Nueva carpeta/players.json";
+import playersSeed from "../../../data/lec/draft/players.json";
 import {
   DEFAULT_LOL_TACTICS,
   ROLE_ORDER,
@@ -147,7 +147,7 @@ function normalizeKey(value: string): string {
 function mapSeedRoleToDraftRole(role: string): Role | null {
   const key = normalizeKey(role);
   if (key === "top") return "TOP";
-  if (key === "jungle") return "JUNGLA";
+  if (key === "jungle") return "JUNGLE";
   if (key === "mid" || key === "middle") return "MID";
   if (key === "bot" || key === "bottom" || key === "adc") return "ADC";
   if (key === "support" || key === "sup") return "SUPPORT";
@@ -157,7 +157,7 @@ function mapSeedRoleToDraftRole(role: string): Role | null {
 function gameStatePositionToDraftRole(position: string): Role | null {
   const normalized = normalizeKey(position);
   if (normalized === "defender") return "TOP";
-  if (normalized === "midfielder") return "JUNGLA";
+  if (normalized === "midfielder") return "JUNGLE";
   if (normalized === "attackingmidfielder") return "MID";
   if (normalized === "forward") return "ADC";
   if (normalized === "defensivemidfielder" || normalized === "goalkeeper") return "SUPPORT";
@@ -288,7 +288,7 @@ function teamSideData(snapshot: MatchSnapshot, gameState: GameStateData, side: S
 function laneOvrByRole(players: MatchSnapshot["home_team"]["players"]): Record<Role, number> {
   const map: Record<Role, number> = {
     TOP: 70,
-    JUNGLA: 70,
+    JUNGLE: 70,
     MID: 70,
     ADC: 70,
     SUPPORT: 70,
@@ -332,7 +332,7 @@ function tacticsPowerBonus(params: {
 
   const ownLanes = {
     TOP: ownLanesRaw.TOP + adjustedRoleModifiers.TOP * 1.8,
-    JUNGLA: ownLanesRaw.JUNGLA + adjustedRoleModifiers.JUNGLA * 1.8,
+    JUNGLE: ownLanesRaw.JUNGLE + adjustedRoleModifiers.JUNGLE * 1.8,
     MID: ownLanesRaw.MID + adjustedRoleModifiers.MID * 1.8,
     ADC: ownLanesRaw.ADC + adjustedRoleModifiers.ADC * 1.8,
     SUPPORT: ownLanesRaw.SUPPORT + adjustedRoleModifiers.SUPPORT * 1.8,
@@ -375,10 +375,10 @@ function tacticsPowerBonus(params: {
     score += ((ownLanes.ADC + ownLanes.SUPPORT) / 2 - 68) * 0.08;
   } else if (own.support_roaming === "RoamMid") {
     score += (ownLanes.MID - 70) * 0.09;
-    score += (ownLanes.JUNGLA - 70) * 0.05;
+    score += (ownLanes.JUNGLE - 70) * 0.05;
   } else {
     score += (ownLanes.TOP - 70) * 0.09;
-    score += (ownLanes.JUNGLA - 70) * 0.05;
+    score += (ownLanes.JUNGLE - 70) * 0.05;
   }
 
   const coherenceScore = computeCoherenceBreakdown(own).reduce((sum, item) => sum + item.delta, 0);

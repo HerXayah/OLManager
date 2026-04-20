@@ -49,7 +49,7 @@ const OVR_KEYS = [
 
 const ROLE_META: Record<DraftRole, { name: string; icon: string }> = {
   TOP: { name: "Carril superior", icon: "🛡️" },
-  JUNGLA: { name: "Jungla", icon: "🌲" },
+  JUNGLE: { name: "JUNGLE", icon: "🌲" },
   MID: { name: "Carril central", icon: "⚡" },
   ADC: { name: "Carril inferior (tirador)", icon: "🎯" },
   SUPPORT: { name: "Soporte", icon: "🤝" },
@@ -57,7 +57,7 @@ const ROLE_META: Record<DraftRole, { name: string; icon: string }> = {
 
 const ROLE_ICON_URLS: Record<DraftRole, string> = {
   TOP: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png",
-  JUNGLA:
+  JUNGLE:
     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-jungle.png",
   MID: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-middle.png",
   ADC: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-bottom.png",
@@ -112,13 +112,13 @@ const JUNGLE_STYLE_OPTIONS: Array<{ value: JungleStyle; label: string; icon: str
     value: "Ganker",
     label: "Gankear",
     icon: "🎯",
-    description: "Jungla de presión en líneas: castiga errores temprano.",
+    description: "JUNGLE de presión en líneas: castiga errores temprano.",
   },
   {
     value: "Invader",
     label: "Invadir",
     icon: "🗡️",
-    description: "Entramos a jungla rival para negar recursos y visión.",
+    description: "Entramos a JUNGLE rival para negar recursos y visión.",
   },
   {
     value: "Farmer",
@@ -130,7 +130,7 @@ const JUNGLE_STYLE_OPTIONS: Array<{ value: JungleStyle; label: string; icon: str
     value: "Enabler",
     label: "Habilitar",
     icon: "🧠",
-    description: "Jungla habilita carries con cobertura y tempo.",
+    description: "JUNGLE habilita carries con cobertura y tempo.",
   },
 ];
 
@@ -204,7 +204,7 @@ function normalizePosition(position: string): string {
 function positionToRole(position: string): DraftRole | null {
   const normalized = normalizePosition(position);
   if (normalized === "defender") return "TOP";
-  if (normalized === "midfielder") return "JUNGLA";
+  if (normalized === "midfielder") return "JUNGLE";
   if (normalized === "attackingmidfielder") return "MID";
   if (normalized === "forward") return "ADC";
   if (normalized === "defensivemidfielder" || normalized === "goalkeeper") return "SUPPORT";
@@ -404,7 +404,7 @@ export default function TacticsTab({
           />
 
           <Section<JungleStyle>
-            title={t("tactics.jungleStyle", { defaultValue: "Estilo de jungla" })}
+            title={t("tactics.jungleStyle", { defaultValue: "Estilo de JUNGLE" })}
             value={tactics.jungle_style}
             onChange={(value) =>
               void persist({
@@ -416,7 +416,7 @@ export default function TacticsTab({
           />
 
           <Section<JunglePathing>
-            title={t("tactics.junglePathing", { defaultValue: "Ruta de jungla" })}
+            title={t("tactics.junglePathing", { defaultValue: "Ruta de JUNGLE" })}
             value={tactics.jungle_pathing}
             onChange={(value) =>
               void persist({
@@ -544,7 +544,7 @@ export default function TacticsTab({
           </div>
 
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
-            Tip: si el score de coherencia es bajo, intentá alinear lado fuerte + ruta de jungla + timing.
+            Tip: si el score de coherencia es bajo, intentá alinear lado fuerte + ruta de JUNGLE + timing.
           </p>
         </aside>
       </div>

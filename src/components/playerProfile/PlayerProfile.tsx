@@ -31,10 +31,10 @@ import {
   type PlayerProfileScoutStatus,
 } from "./PlayerProfile.scouting";
 import PlayerProfileChampionsCard from "./PlayerProfileChampionsCard";
-import playersSeed from "../../../Nueva carpeta/players.json";
+import playersSeed from "../../../data/lec/draft/players.json";
 import championsSeed from "../../../data/lec/draft/champions.json";
 
-type LolRole = "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT";
+type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
 interface PlayerSeed {
   ign: string;

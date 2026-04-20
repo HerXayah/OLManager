@@ -28,7 +28,7 @@ interface PlayerProfileHeroCardProps {
   scoutStatus: PlayerProfileScoutStatus;
   scoutError: string | null;
   onScout: () => void;
-  onRerollRole?: (role: "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT") => void;
+  onRerollRole?: (role: "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT") => void;
   rerollingRole?: boolean;
   insigniaChampionId?: string | null;
   onSelectTeam?: (id: string) => void;
@@ -202,7 +202,7 @@ export default function PlayerProfileHeroCard({
                   })}
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {(["TOP", "JUNGLA", "MID", "ADC", "SUPPORT"] as const).map((candidateRole) => (
+                  {(["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const).map((candidateRole) => (
                     <button
                       key={candidateRole}
                       type="button"
@@ -374,22 +374,22 @@ function canLoadImage(url: string): Promise<boolean> {
   });
 }
 
-function getLolRoleLabel(position: string): "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT" {
+function getLolRoleLabel(position: string): "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT" {
   const normalized = (position || "").toLowerCase();
   if (normalized.includes("attackingmidfielder")) return "MID";
   if (normalized.includes("forward")) return "ADC";
   if (normalized.includes("defensivemidfielder") || normalized.includes("goalkeeper")) {
     return "SUPPORT";
   }
-  if (normalized === "midfielder") return "JUNGLA";
+  if (normalized === "midfielder") return "JUNGLE";
   return "TOP";
 }
 
-function getLolRoleBadgeVariant(role: "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT") {
+function getLolRoleBadgeVariant(role: "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT") {
   switch (role) {
     case "TOP":
       return "accent" as const;
-    case "JUNGLA":
+    case "JUNGLE":
       return "success" as const;
     case "MID":
       return "primary" as const;

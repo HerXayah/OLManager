@@ -340,7 +340,7 @@ pub fn reroll_player_lol_role(
             domain::player::Position::Defender,
             domain::player::Position::Defender,
         ),
-        "JUNGLA" => (
+        "JUNGLE" => (
             domain::player::Position::Midfielder,
             domain::player::Position::Midfielder,
         ),

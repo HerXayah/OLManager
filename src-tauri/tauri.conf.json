@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Openfoot Manager v0.2.0-alpha",
+        "title": "Open League Manager pre-alpha version",
         "width": 1280,
         "height": 800,
         "minWidth": 960,

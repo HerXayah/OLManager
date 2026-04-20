@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 
 const ROOT = resolve(process.cwd());
 const draftTeamsPath = resolve(ROOT, "data/lec/draft/teams.json");
-const draftPlayersPath = resolve(ROOT, "Nueva carpeta/players.json");
+const draftPlayersPath = resolve(ROOT, "data/lec/draft/players.json");
 const overridesPath = resolve(ROOT, "data/lec/player-overrides.json");
 const outPath = resolve(ROOT, "src-tauri/databases/lec_world.json");
 

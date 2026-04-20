@@ -336,11 +336,11 @@ export function buildStartingXIIds(
   const _formation = formation;
   void _formation;
 
-  type LolRole = "TOP" | "JUNGLA" | "MID" | "ADC" | "SUPPORT";
-  const roleOrder: LolRole[] = ["TOP", "JUNGLA", "MID", "ADC", "SUPPORT"];
+  type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
+  const roleOrder: LolRole[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
   const roleTargetPosition: Record<LolRole, string> = {
     TOP: "Defender",
-    JUNGLA: "Midfielder",
+    JUNGLE: "Midfielder",
     MID: "AttackingMidfielder",
     ADC: "Forward",
     SUPPORT: "DefensiveMidfielder",
@@ -367,7 +367,7 @@ export function buildStartingXIIds(
     if (pos === "DefensiveMidfielder" || pos === "Goalkeeper") {
       return "SUPPORT";
     }
-    return "JUNGLA";
+    return "JUNGLE";
   };
 
   const byId = new Map(available.map((player) => [player.id, player]));
