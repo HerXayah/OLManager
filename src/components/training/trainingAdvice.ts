@@ -1,3 +1,5 @@
+import { isRecoveryTrainingFocus } from "../../lib/trainingFocus";
+
 type Translate = (
   key: string,
   params?: Record<string, string | number>,
@@ -64,7 +66,7 @@ export function getTrainingStaffAdvice(
   if (
     avgCondition >= 80 &&
     currentSchedule === "Light" &&
-    currentFocus !== "Recovery"
+    !isRecoveryTrainingFocus(currentFocus)
   ) {
     return {
       level: "ok",

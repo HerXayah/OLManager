@@ -95,7 +95,7 @@ fn make_game() -> Game {
     manager.hire("team1".to_string());
 
     let mut team1 = make_team("team1", "Test FC");
-    team1.training_focus = TrainingFocus::Physical;
+    team1.training_focus = TrainingFocus::Scrims;
     team1.training_intensity = TrainingIntensity::Medium;
     team1.training_schedule = TrainingSchedule::Balanced;
 
@@ -168,18 +168,18 @@ fn rest_day_only_recovers_condition() {
 #[test]
 fn recovery_focus_no_condition_cost() {
     let mut game = make_game();
-    game.teams[0].training_focus = TrainingFocus::Recovery;
+    game.teams[0].training_focus = TrainingFocus::MentalResetRecovery;
     for p in game.players.iter_mut() {
         p.condition = 60;
     }
 
-    // Monday (0) is training day, but Recovery focus has 0 condition cost
+    // Monday (0) is training day, but Mental Reset / Recovery has 0 condition cost
     training::process_training(&mut game, 0);
 
     for p in &game.players {
         assert!(
             p.condition >= 60,
-            "Recovery focus should not reduce condition, got {}",
+            "Mental Reset / Recovery should not reduce condition, got {}",
             p.condition
         );
     }
@@ -189,7 +189,7 @@ fn recovery_focus_no_condition_cost() {
 fn high_intensity_costs_more_condition() {
     let mut game = make_game();
     game.teams[0].training_intensity = TrainingIntensity::High;
-    game.teams[0].training_focus = TrainingFocus::Physical;
+    game.teams[0].training_focus = TrainingFocus::Scrims;
     for p in game.players.iter_mut() {
         p.condition = 90;
     }
@@ -201,7 +201,7 @@ fn high_intensity_costs_more_condition() {
     // Reset and do low intensity
     let mut game2 = make_game();
     game2.teams[0].training_intensity = TrainingIntensity::Low;
-    game2.teams[0].training_focus = TrainingFocus::Physical;
+    game2.teams[0].training_focus = TrainingFocus::Scrims;
     for p in game2.players.iter_mut() {
         p.condition = 90;
     }
@@ -230,7 +230,7 @@ fn high_intensity_costs_more_condition() {
 fn intense_schedule_trains_six_days() {
     let mut game = make_game();
     game.teams[0].training_schedule = TrainingSchedule::Intense;
-    game.teams[0].training_focus = TrainingFocus::Physical;
+    game.teams[0].training_focus = TrainingFocus::Scrims;
 
     // Train all 7 days and count how many days condition drops
     let mut training_days = 0;
@@ -344,15 +344,19 @@ fn higher_medical_facility_level_improves_recovery_on_rest_days() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn physical_focus_can_improve_physical_attrs() {
+fn scrims_focus_can_improve_teamplay_attrs() {
     let mut game = make_game();
-    game.teams[0].training_focus = TrainingFocus::Physical;
+    game.teams[0].training_focus = TrainingFocus::Scrims;
     game.teams[0].training_intensity = TrainingIntensity::High;
     game.teams[0].training_schedule = TrainingSchedule::Intense;
 
     // Record initial stats
-    let initial_pace: Vec<u8> = game.players.iter().map(|p| p.attributes.pace).collect();
-    let initial_stamina: Vec<u8> = game.players.iter().map(|p| p.attributes.stamina).collect();
+    let initial_decisions: Vec<u8> = game
+        .players
+        .iter()
+        .map(|p| p.attributes.decisions)
+        .collect();
+    let initial_teamwork: Vec<u8> = game.players.iter().map(|p| p.attributes.teamwork).collect();
 
     // Train many sessions to make probabilistic gains likely
     for _ in 0..100 {
@@ -362,33 +366,41 @@ fn physical_focus_can_improve_physical_attrs() {
         training::process_training(&mut game, 0); // Monday = training day
     }
 
-    let final_pace: Vec<u8> = game.players.iter().map(|p| p.attributes.pace).collect();
-    let final_stamina: Vec<u8> = game.players.iter().map(|p| p.attributes.stamina).collect();
+    let final_decisions: Vec<u8> = game
+        .players
+        .iter()
+        .map(|p| p.attributes.decisions)
+        .collect();
+    let final_teamwork: Vec<u8> = game.players.iter().map(|p| p.attributes.teamwork).collect();
 
-    // At least one player should have gained in pace or stamina after 100 sessions
-    let any_pace_gain = initial_pace
+    // At least one player should have gained in decisions or teamwork after 100 sessions
+    let any_decisions_gain = initial_decisions
         .iter()
-        .zip(final_pace.iter())
+        .zip(final_decisions.iter())
         .any(|(i, f)| f > i);
-    let any_stamina_gain = initial_stamina
+    let any_teamwork_gain = initial_teamwork
         .iter()
-        .zip(final_stamina.iter())
+        .zip(final_teamwork.iter())
         .any(|(i, f)| f > i);
 
     assert!(
-        any_pace_gain || any_stamina_gain,
-        "Physical focus should improve pace or stamina after many sessions"
+        any_decisions_gain || any_teamwork_gain,
+        "Scrims should improve decisions or teamwork after many sessions"
     );
 }
 
 #[test]
-fn technical_focus_can_improve_technical_attrs() {
+fn champion_pool_practice_can_improve_mechanics_attrs() {
     let mut game = make_game();
-    game.teams[0].training_focus = TrainingFocus::Technical;
+    game.teams[0].training_focus = TrainingFocus::ChampionPoolPractice;
     game.teams[0].training_intensity = TrainingIntensity::High;
     game.teams[0].training_schedule = TrainingSchedule::Intense;
 
-    let initial_passing: Vec<u8> = game.players.iter().map(|p| p.attributes.passing).collect();
+    let initial_dribbling: Vec<u8> = game
+        .players
+        .iter()
+        .map(|p| p.attributes.dribbling)
+        .collect();
 
     for _ in 0..100 {
         for p in game.players.iter_mut() {
@@ -397,21 +409,25 @@ fn technical_focus_can_improve_technical_attrs() {
         training::process_training(&mut game, 0);
     }
 
-    let final_passing: Vec<u8> = game.players.iter().map(|p| p.attributes.passing).collect();
-    let any_gain = initial_passing
+    let final_dribbling: Vec<u8> = game
+        .players
         .iter()
-        .zip(final_passing.iter())
+        .map(|p| p.attributes.dribbling)
+        .collect();
+    let any_gain = initial_dribbling
+        .iter()
+        .zip(final_dribbling.iter())
         .any(|(i, f)| f > i);
     assert!(
         any_gain,
-        "Technical focus should improve passing after many sessions"
+        "Champion Pool Practice should improve dribbling after many sessions"
     );
 }
 
 #[test]
-fn recovery_focus_no_attribute_gains() {
+fn mental_reset_recovery_has_no_attribute_gains() {
     let mut game = make_game();
-    game.teams[0].training_focus = TrainingFocus::Recovery;
+    game.teams[0].training_focus = TrainingFocus::MentalResetRecovery;
     game.teams[0].training_intensity = TrainingIntensity::High;
 
     let initial_attrs: Vec<PlayerAttributes> =
@@ -424,15 +440,15 @@ fn recovery_focus_no_attribute_gains() {
         training::process_training(&mut game, 0);
     }
 
-    // Recovery focus: no attribute gains at all
+    // Mental Reset / Recovery: no attribute gains at all
     for (i, p) in game.players.iter().enumerate() {
         assert_eq!(
             p.attributes.pace, initial_attrs[i].pace,
-            "Recovery should not change pace"
+            "Mental Reset / Recovery should not change pace"
         );
         assert_eq!(
             p.attributes.shooting, initial_attrs[i].shooting,
-            "Recovery should not change shooting"
+            "Mental Reset / Recovery should not change shooting"
         );
     }
 }
@@ -456,7 +472,7 @@ fn no_coaching_staff_reduces_gains() {
     manager.hire("team1".to_string());
 
     let mut team1 = make_team("team1", "Test FC");
-    team1.training_focus = TrainingFocus::Physical;
+    team1.training_focus = TrainingFocus::Scrims;
     team1.training_intensity = TrainingIntensity::High;
     team1.training_schedule = TrainingSchedule::Intense;
 
@@ -639,7 +655,7 @@ fn warning_uses_assistant_manager_when_no_physio() {
 fn young_player_gains_more_than_old() {
     // Compare gains for young (21) vs old (35) player over many sessions
     let mut game = make_game();
-    game.teams[0].training_focus = TrainingFocus::Physical;
+    game.teams[0].training_focus = TrainingFocus::Scrims;
     game.teams[0].training_intensity = TrainingIntensity::High;
     game.teams[0].training_schedule = TrainingSchedule::Intense;
 
@@ -698,12 +714,12 @@ fn young_player_gains_more_than_old() {
 #[test]
 fn all_focuses_run_without_panic() {
     let focuses = [
-        TrainingFocus::Physical,
-        TrainingFocus::Technical,
-        TrainingFocus::Tactical,
-        TrainingFocus::Defending,
-        TrainingFocus::Attacking,
-        TrainingFocus::Recovery,
+        TrainingFocus::Scrims,
+        TrainingFocus::VODReview,
+        TrainingFocus::IndividualCoaching,
+        TrainingFocus::ChampionPoolPractice,
+        TrainingFocus::MacroSystems,
+        TrainingFocus::MentalResetRecovery,
     ];
 
     for focus in &focuses {
@@ -774,9 +790,9 @@ fn high_fitness_player_recovers_condition_faster_on_rest_day() {
 }
 
 #[test]
-fn physical_training_can_increase_fitness() {
+fn scrims_can_increase_fitness() {
     let mut game = make_game();
-    game.teams[0].training_focus = TrainingFocus::Physical;
+    game.teams[0].training_focus = TrainingFocus::Scrims;
     game.teams[0].training_intensity = TrainingIntensity::High;
     game.teams[0].training_schedule = TrainingSchedule::Intense;
 
@@ -803,7 +819,7 @@ fn physical_training_can_increase_fitness() {
 
     assert!(
         any_gain,
-        "Physical training should increase fitness after many sessions"
+        "Scrims should increase fitness after many sessions"
     );
 }
 

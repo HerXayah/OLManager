@@ -199,15 +199,7 @@ pub fn set_training(
         .clone()
         .ok_or("No team assigned".to_string())?;
 
-    let training_focus = match focus.as_str() {
-        "Physical" => domain::team::TrainingFocus::Physical,
-        "Technical" => domain::team::TrainingFocus::Technical,
-        "Tactical" => domain::team::TrainingFocus::Tactical,
-        "Defending" => domain::team::TrainingFocus::Defending,
-        "Attacking" => domain::team::TrainingFocus::Attacking,
-        "Recovery" => domain::team::TrainingFocus::Recovery,
-        _ => domain::team::TrainingFocus::Physical,
-    };
+    let training_focus = domain::team::TrainingFocus::from_id(&focus).unwrap_or_default();
 
     let training_intensity = match intensity.as_str() {
         "Low" => domain::team::TrainingIntensity::Low,
@@ -294,15 +286,7 @@ pub fn set_player_training_focus(
         .get_game(|g| g.clone())
         .ok_or("No active game session".to_string())?;
 
-    let training_focus = focus.and_then(|f| match f.as_str() {
-        "Physical" => Some(domain::team::TrainingFocus::Physical),
-        "Technical" => Some(domain::team::TrainingFocus::Technical),
-        "Tactical" => Some(domain::team::TrainingFocus::Tactical),
-        "Defending" => Some(domain::team::TrainingFocus::Defending),
-        "Attacking" => Some(domain::team::TrainingFocus::Attacking),
-        "Recovery" => Some(domain::team::TrainingFocus::Recovery),
-        _ => None,
-    });
+    let training_focus = focus.and_then(|f| domain::team::TrainingFocus::from_id(&f));
 
     if let Some(player) = game.players.iter_mut().find(|p| p.id == player_id) {
         player.training_focus = training_focus;

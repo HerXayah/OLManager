@@ -143,12 +143,86 @@ pub struct MatchRoles {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub enum TrainingFocus {
     #[default]
-    Physical,
-    Technical,
-    Tactical,
-    Defending,
-    Attacking,
-    Recovery,
+    #[serde(rename = "Scrims", alias = "Physical", alias = "General")]
+    Scrims,
+    #[serde(rename = "VODReview", alias = "Defending")]
+    VODReview,
+    #[serde(rename = "IndividualCoaching", alias = "Attacking")]
+    IndividualCoaching,
+    #[serde(rename = "ChampionPoolPractice", alias = "Technical")]
+    ChampionPoolPractice,
+    #[serde(rename = "MacroSystems", alias = "Tactical")]
+    MacroSystems,
+    #[serde(rename = "MentalResetRecovery", alias = "Recovery")]
+    MentalResetRecovery,
+}
+
+impl TrainingFocus {
+    pub fn from_id(value: &str) -> Option<Self> {
+        match value {
+            "Scrims" | "Physical" | "General" => Some(Self::Scrims),
+            "VODReview" | "Defending" => Some(Self::VODReview),
+            "IndividualCoaching" | "Attacking" => Some(Self::IndividualCoaching),
+            "ChampionPoolPractice" | "Technical" => Some(Self::ChampionPoolPractice),
+            "MacroSystems" | "Tactical" => Some(Self::MacroSystems),
+            "MentalResetRecovery" | "Recovery" => Some(Self::MentalResetRecovery),
+            _ => None,
+        }
+    }
+
+    pub fn as_id(&self) -> &'static str {
+        match self {
+            Self::Scrims => "Scrims",
+            Self::VODReview => "VODReview",
+            Self::IndividualCoaching => "IndividualCoaching",
+            Self::ChampionPoolPractice => "ChampionPoolPractice",
+            Self::MacroSystems => "MacroSystems",
+            Self::MentalResetRecovery => "MentalResetRecovery",
+        }
+    }
+
+    pub fn is_recovery_plan(&self) -> bool {
+        matches!(self, Self::MentalResetRecovery)
+    }
+}
+
+#[cfg(test)]
+mod training_focus_tests {
+    use super::TrainingFocus;
+
+    #[test]
+    fn maps_legacy_focus_ids_to_new_training_plans() {
+        assert_eq!(
+            TrainingFocus::from_id("Physical"),
+            Some(TrainingFocus::Scrims)
+        );
+        assert_eq!(
+            TrainingFocus::from_id("Technical"),
+            Some(TrainingFocus::ChampionPoolPractice)
+        );
+        assert_eq!(
+            TrainingFocus::from_id("Tactical"),
+            Some(TrainingFocus::MacroSystems)
+        );
+        assert_eq!(
+            TrainingFocus::from_id("Defending"),
+            Some(TrainingFocus::VODReview)
+        );
+        assert_eq!(
+            TrainingFocus::from_id("Attacking"),
+            Some(TrainingFocus::IndividualCoaching)
+        );
+        assert_eq!(
+            TrainingFocus::from_id("Recovery"),
+            Some(TrainingFocus::MentalResetRecovery)
+        );
+    }
+
+    #[test]
+    fn serde_aliases_support_old_save_values() {
+        let focus: TrainingFocus = serde_json::from_str("\"Technical\"").unwrap();
+        assert_eq!(focus, TrainingFocus::ChampionPoolPractice);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

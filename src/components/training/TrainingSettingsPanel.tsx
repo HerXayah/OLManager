@@ -1,6 +1,7 @@
 import { Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { RECOVERY_TRAINING_FOCUS } from "../../lib/trainingFocus";
 import { Card, CardBody, CardHeader } from "../ui";
 
 interface TrainingSettingsPanelProps {
@@ -178,7 +179,9 @@ export default function TrainingSettingsPanel({
                 />
               </>
             )}
-            {currentFocus === "Recovery" && <> {t("training.recoveryNote")}</>}
+            {currentFocus === RECOVERY_TRAINING_FOCUS && (
+              <> {t("training.recoveryNote")}</>
+            )}
           </p>
         </CardBody>
       </Card>

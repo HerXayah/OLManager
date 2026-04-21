@@ -367,12 +367,18 @@
       "Light": "Ligeiro"
     },
     "trainingFocuses": {
-      "Physical": "Físico",
-      "Technical": "Técnico",
-      "Tactical": "Tático",
-      "Defending": "Defensivo",
-      "Attacking": "Ofensivo",
-      "Recovery": "Recuperação",
+      "Scrims": "Scrims",
+      "VODReview": "Revisão de VOD",
+      "IndividualCoaching": "Coaching individual",
+      "ChampionPoolPractice": "Prática de champion pool",
+      "MacroSystems": "Sistemas macro",
+      "MentalResetRecovery": "Reset mental / recuperação",
+      "Physical": "Scrims",
+      "Technical": "Prática de champion pool",
+      "Tactical": "Sistemas macro",
+      "Defending": "Revisão de VOD",
+      "Attacking": "Coaching individual",
+      "Recovery": "Reset mental / recuperação",
       "General": "Geral"
     },
     "attributes": {
@@ -521,7 +527,7 @@
     "aTrainingDay": "dia de treino",
     "aRestDay": "dia de descanso",
     "currentlyTraining": "A treinar: <strong>{{attrs}}</strong> com intensidade <strong>{{intensity}}</strong>.",
-    "recoveryNote": "Os jogadores vão focar-se no descanso e recuperação em todos os dias.",
+    "recoveryNote": "Os jogadores vão priorizar reset, descanso e recuperação em todos os dias de treino.",
     "effectiveFocus": "Foco",
     "trainingAppliedNote": "O treino é aplicado nos dias programados quando avanças o tempo. Dias de descanso proporcionam recuperação total.",
     "criticalCondition": "{{count}} jogador(es) em condição crítica (<25%)",
@@ -535,37 +541,37 @@
       "ok": "A condição física do plantel está alta. Podes mudar para Equilibrado ou Intenso para mais desenvolvimento.",
       "scheduleAdvice": {
         "criticalIntense": "Muda para um horário Equilibrado ou Leve imediatamente.",
-        "criticalBalanced": "Considera um horário Leve ou foco em Recuperação.",
-        "criticalLight": "Define o foco em Recuperação até a condição melhorar.",
+        "criticalBalanced": "Considera um horário Leve ou Reset mental / recuperação.",
+        "criticalLight": "Define o foco em Reset mental / recuperação até a condição melhorar.",
         "warnIntense": "Um horário Equilibrado daria mais tempo de recuperação.",
         "warnBalanced": "Um horário Leve poderia ajudar o plantel a recuperar.",
-        "warnLight": "O foco em Recuperação maximizaria a recuperação de condição."
+        "warnLight": "Reset mental / recuperação maximizaria a recuperação de condição."
       }
     },
     "focuses": {
-      "Physical": {
-        "label": "Físico",
-        "desc": "Desenvolver condição e força"
+      "Scrims": {
+        "label": "Scrims",
+        "desc": "Partidas de treino para execução e coordenação"
       },
-      "Technical": {
-        "label": "Técnico",
-        "desc": "Aprimorar habilidades com bola"
+      "VODReview": {
+        "label": "Revisão de VOD",
+        "desc": "Rever decisões, visão e posicionamento"
       },
-      "Tactical": {
-        "label": "Tático",
-        "desc": "Melhorar inteligência de jogo"
+      "IndividualCoaching": {
+        "label": "Coaching individual",
+        "desc": "Aprimorar mecânicas e consistência"
       },
-      "Defending": {
-        "label": "Defesa",
-        "desc": "Solidificar a defesa"
+      "ChampionPoolPractice": {
+        "label": "Prática de champion pool",
+        "desc": "Refinar picks de conforto e padrões mecânicos"
       },
-      "Attacking": {
-        "label": "Ataque",
-        "desc": "Aumentar ameaça ofensiva"
+      "MacroSystems": {
+        "label": "Sistemas macro",
+        "desc": "Melhorar mapa, rotações e decisões da equipa"
       },
-      "Recovery": {
-        "label": "Recuperação",
-        "desc": "Dia de descanso — recuperação máxima"
+      "MentalResetRecovery": {
+        "label": "Reset mental / recuperação",
+        "desc": "Carga leve com recuperação máxima"
       }
     },
     "intensities": {
@@ -624,11 +630,11 @@
       "playerCount": "{{count}} jogador(es)",
       "maxGroups": "Máximo de 5 grupos de treino permitidos.",
       "defaultGroupNames": {
-        "0": "Defesas",
-        "1": "Médios",
-        "2": "Avançados",
-        "3": "Jovens",
-        "4": "Recuperação"
+        "0": "Bloco scrim",
+        "1": "Unidade VOD",
+        "2": "Carry pool",
+        "3": "Laboratório macro",
+        "4": "Bloco reset"
       }
     }
   },

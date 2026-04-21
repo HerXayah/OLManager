@@ -1,4 +1,5 @@
 import type { GameStateData } from "../../store/gameStore";
+import { normalizeTrainingFocus } from "../../lib/trainingFocus";
 import { Card, CardHeader, CardBody } from "../ui";
 import { formatDateShort } from "../../lib/helpers";
 import { resolveSeasonContext } from "../../lib/seasonContext";
@@ -129,7 +130,7 @@ export default function HomeTab({
   const schedule = myTeam?.training_schedule || "Balanced";
   const schedIcons = SCHEDULE_ICONS[schedule] || SCHEDULE_ICONS.Balanced;
   const schedLabel = t(`common.trainingSchedules.${schedule}`, schedule);
-  const focus = myTeam?.training_focus || "Physical";
+  const focus = normalizeTrainingFocus(myTeam?.training_focus);
 
   // Latest news
   const latestNews = (gameState.news || [])

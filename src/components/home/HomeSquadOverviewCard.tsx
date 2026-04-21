@@ -1,6 +1,7 @@
 import { AlertTriangle, Dumbbell } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { normalizeTrainingFocus } from "../../lib/trainingFocus";
 import { Card, CardBody, CardHeader, ProgressBar } from "../ui";
 
 interface HomeSquadOverviewCardProps {
@@ -25,6 +26,7 @@ export default function HomeSquadOverviewCard({
   onNavigate,
 }: HomeSquadOverviewCardProps) {
   const { t } = useTranslation();
+  const normalizedFocus = normalizeTrainingFocus(focus);
 
   return (
     <Card>
@@ -79,7 +81,7 @@ export default function HomeSquadOverviewCard({
               {scheduleIcon} {scheduleLabel}
             </span>
             <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
-              {t(`common.trainingFocuses.${focus}`, focus)}
+              {t(`common.trainingFocuses.${normalizedFocus}`, normalizedFocus)}
             </span>
           </div>
         </div>

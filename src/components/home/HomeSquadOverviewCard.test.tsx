@@ -13,7 +13,7 @@ vi.mock("react-i18next", () => ({
       if (key === "home.avgOvr") return "Avg OVR";
       if (key === "home.exhaustedPlayers") return `${params?.count} exhausted players`;
       if (key === "home.scheduleLabel") return "Schedule";
-      if (key === "common.trainingFocuses.Physical") return "Physical";
+      if (key === "common.trainingFocuses.Scrims") return "Scrims";
       return key;
     },
   }),
@@ -38,6 +38,6 @@ describe("HomeSquadOverviewCard", () => {
     expect(screen.getByText("64")).toBeInTheDocument();
     expect(screen.getByText("2 exhausted players")).toBeInTheDocument();
     expect(screen.getByText("Balanced")).toBeInTheDocument();
-    expect(screen.getByText("Physical")).toBeInTheDocument();
+    expect(screen.getByText("Scrims")).toBeInTheDocument();
   });
 });

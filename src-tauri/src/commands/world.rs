@@ -253,7 +253,7 @@ mod tests {
               "season_expenses": 0,
               "formation": "4-4-2",
               "play_style": "Balanced",
-              "training_focus": "Physical",
+              "training_focus": "Scrims",
               "training_intensity": "Medium",
               "training_schedule": "Balanced",
               "founded_year": 1900,

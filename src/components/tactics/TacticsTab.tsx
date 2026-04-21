@@ -368,7 +368,7 @@ export default function TacticsTab({
     <div className="max-w-7xl mx-auto flex flex-col gap-4">
       <div className="rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/70 dark:bg-primary-900/20 p-4">
         <p className="text-sm font-heading font-bold text-primary-800 dark:text-primary-200 uppercase tracking-wide">
-          Plan de juego LoL
+          Plan de juego
         </p>
         <p className="mt-2 text-sm text-primary-900/90 dark:text-primary-100/90 leading-relaxed">
           Estas tácticas definen cómo juega tu equipo en simulación. Se aplican al impacto por rol y al comportamiento macro

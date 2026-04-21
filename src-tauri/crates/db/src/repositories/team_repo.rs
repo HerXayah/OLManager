@@ -2,7 +2,7 @@ use domain::team::{
     Facilities, FinancialTransaction, LolTactics, PlayStyle, Sponsorship, Team, TeamColors,
     TrainingFocus, TrainingIntensity, TrainingSchedule,
 };
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 
 /// Insert or replace a team row.
 pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
@@ -22,7 +22,7 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
     let facilities_json =
         serde_json::to_string(&t.facilities).map_err(|e| format!("JSON error: {}", e))?;
     let play_style_str = format!("{:?}", t.play_style);
-    let training_focus_str = format!("{:?}", t.training_focus);
+    let training_focus_str = t.training_focus.as_id().to_string();
     let training_intensity_str = format!("{:?}", t.training_intensity);
     let training_schedule_str = format!("{:?}", t.training_schedule);
 
@@ -93,14 +93,7 @@ fn parse_play_style(s: &str) -> PlayStyle {
 }
 
 fn parse_training_focus(s: &str) -> TrainingFocus {
-    match s {
-        "Technical" => TrainingFocus::Technical,
-        "Tactical" => TrainingFocus::Tactical,
-        "Defending" => TrainingFocus::Defending,
-        "Attacking" => TrainingFocus::Attacking,
-        "Recovery" => TrainingFocus::Recovery,
-        _ => TrainingFocus::Physical,
-    }
+    TrainingFocus::from_id(s).unwrap_or_default()
 }
 
 fn parse_training_intensity(s: &str) -> TrainingIntensity {
@@ -308,14 +301,14 @@ mod tests {
     fn test_team_training_settings_roundtrip() {
         let db = test_db();
         let mut team = sample_team("team-001", "Training FC");
-        team.training_focus = TrainingFocus::Attacking;
+        team.training_focus = TrainingFocus::IndividualCoaching;
         team.training_intensity = TrainingIntensity::High;
         team.training_schedule = TrainingSchedule::Intense;
 
         upsert_team(db.conn(), &team).unwrap();
         let loaded = load_team(db.conn(), "team-001").unwrap().unwrap();
 
-        assert_eq!(loaded.training_focus, TrainingFocus::Attacking);
+        assert_eq!(loaded.training_focus, TrainingFocus::IndividualCoaching);
         assert_eq!(loaded.training_intensity, TrainingIntensity::High);
         assert_eq!(loaded.training_schedule, TrainingSchedule::Intense);
     }
@@ -350,14 +343,14 @@ mod tests {
         team.training_groups = vec![
             domain::team::TrainingGroup {
                 id: "g1".to_string(),
-                name: "Defenders".to_string(),
-                focus: TrainingFocus::Defending,
+                name: "Review Squad".to_string(),
+                focus: TrainingFocus::VODReview,
                 player_ids: vec!["p1".to_string(), "p2".to_string()],
             },
             domain::team::TrainingGroup {
                 id: "g2".to_string(),
-                name: "Attackers".to_string(),
-                focus: TrainingFocus::Attacking,
+                name: "Carry Lab".to_string(),
+                focus: TrainingFocus::ChampionPoolPractice,
                 player_ids: vec!["p3".to_string()],
             },
         ];
@@ -366,11 +359,14 @@ mod tests {
         let loaded = load_team(db.conn(), "team-001").unwrap().unwrap();
 
         assert_eq!(loaded.training_groups.len(), 2);
-        assert_eq!(loaded.training_groups[0].name, "Defenders");
-        assert_eq!(loaded.training_groups[0].focus, TrainingFocus::Defending);
+        assert_eq!(loaded.training_groups[0].name, "Review Squad");
+        assert_eq!(loaded.training_groups[0].focus, TrainingFocus::VODReview);
         assert_eq!(loaded.training_groups[0].player_ids.len(), 2);
-        assert_eq!(loaded.training_groups[1].name, "Attackers");
-        assert_eq!(loaded.training_groups[1].focus, TrainingFocus::Attacking);
+        assert_eq!(loaded.training_groups[1].name, "Carry Lab");
+        assert_eq!(
+            loaded.training_groups[1].focus,
+            TrainingFocus::ChampionPoolPractice
+        );
     }
 
     #[test]

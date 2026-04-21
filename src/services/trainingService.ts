@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import {
+  normalizeOptionalTrainingFocus,
+  normalizeTrainingFocus,
+} from "../lib/trainingFocus";
 import type { GameStateData } from "../store/gameStore";
 
 export interface TrainingGroupData {
@@ -14,7 +18,7 @@ export async function setTraining(
   intensity: string,
 ): Promise<GameStateData> {
   return invoke<GameStateData>("set_training", {
-    focus,
+    focus: normalizeTrainingFocus(focus),
     intensity,
   });
 }
@@ -31,7 +35,10 @@ export async function setTrainingGroups(
   groups: TrainingGroupData[],
 ): Promise<GameStateData> {
   return invoke<GameStateData>("set_training_groups", {
-    groups,
+    groups: groups.map((group) => ({
+      ...group,
+      focus: normalizeTrainingFocus(group.focus),
+    })),
   });
 }
 
@@ -41,6 +48,6 @@ export async function setPlayerTrainingFocus(
 ): Promise<GameStateData> {
   return invoke<GameStateData>("set_player_training_focus", {
     playerId,
-    focus,
+    focus: normalizeOptionalTrainingFocus(focus),
   });
 }

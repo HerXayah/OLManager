@@ -235,7 +235,7 @@
     "potential": "Potencial",
     "growth": "Crecimiento",
     "traits": "Rasgos",
-    "condition": "Cansancio",
+    "condition": "Energia",
     "potWorldClass": "Clase Mundial",
     "potExcellent": "Excelente",
     "potPromising": "Prometedor",
@@ -281,7 +281,7 @@
     "vs": "vs",
     "age": "Edad",
     "ovr": "OVR",
-    "condition": "Cansancio",
+    "condition": "Energia",
     "morale": "Moral",
     "value": "Valor",
     "wage": "Salario",
@@ -367,12 +367,18 @@
       "Light": "Ligero"
     },
     "trainingFocuses": {
-      "Physical": "Físico",
-      "Technical": "Técnico",
-      "Tactical": "Táctico",
-      "Defending": "Defensivo",
-      "Attacking": "Ofensivo",
-      "Recovery": "Recuperación",
+      "Scrims": "Scrims",
+      "VODReview": "Revisión de VOD",
+      "IndividualCoaching": "Coaching individual",
+      "ChampionPoolPractice": "Práctica de champion pool",
+      "MacroSystems": "Sistemas macro",
+      "MentalResetRecovery": "Reset mental / Recuperación",
+      "Physical": "Scrims",
+      "Technical": "Práctica de champion pool",
+      "Tactical": "Sistemas macro",
+      "Defending": "Revisión de VOD",
+      "Attacking": "Coaching individual",
+      "Recovery": "Reset mental / Recuperación",
       "General": "General"
     },
     "attributes": {
@@ -521,7 +527,7 @@
     "aTrainingDay": "día de entrenamiento",
     "aRestDay": "día de descanso",
     "currentlyTraining": "Entrenando: <strong>{{attrs}}</strong> con intensidad <strong>{{intensity}}</strong>.",
-    "recoveryNote": "Los jugadores se centrarán en descanso y recuperación todos los días.",
+    "recoveryNote": "Los jugadores priorizarán reset, descanso y recuperación en todos los días de entrenamiento.",
     "effectiveFocus": "Enfoque",
     "trainingAppliedNote": "El entrenamiento se aplica los días programados al avanzar el tiempo. Los días de descanso proporcionan recuperación total.",
     "criticalCondition": "{{count}} jugador(es) en condición crítica (<25%)",
@@ -535,37 +541,37 @@
       "ok": "La condición física del equipo es alta. Podrías cambiar a Equilibrado o Intenso para más desarrollo.",
       "scheduleAdvice": {
         "criticalIntense": "Cambia a un horario Equilibrado o Ligero inmediatamente.",
-        "criticalBalanced": "Considera un horario Ligero o enfoque en Recuperación.",
-        "criticalLight": "Establece el foco en Recuperación hasta que mejore la condición.",
+        "criticalBalanced": "Considera un horario Ligero o Reset mental / Recuperación.",
+        "criticalLight": "Establece el foco en Reset mental / Recuperación hasta que mejore la condición.",
         "warnIntense": "Un horario Equilibrado daría más tiempo de recuperación.",
         "warnBalanced": "Un horario Ligero podría ayudar al equipo a recuperarse.",
-        "warnLight": "El foco en Recuperación maximizaría la recuperación de la condición."
+        "warnLight": "Reset mental / Recuperación maximizaría la recuperación de la condición."
       }
     },
     "focuses": {
-      "Physical": {
-        "label": "Físico",
-        "desc": "Mejorar condición y fuerza"
+      "Scrims": {
+        "label": "Scrims",
+        "desc": "Partidas de práctica para ejecución y coordinación"
       },
-      "Technical": {
-        "label": "Técnico",
-        "desc": "Perfeccionar habilidades con balón"
+      "VODReview": {
+        "label": "Revisión de VOD",
+        "desc": "Revisar decisiones, visión y posicionamiento"
       },
-      "Tactical": {
-        "label": "Táctico",
-        "desc": "Mejorar inteligencia de juego"
+      "IndividualCoaching": {
+        "label": "Coaching individual",
+        "desc": "Pulir mecánicas y consistencia"
       },
-      "Defending": {
-        "label": "Defensa",
-        "desc": "Solidificar la defensa"
+      "ChampionPoolPractice": {
+        "label": "Práctica de champion pool",
+        "desc": "Refinar picks de confort y patrones mecánicos"
       },
-      "Attacking": {
-        "label": "Ataque",
-        "desc": "Aumentar amenaza ofensiva"
+      "MacroSystems": {
+        "label": "Sistemas macro",
+        "desc": "Mejorar mapa, rotaciones y decisiones de equipo"
       },
-      "Recovery": {
-        "label": "Recuperación",
-        "desc": "Día de descanso — recuperación máxima"
+      "MentalResetRecovery": {
+        "label": "Reset mental / Recuperación",
+        "desc": "Carga baja con recuperación máxima"
       }
     },
     "intensities": {
@@ -624,11 +630,11 @@
       "playerCount": "{{count}} jugador(es)",
       "maxGroups": "Máximo 5 grupos de entrenamiento permitidos.",
       "defaultGroupNames": {
-        "0": "Defensas",
-        "1": "Centrocampistas",
-        "2": "Delanteros",
-        "3": "Cantera",
-        "4": "Recuperación"
+        "0": "Bloque de scrims",
+        "1": "Unidad VOD",
+        "2": "Carry pool",
+        "3": "Laboratorio macro",
+        "4": "Bloque reset"
       }
     }
   },
@@ -1132,7 +1138,7 @@
     "scoutingPlayer": "Ojeando: <strong>{{name}}</strong> — {{days}}d restantes",
     "showingRange": "Mostrando {{from}}–{{to}} de {{total}}",
     "viewPlayer": "Ver",
-    "condition": "Cansancio",
+    "condition": "Energia",
     "morale": "Moral",
     "estimatedAttributes": "Atributos estimados",
     "undiscovered": "No descubierto",

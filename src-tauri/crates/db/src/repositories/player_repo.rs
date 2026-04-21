@@ -1,6 +1,6 @@
 use domain::player::{Footedness, Player, PlayerAttributes, Position};
 use domain::team::TrainingFocus;
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 
 /// Insert or replace a player row.
 pub fn upsert_player(conn: &Connection, p: &Player) -> Result<(), String> {
@@ -22,7 +22,8 @@ pub fn upsert_player(conn: &Connection, p: &Player) -> Result<(), String> {
     let alt_positions_json =
         serde_json::to_string(&p.alternate_positions).map_err(|e| format!("JSON error: {}", e))?;
     let footedness_str = format!("{:?}", p.footedness);
-    let training_focus_str: Option<String> = p.training_focus.as_ref().map(|f| format!("{:?}", f));
+    let training_focus_str: Option<String> =
+        p.training_focus.as_ref().map(|f| f.as_id().to_string());
 
     conn.execute(
         "INSERT OR REPLACE INTO players
@@ -108,15 +109,7 @@ fn parse_footedness(s: &str) -> Footedness {
 }
 
 fn parse_training_focus(s: &str) -> Option<TrainingFocus> {
-    match s {
-        "Physical" => Some(TrainingFocus::Physical),
-        "Technical" => Some(TrainingFocus::Technical),
-        "Tactical" => Some(TrainingFocus::Tactical),
-        "Defending" => Some(TrainingFocus::Defending),
-        "Attacking" => Some(TrainingFocus::Attacking),
-        "Recovery" => Some(TrainingFocus::Recovery),
-        _ => None,
-    }
+    TrainingFocus::from_id(s)
 }
 
 /// Load all players.

@@ -51,7 +51,7 @@ function createTeam(overrides: Partial<TeamData> & { training_groups?: unknown }
     season_expenses: 0,
     formation: "4-4-2",
     play_style: "Balanced",
-    training_focus: "Physical",
+    training_focus: "Scrims",
     training_intensity: "Medium",
     training_schedule: "Balanced",
     founded_year: 1900,
@@ -172,7 +172,7 @@ describe("TrainingGroupsCard", () => {
         roster={[createPlayer()]}
         isSaving={false}
         setIsSaving={vi.fn()}
-        trainingFocusIds={["Physical", "Technical", "Recovery"]}
+        trainingFocusIds={["Scrims", "VODReview", "MentalResetRecovery"]}
         trainingFocusIcons={{}}
       />,
     );
@@ -188,7 +188,7 @@ describe("TrainingGroupsCard", () => {
           {
             id: "grp-1",
             name: "Group 1",
-            focus: "Physical",
+            focus: "Scrims",
             player_ids: [],
           },
         ],
@@ -205,7 +205,7 @@ describe("TrainingGroupsCard", () => {
         roster={[createPlayer()]}
         isSaving={false}
         setIsSaving={setIsSaving}
-        trainingFocusIds={["Physical", "Technical", "Recovery"]}
+        trainingFocusIds={["Scrims", "VODReview", "MentalResetRecovery"]}
         trainingFocusIcons={{}}
       />,
     );

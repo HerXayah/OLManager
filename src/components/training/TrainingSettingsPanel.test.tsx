@@ -31,22 +31,22 @@ describe("TrainingSettingsPanel", () => {
   it("renders the current training schedule, focus, and applied note", () => {
     render(
       <TrainingSettingsPanel
-        currentFocus="Physical"
+        currentFocus="Scrims"
         currentIntensity="Medium"
         currentSchedule="Balanced"
         isSaving={false}
         todayWeekday={1}
         isTodayTraining={true}
-        activeFocusAttrs={["pace", "stamina"]}
+        activeFocusAttrs={["decisions", "teamwork"]}
         onSetTraining={vi.fn()}
         onSetSchedule={vi.fn()}
         scheduleIds={["Intense", "Balanced", "Light"]}
         scheduleIcons={{ Intense: "I", Balanced: "B", Light: "L" }}
         scheduleColors={{ Intense: "text-red", Balanced: "text-blue", Light: "text-sky" }}
         dayKeys={["mon", "tue", "wed", "thu", "fri", "sat", "sun"]}
-        trainingFocusIds={["Physical", "Technical", "Recovery"]}
-        trainingFocusIcons={{ Physical: "P", Technical: "T", Recovery: "R" }}
-        trainingFocusAttrs={{ Physical: ["pace", "stamina"], Technical: ["passing"], Recovery: [] }}
+        trainingFocusIds={["Scrims", "VODReview", "MentalResetRecovery"]}
+        trainingFocusIcons={{ Scrims: "S", VODReview: "V", MentalResetRecovery: "R" }}
+        trainingFocusAttrs={{ Scrims: ["decisions", "teamwork"], VODReview: ["vision"], MentalResetRecovery: [] }}
         intensityIds={["Low", "Medium", "High"]}
         intensityColors={{ Low: "text-blue", Medium: "text-yellow", High: "text-red" }}
       />,
@@ -54,7 +54,7 @@ describe("TrainingSettingsPanel", () => {
 
     expect(screen.getByText("Weekly Schedule")).toBeInTheDocument();
     expect(screen.getByText("Training Focus")).toBeInTheDocument();
-    expect(screen.getByText(/Training pace, stamina at Medium.label/)).toBeInTheDocument();
+    expect(screen.getByText(/Training decisions, teamwork at Medium.label/)).toBeInTheDocument();
     expect(screen.getByText(/tue is a training day/)).toBeInTheDocument();
   });
 
@@ -64,33 +64,33 @@ describe("TrainingSettingsPanel", () => {
 
     render(
       <TrainingSettingsPanel
-        currentFocus="Physical"
+        currentFocus="Scrims"
         currentIntensity="Medium"
         currentSchedule="Balanced"
         isSaving={false}
         todayWeekday={1}
         isTodayTraining={true}
-        activeFocusAttrs={["pace"]}
+        activeFocusAttrs={["decisions"]}
         onSetTraining={onSetTraining}
         onSetSchedule={onSetSchedule}
         scheduleIds={["Intense", "Balanced", "Light"]}
         scheduleIcons={{ Intense: "I", Balanced: "B", Light: "L" }}
         scheduleColors={{ Intense: "text-red", Balanced: "text-blue", Light: "text-sky" }}
         dayKeys={["mon", "tue", "wed", "thu", "fri", "sat", "sun"]}
-        trainingFocusIds={["Physical", "Technical", "Recovery"]}
-        trainingFocusIcons={{ Physical: "P", Technical: "T", Recovery: "R" }}
-        trainingFocusAttrs={{ Physical: ["pace"], Technical: ["passing"], Recovery: [] }}
+        trainingFocusIds={["Scrims", "VODReview", "MentalResetRecovery"]}
+        trainingFocusIcons={{ Scrims: "S", VODReview: "V", MentalResetRecovery: "R" }}
+        trainingFocusAttrs={{ Scrims: ["decisions"], VODReview: ["vision"], MentalResetRecovery: [] }}
         intensityIds={["Low", "Medium", "High"]}
         intensityColors={{ Low: "text-blue", Medium: "text-yellow", High: "text-red" }}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Intense.label/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Technical.label/i }));
+    fireEvent.click(screen.getByRole("button", { name: /VODReview.label/i }));
     fireEvent.click(screen.getByRole("button", { name: /High.label/i }));
 
     expect(onSetSchedule).toHaveBeenCalledWith("Intense");
-    expect(onSetTraining).toHaveBeenCalledWith("Technical", "Medium");
-    expect(onSetTraining).toHaveBeenCalledWith("Physical", "High");
+    expect(onSetTraining).toHaveBeenCalledWith("VODReview", "Medium");
+    expect(onSetTraining).toHaveBeenCalledWith("Scrims", "High");
   });
 });

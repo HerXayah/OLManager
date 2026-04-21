@@ -14,6 +14,12 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import {
+  DEFAULT_TRAINING_FOCUS,
+  TRAINING_FOCUS_ATTRS,
+  TRAINING_FOCUS_IDS,
+  normalizeTrainingFocus,
+} from "../../lib/trainingFocus";
 import type { GameStateData } from "../../store/gameStore";
 import { setTraining, setTrainingSchedule } from "../../services/trainingService";
 import { Card, CardBody, CardHeader, ProgressBar } from "../ui";
@@ -26,31 +32,13 @@ interface TrainingTabProps {
   onGameUpdate?: (state: GameStateData) => void;
 }
 
-const TRAINING_FOCUS_IDS = [
-  "Physical",
-  "Technical",
-  "Tactical",
-  "Defending",
-  "Attacking",
-  "Recovery",
-] as const;
-
 const TRAINING_FOCUS_ICONS: Record<string, ReactNode> = {
-  Physical: <HeartPulse className="w-6 h-6" />,
-  Technical: <Crosshair className="w-6 h-6" />,
-  Tactical: <Brain className="w-6 h-6" />,
-  Defending: <Shield className="w-6 h-6" />,
-  Attacking: <Zap className="w-6 h-6" />,
-  Recovery: <BedDouble className="w-6 h-6" />,
-};
-
-const TRAINING_FOCUS_ATTRS: Record<string, string[]> = {
-  Physical: ["pace", "stamina", "strength", "agility"],
-  Technical: ["passing", "shooting", "dribbling"],
-  Tactical: ["positioning", "vision", "decisions", "composure"],
-  Defending: ["tackling", "defending", "strength", "positioning"],
-  Attacking: ["shooting", "dribbling", "pace"],
-  Recovery: [],
+  Scrims: <HeartPulse className="w-6 h-6" />,
+  VODReview: <Brain className="w-6 h-6" />,
+  IndividualCoaching: <Crosshair className="w-6 h-6" />,
+  ChampionPoolPractice: <Zap className="w-6 h-6" />,
+  MacroSystems: <Shield className="w-6 h-6" />,
+  MentalResetRecovery: <BedDouble className="w-6 h-6" />,
 };
 
 const INTENSITY_IDS = ["Low", "Medium", "High"] as const;
@@ -103,7 +91,7 @@ export default function TrainingTab({
     );
   }
 
-  const currentFocus = myTeam.training_focus || "Physical";
+  const currentFocus = normalizeTrainingFocus(myTeam.training_focus);
   const currentIntensity = myTeam.training_intensity || "Medium";
   const currentSchedule = myTeam.training_schedule || "Balanced";
   const [isSaving, setIsSaving] = useState(false);
@@ -153,7 +141,9 @@ export default function TrainingTab({
     }
   };
 
-  const activeFocusAttrs = TRAINING_FOCUS_ATTRS[currentFocus] || [];
+  const activeFocusAttrs =
+    TRAINING_FOCUS_ATTRS[currentFocus] ||
+    TRAINING_FOCUS_ATTRS[DEFAULT_TRAINING_FOCUS];
   const staffAdvice = getTrainingStaffAdvice(t, {
     criticalCount,
     avgCondition,

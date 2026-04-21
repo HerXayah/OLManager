@@ -367,12 +367,18 @@
       "Light": "Leggero"
     },
     "trainingFocuses": {
-      "Physical": "Fisico",
-      "Technical": "Tecnico",
-      "Tactical": "Tattico",
-      "Defending": "Difesa",
-      "Attacking": "Attacco",
-      "Recovery": "Recupero",
+      "Scrims": "Scrims",
+      "VODReview": "Revisione VOD",
+      "IndividualCoaching": "Coaching individuale",
+      "ChampionPoolPractice": "Pratica champion pool",
+      "MacroSystems": "Sistemi macro",
+      "MentalResetRecovery": "Reset mentale / recupero",
+      "Physical": "Scrims",
+      "Technical": "Pratica champion pool",
+      "Tactical": "Sistemi macro",
+      "Defending": "Revisione VOD",
+      "Attacking": "Coaching individuale",
+      "Recovery": "Reset mentale / recupero",
       "General": "Generale"
     },
     "attributes": {
@@ -521,7 +527,7 @@
     "aTrainingDay": "un giorno di allenamento",
     "aRestDay": "un giorno di riposo",
     "currentlyTraining": "Attualmente in allenamento: <strong>{{attrs}}</strong> con intensità <strong>{{intensity}}</strong>.",
-    "recoveryNote": "I giocatori si concentreranno su riposo e recupero della condizione in tutti i giorni.",
+    "recoveryNote": "I giocatori daranno priorità a reset, riposo e recupero della condizione in ogni giorno di allenamento.",
     "effectiveFocus": "Focus",
     "trainingAppliedNote": "L'allenamento viene applicato nei giorni previsti quando avanzi il tempo. I giorni di riposo garantiscono recupero completo.",
     "criticalCondition": "{{count}} giocatore/i in condizioni critiche (<25%)",
@@ -535,37 +541,37 @@
       "ok": "La forma fisica della squadra è alta. Potresti passare a Bilanciato o Intenso per più sviluppo.",
       "scheduleAdvice": {
         "criticalIntense": "Passa immediatamente a un programma Bilanciato o Leggero.",
-        "criticalBalanced": "Considera un programma Leggero o il focus Recupero.",
-        "criticalLight": "Imposta il focus su Recupero finché la condizione non migliora.",
+        "criticalBalanced": "Considera un programma Leggero o Reset mentale / recupero.",
+        "criticalLight": "Imposta il focus su Reset mentale / recupero finché la condizione non migliora.",
         "warnIntense": "Un programma Bilanciato darebbe più tempo di recupero.",
         "warnBalanced": "Un programma Leggero potrebbe aiutare la squadra a riprendersi.",
-        "warnLight": "Il focus Recupero massimizzerebbe il recupero della condizione."
+        "warnLight": "Reset mentale / recupero massimizzerebbe il recupero della condizione."
       }
     },
     "focuses": {
-      "Physical": {
-        "label": "Fisico",
-        "desc": "Migliora forma e potenza"
+      "Scrims": {
+        "label": "Scrims",
+        "desc": "Partite di pratica per esecuzione e coordinazione"
       },
-      "Technical": {
-        "label": "Tecnico",
-        "desc": "Affina la tecnica con la palla"
+      "VODReview": {
+        "label": "Revisione VOD",
+        "desc": "Rivedi decisioni, visione e posizionamento"
       },
-      "Tactical": {
-        "label": "Tattico",
-        "desc": "Migliora l'intelligenza di gioco"
+      "IndividualCoaching": {
+        "label": "Coaching individuale",
+        "desc": "Affina meccaniche e costanza"
       },
-      "Defending": {
-        "label": "Difesa",
-        "desc": "Rafforza il reparto arretrato"
+      "ChampionPoolPractice": {
+        "label": "Pratica champion pool",
+        "desc": "Perfeziona pick comfort e pattern meccanici"
       },
-      "Attacking": {
-        "label": "Attacco",
-        "desc": "Aumenta la pericolosità offensiva"
+      "MacroSystems": {
+        "label": "Sistemi macro",
+        "desc": "Migliora mappa, rotazioni e decisioni di squadra"
       },
-      "Recovery": {
-        "label": "Recupero",
-        "desc": "Giorno di riposo — recupero massimo"
+      "MentalResetRecovery": {
+        "label": "Reset mentale / recupero",
+        "desc": "Carico leggero con recupero massimo"
       }
     },
     "intensities": {
@@ -624,11 +630,11 @@
       "playerCount": "{{count}} giocatore/i",
       "maxGroups": "Massimo 5 gruppi di allenamento consentiti.",
       "defaultGroupNames": {
-        "0": "Difensori",
-        "1": "Centrocampisti",
-        "2": "Attaccanti",
-        "3": "Giovani",
-        "4": "Recupero"
+        "0": "Blocco scrim",
+        "1": "Unità VOD",
+        "2": "Carry pool",
+        "3": "Lab macro",
+        "4": "Blocco reset"
       }
     }
   },

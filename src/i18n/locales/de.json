@@ -367,12 +367,18 @@
       "Light": "Leicht"
     },
     "trainingFocuses": {
-      "Physical": "Physisch",
-      "Technical": "Technisch",
-      "Tactical": "Taktisch",
-      "Defending": "Defensiv",
-      "Attacking": "Offensiv",
-      "Recovery": "Erholung",
+      "Scrims": "Scrims",
+      "VODReview": "VOD-Review",
+      "IndividualCoaching": "Einzelcoaching",
+      "ChampionPoolPractice": "Champion-Pool-Training",
+      "MacroSystems": "Makro-Systeme",
+      "MentalResetRecovery": "Mental Reset / Regeneration",
+      "Physical": "Scrims",
+      "Technical": "Champion-Pool-Training",
+      "Tactical": "Makro-Systeme",
+      "Defending": "VOD-Review",
+      "Attacking": "Einzelcoaching",
+      "Recovery": "Mental Reset / Regeneration",
       "General": "Allgemein"
     },
     "attributes": {
@@ -521,7 +527,7 @@
     "aTrainingDay": "ein Trainingstag",
     "aRestDay": "ein Ruhetag",
     "currentlyTraining": "Aktuelles Training: <strong>{{attrs}}</strong> mit <strong>{{intensity}}</strong> Intensität.",
-    "recoveryNote": "Die Spieler konzentrieren sich an allen Tagen auf Ruhe und Erholung.",
+    "recoveryNote": "Die Spieler priorisieren an allen Trainingstagen Reset, Ruhe und Erholung.",
     "effectiveFocus": "Fokus",
     "trainingAppliedNote": "Training wird an geplanten Tagen angewendet, wenn du die Zeit vorrückst. Ruhetage bieten volle Erholung.",
     "criticalCondition": "{{count}} Spieler in kritischem Zustand (<25%)",
@@ -535,37 +541,37 @@
       "ok": "Die Teamfitness ist hoch. Du könntest zu Ausgewogen oder Intensiv wechseln, um mehr Entwicklung zu fördern.",
       "scheduleAdvice": {
         "criticalIntense": "Wechsle sofort zu einem Ausgewogenen oder Leichten Zeitplan.",
-        "criticalBalanced": "Erwäge einen Leichten Zeitplan oder den Fokus Erholung.",
-        "criticalLight": "Setze den Fokus auf Erholung, bis sich die Fitness verbessert.",
+        "criticalBalanced": "Erwäge einen Leichten Zeitplan oder Mental Reset / Regeneration.",
+        "criticalLight": "Setze den Fokus auf Mental Reset / Regeneration, bis sich die Fitness verbessert.",
         "warnIntense": "Ein Ausgewogener Zeitplan würde mehr Erholungszeit geben.",
         "warnBalanced": "Ein Leichter Zeitplan könnte dem Team helfen, sich zu erholen.",
-        "warnLight": "Erholungsfokus würde die Fitness-Erholung maximieren."
+        "warnLight": "Mental Reset / Regeneration würde die Fitness-Erholung maximieren."
       }
     },
     "focuses": {
-      "Physical": {
-        "label": "Physisch",
-        "desc": "Fitness & Kraft aufbauen"
+      "Scrims": {
+        "label": "Scrims",
+        "desc": "Trainingsspiele für Ausführung und Abstimmung"
       },
-      "Technical": {
-        "label": "Technisch",
-        "desc": "Ballfertigkeiten verbessern"
+      "VODReview": {
+        "label": "VOD-Review",
+        "desc": "Entscheidungen, Vision und Positioning überprüfen"
       },
-      "Tactical": {
-        "label": "Taktisch",
-        "desc": "Spielintelligenz verbessern"
+      "IndividualCoaching": {
+        "label": "Einzelcoaching",
+        "desc": "Mechanik und Konstanz schärfen"
       },
-      "Defending": {
-        "label": "Verteidigung",
-        "desc": "Abwehr stärken"
+      "ChampionPoolPractice": {
+        "label": "Champion-Pool-Training",
+        "desc": "Komfort-Picks und Mikro-Muster verfeinern"
       },
-      "Attacking": {
-        "label": "Angriff",
-        "desc": "Offensivkraft steigern"
+      "MacroSystems": {
+        "label": "Makro-Systeme",
+        "desc": "Mapplay, Rotationen und Teamentscheidungen verbessern"
       },
-      "Recovery": {
-        "label": "Erholung",
-        "desc": "Ruhetag — maximale Erholung"
+      "MentalResetRecovery": {
+        "label": "Mental Reset / Regeneration",
+        "desc": "Geringe Belastung mit maximaler Erholung"
       }
     },
     "intensities": {
@@ -624,11 +630,11 @@
       "playerCount": "{{count}} Spieler",
       "maxGroups": "Maximal 5 Trainingsgruppen erlaubt.",
       "defaultGroupNames": {
-        "0": "Verteidiger",
-        "1": "Mittelfeldspieler",
-        "2": "Angreifer",
-        "3": "Jugend",
-        "4": "Erholung"
+        "0": "Scrim-Block",
+        "1": "VOD-Einheit",
+        "2": "Carry-Pool",
+        "3": "Makro-Lab",
+        "4": "Reset-Block"
       }
     }
   },

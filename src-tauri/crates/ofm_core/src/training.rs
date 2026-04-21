@@ -40,19 +40,23 @@ fn compute_coaching_bonus(game: &Game, team_id: &str, focus: &TrainingFocus) -> 
 
     // Check if any coach specializes in the current training focus
     let focus_spec = match focus {
-        TrainingFocus::Physical => Some(CoachingSpecialization::Fitness),
-        TrainingFocus::Technical => Some(CoachingSpecialization::Technique),
-        TrainingFocus::Tactical => Some(CoachingSpecialization::Tactics),
-        TrainingFocus::Defending => Some(CoachingSpecialization::Defending),
-        TrainingFocus::Attacking => Some(CoachingSpecialization::Attacking),
-        TrainingFocus::Recovery => None,
+        TrainingFocus::Scrims => Some(CoachingSpecialization::Tactics),
+        TrainingFocus::VODReview => Some(CoachingSpecialization::Tactics),
+        TrainingFocus::IndividualCoaching => Some(CoachingSpecialization::Technique),
+        TrainingFocus::ChampionPoolPractice => Some(CoachingSpecialization::Technique),
+        TrainingFocus::MacroSystems => Some(CoachingSpecialization::Tactics),
+        TrainingFocus::MentalResetRecovery => None,
     };
 
     let specialization_mult = if let Some(target_spec) = focus_spec {
         let has_specialist = coaching_staff
             .iter()
             .any(|s| s.specialization.as_ref() == Some(&target_spec));
-        if has_specialist { 1.25 } else { 1.0 }
+        if has_specialist {
+            1.25
+        } else {
+            1.0
+        }
     } else {
         1.0
     };
@@ -150,24 +154,24 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
                 .or_else(|| plan.group_overrides.get(&player.id))
                 .unwrap_or(&plan.default_focus);
 
-            // On rest days or Recovery focus: no training cost
+            // On rest days or recovery-focused plans: no training cost
             let condition_cost: u8 = if !is_training_day {
                 0
             } else {
                 match (player_focus, &plan.intensity) {
-                    (TrainingFocus::Recovery, _) => 0,
+                    (focus, _) if focus.is_recovery_plan() => 0,
                     (_, TrainingIntensity::Low) => 3,
                     (_, TrainingIntensity::Medium) => 6,
                     (_, TrainingIntensity::High) => 10,
                 }
             };
 
-            // Recovery amount: rest days get boosted recovery (like Recovery focus)
+            // Recovery amount: rest days get boosted recovery (like mental reset days)
             let recovery_base: f64 = if !is_training_day {
                 7.0 * plan.bonus.physio_mult * plan.medical_facility_mult
             } else {
                 match player_focus {
-                    TrainingFocus::Recovery => {
+                    TrainingFocus::MentalResetRecovery => {
                         9.0 * plan.bonus.physio_mult * plan.medical_facility_mult
                     }
                     _ => 3.0 * plan.bonus.physio_mult * plan.medical_facility_mult,
@@ -229,8 +233,7 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             apply_focus_gains(&mut player.attributes, player_focus, gain);
 
             // Apply fitness changes based on training focus.
-            // Physical training builds fitness; non-physical days slowly decay it if peak.
-            // Recovery focus gives a tiny fitness boost.
+            // Scrims best preserve fitness; recovery plans give a tiny boost.
             apply_fitness_change(&mut player.fitness, player_focus, intensity_mult);
 
             // Apply condition: deplete from training, then recover
@@ -248,23 +251,23 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
 }
 
 /// Apply fitness changes based on training focus.
-/// Physical training builds fitness (probabilistic small gains).
-/// Recovery focus gives a tiny boost. Non-physical training slowly decays high fitness.
+/// Scrims best preserve fitness, while recovery plans give a tiny boost.
+/// Other plans slowly decay very high fitness if not maintained.
 fn apply_fitness_change(fitness: &mut u8, focus: &TrainingFocus, intensity_mult: f64) {
     use rand::RngExt;
     let mut rng = rand::rng();
     match focus {
-        TrainingFocus::Physical => {
-            // Physical training is the primary way to build fitness.
+        TrainingFocus::Scrims => {
+            // Scrims are the closest MVP equivalent to high-load team practice.
             // Higher intensity → higher gain probability.
-            let gain_prob = 0.015 * intensity_mult; // 0.0075–0.0225 per session
+            let gain_prob = 0.012 * intensity_mult; // 0.006–0.018 per session
             let roll: f64 = rng.random_range(0.0..1.0);
             if roll < gain_prob && *fitness < 100 {
                 *fitness = fitness.saturating_add(1);
             }
         }
-        TrainingFocus::Recovery => {
-            // Recovery days give a tiny fitness nudge.
+        TrainingFocus::MentalResetRecovery => {
+            // Recovery-focused days give a tiny fitness nudge.
             let roll: f64 = rng.random_range(0.0..1.0);
             if roll < 0.05 && *fitness < 100 {
                 *fitness = fitness.saturating_add(1);
@@ -302,35 +305,37 @@ fn apply_focus_gains(
     gain: f64,
 ) {
     match focus {
-        TrainingFocus::Physical => {
-            try_gain(&mut attrs.pace, gain);
-            try_gain(&mut attrs.stamina, gain);
-            try_gain(&mut attrs.strength, gain);
-            try_gain(&mut attrs.agility, gain);
+        TrainingFocus::Scrims => {
+            try_gain(&mut attrs.decisions, gain);
+            try_gain(&mut attrs.positioning, gain);
+            try_gain(&mut attrs.teamwork, gain);
+            try_gain(&mut attrs.composure, gain * 0.75);
         }
-        TrainingFocus::Technical => {
+        TrainingFocus::VODReview => {
+            try_gain(&mut attrs.vision, gain);
+            try_gain(&mut attrs.decisions, gain);
+            try_gain(&mut attrs.positioning, gain);
+            try_gain(&mut attrs.composure, gain * 0.75);
+        }
+        TrainingFocus::IndividualCoaching => {
             try_gain(&mut attrs.passing, gain);
             try_gain(&mut attrs.shooting, gain);
             try_gain(&mut attrs.dribbling, gain);
+            try_gain(&mut attrs.composure, gain * 0.75);
         }
-        TrainingFocus::Tactical => {
+        TrainingFocus::ChampionPoolPractice => {
+            try_gain(&mut attrs.dribbling, gain);
+            try_gain(&mut attrs.agility, gain);
+            try_gain(&mut attrs.passing, gain * 0.75);
+            try_gain(&mut attrs.shooting, gain * 0.75);
+        }
+        TrainingFocus::MacroSystems => {
             try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.vision, gain);
             try_gain(&mut attrs.decisions, gain);
-            try_gain(&mut attrs.composure, gain);
+            try_gain(&mut attrs.teamwork, gain * 0.75);
         }
-        TrainingFocus::Defending => {
-            try_gain(&mut attrs.tackling, gain);
-            try_gain(&mut attrs.defending, gain);
-            try_gain(&mut attrs.strength, gain * 0.5);
-            try_gain(&mut attrs.positioning, gain * 0.5);
-        }
-        TrainingFocus::Attacking => {
-            try_gain(&mut attrs.shooting, gain);
-            try_gain(&mut attrs.dribbling, gain);
-            try_gain(&mut attrs.pace, gain * 0.5);
-        }
-        TrainingFocus::Recovery => {
+        TrainingFocus::MentalResetRecovery => {
             // No attribute gains on recovery days
         }
     }

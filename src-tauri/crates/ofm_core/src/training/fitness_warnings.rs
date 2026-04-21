@@ -98,12 +98,12 @@ pub fn check_squad_fitness_warnings(game: &mut Game) {
                 The Intense schedule is running the squad into the ground."
             }
             TrainingSchedule::Balanced => {
-                "Consider switching to a Light schedule or setting the focus to Recovery \
+                "Consider switching to a Light schedule or setting the focus to Mental Reset / Recovery \
                 until fitness levels improve."
             }
             TrainingSchedule::Light => {
                 "Even on the Light schedule, the squad is struggling. Please set the training focus \
-                to Recovery — the lads need proper rest."
+                to Mental Reset / Recovery — the lads need proper rest."
             }
         };
 
@@ -200,7 +200,7 @@ pub fn check_squad_fitness_warnings(game: &mut Game) {
                 "A Light schedule for a few days could help the squad bounce back."
             }
             TrainingSchedule::Light => {
-                "Setting the training focus to Recovery would maximise fitness gains."
+                "Setting the training focus to Mental Reset / Recovery would maximise fitness gains."
             }
         };
 

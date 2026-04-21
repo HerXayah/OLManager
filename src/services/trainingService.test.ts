@@ -25,7 +25,7 @@ describe("trainingService", () => {
 
     await expect(setTraining("Physical", "High")).resolves.toBe(response);
     expect(mockedInvoke).toHaveBeenCalledWith("set_training", {
-      focus: "Physical",
+      focus: "Scrims",
       intensity: "High",
     });
   });
@@ -47,7 +47,7 @@ describe("trainingService", () => {
 
     await expect(setTrainingGroups(groups)).resolves.toBe(response);
     expect(mockedInvoke).toHaveBeenCalledWith("set_training_groups", {
-      groups,
+      groups: [{ id: "grp-1", name: "Attack", focus: "IndividualCoaching", player_ids: ["player-1"] }],
     });
   });
 

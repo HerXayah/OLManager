@@ -4,6 +4,11 @@ import { Plus, Trash2, Users } from "lucide-react";
 
 import type { GameStateData } from "../../store/gameStore";
 import {
+  DEFAULT_TRAINING_FOCUS,
+  normalizeOptionalTrainingFocus,
+  normalizeTrainingFocus,
+} from "../../lib/trainingFocus";
+import {
   setPlayerTrainingFocus,
   setTrainingGroups,
   type TrainingGroupData,
@@ -41,8 +46,13 @@ export default function TrainingGroupsCard({
   const myTeam = gameState.teams.find(
     (team) => team.id === gameState.manager.team_id,
   );
-  const groups: TrainingGroup[] = (myTeam as any)?.training_groups ?? [];
-  const teamFocus = myTeam?.training_focus || "Physical";
+  const groups: TrainingGroup[] = (((myTeam as any)?.training_groups ?? []) as TrainingGroup[]).map(
+    (group) => ({
+      ...group,
+      focus: normalizeTrainingFocus(group.focus),
+    }),
+  );
+  const teamFocus = normalizeTrainingFocus(myTeam?.training_focus);
 
   const saveGroups = useCallback(
     async (nextGroups: TrainingGroup[]) => {
@@ -72,13 +82,13 @@ export default function TrainingGroupsCard({
 
     saveGroups([
       ...groups,
-      {
-        id: `grp_${Date.now()}`,
-        name: defaultName,
-        focus: "Physical",
-        player_ids: [],
-      },
-    ]);
+        {
+          id: `grp_${Date.now()}`,
+          name: defaultName,
+          focus: DEFAULT_TRAINING_FOCUS,
+          player_ids: [],
+        },
+      ]);
   };
 
   const removeGroup = (groupId: string) => {
@@ -104,7 +114,10 @@ export default function TrainingGroupsCard({
   const setPlayerFocus = async (playerId: string, focus: string) => {
     setIsSaving(true);
     try {
-      const updated = await setPlayerTrainingFocus(playerId, focus || null);
+      const updated = await setPlayerTrainingFocus(
+        playerId,
+        normalizeOptionalTrainingFocus(focus),
+      );
       onGameUpdate?.(updated);
     } catch (error) {
       console.error("Failed to set player training focus:", error);
@@ -224,9 +237,12 @@ export default function TrainingGroupsCard({
               <tbody className="divide-y divide-gray-100 dark:divide-navy-600">
                 {sortedRoster.map((player) => {
                   const playerGroup = playerGroupMap.get(player.id);
-                  const hasIndividualFocus = !!player.training_focus;
+                  const playerFocus = normalizeOptionalTrainingFocus(
+                    player.training_focus,
+                  );
+                  const hasIndividualFocus = !!playerFocus;
                   const effectiveFocus =
-                    player.training_focus || (playerGroup ? playerGroup.focus : teamFocus);
+                    playerFocus || (playerGroup ? playerGroup.focus : teamFocus);
 
                   return (
                     <tr
@@ -266,7 +282,7 @@ export default function TrainingGroupsCard({
                       </td>
                       <td className="py-1.5 px-3">
                         <Select
-                          value={player.training_focus || ""}
+                          value={playerFocus || ""}
                           onChange={(event) =>
                             setPlayerFocus(player.id, event.target.value)
                           }
