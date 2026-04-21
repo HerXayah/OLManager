@@ -222,7 +222,10 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
                 0.3
             };
 
-            // Base gain per attribute per session, boosted by coaching staff
+            // Base gain per session for the underlying model, boosted by coaching staff.
+            // The selected attributes are tuned so the LoL-facing roster/profile stats
+            // shown to the user move in the expected direction without rewriting the
+            // whole legacy player model.
             let gain = 0.15
                 * intensity_mult
                 * age_factor
@@ -299,6 +302,8 @@ fn try_gain(current: &mut u8, gain: f64) {
 }
 
 /// Apply attribute gains based on training focus.
+/// We still mutate the legacy core attributes, but we prioritize the combinations
+/// that feed the LoL-facing profile/roster stats the player actually sees.
 fn apply_focus_gains(
     attrs: &mut domain::player::PlayerAttributes,
     focus: &TrainingFocus,
@@ -309,31 +314,36 @@ fn apply_focus_gains(
             try_gain(&mut attrs.decisions, gain);
             try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.teamwork, gain);
-            try_gain(&mut attrs.composure, gain * 0.75);
+            try_gain(&mut attrs.composure, gain * 0.85);
+            try_gain(&mut attrs.stamina, gain * 0.65);
         }
         TrainingFocus::VODReview => {
             try_gain(&mut attrs.vision, gain);
             try_gain(&mut attrs.decisions, gain);
             try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.composure, gain * 0.75);
+            try_gain(&mut attrs.leadership, gain * 0.6);
         }
         TrainingFocus::IndividualCoaching => {
-            try_gain(&mut attrs.passing, gain);
             try_gain(&mut attrs.shooting, gain);
             try_gain(&mut attrs.dribbling, gain);
-            try_gain(&mut attrs.composure, gain * 0.75);
+            try_gain(&mut attrs.agility, gain);
+            try_gain(&mut attrs.composure, gain * 0.8);
+            try_gain(&mut attrs.positioning, gain * 0.65);
         }
         TrainingFocus::ChampionPoolPractice => {
             try_gain(&mut attrs.dribbling, gain);
             try_gain(&mut attrs.agility, gain);
-            try_gain(&mut attrs.passing, gain * 0.75);
-            try_gain(&mut attrs.shooting, gain * 0.75);
+            try_gain(&mut attrs.vision, gain * 0.8);
+            try_gain(&mut attrs.passing, gain * 0.7);
+            try_gain(&mut attrs.decisions, gain * 0.65);
         }
         TrainingFocus::MacroSystems => {
             try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.vision, gain);
             try_gain(&mut attrs.decisions, gain);
-            try_gain(&mut attrs.teamwork, gain * 0.75);
+            try_gain(&mut attrs.teamwork, gain * 0.8);
+            try_gain(&mut attrs.leadership, gain * 0.7);
         }
         TrainingFocus::MentalResetRecovery => {
             // No attribute gains on recovery days

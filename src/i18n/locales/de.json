@@ -971,6 +971,22 @@
     "renewalFeedbackBlockedHeadline": "Sie nehmen das Gespräch im Moment nicht wieder auf.",
     "renewalFeedbackBlockedDetail": "Deine frühere Haltung prägt die Stimmung noch immer, deshalb will die Spielerseite aktuell nicht erneut verhandeln.",
     "attributes": "Attribute",
+    "lolStatGroups": {
+      "gameplay": "Gameplay",
+      "gameIq": "Game IQ",
+      "competitive": "Wettkampf"
+    },
+    "lolStats": {
+      "mechanics": "Mechanics",
+      "laning": "Laning",
+      "teamfighting": "Teamfighting",
+      "macro": "Macro",
+      "consistency": "Konstanz",
+      "shotcalling": "Shotcalling",
+      "championPool": "Champion Pool",
+      "discipline": "Disziplin",
+      "mentalResilience": "Mentale Stärke"
+    },
     "attributesHidden": "Attribute verborgen",
     "scoutToView": "Scoute oder verpflichte diesen Spieler, um die Attribute zu sehen.",
     "seasonStats": "Saisonstatistik",

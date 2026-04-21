@@ -2,6 +2,7 @@ import { Gauge } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { RECOVERY_TRAINING_FOCUS } from "../../lib/trainingFocus";
+import { LOL_VISIBLE_STAT_LABEL_KEYS, type LolVisibleStatId } from "../../lib/lolPlayerStats";
 import { Card, CardBody, CardHeader } from "../ui";
 
 interface TrainingSettingsPanelProps {
@@ -11,7 +12,7 @@ interface TrainingSettingsPanelProps {
   isSaving: boolean;
   todayWeekday: number;
   isTodayTraining: boolean;
-  activeFocusAttrs: string[];
+  activeFocusAttrs: LolVisibleStatId[];
   onSetTraining: (focus: string, intensity: string) => void;
   onSetSchedule: (schedule: string) => void;
   scheduleIds: readonly string[];
@@ -20,7 +21,7 @@ interface TrainingSettingsPanelProps {
   dayKeys: readonly string[];
   trainingFocusIds: readonly string[];
   trainingFocusIcons: Record<string, React.ReactNode>;
-  trainingFocusAttrs: Record<string, string[]>;
+  trainingFocusAttrs: Record<string, LolVisibleStatId[]>;
   intensityIds: readonly string[];
   intensityColors: Record<string, string>;
 }
@@ -46,6 +47,8 @@ export default function TrainingSettingsPanel({
   intensityColors,
 }: TrainingSettingsPanelProps) {
   const { t } = useTranslation();
+
+  const statLabel = (statId: LolVisibleStatId): string => t(LOL_VISIBLE_STAT_LABEL_KEYS[statId]);
 
   return (
     <>
@@ -122,7 +125,7 @@ export default function TrainingSettingsPanel({
                         key={attribute}
                         className="text-[10px] bg-gray-100 dark:bg-navy-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-heading uppercase tracking-wider"
                       >
-                        {t(`common.attributes.${attribute}`)}
+                        {statLabel(attribute)}
                       </span>
                     ))}
                   </div>
@@ -171,7 +174,7 @@ export default function TrainingSettingsPanel({
                   dangerouslySetInnerHTML={{
                     __html: t("training.currentlyTraining", {
                       attrs: activeFocusAttrs
-                        .map((attribute) => t(`common.attributes.${attribute}`))
+                        .map((attribute) => statLabel(attribute))
                         .join(", "),
                       intensity: t(`training.intensities.${currentIntensity}.label`),
                     }),

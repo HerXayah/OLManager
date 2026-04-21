@@ -971,6 +971,22 @@
     "renewalFeedbackBlockedHeadline": "Non vogliono riaprire la discussione per ora.",
     "renewalFeedbackBlockedDetail": "La tua posizione precedente pesa ancora sull'atmosfera, quindi il loro entourage non vuole tornare al tavolo in questo momento.",
     "attributes": "Attributi",
+    "lolStatGroups": {
+      "gameplay": "Gameplay",
+      "gameIq": "Game IQ",
+      "competitive": "Competitivo"
+    },
+    "lolStats": {
+      "mechanics": "Meccaniche",
+      "laning": "Laning",
+      "teamfighting": "Teamfighting",
+      "macro": "Macro",
+      "consistency": "Costanza",
+      "shotcalling": "Shotcalling",
+      "championPool": "Champion Pool",
+      "discipline": "Disciplina",
+      "mentalResilience": "Resilienza mentale"
+    },
     "attributesHidden": "Attributi nascosti",
     "scoutToView": "Osserva questo giocatore o acquistalo per vedere gli attributi dettagliati.",
     "seasonStats": "Statistiche stagionali",

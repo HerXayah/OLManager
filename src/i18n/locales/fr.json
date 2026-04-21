@@ -971,6 +971,22 @@
     "renewalFeedbackBlockedHeadline": "Ils ne rouvrent pas la discussion pour le moment.",
     "renewalFeedbackBlockedDetail": "Votre position précédente pèse encore sur l'ambiance, donc leur camp refuse de reprendre les discussions pour l'instant.",
     "attributes": "Attributs",
+    "lolStatGroups": {
+      "gameplay": "Gameplay",
+      "gameIq": "Game IQ",
+      "competitive": "Compétitif"
+    },
+    "lolStats": {
+      "mechanics": "Mécaniques",
+      "laning": "Laning",
+      "teamfighting": "Teamfighting",
+      "macro": "Macro",
+      "consistency": "Régularité",
+      "shotcalling": "Shotcalling",
+      "championPool": "Champion Pool",
+      "discipline": "Discipline",
+      "mentalResilience": "Résilience mentale"
+    },
     "attributesHidden": "Attributs Masqués",
     "scoutToView": "Observez ou recrutez ce joueur pour voir les attributs détaillés.",
     "seasonStats": "Statistiques de Saison",

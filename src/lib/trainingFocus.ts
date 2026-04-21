@@ -1,3 +1,5 @@
+import type { LolVisibleStatId } from "./lolPlayerStats";
+
 export const DEFAULT_TRAINING_FOCUS = "Scrims";
 export const RECOVERY_TRAINING_FOCUS = "MentalResetRecovery";
 
@@ -10,12 +12,12 @@ export const TRAINING_FOCUS_IDS = [
   "MentalResetRecovery",
 ] as const;
 
-export const TRAINING_FOCUS_ATTRS: Record<string, string[]> = {
-  Scrims: ["decisions", "positioning", "teamwork", "composure"],
-  VODReview: ["vision", "decisions", "positioning", "composure"],
-  IndividualCoaching: ["passing", "shooting", "dribbling", "composure"],
-  ChampionPoolPractice: ["dribbling", "agility", "passing", "shooting"],
-  MacroSystems: ["positioning", "vision", "decisions", "teamwork"],
+export const TRAINING_FOCUS_ATTRS: Record<string, LolVisibleStatId[]> = {
+  Scrims: ["teamfighting", "macro", "consistency"],
+  VODReview: ["macro", "consistency", "discipline"],
+  IndividualCoaching: ["mechanics", "laning", "consistency"],
+  ChampionPoolPractice: ["mechanics", "championPool", "laning"],
+  MacroSystems: ["macro", "shotcalling", "teamfighting"],
   MentalResetRecovery: [],
 };
 

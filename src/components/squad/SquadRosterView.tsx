@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import ContextMenu from "../ContextMenu";
 import playersSeed from "../../../data/lec/draft/players.json";
 import { buildStartingXIIds, isPlayerOutOfPosition } from "./SquadTab.helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 type SortKey = "pos" | "ovr" | "condition" | "morale" | "age";
@@ -99,23 +100,6 @@ function resolveRole(player: PlayerData): LolRole {
   return roleFromPosition(player.natural_position || player.position);
 }
 
-function avg(...values: number[]): number {
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function clampOvr(value: number): number {
-  return Math.max(1, Math.min(99, Math.round(value)));
-}
-
-function calcLolOvr(player: PlayerData): number {
-  const a = player.attributes;
-  const mechanics = avg(a.dribbling, a.agility, a.pace, a.composure);
-  const macro = avg(a.vision, a.decisions, a.positioning, a.passing);
-  const teamfight = avg(a.teamwork, a.stamina, a.composure, a.strength);
-  const consistency = avg(a.decisions, a.vision, a.positioning, a.composure);
-  return clampOvr(mechanics * 0.34 + macro * 0.28 + teamfight * 0.22 + consistency * 0.16);
-}
-
 function playerPhotoUrl(playerId: string): string | null {
   const match = playerId.match(/^lec-player-(.+)$/);
   if (!match) return null;
@@ -200,9 +184,9 @@ export default function SquadRosterView({
     const sorted = [...roster].sort((a, b) => {
       switch (sortKey) {
         case "pos":
-          return LOL_ROLE_ORDER[resolveRole(a)] - LOL_ROLE_ORDER[resolveRole(b)] || calcLolOvr(b) - calcLolOvr(a);
+          return LOL_ROLE_ORDER[resolveRole(a)] - LOL_ROLE_ORDER[resolveRole(b)] || calculateLolOvr(b) - calculateLolOvr(a);
         case "ovr":
-          return calcLolOvr(a) - calcLolOvr(b);
+          return calculateLolOvr(a) - calculateLolOvr(b);
         case "condition":
           return a.condition - b.condition;
         case "morale":
@@ -258,7 +242,7 @@ export default function SquadRosterView({
         <div className="p-3 md:p-4 space-y-2 bg-[#061027] rounded-b-xl">
           {sortedRoster.map((player) => {
             const role = resolveRole(player);
-            const ovr = calcLolOvr(player);
+            const ovr = calculateLolOvr(player);
             const photo = playerPhotoUrl(player.id);
             const championNames = TOP_3_CHAMPIONS_BY_IGN.get(normalizeKey(player.match_name)) ?? [];
             const inXI = xiIds.has(player.id);

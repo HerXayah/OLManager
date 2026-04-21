@@ -35,6 +35,56 @@ fn default_attrs() -> PlayerAttributes {
     }
 }
 
+fn lol_visible_stat(player: &Player, stat: &str) -> u8 {
+    let attrs = &player.attributes;
+    let avg = |values: [u8; 4]| -> u8 {
+        let sum: u16 = values.iter().map(|value| *value as u16).sum();
+        ((sum as f64 / values.len() as f64).round()) as u8
+    };
+
+    match stat {
+        "mechanics" => avg([attrs.dribbling, attrs.agility, attrs.pace, attrs.composure]),
+        "laning" => avg([
+            attrs.shooting,
+            attrs.positioning,
+            attrs.dribbling,
+            attrs.composure,
+        ]),
+        "teamfighting" => avg([
+            attrs.teamwork,
+            attrs.stamina,
+            attrs.decisions,
+            attrs.composure,
+        ]),
+        "macro" => avg([
+            attrs.vision,
+            attrs.decisions,
+            attrs.positioning,
+            attrs.passing,
+        ]),
+        "consistency" => avg([
+            attrs.decisions,
+            attrs.vision,
+            attrs.composure,
+            attrs.teamwork,
+        ]),
+        "shotcalling" => avg([
+            attrs.leadership,
+            attrs.teamwork,
+            attrs.vision,
+            attrs.decisions,
+        ]),
+        "champion_pool" => avg([attrs.dribbling, attrs.agility, attrs.vision, attrs.passing]),
+        "discipline" => avg([
+            attrs.decisions,
+            attrs.composure,
+            attrs.teamwork,
+            attrs.leadership,
+        ]),
+        _ => panic!("Unknown visible stat {stat}"),
+    }
+}
+
 fn make_player(id: &str, name: &str, team_id: &str, dob: &str) -> Player {
     let mut p = Player::new(
         id.to_string(),
@@ -351,12 +401,16 @@ fn scrims_focus_can_improve_teamplay_attrs() {
     game.teams[0].training_schedule = TrainingSchedule::Intense;
 
     // Record initial stats
-    let initial_decisions: Vec<u8> = game
+    let initial_teamfighting: Vec<u8> = game
         .players
         .iter()
-        .map(|p| p.attributes.decisions)
+        .map(|player| lol_visible_stat(player, "teamfighting"))
         .collect();
-    let initial_teamwork: Vec<u8> = game.players.iter().map(|p| p.attributes.teamwork).collect();
+    let initial_macro: Vec<u8> = game
+        .players
+        .iter()
+        .map(|player| lol_visible_stat(player, "macro"))
+        .collect();
 
     // Train many sessions to make probabilistic gains likely
     for _ in 0..100 {
@@ -366,26 +420,29 @@ fn scrims_focus_can_improve_teamplay_attrs() {
         training::process_training(&mut game, 0); // Monday = training day
     }
 
-    let final_decisions: Vec<u8> = game
+    let final_teamfighting: Vec<u8> = game
         .players
         .iter()
-        .map(|p| p.attributes.decisions)
+        .map(|player| lol_visible_stat(player, "teamfighting"))
         .collect();
-    let final_teamwork: Vec<u8> = game.players.iter().map(|p| p.attributes.teamwork).collect();
+    let final_macro: Vec<u8> = game
+        .players
+        .iter()
+        .map(|player| lol_visible_stat(player, "macro"))
+        .collect();
 
-    // At least one player should have gained in decisions or teamwork after 100 sessions
-    let any_decisions_gain = initial_decisions
+    let any_teamfighting_gain = initial_teamfighting
         .iter()
-        .zip(final_decisions.iter())
+        .zip(final_teamfighting.iter())
         .any(|(i, f)| f > i);
-    let any_teamwork_gain = initial_teamwork
+    let any_macro_gain = initial_macro
         .iter()
-        .zip(final_teamwork.iter())
+        .zip(final_macro.iter())
         .any(|(i, f)| f > i);
 
     assert!(
-        any_decisions_gain || any_teamwork_gain,
-        "Scrims should improve decisions or teamwork after many sessions"
+        any_teamfighting_gain || any_macro_gain,
+        "Scrims should improve visible teamfighting or macro after many sessions"
     );
 }
 
@@ -396,10 +453,15 @@ fn champion_pool_practice_can_improve_mechanics_attrs() {
     game.teams[0].training_intensity = TrainingIntensity::High;
     game.teams[0].training_schedule = TrainingSchedule::Intense;
 
-    let initial_dribbling: Vec<u8> = game
+    let initial_mechanics: Vec<u8> = game
         .players
         .iter()
-        .map(|p| p.attributes.dribbling)
+        .map(|player| lol_visible_stat(player, "mechanics"))
+        .collect();
+    let initial_champion_pool: Vec<u8> = game
+        .players
+        .iter()
+        .map(|player| lol_visible_stat(player, "champion_pool"))
         .collect();
 
     for _ in 0..100 {
@@ -409,18 +471,27 @@ fn champion_pool_practice_can_improve_mechanics_attrs() {
         training::process_training(&mut game, 0);
     }
 
-    let final_dribbling: Vec<u8> = game
+    let final_mechanics: Vec<u8> = game
         .players
         .iter()
-        .map(|p| p.attributes.dribbling)
+        .map(|player| lol_visible_stat(player, "mechanics"))
         .collect();
-    let any_gain = initial_dribbling
+    let final_champion_pool: Vec<u8> = game
+        .players
         .iter()
-        .zip(final_dribbling.iter())
+        .map(|player| lol_visible_stat(player, "champion_pool"))
+        .collect();
+    let any_mechanics_gain = initial_mechanics
+        .iter()
+        .zip(final_mechanics.iter())
+        .any(|(i, f)| f > i);
+    let any_pool_gain = initial_champion_pool
+        .iter()
+        .zip(final_champion_pool.iter())
         .any(|(i, f)| f > i);
     assert!(
-        any_gain,
-        "Champion Pool Practice should improve dribbling after many sessions"
+        any_mechanics_gain || any_pool_gain,
+        "Champion Pool Practice should improve visible mechanics or champion pool after many sessions"
     );
 }
 

@@ -41,7 +41,7 @@ vi.mock("react-i18next", () => ({
       if (key.startsWith("training.focuses.")) return key.replace("training.focuses.", "");
       if (key.startsWith("training.intensities.")) return key.replace("training.intensities.", "");
       if (key.startsWith("training.days.")) return key.replace("training.days.", "");
-      if (key.startsWith("common.attributes.")) return key.replace("common.attributes.", "");
+      if (key.startsWith("playerProfile.lolStats.")) return key.replace("playerProfile.lolStats.", "");
       return fallback ?? key;
     },
   }),

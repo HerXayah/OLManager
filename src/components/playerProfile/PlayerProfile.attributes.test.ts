@@ -61,37 +61,33 @@ function createPlayer(overrides: Partial<PlayerData> = {}): PlayerData {
 }
 
 describe("PlayerProfile.attributes", () => {
-    it("builds the standard outfield attribute groups with averages", () => {
-        const groups = buildPlayerAttributeGroups(createPlayer(), (key) => key);
+    const t = (key: string): string => key;
+
+    it("builds the LoL-facing attribute groups with averages", () => {
+        const groups = buildPlayerAttributeGroups(createPlayer(), t);
 
         expect(groups.map((group) => group.label)).toEqual([
-            "common.attrGroups.physical",
-            "common.attrGroups.technical",
-            "common.attrGroups.mental",
+            "playerProfile.lolStatGroups.gameplay",
+            "playerProfile.lolStatGroups.gameIq",
+            "playerProfile.lolStatGroups.competitive",
         ]);
-        expect(groups[0]?.attrs).toHaveLength(4);
-        expect(groups[0]?.average).toBe(62);
-        expect(groups[1]?.attrs).toHaveLength(5);
-        expect(groups[1]?.average).toBe(66);
-        expect(groups[2]?.attrs).toHaveLength(7);
-        expect(groups[2]?.average).toBe(72);
-    });
-
-    it("adds the goalkeeper-specific group for goalkeepers", () => {
-        const groups = buildPlayerAttributeGroups(
-            createPlayer({ position: "Goalkeeper", natural_position: "Goalkeeper" }),
-            (key) => key,
-        );
-
-        expect(groups).toHaveLength(4);
-        expect(groups[3]).toMatchObject({
-            label: "common.attrGroups.goalkeeper",
-            average: 77,
-        });
-        expect(groups[3]?.attrs.map((attr) => attr.name)).toEqual([
-            "common.attributes.handling",
-            "common.attributes.reflexes",
-            "common.attributes.aerial",
+        expect(groups[0]?.attrs.map((attr) => attr.name)).toEqual([
+            "playerProfile.lolStats.mechanics",
+            "playerProfile.lolStats.laning",
+            "playerProfile.lolStats.teamfighting",
         ]);
+        expect(groups[0]?.average).toBe(68);
+        expect(groups[1]?.attrs.map((attr) => attr.name)).toEqual([
+            "playerProfile.lolStats.macro",
+            "playerProfile.lolStats.consistency",
+            "playerProfile.lolStats.shotcalling",
+        ]);
+        expect(groups[1]?.average).toBe(71);
+        expect(groups[2]?.attrs.map((attr) => attr.name)).toEqual([
+            "playerProfile.lolStats.championPool",
+            "playerProfile.lolStats.discipline",
+            "playerProfile.lolStats.mentalResilience",
+        ]);
+        expect(groups[2]?.average).toBe(70);
     });
 });

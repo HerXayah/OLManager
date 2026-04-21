@@ -21,7 +21,7 @@ vi.mock("react-i18next", () => ({
       if (key.startsWith("training.focuses.")) return key.replace("training.focuses.", "");
       if (key.startsWith("training.intensities.")) return key.replace("training.intensities.", "");
       if (key.startsWith("training.days.")) return key.replace("training.days.", "");
-      if (key.startsWith("common.attributes.")) return key.replace("common.attributes.", "");
+      if (key.startsWith("playerProfile.lolStats.")) return key.replace("playerProfile.lolStats.", "");
       return key;
     },
   }),
@@ -37,7 +37,7 @@ describe("TrainingSettingsPanel", () => {
         isSaving={false}
         todayWeekday={1}
         isTodayTraining={true}
-        activeFocusAttrs={["decisions", "teamwork"]}
+        activeFocusAttrs={["macro", "teamfighting"]}
         onSetTraining={vi.fn()}
         onSetSchedule={vi.fn()}
         scheduleIds={["Intense", "Balanced", "Light"]}
@@ -46,7 +46,7 @@ describe("TrainingSettingsPanel", () => {
         dayKeys={["mon", "tue", "wed", "thu", "fri", "sat", "sun"]}
         trainingFocusIds={["Scrims", "VODReview", "MentalResetRecovery"]}
         trainingFocusIcons={{ Scrims: "S", VODReview: "V", MentalResetRecovery: "R" }}
-        trainingFocusAttrs={{ Scrims: ["decisions", "teamwork"], VODReview: ["vision"], MentalResetRecovery: [] }}
+        trainingFocusAttrs={{ Scrims: ["macro", "teamfighting"], VODReview: ["consistency"], MentalResetRecovery: [] }}
         intensityIds={["Low", "Medium", "High"]}
         intensityColors={{ Low: "text-blue", Medium: "text-yellow", High: "text-red" }}
       />,
@@ -54,7 +54,7 @@ describe("TrainingSettingsPanel", () => {
 
     expect(screen.getByText("Weekly Schedule")).toBeInTheDocument();
     expect(screen.getByText("Training Focus")).toBeInTheDocument();
-    expect(screen.getByText(/Training decisions, teamwork at Medium.label/)).toBeInTheDocument();
+    expect(screen.getByText(/Training macro, teamfighting at Medium.label/)).toBeInTheDocument();
     expect(screen.getByText(/tue is a training day/)).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe("TrainingSettingsPanel", () => {
         isSaving={false}
         todayWeekday={1}
         isTodayTraining={true}
-        activeFocusAttrs={["decisions"]}
+        activeFocusAttrs={["macro"]}
         onSetTraining={onSetTraining}
         onSetSchedule={onSetSchedule}
         scheduleIds={["Intense", "Balanced", "Light"]}
@@ -79,7 +79,7 @@ describe("TrainingSettingsPanel", () => {
         dayKeys={["mon", "tue", "wed", "thu", "fri", "sat", "sun"]}
         trainingFocusIds={["Scrims", "VODReview", "MentalResetRecovery"]}
         trainingFocusIcons={{ Scrims: "S", VODReview: "V", MentalResetRecovery: "R" }}
-        trainingFocusAttrs={{ Scrims: ["decisions"], VODReview: ["vision"], MentalResetRecovery: [] }}
+        trainingFocusAttrs={{ Scrims: ["macro"], VODReview: ["consistency"], MentalResetRecovery: [] }}
         intensityIds={["Low", "Medium", "High"]}
         intensityColors={{ Low: "text-blue", Medium: "text-yellow", High: "text-red" }}
       />,
