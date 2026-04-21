@@ -9,14 +9,15 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { EventFeed, MatchStats, Lineups } from "./MatchPanels";
 import MatchScreenLayout from "./MatchScreenLayout";
 import { SubPanel } from "./SubPanel";
+import LolLiveMap from "./LolLiveMap";
 import {
   Play, Pause, FastForward, SkipForward,
   Clock, Users, BarChart3, MessageSquare, RefreshCw,
   ChevronRight, Zap, Shield, Crosshair,
-  Target, Flag
+  Target, Flag, Map as MapIcon
 } from "lucide-react";
 
-type ActivePanel = "events" | "stats" | "lineups";
+type ActivePanel = "events" | "stats" | "lineups" | "map";
 
 interface MatchLiveProps {
   snapshot: MatchSnapshot;
@@ -268,6 +269,7 @@ export default function MatchLive({
               { id: "events" as ActivePanel, label: t('match.events'), icon: <MessageSquare className="w-4 h-4" /> },
               { id: "stats" as ActivePanel, label: t('match.stats'), icon: <BarChart3 className="w-4 h-4" /> },
               { id: "lineups" as ActivePanel, label: t('match.lineups'), icon: <Users className="w-4 h-4" /> },
+              { id: "map" as ActivePanel, label: t('match.map'), icon: <MapIcon className="w-4 h-4" /> },
             ]).map(tab => (
               <button
                 key={tab.id}
@@ -288,6 +290,7 @@ export default function MatchLive({
             {activePanel === "events" && <EventFeed events={importantEvents} snapshot={snapshot} feedRef={eventFeedRef} />}
             {activePanel === "stats" && <MatchStats snapshot={snapshot} />}
             {activePanel === "lineups" && <Lineups snapshot={snapshot} />}
+            {activePanel === "map" && <LolLiveMap snapshot={snapshot} />}
           </div>
         </div>
 
@@ -379,7 +382,10 @@ export default function MatchLive({
             <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">{t('match.keyEvents')}</h3>
             <div className="flex flex-col gap-1.5">
               {importantEvents
-                .filter(e => ["Goal", "PenaltyGoal", "YellowCard", "RedCard", "SecondYellow", "Substitution", "PenaltyMiss", "Injury"].includes(e.event_type))
+                .filter(e => [
+                  "Goal", "PenaltyGoal", "YellowCard", "RedCard", "SecondYellow", "Substitution", "PenaltyMiss", "Injury",
+                  "ObjectiveTaken", "TowerDestroyed", "InhibitorDestroyed", "NexusTowerDestroyed", "NexusDestroyed"
+                ].includes(e.event_type))
                 .slice(-12).reverse()
                 .map((evt, i) => {
                   const display = getEventDisplay(evt);

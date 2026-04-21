@@ -11,6 +11,100 @@ export interface MatchEvent {
   secondary_player_id: string | null;
 }
 
+export type LolDragonKind =
+  | "Infernal"
+  | "Ocean"
+  | "Mountain"
+  | "Cloud"
+  | "Hextech"
+  | "Chemtech"
+  | "Elder";
+
+export interface LolObjectiveState {
+  alive: boolean;
+  next_spawn_minute: number | null;
+  last_taken_by: "Home" | "Away" | null;
+}
+
+export interface LolDragonState {
+  alive: boolean;
+  next_spawn_minute: number | null;
+  current_kind: LolDragonKind | null;
+  first_kind: LolDragonKind | null;
+  second_kind: LolDragonKind | null;
+  soul_rift_kind: LolDragonKind | null;
+  soul_claimed_by: "Home" | "Away" | null;
+  home_stacks: number;
+  away_stacks: number;
+  last_taken_by: "Home" | "Away" | null;
+}
+
+export interface LolGrubsState {
+  alive: boolean;
+  next_spawn_minute: number | null;
+  waves_taken: number;
+  last_taken_by: "Home" | "Away" | null;
+}
+
+export interface LolObjectivesState {
+  dragon: LolDragonState;
+  baron: LolObjectiveState;
+  herald: LolObjectiveState;
+  grubs: LolGrubsState;
+}
+
+export interface LolLaneState {
+  outer_alive: boolean;
+  outer_hp: number;
+  inner_alive: boolean;
+  inner_hp: number;
+  inhibitor_alive: boolean;
+  inhibitor_hp: number;
+  inhibitor_respawn_minute: number | null;
+}
+
+export interface LolTeamStructuresState {
+  top: LolLaneState;
+  mid: LolLaneState;
+  bot: LolLaneState;
+  nexus_tower_top_alive: boolean;
+  nexus_tower_top_hp: number;
+  nexus_tower_bot_alive: boolean;
+  nexus_tower_bot_hp: number;
+  nexus_alive: boolean;
+  nexus_hp: number;
+}
+
+export type LolRole = "Top" | "Jungle" | "Mid" | "Adc" | "Support";
+
+export type LolTask = "MoveToLane" | "JungleClear" | "HoldLane" | "RotateObjective" | "Recall";
+
+export interface LolUnitState {
+  player_id: string;
+  side: "Home" | "Away";
+  role: LolRole;
+  task: LolTask;
+  x: number;
+  y: number;
+  target_x: number;
+  target_y: number;
+  path_index: number;
+  recall_available_minute?: number;
+  alive: boolean;
+  respawn_minute: number | null;
+  hp?: number;
+  kills: number;
+  deaths: number;
+}
+
+export interface LolMapState {
+  objectives: LolObjectivesState;
+  blue: LolTeamStructuresState;
+  red: LolTeamStructuresState;
+  destroyed_nexus_by: "Home" | "Away" | null;
+  units: LolUnitState[];
+}
+
 export interface EnginePlayerData {
   id: string;
   name: string;
@@ -84,6 +178,7 @@ export interface MatchSnapshot {
   home_yellows: Record<string, number>;
   away_yellows: Record<string, number>;
   sent_off: string[];
+  lol_map?: LolMapState;
 }
 
 export interface MinuteResult {
@@ -154,6 +249,7 @@ export type SimSpeed = "paused" | "slow" | "normal" | "fast" | "instant";
 export type MatchDayStage =
   | "prematch"
   | "draft"
+  | "tactics"
   | "draft_result"
   | "first_half"
   | "halftime"

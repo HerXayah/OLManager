@@ -6,70 +6,12 @@ use log::info;
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
 use crate::game::Game;
 
 use domain::league::StandingEntry;
-use domain::team::MatchRoles;
-use engine::ai::{self, AiProfile};
+use engine::ai::AiProfile;
 use engine::{LiveMatchState, MatchCommand, MatchConfig, MatchSnapshot, MinuteResult, Side};
-
-fn resolve_match_role_assignment(
-    assigned_id: &Option<String>,
-    starter_ids: &HashSet<String>,
-    fallback_id: Option<String>,
-) -> Option<String> {
-    if let Some(player_id) = assigned_id {
-        if starter_ids.contains(player_id) {
-            return Some(player_id.clone());
-        }
-    }
-
-    fallback_id
-}
-
-fn apply_saved_match_roles(
-    match_state: &mut LiveMatchState,
-    side: Side,
-    match_roles: &MatchRoles,
-    starter_ids: &[String],
-    auto_selection: (
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    ),
-) {
-    let starter_id_set = starter_ids.iter().cloned().collect::<HashSet<_>>();
-    let (auto_captain, auto_penalty, auto_free_kick, auto_corner) = auto_selection;
-
-    if let Some(player_id) =
-        resolve_match_role_assignment(&match_roles.captain, &starter_id_set, auto_captain)
-    {
-        let _ = match_state.apply_command(MatchCommand::SetCaptain { side, player_id });
-    }
-
-    if let Some(player_id) =
-        resolve_match_role_assignment(&match_roles.penalty_taker, &starter_id_set, auto_penalty)
-    {
-        let _ = match_state.apply_command(MatchCommand::SetPenaltyTaker { side, player_id });
-    }
-
-    if let Some(player_id) = resolve_match_role_assignment(
-        &match_roles.free_kick_taker,
-        &starter_id_set,
-        auto_free_kick,
-    ) {
-        let _ = match_state.apply_command(MatchCommand::SetFreeKickTaker { side, player_id });
-    }
-
-    if let Some(player_id) =
-        resolve_match_role_assignment(&match_roles.corner_taker, &starter_id_set, auto_corner)
-    {
-        let _ = match_state.apply_command(MatchCommand::SetCornerTaker { side, player_id });
-    }
-}
 
 // ---------------------------------------------------------------------------
 // MatchMode — how the user wants to experience this match
@@ -107,12 +49,6 @@ impl LiveMatchSession {
     /// Step one minute and apply AI decisions for computer-controlled sides.
     pub fn step(&mut self) -> MinuteResult {
         let result = self.match_state.step_minute(&mut self.rng);
-
-        // Apply AI decisions for non-user sides (only during playing phases)
-        if !result.is_finished {
-            self.apply_ai_decisions();
-        }
-
         result
     }
 
@@ -156,23 +92,6 @@ impl LiveMatchSession {
         self.match_state.is_finished()
     }
 
-    fn apply_ai_decisions(&mut self) {
-        // AI for home team (if not user-controlled)
-        if self.user_side != Some(Side::Home) {
-            let cmds = ai::ai_decide(&self.match_state, Side::Home, &self.ai_home, &mut self.rng);
-            for cmd in cmds {
-                let _ = self.match_state.apply_command(cmd);
-            }
-        }
-
-        // AI for away team (if not user-controlled)
-        if self.user_side != Some(Side::Away) {
-            let cmds = ai::ai_decide(&self.match_state, Side::Away, &self.ai_away, &mut self.rng);
-            for cmd in cmds {
-                let _ = self.match_state.apply_command(cmd);
-            }
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -202,31 +121,6 @@ pub fn create_live_match(
     // Build engine TeamData (starting XI = first 11 players by position)
     let (home_xi, home_bench) = build_team_with_bench(game, &home_team_id);
     let (away_xi, away_bench) = build_team_with_bench(game, &away_team_id);
-    let home_starter_ids = home_xi
-        .players
-        .iter()
-        .map(|player| player.id.clone())
-        .collect::<Vec<_>>();
-    let away_starter_ids = away_xi
-        .players
-        .iter()
-        .map(|player| player.id.clone())
-        .collect::<Vec<_>>();
-    let home_match_roles = game
-        .teams
-        .iter()
-        .find(|team| team.id == home_team_id)
-        .map(|team| team.match_roles.clone())
-        .unwrap_or_default();
-    let away_match_roles = game
-        .teams
-        .iter()
-        .find(|team| team.id == away_team_id)
-        .map(|team| team.match_roles.clone())
-        .unwrap_or_default();
-    let home_auto_selection = auto_select_set_pieces(game, &home_starter_ids);
-    let away_auto_selection = auto_select_set_pieces(game, &away_starter_ids);
-
     let config = MatchConfig::default();
 
     let mut match_state = LiveMatchState::new(
@@ -237,21 +131,6 @@ pub fn create_live_match(
         away_bench,
         allows_extra_time,
     );
-    apply_saved_match_roles(
-        &mut match_state,
-        Side::Home,
-        &home_match_roles,
-        &home_starter_ids,
-        home_auto_selection,
-    );
-    apply_saved_match_roles(
-        &mut match_state,
-        Side::Away,
-        &away_match_roles,
-        &away_starter_ids,
-        away_auto_selection,
-    );
-
     // Determine user side
     let user_side = game.manager.team_id.as_ref().and_then(|tid| {
         if *tid == home_team_id {

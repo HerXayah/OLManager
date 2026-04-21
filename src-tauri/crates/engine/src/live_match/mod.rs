@@ -1,9 +1,6 @@
-mod helpers;
-mod penalty;
+mod lol_map;
 mod simulation;
 mod snapshot;
-mod substitution;
-mod zone_resolution;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -12,6 +9,10 @@ use std::collections::{HashMap, HashSet};
 use crate::event::MatchEvent;
 use crate::report::MatchReport;
 use crate::types::{MatchConfig, PlayStyle, PlayerData, Side, TeamData, Zone};
+pub use lol_map::{
+    LolDragonKind, LolDragonState, LolGrubsState, LolLaneState, LolMapState, LolObjectiveState,
+    LolObjectivesState, LolRole, LolTask, LolTeamStructuresState, LolUnitState,
+};
 
 // ---------------------------------------------------------------------------
 // MatchPhase — tracks where we are in the match lifecycle
@@ -19,16 +20,8 @@ use crate::types::{MatchConfig, PlayStyle, PlayerData, Side, TeamData, Zone};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MatchPhase {
-    PreKickOff,
-    FirstHalf,
-    HalfTime,
-    SecondHalf,
-    FullTime,
-    ExtraTimeFirstHalf,
-    ExtraTimeHalfTime,
-    ExtraTimeSecondHalf,
-    ExtraTimeEnd,
-    PenaltyShootout,
+    PreGame,
+    Live,
     Finished,
 }
 
@@ -66,11 +59,6 @@ pub enum MatchCommand {
     SetCaptain {
         side: Side,
         player_id: String,
-    },
-    PreMatchSwap {
-        side: Side,
-        player_off_id: String,
-        player_on_id: String,
     },
 }
 
@@ -143,21 +131,7 @@ pub struct MatchSnapshot {
     pub home_yellows: HashMap<String, u8>,
     pub away_yellows: HashMap<String, u8>,
     pub sent_off: HashSet<String>,
-}
-
-// ---------------------------------------------------------------------------
-// PenaltyShootoutState — tracks penalty shootout progress
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
-struct PenaltyShootoutState {
-    round: u8,
-    home_taken: u8,
-    away_taken: u8,
-    home_scored: u8,
-    away_scored: u8,
-    sudden_death: bool,
+    pub lol_map: LolMapState,
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +142,6 @@ pub struct LiveMatchState {
     // Teams (owned — subs mutate the player list)
     home: TeamData,
     away: TeamData,
-    config: MatchConfig,
 
     // Match progress
     phase: MatchPhase,
@@ -189,10 +162,6 @@ pub struct LiveMatchState {
     home_possession_ticks: u32,
     away_possession_ticks: u32,
 
-    // Discipline
-    yellows: HashMap<String, u8>,
-    sent_off: HashSet<String>,
-
     // Substitutions
     home_subs_made: u8,
     away_subs_made: u8,
@@ -203,24 +172,11 @@ pub struct LiveMatchState {
     home_bench: Vec<PlayerData>,
     away_bench: Vec<PlayerData>,
 
-    // Set piece takers
-    home_set_pieces: SetPieceTakers,
-    away_set_pieces: SetPieceTakers,
-
     // Extra time / knockout
     allows_extra_time: bool,
 
-    // Stoppage time (pre-computed when each half starts)
-    first_half_stoppage: u8,
-    second_half_stoppage: u8,
-    et_first_half_stoppage: u8,
-    et_second_half_stoppage: u8,
-
-    // Per-minute stamina depletion tracking (player_id → current effective condition)
-    player_conditions: HashMap<String, f64>,
-
-    // Penalty shootout state
-    penalty_state: PenaltyShootoutState,
+    // LoL objective/map state (incremental overlay layer)
+    lol_map: LolMapState,
 }
 
 impl LiveMatchState {
@@ -229,22 +185,18 @@ impl LiveMatchState {
     pub fn new(
         home: TeamData,
         away: TeamData,
-        config: MatchConfig,
+        _config: MatchConfig,
         home_bench: Vec<PlayerData>,
         away_bench: Vec<PlayerData>,
         allows_extra_time: bool,
     ) -> Self {
-        // Initialize player conditions from their condition attribute
-        let mut player_conditions = HashMap::new();
-        for p in home.players.iter().chain(away.players.iter()) {
-            player_conditions.insert(p.id.clone(), p.condition as f64);
-        }
+        let mut lol_map = LolMapState::new();
+        lol_map.seed_units(&home, &away);
 
         Self {
             home,
             away,
-            config,
-            phase: MatchPhase::PreKickOff,
+            phase: MatchPhase::PreGame,
             current_minute: 0,
             home_score: 0,
             away_score: 0,
@@ -253,39 +205,22 @@ impl LiveMatchState {
             events: Vec::with_capacity(300),
             home_possession_ticks: 0,
             away_possession_ticks: 0,
-            yellows: HashMap::new(),
-            sent_off: HashSet::new(),
             home_subs_made: 0,
             away_subs_made: 0,
             max_subs: 5,
             substitutions: Vec::new(),
             home_bench,
             away_bench,
-            home_set_pieces: SetPieceTakers::default(),
-            away_set_pieces: SetPieceTakers::default(),
             allows_extra_time,
-            first_half_stoppage: 0,
-            second_half_stoppage: 0,
-            et_first_half_stoppage: 0,
-            et_second_half_stoppage: 0,
-            player_conditions,
-            penalty_state: PenaltyShootoutState::default(),
+            lol_map,
         }
     }
 
     /// Step one minute forward. Returns the events that occurred.
     pub fn step_minute<R: Rng>(&mut self, rng: &mut R) -> MinuteResult {
         match self.phase {
-            MatchPhase::PreKickOff => self.start_match(rng),
-            MatchPhase::FirstHalf => self.play_minute(rng),
-            MatchPhase::HalfTime => self.start_second_half(rng),
-            MatchPhase::SecondHalf => self.play_minute(rng),
-            MatchPhase::FullTime => self.handle_full_time(rng),
-            MatchPhase::ExtraTimeFirstHalf => self.play_minute(rng),
-            MatchPhase::ExtraTimeHalfTime => self.start_et_second_half(rng),
-            MatchPhase::ExtraTimeSecondHalf => self.play_minute(rng),
-            MatchPhase::ExtraTimeEnd => self.handle_et_end(rng),
-            MatchPhase::PenaltyShootout => self.play_penalty_round(rng),
+            MatchPhase::PreGame => self.start_match(rng),
+            MatchPhase::Live => self.play_minute(rng),
             MatchPhase::Finished => self.make_result(true),
         }
     }
@@ -297,9 +232,9 @@ impl LiveMatchState {
                 side,
                 player_off_id,
                 player_on_id,
-            } => self.do_substitution(side, &player_off_id, &player_on_id),
+            } => self.apply_substitution(side, &player_off_id, &player_on_id),
             MatchCommand::ChangeFormation { side, formation } => {
-                self.apply_formation(side, &formation);
+                self.team_mut(side).formation = formation;
                 Ok(())
             }
             MatchCommand::ChangePlayStyle { side, play_style } => {
@@ -307,30 +242,20 @@ impl LiveMatchState {
                 Ok(())
             }
             MatchCommand::SetFreeKickTaker { side, player_id } => {
-                self.set_pieces_mut(side).free_kick_taker = Some(player_id);
+                let _ = (side, player_id);
                 Ok(())
             }
             MatchCommand::SetCornerTaker { side, player_id } => {
-                self.set_pieces_mut(side).corner_taker = Some(player_id);
+                let _ = (side, player_id);
                 Ok(())
             }
             MatchCommand::SetPenaltyTaker { side, player_id } => {
-                self.set_pieces_mut(side).penalty_taker = Some(player_id);
+                let _ = (side, player_id);
                 Ok(())
             }
             MatchCommand::SetCaptain { side, player_id } => {
-                self.set_pieces_mut(side).captain = Some(player_id);
+                let _ = (side, player_id);
                 Ok(())
-            }
-            MatchCommand::PreMatchSwap {
-                side,
-                player_off_id,
-                player_on_id,
-            } => {
-                if self.phase != MatchPhase::PreKickOff {
-                    return Err("Pre-match swaps only allowed before kick-off".into());
-                }
-                self.do_pre_match_swap(side, &player_off_id, &player_on_id)
             }
         }
     }
@@ -380,6 +305,59 @@ impl LiveMatchState {
     /// Simulate a red card for a player (adds to sent_off set).
     /// Primarily used for testing substitution guards.
     pub fn test_send_off(&mut self, player_id: &str) {
-        self.sent_off.insert(player_id.to_string());
+        let _ = player_id;
+    }
+
+    pub(super) fn team_mut(&mut self, side: Side) -> &mut TeamData {
+        match side {
+            Side::Home => &mut self.home,
+            Side::Away => &mut self.away,
+        }
+    }
+
+
+    pub(super) fn add_goal(&mut self, side: Side) {
+        match side {
+            Side::Home => self.home_score = self.home_score.saturating_add(1),
+            Side::Away => self.away_score = self.away_score.saturating_add(1),
+        }
+    }
+
+    fn apply_substitution(
+        &mut self,
+        side: Side,
+        player_off_id: &str,
+        player_on_id: &str,
+    ) -> Result<(), String> {
+        let (team, bench, subs_made) = match side {
+            Side::Home => (&mut self.home, &mut self.home_bench, &mut self.home_subs_made),
+            Side::Away => (&mut self.away, &mut self.away_bench, &mut self.away_subs_made),
+        };
+
+        if *subs_made >= self.max_subs {
+            return Err("Maximum substitutions reached".to_string());
+        }
+
+        let on_idx = bench
+            .iter()
+            .position(|p| p.id == player_on_id)
+            .ok_or_else(|| "Incoming player not in bench".to_string())?;
+        let off_idx = team
+            .players
+            .iter()
+            .position(|p| p.id == player_off_id)
+            .ok_or_else(|| "Outgoing player not in lineup".to_string())?;
+
+        let incoming = bench.remove(on_idx);
+        let outgoing = std::mem::replace(&mut team.players[off_idx], incoming);
+        bench.push(outgoing.clone());
+        *subs_made = subs_made.saturating_add(1);
+        self.substitutions.push(SubstitutionRecord {
+            minute: self.current_minute,
+            side,
+            player_off_id: player_off_id.to_string(),
+            player_on_id: player_on_id.to_string(),
+        });
+        Ok(())
     }
 }

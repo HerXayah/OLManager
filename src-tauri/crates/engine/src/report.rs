@@ -268,6 +268,11 @@ impl MatchReport {
                 EventType::PenaltyAwarded => {
                     stats.penalties += 1;
                 }
+                EventType::NexusDestroyed => {
+                    // LoL winner condition: destroying enemy nexus.
+                    // Reuse goals field in persisted fixture result as a simple winner marker.
+                    stats.goals += 1;
+                }
                 _ => {}
             }
         }

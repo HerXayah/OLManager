@@ -7,21 +7,16 @@ import {
   MatchSnapshot,
   MatchEvent,
   MatchDayStage,
-  RoundSummary,
 } from "../components/match/types";
 import { resolveMatchFixture } from "../components/match/helpers";
 import PreMatchSetup from "../components/match/PreMatchSetup";
 import ChampionDraft from "../components/match/ChampionDraft";
 import type { ChampionDraftResultPayload } from "../components/match/ChampionDraft";
-import MatchLive from "../components/match/MatchLive";
-import HalfTimeBreak from "../components/match/HalfTimeBreak";
-import PostMatchScreen from "../components/match/PostMatchScreen";
+import LolMatchLive from "../components/match/LolMatchLive";
+import type { ChampionSelectionByPlayer } from "../components/match/LolMatchLive";
+import MatchTacticsStage from "../components/match/MatchTacticsStage";
+import LolResultScreen from "../components/match/LolResultScreen";
 import PressConference from "../components/match/PressConference";
-import DraftResultScreen from "../components/match/DraftResultScreen";
-import {
-  simulateDraftMatchResult,
-  type DraftMatchResult,
-} from "../components/match/draftResultSimulator";
 
 // ---------------------------------------------------------------------------
 // Multi-stage Match Day Orchestrator
@@ -35,7 +30,7 @@ interface MatchRouteState {
 
 interface FinishLiveMatchResponse {
   game: GameStateData;
-  round_summary?: RoundSummary | null;
+  round_summary?: unknown;
 }
 
 export default function MatchSimulation() {
@@ -50,14 +45,10 @@ export default function MatchSimulation() {
   );
   const [stage, setStage] = useState<MatchDayStage>("prematch");
   const [importantEvents, setImportantEvents] = useState<MatchEvent[]>([]);
+  const [championSelections, setChampionSelections] = useState<ChampionSelectionByPlayer | null>(null);
   const [userSide, setUserSide] = useState<"Home" | "Away" | null>(null);
   const [isSpectator, setIsSpectator] = useState(matchMode === "spectator");
-  const [roundSummary, setRoundSummary] = useState<RoundSummary | null>(null);
-  const [draftResult, setDraftResult] = useState<DraftMatchResult | null>(null);
   const [hasFinalizedMatch, setHasFinalizedMatch] = useState(false);
-  const [seriesGameIndex, setSeriesGameIndex] = useState(1);
-  const [userSeriesWins, setUserSeriesWins] = useState(0);
-  const [opponentSeriesWins, setOpponentSeriesWins] = useState(0);
 
   useEffect(() => {
     console.info("[MatchSimulation] mount", {
@@ -179,7 +170,7 @@ export default function MatchSimulation() {
   // Skip pre-match for spectators
   useEffect(() => {
     if (isSpectator && stage === "prematch") {
-      setStage("first_half");
+      setStage("draft");
     }
   }, [isSpectator, stage]);
 
@@ -205,9 +196,6 @@ export default function MatchSimulation() {
           currentFixture.matchday >= playoffFinalMatchday
         ? 5
         : 3;
-
-  const seriesTargetWins =
-    seriesLength === 5 ? 3 : seriesLength === 3 ? 2 : 1;
 
   const normalizeTeamKey = (value: string): string =>
     value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -239,13 +227,6 @@ export default function MatchSimulation() {
     setUserSelectedSide(defaultControlledDraftSide);
   }, [defaultControlledDraftSide]);
 
-  useEffect(() => {
-    setSeriesGameIndex(1);
-    setUserSeriesWins(0);
-    setOpponentSeriesWins(0);
-    setDraftResult(null);
-  }, [routeState?.fixtureIndex]);
-
   const swapSnapshotSides = useCallback((snap: MatchSnapshot): MatchSnapshot => {
     return {
       ...snap,
@@ -269,49 +250,80 @@ export default function MatchSimulation() {
     return swapSnapshotSides(snapshot);
   }, [managerTeamId, snapshot, swapSnapshotSides, userSelectedSide]);
 
-  const blueSeriesWinsForUi =
-    userSelectedSide === "blue" ? userSeriesWins : opponentSeriesWins;
-  const redSeriesWinsForUi =
-    userSelectedSide === "red" ? userSeriesWins : opponentSeriesWins;
-
-  const loserIsUserInCurrentGame =
-    !!draftResult &&
-    !!managerTeamId &&
-    !!activeSnapshot &&
-    ((draftResult.winnerSide === "blue"
-      ? activeSnapshot.away_team.id
-      : activeSnapshot.home_team.id) === managerTeamId);
-
   // Callbacks for stage transitions
   const handleStartMatch = useCallback(() => {
     console.info("[MatchSimulation] handleStartMatch");
     setStage("draft");
   }, []);
 
-  const handleDraftComplete = useCallback((payload?: ChampionDraftResultPayload) => {
+  const handleDraftComplete = useCallback((_payload: ChampionDraftResultPayload) => {
     console.info("[MatchSimulation] handleDraftComplete");
-    if (!payload || !gameState || !activeSnapshot) {
-      setStage("first_half");
-      return;
+    const payload = _payload;
+    if (activeSnapshot) {
+      const roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const;
+      const inferRole = (position: string): typeof roles[number] => {
+        const p = position.toLowerCase();
+        if (p.includes("top")) return "TOP";
+        if (p.includes("jung")) return "JUNGLE";
+        if (p.includes("mid")) return "MID";
+        if (p.includes("adc") || p.includes("bot") || p.includes("carry")) return "ADC";
+        return "SUPPORT";
+      };
+
+      const mapSide = (
+        players: MatchSnapshot["home_team"]["players"],
+        picks: ChampionDraftResultPayload["blue"]["picks"],
+      ): {
+        champions: Record<string, string>;
+        roles: Record<string, "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT">;
+      } => {
+        const champions: Record<string, string> = {};
+        const roleByPlayer: Record<string, "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT"> = {};
+        const roleOrder: Record<typeof roles[number], number> = {
+          TOP: 0,
+          JUNGLE: 1,
+          MID: 2,
+          ADC: 3,
+          SUPPORT: 4,
+        };
+        const usedPlayerIds = new Set<string>();
+        for (const role of roles) {
+          const pick = picks.find((entry) => entry.role === role);
+          if (!pick) continue;
+
+          const exact = players.find(
+            (entry) => !usedPlayerIds.has(entry.id) && inferRole(entry.position) === role,
+          );
+          const slot = players[roleOrder[role]];
+          const slotCandidate = slot && !usedPlayerIds.has(slot.id) ? slot : null;
+          const fallback = players.find((entry) => !usedPlayerIds.has(entry.id)) ?? players[0];
+          const player = exact ?? slotCandidate ?? fallback;
+
+          if (player) {
+            usedPlayerIds.add(player.id);
+            champions[player.id] = pick.championId;
+            roleByPlayer[player.id] = role;
+          }
+        }
+        return { champions, roles: roleByPlayer };
+      };
+
+      const homeDraft = mapSide(activeSnapshot.home_team.players, payload.blue.picks);
+      const awayDraft = mapSide(activeSnapshot.away_team.players, payload.red.picks);
+
+      setChampionSelections({
+        home: homeDraft.champions,
+        away: awayDraft.champions,
+        homeRoles: homeDraft.roles,
+        awayRoles: awayDraft.roles,
+      });
     }
+    setStage("tactics");
+  }, [activeSnapshot]);
 
-    const result = simulateDraftMatchResult({
-      snapshot: activeSnapshot,
-      gameState,
-      draft: payload,
-    });
-    setDraftResult(result);
-    setStage("draft_result");
-  }, [activeSnapshot, gameState]);
-
-  const handleHalfTime = useCallback(() => {
-    console.info("[MatchSimulation] handleHalfTime");
-    setStage("halftime");
-  }, []);
-
-  const handleResumeFromHalfTime = useCallback(() => {
-    console.info("[MatchSimulation] handleResumeFromHalfTime");
-    setStage("second_half");
+  const handleContinueFromTactics = useCallback(() => {
+    console.info("[MatchSimulation] handleContinueFromTactics");
+    setStage("first_half");
   }, []);
 
   const finalizeMatch = useCallback(async (): Promise<boolean> => {
@@ -328,7 +340,6 @@ export default function MatchSimulation() {
         hasUpdatedGame: !!response.game,
       });
       setGameState(response.game);
-      setRoundSummary(response.round_summary ?? null);
       setHasFinalizedMatch(true);
       return true;
     } catch (err) {
@@ -342,7 +353,7 @@ export default function MatchSimulation() {
     void (async () => {
       const finalized = await finalizeMatch();
       if (finalized) {
-        setStage("postmatch");
+        setStage("draft_result");
       }
     })();
   }, [finalizeMatch]);
@@ -359,122 +370,6 @@ export default function MatchSimulation() {
       navigate("/dashboard");
     }
   }, [finalizeMatch, navigate]);
-
-  const handleContinueFromDraftResult = useCallback((nextUserSide?: "blue" | "red") => {
-    if (!draftResult || !managerTeamId || !activeSnapshot) return;
-
-    const winnerTeamId =
-      draftResult.winnerSide === "blue"
-        ? activeSnapshot.home_team.id
-        : activeSnapshot.away_team.id;
-    const loserTeamId =
-      draftResult.winnerSide === "blue"
-        ? activeSnapshot.away_team.id
-        : activeSnapshot.home_team.id;
-
-    const projectedUserWins =
-      userSeriesWins + (winnerTeamId === managerTeamId ? 1 : 0);
-    const projectedOpponentWins =
-      opponentSeriesWins + (winnerTeamId === managerTeamId ? 0 : 1);
-
-    setUserSeriesWins(projectedUserWins);
-    setOpponentSeriesWins(projectedOpponentWins);
-
-    const seriesFinished =
-      projectedUserWins >= seriesTargetWins ||
-      projectedOpponentWins >= seriesTargetWins;
-
-    if (!seriesFinished) {
-      const aiSidePreference =
-        Math.abs(draftResult.power.diff) < 1.5
-          ? (Math.random() < 0.5 ? "blue" : "red")
-          : draftResult.power.winProbBlue >= 50
-            ? "blue"
-            : "red";
-
-      const computedNextSide =
-        loserTeamId === managerTeamId
-          ? (nextUserSide ?? userSelectedSide)
-          : aiSidePreference === "blue"
-            ? "red"
-            : "blue";
-
-      setUserSelectedSide(computedNextSide);
-      setSeriesGameIndex((prev) => prev + 1);
-      setDraftResult(null);
-      setStage("draft");
-      return;
-    }
-
-    void (async () => {
-      try {
-        await invoke<MatchEvent[]>("step_live_match", { minutes: 200 });
-      } catch (err) {
-        console.warn("[MatchSimulation] draft_result step_live_match failed", err);
-      }
-
-      const finalized = await finalizeMatch();
-      if (!finalized) return;
-
-      if (currentFixture?.id) {
-        try {
-          localStorage.setItem(
-            `fixture-draft-result:${currentFixture.id}`,
-            JSON.stringify({
-              snapshot: activeSnapshot,
-              controlledSide: userSelectedSide,
-              result: draftResult,
-              seriesLength,
-              seriesGameIndex,
-              userSeriesWins: projectedUserWins,
-              opponentSeriesWins: projectedOpponentWins,
-            }),
-          );
-        } catch {
-          // ignore persistence failures
-        }
-
-        const winnerTeamId =
-          draftResult.winnerSide === "blue"
-            ? activeSnapshot.home_team.id
-            : activeSnapshot.away_team.id;
-
-        const championPicks = draftResult.playerResults
-          .filter((entry) => !!entry.championId)
-          .map((entry) => ({
-            playerId: entry.playerId,
-            championId: entry.championId as string,
-          }));
-
-        if (championPicks.length > 0) {
-          try {
-            const updated = await invoke<GameStateData>("record_fixture_champion_picks", {
-              fixtureId: currentFixture.id,
-              winnerTeamId,
-              picks: championPicks,
-            });
-            setGameState(updated);
-          } catch (err) {
-            console.warn("[MatchSimulation] record_fixture_champion_picks failed", err);
-          }
-        }
-      }
-
-      navigate("/dashboard");
-    })();
-  }, [
-    activeSnapshot,
-    currentFixture?.id,
-    draftResult,
-    finalizeMatch,
-    managerTeamId,
-    navigate,
-    opponentSeriesWins,
-    seriesTargetWins,
-    setGameState,
-    userSelectedSide,
-    userSeriesWins,
-  ]);
 
   const handleSnapshotUpdate = useCallback((snap: MatchSnapshot) => {
     console.info("[MatchSimulation] handleSnapshotUpdate", {
@@ -525,82 +420,51 @@ export default function MatchSimulation() {
         />
       );
 
-case "draft":
+    case "draft":
       return (
         <ChampionDraft
           snapshot={renderSnapshot}
           onComplete={handleDraftComplete}
           controlledSide={userSelectedSide}
           seriesLength={seriesLength}
-          blueSeriesWins={blueSeriesWinsForUi}
-          redSeriesWins={redSeriesWinsForUi}
+          blueSeriesWins={0}
+          redSeriesWins={0}
           gameState={gameState}
+        />
+      );
+
+    case "tactics":
+      return (
+        <MatchTacticsStage
+          gameState={gameState}
+          onGameUpdate={setGameState}
+          onContinue={handleContinueFromTactics}
         />
       );
 
     case "draft_result":
-      if (!draftResult) return null;
-      return (
-        <DraftResultScreen
-          snapshot={renderSnapshot}
-          controlledSide={userSelectedSide}
-          result={draftResult}
-          seriesLength={seriesLength}
-          seriesGameIndex={seriesGameIndex}
-          userSeriesWins={userSeriesWins}
-          opponentSeriesWins={opponentSeriesWins}
-          canUserChooseSide={
-            seriesLength > 1 &&
-            loserIsUserInCurrentGame &&
-            userSeriesWins < seriesTargetWins &&
-            opponentSeriesWins < seriesTargetWins
-          }
-          onContinue={handleContinueFromDraftResult}
-        />
-      );
-
-    case "first_half":
-    case "second_half":
-      return (
-        <MatchLive
-          key={stage}
-          snapshot={snapshot}
-          gameState={gameState}
-          userSide={userSide}
-          isSpectator={isSpectator}
-          importantEvents={importantEvents}
-          onSnapshotUpdate={handleSnapshotUpdate}
-          onImportantEvent={handleImportantEvent}
-          onHalfTime={handleHalfTime}
-          onFullTime={handleFullTime}
-        />
-      );
-
-    case "halftime":
-      return (
-        <HalfTimeBreak
-          snapshot={snapshot}
-          gameState={gameState}
-          userSide={userSide || "Home"}
-          isSpectator={isSpectator}
-          importantEvents={importantEvents}
-          onResume={handleResumeFromHalfTime}
-          onUpdateSnapshot={handleSnapshotUpdate}
-        />
-      );
-
     case "postmatch":
       return (
-        <PostMatchScreen
+        <LolResultScreen
           snapshot={snapshot}
           gameState={gameState}
           currentFixture={currentFixture}
           userSide={userSide}
-          isSpectator={isSpectator}
           importantEvents={importantEvents}
-          roundSummary={roundSummary}
           onPressConference={handlePressConference}
           onFinish={handleFinishMatch}
+        />
+      );
+
+    case "first_half":
+      return (
+        <LolMatchLive
+          key={stage}
+          snapshot={snapshot}
+          championSelections={championSelections}
+          onSnapshotUpdate={handleSnapshotUpdate}
+          onImportantEvent={handleImportantEvent}
+          onFullTime={handleFullTime}
         />
       );
 

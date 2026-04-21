@@ -16,29 +16,10 @@ impl LiveMatchState {
             50.0
         };
 
-        // Separate yellows by side
-        let mut home_yellows = HashMap::new();
-        let mut away_yellows = HashMap::new();
-        for (pid, count) in &self.yellows {
-            if self.home.players.iter().any(|p| p.id == *pid) {
-                home_yellows.insert(pid.clone(), *count);
-            } else {
-                away_yellows.insert(pid.clone(), *count);
-            }
-        }
-
-        // Clone teams and patch in live condition values from player_conditions map
-        let mut home_team = self.home.clone();
-        let mut away_team = self.away.clone();
-        for p in home_team
-            .players
-            .iter_mut()
-            .chain(away_team.players.iter_mut())
-        {
-            if let Some(&cond) = self.player_conditions.get(&p.id) {
-                p.condition = cond.round() as u8;
-            }
-        }
+        let home_yellows = HashMap::new();
+        let away_yellows = HashMap::new();
+        let home_team = self.home.clone();
+        let away_team = self.away.clone();
 
         MatchSnapshot {
             phase: self.phase,
@@ -57,13 +38,14 @@ impl LiveMatchState {
             home_subs_made: self.home_subs_made,
             away_subs_made: self.away_subs_made,
             max_subs: self.max_subs,
-            home_set_pieces: self.home_set_pieces.clone(),
-            away_set_pieces: self.away_set_pieces.clone(),
+            home_set_pieces: super::SetPieceTakers::default(),
+            away_set_pieces: super::SetPieceTakers::default(),
             substitutions: self.substitutions.clone(),
             allows_extra_time: self.allows_extra_time,
             home_yellows,
             away_yellows,
-            sent_off: self.sent_off.clone(),
+            sent_off: std::collections::HashSet::new(),
+            lol_map: self.lol_map.clone(),
         }
     }
 }

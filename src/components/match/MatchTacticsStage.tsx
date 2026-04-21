@@ -1,0 +1,50 @@
+import { useTranslation } from "react-i18next";
+import type { GameStateData } from "../../store/gameStore";
+import TacticsTab from "../tactics/TacticsTab";
+
+interface MatchTacticsStageProps {
+  gameState: GameStateData;
+  onGameUpdate: (next: GameStateData) => void;
+  onContinue: () => void;
+}
+
+export default function MatchTacticsStage({
+  gameState,
+  onGameUpdate,
+  onContinue,
+}: MatchTacticsStageProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="min-h-screen bg-gray-100 dark:bg-navy-900 transition-colors duration-300 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-4 rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/70 dark:bg-primary-900/20 p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-heading uppercase tracking-widest text-primary-700 dark:text-primary-300">
+              {t("match.tactics", { defaultValue: "Tácticas" })}
+            </p>
+            <p className="text-sm text-primary-900/90 dark:text-primary-100/90">
+              {t(
+                "match.tacticsBeforeLive",
+                { defaultValue: "Ajustá el plan y cuando estés listo arrancamos el live." },
+              )}
+            </p>
+          </div>
+
+          <button
+            onClick={onContinue}
+            className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white font-heading uppercase tracking-wider text-xs"
+          >
+            {t("match.startLive", { defaultValue: "Ir al Live" })}
+          </button>
+        </div>
+
+        <TacticsTab
+          gameState={gameState}
+          onSelectPlayer={() => {}}
+          onGameUpdate={onGameUpdate}
+        />
+      </div>
+    </div>
+  );
+}

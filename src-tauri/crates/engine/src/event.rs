@@ -60,6 +60,16 @@ pub enum EventType {
     Injury,
     GoalKick,
     Substitution,
+
+    // --- LoL map/objective layer ---
+    ObjectiveSpawned,
+    ObjectiveTaken,
+    Kill,
+    TowerDestroyed,
+    InhibitorDestroyed,
+    InhibitorRespawned,
+    NexusTowerDestroyed,
+    NexusDestroyed,
 }
 
 impl MatchEvent {

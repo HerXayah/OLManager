@@ -119,6 +119,46 @@ export const EVENT_ICONS: Record<
     color: "text-accent-700 dark:text-accent-400",
     important: true,
   },
+  Kill: {
+    icon: <Circle className="w-4 h-4 fill-current" />,
+    color: "text-accent-700 dark:text-accent-400",
+    important: true,
+  },
+  ObjectiveSpawned: {
+    icon: <CircleDot className="w-4 h-4" />,
+    color: "text-cyan-600 dark:text-cyan-400",
+    important: false,
+  },
+  ObjectiveTaken: {
+    icon: <Zap className="w-4 h-4" />,
+    color: "text-amber-600 dark:text-amber-400",
+    important: true,
+  },
+  TowerDestroyed: {
+    icon: <Flag className="w-4 h-4" />,
+    color: "text-orange-500",
+    important: true,
+  },
+  InhibitorDestroyed: {
+    icon: <Flag className="w-4 h-4" />,
+    color: "text-red-500",
+    important: true,
+  },
+  InhibitorRespawned: {
+    icon: <CircleDot className="w-4 h-4" />,
+    color: "text-emerald-500",
+    important: false,
+  },
+  NexusTowerDestroyed: {
+    icon: <Flag className="w-4 h-4" />,
+    color: "text-red-500",
+    important: true,
+  },
+  NexusDestroyed: {
+    icon: <Flag className="w-4 h-4" />,
+    color: "text-red-600",
+    important: true,
+  },
 };
 
 const DEFAULT_DISPLAY = {
@@ -158,26 +198,10 @@ export function getPlayerName(
 
 export function phaseLabel(phase: string): string {
   switch (phase) {
-    case "PreKickOff":
-      return "Pre-Match";
-    case "FirstHalf":
-      return "1st Half";
-    case "HalfTime":
-      return "Half Time";
-    case "SecondHalf":
-      return "2nd Half";
-    case "FullTime":
-      return "Full Time";
-    case "ExtraTimeFirstHalf":
-      return "ET 1st Half";
-    case "ExtraTimeHalfTime":
-      return "ET Half Time";
-    case "ExtraTimeSecondHalf":
-      return "ET 2nd Half";
-    case "ExtraTimeEnd":
-      return "ET End";
-    case "PenaltyShootout":
-      return "Penalties";
+    case "PreGame":
+      return "Draft";
+    case "Live":
+      return "Live";
     case "Finished":
       return "Final";
     default:

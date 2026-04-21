@@ -188,4 +188,13 @@ impl LiveMatchState {
             Side::Away => self.away_score += 1,
         }
     }
+
+    pub(super) fn lol_team_kills(&self, side: Side) -> u16 {
+        self.lol_map
+            .units
+            .iter()
+            .filter(|unit| unit.side == side)
+            .map(|unit| unit.kills as u16)
+            .sum()
+    }
 }
