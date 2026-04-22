@@ -3,6 +3,7 @@ import type { MatchEvent, MatchSnapshot } from "./types";
 import { getWalls } from "./lol-prototype/assets/map";
 import { NavGrid } from "./lol-prototype/engine/navigation";
 import { PrototypeSimulation } from "./lol-prototype/engine/simulation";
+import type { ChampionCombatProfile } from "./lol-prototype/engine/simulation";
 import { renderSimulation } from "./lol-prototype/ui/render";
 import { EventFeedPanel, ScoreboardPanel } from "./lol-prototype/ui/panels";
 
@@ -22,11 +23,25 @@ interface Props {
 }
 
 const SPEEDS = [
-  { id: "x0.5", value: 0.5 },
-  { id: "x1", value: 1 },
-  { id: "x2", value: 2 },
   { id: "x4", value: 4 },
+  { id: "x8", value: 8 },
+  { id: "x12", value: 12 },
 ];
+
+const DDRAGON_VERSION = "14.24.1";
+
+function attackTypeFromStats(attackRange: number, tags: string[]) {
+  if (attackRange >= 300) return "ranged" as const;
+  if (tags.includes("Marksman")) return "ranged" as const;
+  return "melee" as const;
+}
+
+function normalizeAttackRange(attackRange: number) {
+  // Compact ranged vs melee spacing for this prototype:
+  // ranged should have some advantage, but not excessive standoff distance.
+  if (attackRange >= 300) return 0.056;
+  return 0.049;
+}
 
 function compactGold(gold: number) {
   if (gold < 1000) return `${Math.round(gold)}g`;
@@ -38,7 +53,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   const nav = useMemo(() => new NavGrid(walls), [walls]);
   const [seed, setSeed] = useState("lol-prototype-1");
   const [running, setRunning] = useState(true);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(4);
   const [tick, setTick] = useState(0);
 
   const championByPlayerId = useMemo<Record<string, string>>(() => {
@@ -48,6 +63,49 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       ...championSelections.away,
     };
   }, [championSelections]);
+  const [championProfilesById, setChampionProfilesById] = useState<Record<string, ChampionCombatProfile>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadChampionProfiles = async () => {
+      const pickedChampionIds = Array.from(new Set(Object.values(championByPlayerId).filter(Boolean)));
+      if (pickedChampionIds.length === 0) {
+        if (!cancelled) setChampionProfilesById({});
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/data/en_US/champion.json`);
+        if (!response.ok) throw new Error(`champion.json status ${response.status}`);
+        const payload = await response.json() as {
+          data?: Record<string, { id: string; tags: string[]; stats: { hp: number; attackrange: number } }>;
+        };
+
+        const nextProfiles: Record<string, ChampionCombatProfile> = {};
+        const champions = payload.data ?? {};
+        pickedChampionIds.forEach((championId) => {
+          const data = champions[championId];
+          if (!data) return;
+          const attackType = attackTypeFromStats(data.stats.attackrange, data.tags ?? []);
+          nextProfiles[championId] = {
+            baseHp: Math.round(data.stats.hp),
+            attackType,
+            attackRange: normalizeAttackRange(data.stats.attackrange),
+          };
+        });
+
+        if (!cancelled) setChampionProfilesById(nextProfiles);
+      } catch {
+        if (!cancelled) setChampionProfilesById({});
+      }
+    };
+
+    void loadChampionProfiles();
+    return () => {
+      cancelled = true;
+    };
+  }, [championByPlayerId]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const simRef = useRef<PrototypeSimulation | null>(null);
@@ -56,9 +114,9 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   const finishedRef = useRef(false);
 
   useEffect(() => {
-    simRef.current = new PrototypeSimulation(nav, snapshot, seed);
+    simRef.current = new PrototypeSimulation(nav, snapshot, seed, championByPlayerId, championProfilesById);
     finishedRef.current = false;
-  }, [nav, seed, snapshot, championSelections]);
+  }, [nav, seed, snapshot, championByPlayerId, championProfilesById]);
 
   useEffect(() => {
     const loop = (ts: number) => {
@@ -202,7 +260,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
                 Toggle Show Walls
               </button>
             </div>
-            <div className="mt-2 grid grid-cols-4 gap-1">
+            <div className="mt-2 grid grid-cols-3 gap-1">
               {SPEEDS.map((s) => (
                 <button
                   key={s.id}

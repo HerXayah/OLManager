@@ -1,6 +1,7 @@
 export type TeamId = "blue" | "red";
 export type RoleId = "TOP" | "JGL" | "MID" | "ADC" | "SUP";
 export type LaneId = "top" | "mid" | "bot";
+export type AttackType = "melee" | "ranged";
 
 export interface Vec2 {
   x: number;
@@ -21,6 +22,7 @@ export interface ChampionState {
   attackCdUntil: number;
   moveSpeed: number;
   attackRange: number;
+  attackType: AttackType;
   attackDamage: number;
   targetPath: Vec2[];
   targetPathIndex: number;
@@ -34,6 +36,8 @@ export interface ChampionState {
   lastDamagedByChampionId: string | null;
   lastDamagedAt: number;
   state: "lane" | "fight" | "objective" | "recall";
+  recallAnchor: Vec2 | null;
+  recallChannelUntil: number;
 }
 
 export interface MinionState {
