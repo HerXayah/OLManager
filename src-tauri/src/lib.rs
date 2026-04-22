@@ -2,6 +2,7 @@ mod application;
 mod commands;
 use commands::*;
 
+use application::lol_sim_v2::LolSimV2StoreState;
 use db::save_manager::SaveManager;
 use ofm_core::state::StateManager;
 use std::sync::Mutex;
@@ -33,6 +34,7 @@ pub fn run() {
                 .build(),
         )
         .manage(StateManager::new())
+        .manage(LolSimV2StoreState::default())
         .setup(|app| {
             use tauri::Manager as TauriManager;
             let app_data_dir = app
@@ -147,7 +149,11 @@ pub fn run() {
             save_settings,
             clear_all_saves,
             get_available_jobs,
-            apply_for_job
+            apply_for_job,
+            lol_sim_v2_init,
+            lol_sim_v2_tick,
+            lol_sim_v2_reset,
+            lol_sim_v2_dispose
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -4,6 +4,9 @@ import { getWalls } from "./lol-prototype/assets/map";
 import { NavGrid } from "./lol-prototype/engine/navigation";
 import { PrototypeSimulation } from "./lol-prototype/engine/simulation";
 import type { ChampionCombatProfile } from "./lol-prototype/engine/simulation";
+import type { MatchState } from "./lol-prototype/engine/types";
+import type { LolSimV1RuntimeState } from "./lol-prototype/backend/contract-v1";
+import { LolSimV2Client } from "./lol-prototype/backend/tauri-client";
 import { renderSimulation } from "./lol-prototype/ui/render";
 import { EventFeedPanel, ScoreboardPanel } from "./lol-prototype/ui/panels";
 
@@ -29,6 +32,7 @@ const SPEEDS = [
 ];
 
 const DDRAGON_VERSION = "14.24.1";
+const USE_RUST_SIM_V2 = true;
 
 function attackTypeFromStats(attackRange: number, tags: string[]) {
   if (attackRange >= 300) return "ranged" as const;
@@ -109,13 +113,61 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const simRef = useRef<PrototypeSimulation | null>(null);
+  const backendClientRef = useRef<LolSimV2Client | null>(null);
+  const backendStateRef = useRef<LolSimV1RuntimeState | null>(null);
+  const backendTickInFlightRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
   const finishedRef = useRef(false);
 
+  const currentState = (): MatchState | null => {
+    if (USE_RUST_SIM_V2 && backendStateRef.current) return backendStateRef.current;
+    return simRef.current?.state ?? null;
+  };
+
   useEffect(() => {
-    simRef.current = new PrototypeSimulation(nav, snapshot, seed, championByPlayerId, championProfilesById);
+    const tsSim = new PrototypeSimulation(nav, snapshot, seed, championByPlayerId, championProfilesById);
+    simRef.current = tsSim;
+    backendClientRef.current = null;
+    backendStateRef.current = null;
+    backendTickInFlightRef.current = false;
     finishedRef.current = false;
+
+    if (!USE_RUST_SIM_V2) return;
+
+    const client = new LolSimV2Client();
+    backendClientRef.current = client;
+    let disposed = false;
+
+    void client
+      .init({
+        seed,
+        snapshot,
+        championByPlayerId,
+        championProfilesById,
+        initialState: { ...tsSim.state, speed },
+      })
+      .then((response) => {
+        if (disposed || backendClientRef.current !== client) return;
+        backendStateRef.current = response.state;
+        setTick((v) => v + 1);
+      })
+      .catch(() => {
+        if (disposed || backendClientRef.current !== client) return;
+        backendClientRef.current = null;
+        backendStateRef.current = null;
+        backendTickInFlightRef.current = false;
+      });
+
+    return () => {
+      disposed = true;
+      if (backendClientRef.current === client) {
+        backendClientRef.current = null;
+        backendStateRef.current = null;
+        backendTickInFlightRef.current = false;
+      }
+      void client.dispose().catch(() => undefined);
+    };
   }, [nav, seed, snapshot, championByPlayerId, championProfilesById]);
 
   useEffect(() => {
@@ -129,7 +181,35 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       lastRef.current = ts;
 
       sim.setRunning(running);
-      sim.tick(dt, speed);
+
+      const backendClient = USE_RUST_SIM_V2 ? backendClientRef.current : null;
+      if (backendClient && backendStateRef.current) {
+        if (!backendTickInFlightRef.current) {
+          backendTickInFlightRef.current = true;
+          void backendClient
+            .tick({ dtSec: dt, running, speed })
+            .then((response) => {
+              if (backendClientRef.current !== backendClient) return;
+              backendStateRef.current = response.state;
+              setTick((v) => v + 1);
+            })
+            .catch(() => {
+              if (backendClientRef.current !== backendClient) return;
+              backendClientRef.current = null;
+              backendStateRef.current = null;
+            })
+            .finally(() => {
+              if (backendClientRef.current === backendClient) {
+                backendTickInFlightRef.current = false;
+              }
+            });
+        }
+      } else {
+        sim.tick(dt, speed);
+      }
+
+      const state = currentState();
+      if (!state) return;
 
       const rect = canvas.getBoundingClientRect();
       const size = Math.max(320, Math.floor(Math.min(rect.width, rect.height)));
@@ -137,14 +217,14 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
         canvas.width = size;
         canvas.height = size;
       }
-      renderSimulation(canvas, sim.state, walls, championByPlayerId);
+      renderSimulation(canvas, state, walls, championByPlayerId);
 
-      if (sim.state.winner && !finishedRef.current) {
+      if (state.winner && !finishedRef.current) {
         finishedRef.current = true;
         const evt: MatchEvent = {
-          minute: Math.floor(sim.state.timeSec / 60),
+          minute: Math.floor(state.timeSec / 60),
           event_type: "NexusDestroyed",
-          side: sim.state.winner === "blue" ? "Home" : "Away",
+          side: state.winner === "blue" ? "Home" : "Away",
           zone: "Midfield",
           player_id: null,
           secondary_player_id: null,
@@ -153,9 +233,9 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
         onSnapshotUpdate({
           ...snapshot,
           phase: "Finished",
-          current_minute: Math.floor(sim.state.timeSec / 60),
-          home_score: sim.state.winner === "blue" ? 1 : 0,
-          away_score: sim.state.winner === "red" ? 1 : 0,
+          current_minute: Math.floor(state.timeSec / 60),
+          home_score: state.winner === "blue" ? 1 : 0,
+          away_score: state.winner === "red" ? 1 : 0,
         });
         setTimeout(onFullTime, 400);
       }
@@ -172,32 +252,71 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     };
   }, [championByPlayerId, onFullTime, onImportantEvent, onSnapshotUpdate, running, snapshot, speed, walls]);
 
-  const sim = simRef.current;
+  useEffect(() => {
+    return () => {
+      const client = backendClientRef.current;
+      backendClientRef.current = null;
+      backendStateRef.current = null;
+      backendTickInFlightRef.current = false;
+      if (client) {
+        void client.dispose().catch(() => undefined);
+      }
+    };
+  }, []);
+
+  const state = currentState();
   const teamHud = (() => {
-    const blueTeam = sim?.state.champions.filter((c) => c.team === "blue") ?? [];
-    const redTeam = sim?.state.champions.filter((c) => c.team === "red") ?? [];
+    const blueTeam = state?.champions.filter((c) => c.team === "blue") ?? [];
+    const redTeam = state?.champions.filter((c) => c.team === "red") ?? [];
     const blueAvg = blueTeam.length ? blueTeam.reduce((sum, c) => sum + c.level, 0) / blueTeam.length : 1;
     const redAvg = redTeam.length ? redTeam.reduce((sum, c) => sum + c.level, 0) / redTeam.length : 1;
     return {
-      blueGold: sim?.state.stats.blue.gold ?? 0,
-      redGold: sim?.state.stats.red.gold ?? 0,
+      blueGold: state?.stats.blue.gold ?? 0,
+      redGold: state?.stats.red.gold ?? 0,
       blueAvg,
       redAvg,
     };
   })();
-  const status = sim?.state.winner
-    ? `Winner: ${sim.state.winner.toUpperCase()}`
+  const status = state?.winner
+    ? `Winner: ${state.winner.toUpperCase()}`
     : running
       ? "Running"
       : "Paused";
 
   const handleReset = () => {
-    simRef.current?.reset(seed);
+    const sim = simRef.current;
+    if (!sim) return;
+
+    sim.reset(seed);
+
+    const backendClient = USE_RUST_SIM_V2 ? backendClientRef.current : null;
+    if (backendClient && backendStateRef.current) {
+      backendTickInFlightRef.current = false;
+      void backendClient
+        .reset({ seed, initialState: { ...sim.state, speed } })
+        .then((response) => {
+          if (backendClientRef.current !== backendClient) return;
+          backendStateRef.current = response.state;
+          setTick((v) => v + 1);
+        })
+        .catch(() => {
+          if (backendClientRef.current !== backendClient) return;
+          backendClientRef.current = null;
+          backendStateRef.current = null;
+        });
+    }
+
     finishedRef.current = false;
     setRunning(true);
   };
 
   const toggleWalls = () => {
+    const backendState = USE_RUST_SIM_V2 ? backendStateRef.current : null;
+    if (backendState) {
+      backendState.showWalls = !backendState.showWalls;
+      setTick((v) => v + 1);
+      return;
+    }
     simRef.current?.toggleWalls();
   };
 
@@ -213,7 +332,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
               <p className="text-sm font-semibold">{snapshot.home_team.name} vs {snapshot.away_team.name}</p>
             </div>
             <div className="text-right text-xs text-cyan-300">
-              <p>{Math.floor((sim?.state.timeSec ?? 0) / 60)}:{Math.floor((sim?.state.timeSec ?? 0) % 60).toString().padStart(2, "0")}</p>
+              <p>{Math.floor((state?.timeSec ?? 0) / 60)}:{Math.floor((state?.timeSec ?? 0) % 60).toString().padStart(2, "0")}</p>
               <p>{status}</p>
             </div>
           </div>
@@ -235,14 +354,14 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
 
         <div className="space-y-3">
           <ScoreboardPanel
-            timeSec={sim?.state.timeSec ?? 0}
+            timeSec={state?.timeSec ?? 0}
             status={status}
             blue={{
-              ...(sim?.state.stats.blue ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
+              ...(state?.stats.blue ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
               avgLevel: teamHud.blueAvg,
             }}
             red={{
-              ...(sim?.state.stats.red ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
+              ...(state?.stats.red ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
               avgLevel: teamHud.redAvg,
             }}
           />
@@ -281,7 +400,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
             </div>
           </div>
 
-          <EventFeedPanel events={sim?.state.events ?? []} />
+          <EventFeedPanel events={state?.events ?? []} />
         </div>
       </div>
     </div>

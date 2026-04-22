@@ -316,8 +316,18 @@ fn round_goal_counts(fixtures: &[&Fixture]) -> HashMap<String, u32> {
             continue;
         };
 
-        for scorer in result.home_scorers.iter().chain(result.away_scorers.iter()) {
-            *counts.entry(scorer.player_id.clone()).or_insert(0) += 1;
+        let Some(report) = result.report.as_ref() else {
+            continue;
+        };
+
+        for event in &report.events {
+            if event.event_type != "Goal" {
+                continue;
+            }
+            let Some(player_id) = event.player_id.as_ref() else {
+                continue;
+            };
+            *counts.entry(player_id.clone()).or_insert(0) += 1;
         }
     }
 
