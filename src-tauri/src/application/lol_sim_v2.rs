@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
+use std::fs::{OpenOptions, create_dir_all};
+use std::io::Write;
+use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
 #[derive(Default)]
@@ -15,12 +18,122 @@ pub struct LolSimV2Session {
     pub id: String,
     pub seed: String,
     pub state: Value,
+    pub tick_index: u64,
     pub wave_spawn_at: f64,
     pub next_minion_id: u64,
     pub snapshot: Value,
     pub champion_by_player_id: HashMap<String, String>,
     pub champion_profiles_by_id: HashMap<String, LolChampionCombatProfileInput>,
     pub lane_combat_state_by_champion: HashMap<String, LanerCombatStateRuntime>,
+    pub ai_mode: SimulatorAiMode,
+    pub policy: SimulatorPolicyConfig,
+    telemetry: TelemetryRuntime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimulatorPolicyConfig {
+    #[serde(default = "default_no_dive_hp_min")]
+    pub no_dive_hp_min: f64,
+    #[serde(default = "default_trade_retreat_hp_ratio")]
+    pub trade_retreat_hp_ratio: f64,
+    #[serde(default = "default_trade_hp_disadvantage_allowance")]
+    pub trade_hp_disadvantage_allowance: f64,
+    #[serde(default = "default_lane_chase_leash_radius")]
+    pub lane_chase_leash_radius: f64,
+    #[serde(default = "default_hybrid_open_trade_confidence_high")]
+    pub hybrid_open_trade_confidence_high: f64,
+    #[serde(default = "default_hybrid_disengage_confidence_low")]
+    pub hybrid_disengage_confidence_low: f64,
+}
+
+impl Default for SimulatorPolicyConfig {
+    fn default() -> Self {
+        Self {
+            no_dive_hp_min: default_no_dive_hp_min(),
+            trade_retreat_hp_ratio: default_trade_retreat_hp_ratio(),
+            trade_hp_disadvantage_allowance: default_trade_hp_disadvantage_allowance(),
+            lane_chase_leash_radius: default_lane_chase_leash_radius(),
+            hybrid_open_trade_confidence_high: default_hybrid_open_trade_confidence_high(),
+            hybrid_disengage_confidence_low: default_hybrid_disengage_confidence_low(),
+        }
+    }
+}
+
+fn default_no_dive_hp_min() -> f64 { 0.45 }
+fn default_trade_retreat_hp_ratio() -> f64 { 0.36 }
+fn default_trade_hp_disadvantage_allowance() -> f64 { 0.2 }
+fn default_lane_chase_leash_radius() -> f64 { 0.11 }
+fn default_hybrid_open_trade_confidence_high() -> f64 { 0.64 }
+fn default_hybrid_disengage_confidence_low() -> f64 { 0.38 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimulatorTelemetryConfig {
+    #[serde(default = "default_telemetry_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_telemetry_sample_every_ticks")]
+    pub sample_every_ticks: u64,
+    #[serde(default = "default_telemetry_outcome_window_ticks")]
+    pub outcome_window_ticks: u64,
+    #[serde(default = "default_telemetry_decision_change_only")]
+    pub decision_change_only: bool,
+    #[serde(default)]
+    pub output_path: Option<String>,
+}
+
+impl Default for SimulatorTelemetryConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_telemetry_enabled(),
+            sample_every_ticks: default_telemetry_sample_every_ticks(),
+            outcome_window_ticks: default_telemetry_outcome_window_ticks(),
+            decision_change_only: true,
+            output_path: None,
+        }
+    }
+}
+
+fn default_telemetry_enabled() -> bool {
+    true
+}
+
+fn default_telemetry_sample_every_ticks() -> u64 {
+    20
+}
+
+fn default_telemetry_outcome_window_ticks() -> u64 {
+    160
+}
+
+fn default_telemetry_decision_change_only() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Default)]
+struct TelemetryRuntime {
+    config: SimulatorTelemetryConfig,
+    output_path: Option<PathBuf>,
+    pending: Vec<PendingTelemetryOutcome>,
+    last_tick_by_key: HashMap<String, u64>,
+    last_decision_by_key: HashMap<String, bool>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SimulatorAiMode {
+    Rules,
+    #[default]
+    Hybrid,
+}
+
+impl SimulatorAiMode {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Rules => "rules",
+            Self::Hybrid => "hybrid",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +142,7 @@ pub struct LanerCombatStateRuntime {
     pub last_disengage_at: f64,
     pub reengage_at: f64,
     pub recent_trade_until: f64,
+    pub last_ai_debug_at: f64,
 }
 
 impl Default for LanerCombatStateRuntime {
@@ -37,6 +151,7 @@ impl Default for LanerCombatStateRuntime {
             last_disengage_at: -999.0,
             reengage_at: -999.0,
             recent_trade_until: -999.0,
+            last_ai_debug_at: -999.0,
         }
     }
 }
@@ -60,6 +175,12 @@ pub struct LolSimV2InitRequest {
     #[serde(default)]
     pub champion_profiles_by_id: HashMap<String, LolChampionCombatProfileInput>,
     pub initial_state: Option<Value>,
+    #[serde(default)]
+    pub ai_mode: SimulatorAiMode,
+    #[serde(default)]
+    pub policy: SimulatorPolicyConfig,
+    #[serde(default)]
+    pub telemetry: SimulatorTelemetryConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,6 +198,12 @@ pub struct LolSimV2ResetRequest {
     pub session_id: String,
     pub seed: String,
     pub initial_state: Option<Value>,
+    #[serde(default)]
+    pub ai_mode: SimulatorAiMode,
+    #[serde(default)]
+    pub policy: Option<SimulatorPolicyConfig>,
+    #[serde(default)]
+    pub telemetry: Option<SimulatorTelemetryConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,19 +236,29 @@ pub fn init(store: &LolSimV2StoreState, request: LolSimV2InitRequest) -> Result<
         &request.snapshot,
         &request.champion_by_player_id,
         &request.champion_profiles_by_id,
+        request.ai_mode,
     );
     ensure_runtime_state_defaults(&mut state);
+    let telemetry_output_path = resolve_telemetry_output_path(&request.telemetry, &request.seed);
 
     let session = LolSimV2Session {
         id: request.session_id.clone(),
         seed: request.seed,
         state: state.clone(),
+        tick_index: 0,
         wave_spawn_at: MINION_FIRST_WAVE_AT,
         next_minion_id: 1,
         snapshot: request.snapshot,
         champion_by_player_id: request.champion_by_player_id,
         champion_profiles_by_id: request.champion_profiles_by_id,
         lane_combat_state_by_champion: HashMap::new(),
+        ai_mode: request.ai_mode,
+        policy: request.policy,
+        telemetry: TelemetryRuntime {
+            output_path: telemetry_output_path,
+            config: request.telemetry,
+            ..TelemetryRuntime::default()
+        },
     };
 
     let mut sessions = store
@@ -151,6 +288,9 @@ pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<
     let mut runtime: RuntimeState = serde_json::from_value(session.state.clone())
         .map_err(|err| format!("failed to decode lol_sim_v2 runtime state: {err}"))?;
     runtime.lane_combat_state_by_champion = session.lane_combat_state_by_champion.clone();
+    runtime.ai_mode = session.ai_mode;
+    runtime.policy = session.policy.clone();
+    runtime.telemetry_decisions.clear();
 
     let speed = request.speed.max(0.0);
     runtime.speed = speed;
@@ -182,6 +322,7 @@ pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<
     }
 
     runtime.time_sec += dt;
+    session.tick_index = session.tick_index.saturating_add(1);
 
     spawn_waves_if_due(&mut runtime, session);
     move_champions(&mut runtime, dt);
@@ -191,6 +332,7 @@ pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<
     resolve_structure_combat(&mut runtime);
     tick_neutral_timers(&mut runtime);
     cleanup_tick(&mut runtime);
+    process_telemetry(&mut runtime, session);
 
     if runtime.winner.is_some() {
         runtime.running = false;
@@ -222,7 +364,20 @@ pub fn reset(store: &LolSimV2StoreState, request: LolSimV2ResetRequest) -> Resul
         &session.snapshot,
         &session.champion_by_player_id,
         &session.champion_profiles_by_id,
+        request.ai_mode,
     );
+    session.ai_mode = request.ai_mode;
+    if let Some(policy) = request.policy {
+        session.policy = policy;
+    }
+    session.tick_index = 0;
+    if let Some(config) = request.telemetry {
+        session.telemetry.config = config;
+    }
+    session.telemetry.output_path = resolve_telemetry_output_path(&session.telemetry.config, &session.seed);
+    session.telemetry.pending.clear();
+    session.telemetry.last_tick_by_key.clear();
+    session.telemetry.last_decision_by_key.clear();
     ensure_runtime_state_defaults(&mut session.state);
     session.wave_spawn_at = MINION_FIRST_WAVE_AT;
     session.next_minion_id = 1;
@@ -250,11 +405,246 @@ pub fn dispose(
     })
 }
 
+fn resolve_telemetry_output_path(config: &SimulatorTelemetryConfig, seed: &str) -> Option<PathBuf> {
+    if !config.enabled {
+        return None;
+    }
+
+    if let Some(custom) = config.output_path.as_ref().map(|value| value.trim()).filter(|value| !value.is_empty()) {
+        return Some(PathBuf::from(custom));
+    }
+
+    let mut path = std::env::temp_dir();
+    path.push("olmanager");
+    path.push("lol-sim-telemetry");
+    path.push(format!("{}.jsonl", sanitize_for_file_name(seed)));
+    Some(path)
+}
+
+fn sanitize_for_file_name(input: &str) -> String {
+    let mut sanitized = String::with_capacity(input.len());
+    for ch in input.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+    if sanitized.is_empty() {
+        "default-seed".to_string()
+    } else {
+        sanitized
+    }
+}
+
+fn process_telemetry(runtime: &mut RuntimeState, session: &mut LolSimV2Session) {
+    if !session.telemetry.config.enabled {
+        runtime.telemetry_decisions.clear();
+        return;
+    }
+
+    let now_tick = session.tick_index;
+    let mut pending_to_write: Vec<Value> = Vec::new();
+    let mut still_pending = Vec::with_capacity(session.telemetry.pending.len());
+
+    for pending in session.telemetry.pending.drain(..) {
+        if now_tick < pending.due_tick {
+            still_pending.push(pending);
+            continue;
+        }
+
+        let Some(champion_now) = runtime.champions.iter().find(|champion| champion.id == pending.champion_id) else {
+            continue;
+        };
+
+        let enemy_now = runtime.champions.iter().find(|champion| champion.id == pending.enemy_id);
+        let hp_ratio_now = ratio_or_zero(champion_now.hp, champion_now.max_hp);
+        let deaths_now = champion_now.deaths;
+        let kills_assists_now = champion_now.kills + champion_now.assists;
+        let lane_progress_now = lane_progress_for_champion(champion_now);
+
+        let enemy_hp_ratio_now = enemy_now
+            .map(|enemy| ratio_or_zero(enemy.hp, enemy.max_hp))
+            .unwrap_or(0.0);
+
+        pending_to_write.push(json!({
+            "sessionId": pending.session_id,
+            "seed": pending.seed,
+            "tick": pending.sampled_tick,
+            "timeSec": pending.sampled_at_sec,
+            "outcomeTick": now_tick,
+            "outcomeTimeSec": runtime.time_sec,
+            "championId": pending.champion_id,
+            "enemyChampionId": pending.enemy_id,
+            "team": pending.team,
+            "role": pending.role,
+            "lane": pending.lane,
+            "aiMode": pending.ai_mode,
+            "intent": pending.intent,
+            "decision": pending.decision,
+            "ruleDecision": pending.rule_decision,
+            "confidence": pending.confidence,
+            "flippedByHybrid": pending.flipped_by_hybrid,
+            "featureSnapshot": {
+                "hpRatio": pending.hp_ratio,
+                "enemyHpRatio": pending.enemy_hp_ratio,
+                "allyChampionsLocal": pending.ally_champions_local,
+                "enemyChampionsLocal": pending.enemy_champions_local,
+                "allyMinionsLocal": pending.ally_minions_local,
+                "enemyMinionsLocal": pending.enemy_minions_local,
+                "nearestEnemyTowerDistance": pending.nearest_enemy_tower_distance,
+                "enemyOverextended": pending.enemy_overextended,
+                "objectiveDanger": pending.objective_danger,
+                "gold": pending.gold,
+                "xp": pending.xp,
+                "level": pending.level,
+                "resourceRatio": Value::Null
+            },
+            "guardrails": {
+                "forceDisengage": pending.force_disengage_guardrail,
+                "laneContext": pending.lane_context_guardrail
+            },
+            "outcome": {
+                "windowTicks": session.telemetry.config.outcome_window_ticks,
+                "hpRatioDelta": hp_ratio_now - pending.base_hp_ratio,
+                "enemyHpRatioDelta": enemy_hp_ratio_now - pending.enemy_hp_ratio,
+                "deathDelta": deaths_now - pending.base_deaths,
+                "killParticipationDelta": kills_assists_now - pending.base_kills_assists,
+                "laneProgressDelta": lane_progress_now - pending.base_lane_progress,
+                "alive": champion_now.alive
+            }
+        }));
+    }
+
+    session.telemetry.pending = still_pending;
+
+    for candidate in runtime.telemetry_decisions.drain(..) {
+        let telemetry_key = format!(
+            "{}|{}|{}|{}",
+            candidate.champion_id, candidate.enemy_id, candidate.intent, session.id
+        );
+
+        let sample_every = session.telemetry.config.sample_every_ticks.max(1);
+        let last_tick = *session.telemetry.last_tick_by_key.get(&telemetry_key).unwrap_or(&0);
+        let enough_gap = now_tick == 0 || now_tick.saturating_sub(last_tick) >= sample_every;
+
+        let last_decision = session.telemetry.last_decision_by_key.get(&telemetry_key).copied();
+        let changed = last_decision.map(|prev| prev != candidate.decision).unwrap_or(true);
+        let should_record = if session.telemetry.config.decision_change_only {
+            changed || enough_gap
+        } else {
+            enough_gap
+        };
+
+        if !should_record {
+            continue;
+        }
+
+        let Some(champion_now) = runtime.champions.iter().find(|champion| champion.id == candidate.champion_id) else {
+            continue;
+        };
+
+        session.telemetry.last_tick_by_key.insert(telemetry_key.clone(), now_tick);
+        session.telemetry.last_decision_by_key.insert(telemetry_key, candidate.decision);
+
+        let pending = PendingTelemetryOutcome {
+            due_tick: now_tick.saturating_add(session.telemetry.config.outcome_window_ticks.max(1)),
+            session_id: session.id.clone(),
+            seed: session.seed.clone(),
+            sampled_tick: now_tick,
+            sampled_at_sec: runtime.time_sec,
+            champion_id: candidate.champion_id,
+            enemy_id: candidate.enemy_id,
+            team: candidate.team,
+            role: candidate.role,
+            lane: candidate.lane,
+            ai_mode: candidate.ai_mode.as_str().to_string(),
+            intent: candidate.intent,
+            decision: candidate.decision,
+            rule_decision: candidate.rule_decision,
+            confidence: candidate.confidence,
+            flipped_by_hybrid: candidate.flipped_by_hybrid,
+            hp_ratio: candidate.hp_ratio,
+            enemy_hp_ratio: candidate.enemy_hp_ratio,
+            ally_champions_local: candidate.ally_champions_local,
+            enemy_champions_local: candidate.enemy_champions_local,
+            ally_minions_local: candidate.ally_minions_local,
+            enemy_minions_local: candidate.enemy_minions_local,
+            nearest_enemy_tower_distance: candidate.nearest_enemy_tower_distance,
+            enemy_overextended: candidate.enemy_overextended,
+            objective_danger: candidate.objective_danger,
+            gold: candidate.gold,
+            xp: candidate.xp,
+            level: candidate.level,
+            force_disengage_guardrail: candidate.force_disengage_guardrail,
+            lane_context_guardrail: candidate.lane_context_guardrail,
+            base_hp_ratio: ratio_or_zero(champion_now.hp, champion_now.max_hp),
+            base_deaths: champion_now.deaths,
+            base_kills_assists: champion_now.kills + champion_now.assists,
+            base_lane_progress: lane_progress_for_champion(champion_now),
+        };
+        session.telemetry.pending.push(pending);
+    }
+
+    if pending_to_write.is_empty() {
+        return;
+    }
+
+    let Some(output_path) = session.telemetry.output_path.as_ref() else {
+        return;
+    };
+
+    if let Some(parent) = output_path.parent() {
+        let _ = create_dir_all(parent);
+    }
+
+    let mut file = match OpenOptions::new().create(true).append(true).open(output_path) {
+        Ok(file) => file,
+        Err(err) => {
+            log_event(
+                runtime,
+                &format!("[telemetry] failed to open output file: {}", err),
+                "info",
+            );
+            return;
+        }
+    };
+
+    for line in pending_to_write {
+        let serialized = match serde_json::to_string(&line) {
+            Ok(value) => value,
+            Err(_) => continue,
+        };
+        if writeln!(file, "{}", serialized).is_err() {
+            log_event(runtime, "[telemetry] failed to append telemetry line", "info");
+            return;
+        }
+    }
+}
+
+fn ratio_or_zero(value: f64, max: f64) -> f64 {
+    if max <= 0.0 {
+        0.0
+    } else {
+        clamp(value / max, 0.0, 1.0)
+    }
+}
+
+fn lane_progress_for_champion(champion: &ChampionRuntime) -> f64 {
+    let path = lane_path_for(&champion.team, &champion.lane);
+    if path.len() < 2 {
+        return 0.0;
+    }
+    let idx = closest_lane_path_index(champion.pos, &path);
+    idx as f64 / (path.len().saturating_sub(1)) as f64
+}
+
 fn default_runtime_state() -> Value {
     json!({
         "timeSec": 0.0,
         "running": true,
         "speed": 1.0,
+        "aiMode": "hybrid",
         "winner": Value::Null,
         "showWalls": false,
         "champions": [],
@@ -291,6 +681,9 @@ fn ensure_runtime_state_defaults(state: &mut Value) {
     }
     if !root.contains_key("speed") {
         root.insert("speed".to_string(), json!(1.0));
+    }
+    if !root.contains_key("aiMode") {
+        root.insert("aiMode".to_string(), json!("hybrid"));
     }
     if !root.contains_key("winner") {
         root.insert("winner".to_string(), Value::Null);
@@ -357,6 +750,10 @@ struct RuntimeState {
     time_sec: f64,
     running: bool,
     speed: f64,
+    #[serde(default)]
+    ai_mode: SimulatorAiMode,
+    #[serde(default, skip)]
+    policy: SimulatorPolicyConfig,
     winner: Option<String>,
     show_walls: bool,
     champions: Vec<ChampionRuntime>,
@@ -368,9 +765,78 @@ struct RuntimeState {
     events: Vec<RuntimeEvent>,
     #[serde(default, skip)]
     lane_combat_state_by_champion: HashMap<String, LanerCombatStateRuntime>,
+    #[serde(default, skip)]
+    telemetry_decisions: Vec<TelemetryDecisionCandidate>,
     #[serde(default)]
     #[serde(flatten)]
     extra: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone)]
+struct TelemetryDecisionCandidate {
+    champion_id: String,
+    team: String,
+    role: String,
+    lane: String,
+    enemy_id: String,
+    ai_mode: SimulatorAiMode,
+    intent: String,
+    decision: bool,
+    rule_decision: bool,
+    confidence: f64,
+    flipped_by_hybrid: bool,
+    hp_ratio: f64,
+    enemy_hp_ratio: f64,
+    ally_champions_local: usize,
+    enemy_champions_local: usize,
+    ally_minions_local: usize,
+    enemy_minions_local: usize,
+    nearest_enemy_tower_distance: f64,
+    enemy_overextended: bool,
+    objective_danger: f64,
+    gold: i64,
+    xp: i64,
+    level: i64,
+    force_disengage_guardrail: bool,
+    lane_context_guardrail: bool,
+}
+
+#[derive(Debug, Clone)]
+struct PendingTelemetryOutcome {
+    due_tick: u64,
+    session_id: String,
+    seed: String,
+    sampled_tick: u64,
+    sampled_at_sec: f64,
+    champion_id: String,
+    enemy_id: String,
+    team: String,
+    role: String,
+    lane: String,
+    ai_mode: String,
+    intent: String,
+    decision: bool,
+    rule_decision: bool,
+    confidence: f64,
+    flipped_by_hybrid: bool,
+    hp_ratio: f64,
+    enemy_hp_ratio: f64,
+    ally_champions_local: usize,
+    enemy_champions_local: usize,
+    ally_minions_local: usize,
+    enemy_minions_local: usize,
+    nearest_enemy_tower_distance: f64,
+    enemy_overextended: bool,
+    objective_danger: f64,
+    gold: i64,
+    xp: i64,
+    level: i64,
+    force_disengage_guardrail: bool,
+    lane_context_guardrail: bool,
+    base_hp_ratio: f64,
+    base_deaths: i64,
+    base_kills_assists: i64,
+    base_lane_progress: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -426,6 +892,8 @@ struct ChampionRuntime {
     gold: i64,
     xp: i64,
     level: i64,
+    #[serde(default)]
+    items: Vec<String>,
     last_damaged_by_champion_id: Option<String>,
     last_damaged_at: f64,
     state: String,
@@ -499,6 +967,14 @@ struct NeutralTimerTemplate {
     combat_grace_until: Option<f64>,
     unlocked: bool,
     pos: Vec2,
+}
+
+#[derive(Clone, Copy)]
+struct ItemTemplate {
+    key: &'static str,
+    cost: i64,
+    attack_damage: f64,
+    max_hp: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -650,7 +1126,6 @@ const RECALL_CHANNEL_SEC: f64 = 6.5;
 const RECALL_REACH_BUFFER_SEC: f64 = 0.8;
 const RECALL_SAFE_ENEMY_RADIUS: f64 = 0.2;
 const LANE_CHAMPION_TRADE_RADIUS: f64 = 0.19;
-const LANE_CHASE_LEASH_RADIUS: f64 = 0.11;
 const LANE_REENGAGE_COOLDOWN_SEC: f64 = 2.8;
 const LANE_RECENT_TRADE_LOCK_SEC: f64 = 1.7;
 const TRADE_HP_DISADVANTAGE_ALLOWANCE: f64 = 0.2;
@@ -663,11 +1138,30 @@ const LANE_STRUCTURE_PRESSURE_RADIUS: f64 = 0.12;
 const LANE_HEALTHY_RETREAT_HP_RATIO: f64 = 0.6;
 const LANE_STRONG_UNFAVORABLE_PRESSURE_DELTA: f64 = 0.7;
 const LANE_EMPTY_ANCHOR_PROGRESS_MAX_INDEX: usize = 4;
-const TRADE_RETREAT_HP_RATIO: f64 = 0.36;
+const HYBRID_TRADE_DEBUG_LOG_COOLDOWN_SEC: f64 = 8.0;
+const TRADE_SCORE_WEIGHT_BIAS: f64 = -0.18;
+const TRADE_SCORE_WEIGHT_SELF_HP: f64 = 1.55;
+const TRADE_SCORE_WEIGHT_ENEMY_HP: f64 = -1.45;
+const TRADE_SCORE_WEIGHT_CHAMP_NUMBERS: f64 = 0.62;
+const TRADE_SCORE_WEIGHT_MINION_NUMBERS: f64 = 0.38;
+const TRADE_SCORE_WEIGHT_TOWER_DISTANCE: f64 = 0.56;
+const TRADE_SCORE_WEIGHT_ENEMY_OVEREXTENDED: f64 = 0.74;
+const TRADE_SCORE_WEIGHT_FIRST_WAVE: f64 = -0.22;
 const ASSIST_RADIUS: f64 = 0.11;
 const CHAMPION_KILL_GOLD: i64 = 300;
 const CHAMPION_ASSIST_GOLD_TOTAL: i64 = 150;
 const CHAMPION_KILL_XP: i64 = 220;
+const CHAMPION_MAX_LEVEL: i64 = 18;
+const CHAMPION_LEVEL_UP_HP_GAIN: f64 = 92.0;
+const CHAMPION_LEVEL_UP_AD_GAIN: f64 = 3.8;
+const TOWER_OUTER_HP: f64 = 5000.0;
+const TOWER_INNER_HP: f64 = 3600.0;
+const TOWER_INHIB_HP: f64 = 3400.0;
+const TOWER_NEXUS_HP: f64 = 2700.0;
+const INHIBITOR_HP: f64 = 4000.0;
+const NEXUS_HP: f64 = 5500.0;
+const EARLY_TOWER_FORTIFICATION_END_AT: f64 = 14.0 * 60.0;
+const EARLY_TOWER_DAMAGE_REDUCTION: f64 = 0.45;
 const CHAMPION_ATTACK_CADENCE_SEC: f64 = 0.85;
 const TOWER_SHOT_DAMAGE: f64 = 32.0;
 const TOWER_SHOT_DAMAGE_TO_MINION: f64 = 24.0;
@@ -711,6 +1205,11 @@ const NAV_GRID_SIZE: usize = 120;
 const NAV_PATH_MIN_DIRECT_DIST: f64 = 0.012;
 const NAV_PATH_TRIVIAL_NODE_EPSILON: f64 = 0.0095;
 
+const LEVEL_XP_THRESHOLDS: [i64; 18] = [
+    0, 280, 660, 1080, 1560, 2100, 2700, 3360, 4080, 4860, 5700, 6600, 7560, 8580, 9660, 10800,
+    12000, 13260,
+];
+
 const JUNGLE_DISENGAGE_FALLBACK_ORDER_BLUE: [&str; 8] = [
     "gromp-blue",
     "blue-buff-blue",
@@ -731,6 +1230,51 @@ const JUNGLE_DISENGAGE_FALLBACK_ORDER_RED: [&str; 8] = [
     "krugs-red",
     "scuttle-bot",
     "scuttle-top",
+];
+
+const TOP_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "doran_blade", cost: 450, attack_damage: 7.0, max_hp: 80.0 },
+    ItemTemplate { key: "tiamat", cost: 1200, attack_damage: 20.0, max_hp: 0.0 },
+    ItemTemplate { key: "phage", cost: 1100, attack_damage: 15.0, max_hp: 200.0 },
+    ItemTemplate { key: "black_cleaver", cost: 3000, attack_damage: 40.0, max_hp: 400.0 },
+    ItemTemplate { key: "steraks", cost: 3100, attack_damage: 30.0, max_hp: 400.0 },
+    ItemTemplate { key: "guardian_angel", cost: 3200, attack_damage: 55.0, max_hp: 0.0 },
+];
+
+const JGL_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "jungle_companion", cost: 450, attack_damage: 6.0, max_hp: 60.0 },
+    ItemTemplate { key: "caulfields", cost: 1100, attack_damage: 25.0, max_hp: 0.0 },
+    ItemTemplate { key: "eclipse", cost: 2800, attack_damage: 60.0, max_hp: 0.0 },
+    ItemTemplate { key: "black_cleaver", cost: 3000, attack_damage: 40.0, max_hp: 400.0 },
+    ItemTemplate { key: "maw", cost: 2900, attack_damage: 50.0, max_hp: 0.0 },
+    ItemTemplate { key: "guardian_angel", cost: 3200, attack_damage: 55.0, max_hp: 0.0 },
+];
+
+const MID_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "dorans_ring", cost: 400, attack_damage: 6.0, max_hp: 70.0 },
+    ItemTemplate { key: "lost_chapter", cost: 1100, attack_damage: 12.0, max_hp: 0.0 },
+    ItemTemplate { key: "ludens", cost: 2900, attack_damage: 35.0, max_hp: 0.0 },
+    ItemTemplate { key: "shadowflame", cost: 3200, attack_damage: 30.0, max_hp: 0.0 },
+    ItemTemplate { key: "zhonyas", cost: 3250, attack_damage: 20.0, max_hp: 0.0 },
+    ItemTemplate { key: "rabadons", cost: 3600, attack_damage: 45.0, max_hp: 0.0 },
+];
+
+const ADC_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "dorans_blade", cost: 450, attack_damage: 7.0, max_hp: 80.0 },
+    ItemTemplate { key: "noonquiver", cost: 1300, attack_damage: 30.0, max_hp: 0.0 },
+    ItemTemplate { key: "kraken", cost: 3000, attack_damage: 40.0, max_hp: 0.0 },
+    ItemTemplate { key: "phantom_dancer", cost: 2800, attack_damage: 22.0, max_hp: 0.0 },
+    ItemTemplate { key: "infinity_edge", cost: 3400, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "lord_dominiks", cost: 3000, attack_damage: 40.0, max_hp: 0.0 },
+];
+
+const SUP_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "world_atlas", cost: 400, attack_damage: 3.0, max_hp: 100.0 },
+    ItemTemplate { key: "kindlegem", cost: 800, attack_damage: 0.0, max_hp: 200.0 },
+    ItemTemplate { key: "locket", cost: 2200, attack_damage: 0.0, max_hp: 300.0 },
+    ItemTemplate { key: "redemption", cost: 2300, attack_damage: 0.0, max_hp: 250.0 },
+    ItemTemplate { key: "zekes", cost: 2400, attack_damage: 0.0, max_hp: 350.0 },
+    ItemTemplate { key: "knights_vow", cost: 2300, attack_damage: 0.0, max_hp: 350.0 },
 ];
 
 const LANE_PATH_TOP_BLUE: [Vec2; 11] = [
@@ -776,6 +1320,7 @@ fn create_initial_state(
     snapshot: &Value,
     champion_by_player_id: &HashMap<String, String>,
     champion_profiles_by_id: &HashMap<String, LolChampionCombatProfileInput>,
+    ai_mode: SimulatorAiMode,
 ) -> Value {
     // TODO(parity-chunk-b): port movement, wave spawn/advance, and combat systems from TS simulation.ts.
     let champions = create_champions(seed, snapshot, champion_by_player_id, champion_profiles_by_id);
@@ -786,6 +1331,7 @@ fn create_initial_state(
         "timeSec": 0.0,
         "running": true,
         "speed": 1.0,
+        "aiMode": ai_mode.as_str(),
         "winner": Value::Null,
         "champions": champions,
         "minions": [],
@@ -891,6 +1437,7 @@ fn seed_team(
             "gold": 500,
             "xp": 0,
             "level": 1,
+            "items": [],
             "lastDamagedByChampionId": Value::Null,
             "lastDamagedAt": -999.0,
             "state": "lane",
@@ -904,11 +1451,7 @@ fn create_structures() -> Vec<Value> {
     STRUCTURE_LAYOUT
         .iter()
         .map(|s| {
-            let hp = match s.kind {
-                "nexus" => 2300.0,
-                "inhib" => 1500.0,
-                _ => 1400.0,
-            };
+            let hp = structure_base_hp(s);
             json!({
                 "id": s.id,
                 "team": s.team,
@@ -924,6 +1467,25 @@ fn create_structures() -> Vec<Value> {
             })
         })
         .collect()
+}
+
+fn structure_base_hp(seed: &StructureSeed) -> f64 {
+    match seed.kind {
+        "nexus" => NEXUS_HP,
+        "inhib" => INHIBITOR_HP,
+        "tower" => {
+            if seed.id.contains("nexus") {
+                TOWER_NEXUS_HP
+            } else if seed.id.contains("inhib") {
+                TOWER_INHIB_HP
+            } else if seed.id.contains("inner") {
+                TOWER_INNER_HP
+            } else {
+                TOWER_OUTER_HP
+            }
+        }
+        _ => TOWER_OUTER_HP,
+    }
 }
 
 fn build_neutral_timers_state() -> Value {
@@ -2009,6 +2571,218 @@ fn lane_recent_trade_lock_active(
         .unwrap_or(false)
 }
 
+#[derive(Debug, Clone, Copy)]
+struct TradeConfidenceFeatures {
+    self_hp_ratio: f64,
+    enemy_hp_ratio: f64,
+    ally_champions_local: usize,
+    enemy_champions_local: usize,
+    ally_minions_local: usize,
+    enemy_minions_local: usize,
+    nearest_enemy_tower_distance: f64,
+    enemy_overextended: bool,
+    first_wave_window: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TradeDecisionEvaluation {
+    decision: bool,
+    rule_decision: bool,
+    confidence: f64,
+    flipped_by_hybrid: bool,
+}
+
+fn sigmoid(x: f64) -> f64 {
+    1.0 / (1.0 + (-x).exp())
+}
+
+fn clamp_ratio_01(value: f64) -> f64 {
+    clamp(value, 0.0, 1.0)
+}
+
+fn nearest_enemy_lane_tower_distance(
+    champion: &ChampionRuntime,
+    target_pos: Vec2,
+    structures: &[StructureRuntime],
+) -> f64 {
+    structures
+        .iter()
+        .filter(|structure| {
+            structure.alive
+                && structure.kind == "tower"
+                && normalized_team(&structure.team) != normalized_team(&champion.team)
+                && normalized_lane(&structure.lane) == normalized_lane(&champion.lane)
+        })
+        .map(|tower| dist(tower.pos, target_pos))
+        .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+        .unwrap_or(0.4)
+}
+
+fn enemy_overextended_in_lane(champion: &ChampionRuntime, enemy: &ChampionRuntime) -> bool {
+    let lane_path = lane_path_for(&champion.team, &champion.lane);
+    if lane_path.len() < 2 {
+        return false;
+    }
+    let enemy_idx = closest_lane_path_index(enemy.pos, &lane_path);
+    let overextended_max_idx = lane_path.len().saturating_sub(1).min(2);
+    enemy_idx <= overextended_max_idx
+}
+
+fn trade_confidence_score(features: TradeConfidenceFeatures) -> f64 {
+    let champion_numbers = clamp_ratio_01(
+        (features.ally_champions_local as f64 - features.enemy_champions_local as f64 + 2.0) / 4.0,
+    );
+    let minion_numbers = clamp_ratio_01(
+        (features.ally_minions_local as f64 - features.enemy_minions_local as f64 + 5.0) / 10.0,
+    );
+    let enemy_tower_distance_norm = clamp_ratio_01(features.nearest_enemy_tower_distance / 0.18);
+    let enemy_overextended = if features.enemy_overextended { 1.0 } else { 0.0 };
+    let first_wave_window = if features.first_wave_window { 1.0 } else { 0.0 };
+
+    let logit = TRADE_SCORE_WEIGHT_BIAS
+        + TRADE_SCORE_WEIGHT_SELF_HP * clamp_ratio_01(features.self_hp_ratio)
+        + TRADE_SCORE_WEIGHT_ENEMY_HP * clamp_ratio_01(features.enemy_hp_ratio)
+        + TRADE_SCORE_WEIGHT_CHAMP_NUMBERS * champion_numbers
+        + TRADE_SCORE_WEIGHT_MINION_NUMBERS * minion_numbers
+        + TRADE_SCORE_WEIGHT_TOWER_DISTANCE * enemy_tower_distance_norm
+        + TRADE_SCORE_WEIGHT_ENEMY_OVEREXTENDED * enemy_overextended
+        + TRADE_SCORE_WEIGHT_FIRST_WAVE * first_wave_window;
+
+    clamp_ratio_01(sigmoid(logit))
+}
+
+fn trade_confidence_features(
+    champion: &ChampionRuntime,
+    enemy: &ChampionRuntime,
+    now: f64,
+    champions: &[ChampionRuntime],
+    minions: &[MinionRuntime],
+    structures: &[StructureRuntime],
+) -> TradeConfidenceFeatures {
+    let self_hp_ratio = if champion.max_hp <= 0.0 {
+        1.0
+    } else {
+        champion.hp / champion.max_hp
+    };
+    let enemy_hp_ratio = if enemy.max_hp <= 0.0 {
+        1.0
+    } else {
+        enemy.hp / enemy.max_hp
+    };
+
+    let pressure = lane_pressure_at(champion, enemy.pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let nearest_enemy_tower_distance = nearest_enemy_lane_tower_distance(champion, enemy.pos, structures);
+
+    TradeConfidenceFeatures {
+        self_hp_ratio,
+        enemy_hp_ratio,
+        ally_champions_local: pressure.ally_champions,
+        enemy_champions_local: pressure.enemy_champions,
+        ally_minions_local: pressure.ally_lane_minions,
+        enemy_minions_local: pressure.enemy_lane_minions,
+        nearest_enemy_tower_distance,
+        enemy_overextended: enemy_overextended_in_lane(champion, enemy),
+        first_wave_window: is_first_wave_contest_active(champion, now),
+    }
+}
+
+fn maybe_log_hybrid_trade_flip(
+    runtime: &mut RuntimeState,
+    champion: &ChampionRuntime,
+    decision_kind: &str,
+    confidence: f64,
+    rule_decision: bool,
+    hybrid_decision: bool,
+) {
+    if runtime.ai_mode != SimulatorAiMode::Hybrid || rule_decision == hybrid_decision {
+        return;
+    }
+
+    let state = lane_combat_state_mut(&mut runtime.lane_combat_state_by_champion, &champion.id);
+    if runtime.time_sec < state.last_ai_debug_at + HYBRID_TRADE_DEBUG_LOG_COOLDOWN_SEC {
+        return;
+    }
+    state.last_ai_debug_at = runtime.time_sec;
+
+    log_event(
+        runtime,
+        &format!(
+            "[ai-hybrid] {} {} flip: {} -> {} (score={:.2})",
+            champion.name,
+            decision_kind,
+            if rule_decision { "rules-open" } else { "rules-close" },
+            if hybrid_decision { "hybrid-open" } else { "hybrid-close" },
+            confidence
+        ),
+        "info",
+    );
+}
+
+fn capture_trade_decision_candidate(
+    runtime: &mut RuntimeState,
+    champion: &ChampionRuntime,
+    enemy: &ChampionRuntime,
+    eval: TradeDecisionEvaluation,
+    intent: &str,
+) {
+    let pressure = lane_pressure_at(champion, enemy.pos, &runtime.champions, &runtime.minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let self_hp_ratio = ratio_or_zero(champion.hp, champion.max_hp);
+    let enemy_hp_ratio = ratio_or_zero(enemy.hp, enemy.max_hp);
+    let nearest_enemy_tower_distance = nearest_enemy_lane_tower_distance(champion, enemy.pos, &runtime.structures);
+    let objective_danger = 1.0 - clamp_ratio_01(nearest_enemy_tower_distance / 0.18);
+    let force_disengage_guardrail = should_force_laner_disengage(
+        champion,
+        enemy.pos,
+        Some(enemy),
+        &runtime.champions,
+        &runtime.minions,
+        &runtime.structures,
+    );
+    let lane_context_guardrail = in_lane_trade_context(
+        champion,
+        enemy.pos,
+        true,
+        &runtime.champions,
+        &runtime.minions,
+        &runtime.structures,
+    ) && in_lane_trade_context(
+        champion,
+        champion.pos,
+        false,
+        &runtime.champions,
+        &runtime.minions,
+        &runtime.structures,
+    );
+
+    runtime.telemetry_decisions.push(TelemetryDecisionCandidate {
+        champion_id: champion.id.clone(),
+        enemy_id: enemy.id.clone(),
+        team: champion.team.clone(),
+        role: champion.role.clone(),
+        lane: champion.lane.clone(),
+        ai_mode: runtime.ai_mode,
+        intent: intent.to_string(),
+        decision: eval.decision,
+        rule_decision: eval.rule_decision,
+        confidence: eval.confidence,
+        flipped_by_hybrid: eval.flipped_by_hybrid,
+        hp_ratio: self_hp_ratio,
+        enemy_hp_ratio,
+        ally_champions_local: pressure.ally_champions,
+        enemy_champions_local: pressure.enemy_champions,
+        ally_minions_local: pressure.ally_lane_minions,
+        enemy_minions_local: pressure.enemy_lane_minions,
+        nearest_enemy_tower_distance,
+        enemy_overextended: enemy_overextended_in_lane(champion, enemy),
+        objective_danger,
+        gold: champion.gold,
+        xp: champion.xp,
+        level: champion.level,
+        force_disengage_guardrail,
+        lane_context_guardrail,
+    });
+}
+
 fn should_commit_all_in_trade(
     champion: &ChampionRuntime,
     enemy: &ChampionRuntime,
@@ -2042,7 +2816,7 @@ fn should_commit_all_in_trade(
     pressure.ally_score >= pressure.enemy_score + 0.9 && self_hp >= enemy_hp
 }
 
-fn can_open_trade_window(
+fn evaluate_open_trade_window(
     champion: &ChampionRuntime,
     enemy: &ChampionRuntime,
     now: f64,
@@ -2050,28 +2824,60 @@ fn can_open_trade_window(
     minions: &[MinionRuntime],
     structures: &[StructureRuntime],
     lane_combat_state_by_champion: &HashMap<String, LanerCombatStateRuntime>,
-) -> bool {
+    ai_mode: SimulatorAiMode,
+    policy: &SimulatorPolicyConfig,
+) -> TradeDecisionEvaluation {
     if champion.role == "JGL" {
-        return true;
+        return TradeDecisionEvaluation {
+            decision: true,
+            rule_decision: true,
+            confidence: 1.0,
+            flipped_by_hybrid: false,
+        };
     }
     if dist(champion.pos, enemy.pos) > LANE_CHAMPION_TRADE_RADIUS {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
     if !in_lane_trade_context(champion, champion.pos, false, champions, minions, structures) {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
     if !in_lane_trade_context(champion, enemy.pos, true, champions, minions, structures) {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
     if should_force_laner_disengage(champion, enemy.pos, Some(enemy), champions, minions, structures) {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
     let clear_win_condition = should_commit_all_in_trade(champion, enemy, champions, minions);
     if (lane_trade_cooldown_active(champion, now, lane_combat_state_by_champion)
         || lane_recent_trade_lock_active(champion, now, lane_combat_state_by_champion))
         && !clear_win_condition
     {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
 
     let hp_ratio = if champion.max_hp <= 0.0 {
@@ -2088,7 +2894,12 @@ fn can_open_trade_window(
     let pressure = lane_pressure_at(champion, enemy.pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
     let numbers_advantage = pressure.ally_champions > pressure.enemy_champions;
     if numbers_advantage && hp_ratio + 0.02 >= enemy_hp_ratio && hp_ratio >= 0.32 {
-        return true;
+        return TradeDecisionEvaluation {
+            decision: true,
+            rule_decision: true,
+            confidence: 1.0,
+            flipped_by_hybrid: false,
+        };
     }
 
     let ally_minions_near_fight = minions
@@ -2112,40 +2923,118 @@ fn can_open_trade_window(
 
     let total_wave_context = ally_minions_near_fight + enemy_minions_near_fight;
     if total_wave_context < 1 {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
     if is_first_wave_contest_active(champion, now)
         && (ally_minions_near_fight < 2 || enemy_minions_near_fight < 2)
     {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
     if ally_minions_near_fight == 0 {
         let low_enemy_window = enemy_hp_ratio <= 0.34;
         let hp_safe_to_trade = hp_ratio >= 0.5;
         if !(low_enemy_window && hp_safe_to_trade) {
-            return false;
+            return TradeDecisionEvaluation {
+                decision: false,
+                rule_decision: false,
+                confidence: 0.0,
+                flipped_by_hybrid: false,
+            };
         }
     }
 
     let hp_advantage = hp_ratio + 0.08 >= enemy_hp_ratio;
     let wave_pressure = pressure.ally_lane_minions >= pressure.enemy_lane_minions;
     let score_pressure = pressure.ally_score >= pressure.enemy_score - 0.05;
-    hp_advantage && wave_pressure && score_pressure
+    let rule_decision = hp_advantage && wave_pressure && score_pressure;
+
+    if ai_mode != SimulatorAiMode::Hybrid {
+        return TradeDecisionEvaluation {
+            decision: rule_decision,
+            rule_decision,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
+    }
+
+    let features = trade_confidence_features(champion, enemy, now, champions, minions, structures);
+    let confidence = trade_confidence_score(features);
+    let hp_gap = enemy_hp_ratio - (hp_ratio + 0.08);
+    let wave_gap = pressure.enemy_lane_minions as i64 - pressure.ally_lane_minions as i64;
+    let score_gap = pressure.enemy_score - (pressure.ally_score + 0.05);
+    let borderline_reject = !rule_decision && hp_gap <= 0.05 && wave_gap <= 1 && score_gap <= 0.2;
+    let hybrid_decision =
+        rule_decision || (borderline_reject && confidence >= policy.hybrid_open_trade_confidence_high);
+
+    TradeDecisionEvaluation {
+        decision: hybrid_decision,
+        rule_decision,
+        confidence,
+        flipped_by_hybrid: hybrid_decision != rule_decision,
+    }
 }
 
-fn should_disengage_champion_trade(
+fn can_open_trade_window(
     champion: &ChampionRuntime,
     enemy: &ChampionRuntime,
+    now: f64,
     champions: &[ChampionRuntime],
     minions: &[MinionRuntime],
     structures: &[StructureRuntime],
+    lane_combat_state_by_champion: &HashMap<String, LanerCombatStateRuntime>,
+    ai_mode: SimulatorAiMode,
+    policy: &SimulatorPolicyConfig,
 ) -> bool {
+    evaluate_open_trade_window(
+        champion,
+        enemy,
+        now,
+        champions,
+        minions,
+        structures,
+        lane_combat_state_by_champion,
+        ai_mode,
+        policy,
+    )
+    .decision
+}
+
+fn evaluate_disengage_champion_trade(
+    champion: &ChampionRuntime,
+    enemy: &ChampionRuntime,
+    now: f64,
+    champions: &[ChampionRuntime],
+    minions: &[MinionRuntime],
+    structures: &[StructureRuntime],
+    ai_mode: SimulatorAiMode,
+    policy: &SimulatorPolicyConfig,
+) -> TradeDecisionEvaluation {
     if champion.role == "JGL" {
-        return false;
+        return TradeDecisionEvaluation {
+            decision: false,
+            rule_decision: false,
+            confidence: 1.0,
+            flipped_by_hybrid: false,
+        };
     }
 
     if should_force_laner_disengage(champion, enemy.pos, Some(enemy), champions, minions, structures) {
-        return true;
+        return TradeDecisionEvaluation {
+            decision: true,
+            rule_decision: true,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
 
     let self_hp_ratio = if champion.max_hp <= 0.0 {
@@ -2158,11 +3047,21 @@ fn should_disengage_champion_trade(
     } else {
         enemy.hp / enemy.max_hp
     };
-    if self_hp_ratio < TRADE_RETREAT_HP_RATIO {
-        return true;
+    if self_hp_ratio < policy.trade_retreat_hp_ratio {
+        return TradeDecisionEvaluation {
+            decision: true,
+            rule_decision: true,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
-    if self_hp_ratio + TRADE_HP_DISADVANTAGE_ALLOWANCE < enemy_hp_ratio {
-        return true;
+    if self_hp_ratio + policy.trade_hp_disadvantage_allowance < enemy_hp_ratio {
+        return TradeDecisionEvaluation {
+            decision: true,
+            rule_decision: true,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
 
     let ally_champions = champions
@@ -2203,11 +3102,57 @@ fn should_disengage_champion_trade(
     let allied_pressure = ally_champions as f64 + ally_lane_minions as f64 * 0.5;
     let enemy_pressure = enemy_champions as f64 + enemy_lane_minions as f64 * 0.5;
     if enemy_pressure > allied_pressure + 0.7 {
-        return true;
+        return TradeDecisionEvaluation {
+            decision: true,
+            rule_decision: true,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
     }
 
     let lane_anchor = lane_anchor_pos(champion, minions, structures);
-    dist(enemy.pos, lane_anchor) > LANE_CHASE_LEASH_RADIUS && enemy_pressure >= allied_pressure
+    let rule_decision =
+        dist(enemy.pos, lane_anchor) > policy.lane_chase_leash_radius && enemy_pressure >= allied_pressure;
+    if ai_mode != SimulatorAiMode::Hybrid {
+        return TradeDecisionEvaluation {
+            decision: rule_decision,
+            rule_decision,
+            confidence: 0.0,
+            flipped_by_hybrid: false,
+        };
+    }
+
+    let features = trade_confidence_features(champion, enemy, now, champions, minions, structures);
+    let confidence = trade_confidence_score(features);
+    let pressure_margin = enemy_pressure - (allied_pressure + 0.7);
+    let hp_margin = (self_hp_ratio + policy.trade_hp_disadvantage_allowance) - enemy_hp_ratio;
+    let leash_margin = dist(enemy.pos, lane_anchor) - policy.lane_chase_leash_radius;
+    let borderline_risk = !rule_decision
+        && (pressure_margin > -0.35 || hp_margin < 0.08 || leash_margin > -0.015)
+        && (self_hp_ratio < policy.trade_retreat_hp_ratio + 0.12);
+    let hybrid_decision =
+        rule_decision || (borderline_risk && confidence <= policy.hybrid_disengage_confidence_low);
+
+    TradeDecisionEvaluation {
+        decision: hybrid_decision,
+        rule_decision,
+        confidence,
+        flipped_by_hybrid: hybrid_decision != rule_decision,
+    }
+}
+
+fn should_disengage_champion_trade(
+    champion: &ChampionRuntime,
+    enemy: &ChampionRuntime,
+    now: f64,
+    champions: &[ChampionRuntime],
+    minions: &[MinionRuntime],
+    structures: &[StructureRuntime],
+    ai_mode: SimulatorAiMode,
+    policy: &SimulatorPolicyConfig,
+) -> bool {
+    evaluate_disengage_champion_trade(champion, enemy, now, champions, minions, structures, ai_mode, policy)
+        .decision
 }
 
 fn lane_farm_anchor_pos_v2(
@@ -3016,18 +3961,6 @@ fn pick_macro_objective_pos(
         "dragon",
         "scuttle-top",
         "scuttle-bot",
-        "blue-buff-blue",
-        "blue-buff-red",
-        "red-buff-blue",
-        "red-buff-red",
-        "wolves-blue",
-        "wolves-red",
-        "raptors-blue",
-        "raptors-red",
-        "gromp-blue",
-        "gromp-red",
-        "krugs-blue",
-        "krugs-red",
     ] {
         let Some(timer) = neutral_timers.entities.get(key) else {
             continue;
@@ -3045,7 +3978,58 @@ fn pick_macro_objective_pos(
         }
     }
 
+    for key in jungler_macro_jungle_priority_for_team(&champion.team) {
+        let Some(timer) = neutral_timers.entities.get(*key) else {
+            continue;
+        };
+        if !timer.unlocked {
+            continue;
+        }
+        if timer.alive {
+            return Some(timer.pos);
+        }
+        if let Some(next_spawn_at) = timer.next_spawn_at {
+            if next_spawn_at >= now && next_spawn_at - now <= objective_lead_time {
+                return Some(timer.pos);
+            }
+        }
+    }
+
     None
+}
+
+fn jungler_macro_jungle_priority_for_team(team: &str) -> &'static [&'static str; 12] {
+    if normalized_team(team) == "red" {
+        &[
+            "blue-buff-red",
+            "red-buff-red",
+            "wolves-red",
+            "raptors-red",
+            "gromp-red",
+            "krugs-red",
+            "blue-buff-blue",
+            "red-buff-blue",
+            "wolves-blue",
+            "raptors-blue",
+            "gromp-blue",
+            "krugs-blue",
+        ]
+    } else {
+        &[
+            "blue-buff-blue",
+            "red-buff-blue",
+            "wolves-blue",
+            "raptors-blue",
+            "gromp-blue",
+            "krugs-blue",
+            "blue-buff-red",
+            "red-buff-red",
+            "wolves-red",
+            "raptors-red",
+            "gromp-red",
+            "krugs-red",
+        ]
+    }
 }
 
 fn minion_stats(kind: &str) -> (f64, f64, f64, f64) {
@@ -3333,18 +4317,16 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
         );
 
         if let Some(structure_idx) = enemy_structure {
-            if !runtime.structures[structure_idx].alive {
+            if !runtime.structures[structure_idx].alive
+                || !is_structure_targetable(&runtime.structures, &runtime.minions[i].team, &runtime.structures[structure_idx])
+            {
                 continue;
             }
 
             let attacker_team = runtime.minions[i].team.clone();
             let damage = runtime.minions[i].attack_damage;
-            runtime.structures[structure_idx].hp -= damage;
+            apply_damage_to_structure(runtime, structure_idx, damage, &attacker_team);
             runtime.minions[i].attack_cd_until = now + cadence;
-
-            if runtime.structures[structure_idx].hp <= 0.0 {
-                destroy_structure(runtime, structure_idx, &attacker_team);
-            }
             continue;
         }
 
@@ -3528,6 +4510,8 @@ fn has_credible_kill_chance(
             &runtime.minions,
             &runtime.structures,
             &runtime.lane_combat_state_by_champion,
+            runtime.ai_mode,
+            &runtime.policy,
         )
     {
         return false;
@@ -3711,6 +4695,8 @@ fn pick_combat_target(
                     &runtime.minions,
                     &runtime.structures,
                     &runtime.lane_combat_state_by_champion,
+                    runtime.ai_mode,
+                    &runtime.policy,
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -3746,6 +4732,8 @@ fn pick_combat_target(
                     &runtime.minions,
                     &runtime.structures,
                     &runtime.lane_combat_state_by_champion,
+                    runtime.ai_mode,
+                    &runtime.policy,
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -3817,6 +4805,8 @@ fn pick_combat_target(
                     &runtime.minions,
                     &runtime.structures,
                     &runtime.lane_combat_state_by_champion,
+                    runtime.ai_mode,
+                    &runtime.policy,
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -3868,7 +4858,8 @@ fn pick_combat_target(
             if !(s.alive
                 && normalized_team(&s.team) == enemy_team
                 && (normalized_lane(&s.lane) == normalized_lane(&champion.lane) || s.kind == "nexus")
-                && dist(champion.pos, s.pos) <= LANE_STRUCTURE_PRESSURE_RADIUS)
+                && dist(champion.pos, s.pos) <= LANE_STRUCTURE_PRESSURE_RADIUS
+                && is_structure_targetable(&runtime.structures, &champion.team, s))
             {
                 return false;
             }
@@ -3919,6 +4910,7 @@ fn pick_combat_target(
             if !s.alive
                 || normalized_team(&s.team) != enemy_team
                 || !(normalized_lane(&s.lane) == normalized_lane(&champion.lane) || s.kind == "nexus")
+                || !is_structure_targetable(&runtime.structures, &champion.team, s)
             {
                 return false;
             }
@@ -3993,6 +4985,8 @@ fn pick_combat_target(
                     &runtime.minions,
                     &runtime.structures,
                     &runtime.lane_combat_state_by_champion,
+                    runtime.ai_mode,
+                    &runtime.policy,
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -4270,7 +5264,8 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                 let target_snapshot = runtime.champions[champion_idx].clone();
 
                 if attacker_snapshot.role != "JGL"
-                    && !can_open_trade_window(
+                {
+                    let open_eval = evaluate_open_trade_window(
                         &attacker_snapshot,
                         &target_snapshot,
                         now,
@@ -4278,19 +5273,61 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                         &runtime.minions,
                         &runtime.structures,
                         &runtime.lane_combat_state_by_champion,
-                    )
-                {
-                    issue_lane_disengage(runtime, idx, target_snapshot.pos);
-                    continue;
+                        runtime.ai_mode,
+                        &runtime.policy,
+                    );
+                    capture_trade_decision_candidate(
+                        runtime,
+                        &attacker_snapshot,
+                        &target_snapshot,
+                        open_eval,
+                        "open-trade",
+                    );
+                    if open_eval.flipped_by_hybrid {
+                        maybe_log_hybrid_trade_flip(
+                            runtime,
+                            &attacker_snapshot,
+                            "open-trade",
+                            open_eval.confidence,
+                            open_eval.rule_decision,
+                            open_eval.decision,
+                        );
+                    }
+                    if !open_eval.decision {
+                        issue_lane_disengage(runtime, idx, target_snapshot.pos);
+                        continue;
+                    }
                 }
 
-                if should_disengage_champion_trade(
+                let disengage_eval = evaluate_disengage_champion_trade(
                     &attacker_snapshot,
                     &target_snapshot,
+                    now,
                     &runtime.champions,
                     &runtime.minions,
                     &runtime.structures,
-                ) {
+                    runtime.ai_mode,
+                    &runtime.policy,
+                );
+                capture_trade_decision_candidate(
+                    runtime,
+                    &attacker_snapshot,
+                    &target_snapshot,
+                    disengage_eval,
+                    "disengage",
+                );
+                if disengage_eval.flipped_by_hybrid {
+                    maybe_log_hybrid_trade_flip(
+                        runtime,
+                        &attacker_snapshot,
+                        "disengage",
+                        disengage_eval.confidence,
+                        disengage_eval.rule_decision,
+                        disengage_eval.decision,
+                    );
+                }
+                if disengage_eval.decision
+                {
                     issue_lane_disengage(runtime, idx, target_snapshot.pos);
                     continue;
                 }
@@ -4334,14 +5371,14 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                 continue;
             }
             CombatTarget::Structure(structure_idx) => {
-                if structure_idx >= runtime.structures.len() || !runtime.structures[structure_idx].alive {
+                if structure_idx >= runtime.structures.len()
+                    || !runtime.structures[structure_idx].alive
+                    || !is_structure_targetable(&runtime.structures, &team, &runtime.structures[structure_idx])
+                {
                     continue;
                 }
-                runtime.structures[structure_idx].hp -= runtime.champions[idx].attack_damage;
+                apply_damage_to_structure(runtime, structure_idx, runtime.champions[idx].attack_damage, &team);
                 runtime.champions[idx].attack_cd_until = now + 0.9;
-                if runtime.structures[structure_idx].hp <= 0.0 {
-                    destroy_structure(runtime, structure_idx, &team);
-                }
             }
             CombatTarget::Neutral(neutral_key) => {
                 if attack_neutral_if_in_range(runtime, &mut neutral_timers, idx, &neutral_key) {
@@ -4725,7 +5762,7 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
         attacker.hp / attacker.max_hp
     };
 
-    if attacker.role != "JGL" && hp_ratio <= TRADE_RETREAT_HP_RATIO {
+    if attacker.role != "JGL" && hp_ratio <= runtime.policy.trade_retreat_hp_ratio {
         return false;
     }
 
@@ -4738,6 +5775,8 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
             &runtime.minions,
             &runtime.structures,
             &runtime.lane_combat_state_by_champion,
+            runtime.ai_mode,
+            &runtime.policy,
         )
     {
         return false;
@@ -4746,9 +5785,12 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
     if should_disengage_champion_trade(
         attacker,
         target,
+        runtime.time_sec,
         &runtime.champions,
         &runtime.minions,
         &runtime.structures,
+        runtime.ai_mode,
+        &runtime.policy,
     ) {
         return false;
     }
@@ -4777,7 +5819,7 @@ fn can_champion_tower_dive(runtime: &RuntimeState, attacker: &ChampionRuntime, t
     } else {
         attacker.hp / attacker.max_hp
     };
-    if attacker_hp_ratio < 0.48 {
+    if attacker_hp_ratio < runtime.policy.no_dive_hp_min {
         return false;
     }
 
@@ -4967,6 +6009,80 @@ fn apply_tower_shot_to_champion(runtime: &mut RuntimeState, structure_idx: usize
     }
 }
 
+fn champion_level_from_xp(xp: i64) -> i64 {
+    let mut level = 1_i64;
+    for (idx, threshold) in LEVEL_XP_THRESHOLDS.iter().enumerate() {
+        if xp >= *threshold {
+            level = (idx + 1) as i64;
+        } else {
+            break;
+        }
+    }
+    level.clamp(1, CHAMPION_MAX_LEVEL)
+}
+
+fn apply_level_scaling(champion: &mut ChampionRuntime) {
+    let target_level = champion_level_from_xp(champion.xp);
+    if target_level <= champion.level {
+        return;
+    }
+
+    let level_delta = target_level - champion.level;
+    champion.max_hp += CHAMPION_LEVEL_UP_HP_GAIN * level_delta as f64;
+    champion.attack_damage += CHAMPION_LEVEL_UP_AD_GAIN * level_delta as f64;
+    champion.hp = (champion.hp + CHAMPION_LEVEL_UP_HP_GAIN * level_delta as f64).min(champion.max_hp);
+    champion.level = target_level;
+}
+
+fn team_has_alive_nexus_towers(structures: &[StructureRuntime], team: &str) -> bool {
+    structures.iter().any(|structure| {
+        structure.alive
+            && normalized_team(&structure.team) == normalized_team(team)
+            && structure.kind == "tower"
+            && structure.id.contains("nexus")
+    })
+}
+
+fn is_structure_targetable(structures: &[StructureRuntime], attacker_team: &str, structure: &StructureRuntime) -> bool {
+    if !structure.alive || normalized_team(&structure.team) == normalized_team(attacker_team) {
+        return false;
+    }
+
+    if structure.kind == "nexus" {
+        return !team_has_alive_nexus_towers(structures, &structure.team);
+    }
+
+    true
+}
+
+fn tower_damage_multiplier(at_time_sec: f64, structure: &StructureRuntime) -> f64 {
+    if structure.kind == "tower" && at_time_sec < EARLY_TOWER_FORTIFICATION_END_AT {
+        1.0 - EARLY_TOWER_DAMAGE_REDUCTION
+    } else {
+        1.0
+    }
+}
+
+fn apply_damage_to_structure(runtime: &mut RuntimeState, structure_idx: usize, raw_damage: f64, attacker_team: &str) {
+    if structure_idx >= runtime.structures.len() {
+        return;
+    }
+    if !is_structure_targetable(&runtime.structures, attacker_team, &runtime.structures[structure_idx]) {
+        return;
+    }
+
+    let multiplier = tower_damage_multiplier(runtime.time_sec, &runtime.structures[structure_idx]);
+    let damage = raw_damage.max(0.0) * multiplier;
+    if damage <= 0.0 {
+        return;
+    }
+
+    runtime.structures[structure_idx].hp -= damage;
+    if runtime.structures[structure_idx].hp <= 0.0 {
+        destroy_structure(runtime, structure_idx, attacker_team);
+    }
+}
+
 fn add_gold_xp_to_champion(runtime: &mut RuntimeState, champion_id: &str, gold: i64, xp: i64) {
     if let Some(champion) = runtime
         .champions
@@ -4975,6 +6091,7 @@ fn add_gold_xp_to_champion(runtime: &mut RuntimeState, champion_id: &str, gold: 
     {
         champion.gold += gold;
         champion.xp += xp;
+        apply_level_scaling(champion);
         let team_stats = team_stats_mut(&mut runtime.stats, &champion.team);
         team_stats.gold += gold;
     }
@@ -5006,6 +6123,7 @@ fn register_minion_death(runtime: &mut RuntimeState, minion_idx: usize) {
         {
             champion.gold += gold;
             champion.xp += xp;
+            apply_level_scaling(champion);
             let team_stats = team_stats_mut(&mut runtime.stats, &champion.team);
             team_stats.gold += gold;
         }
@@ -5172,6 +6290,7 @@ fn nearest_enemy_structure_index(
             structure.alive
                 && normalized_team(&structure.team) != normalized_team(team)
                 && (normalized_lane(&structure.lane) == normalized_lane(lane) || structure.kind == "nexus")
+                && is_structure_targetable(structures, team, structure)
                 && dist(structure.pos, from) <= range
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -5229,6 +6348,61 @@ fn nearest_enemy_champion_for_structure(
         .map(|(idx, _)| idx)
 }
 
+fn role_item_plan(role: &str) -> &'static [ItemTemplate; 6] {
+    match role {
+        "TOP" => &TOP_ITEM_PLAN,
+        "JGL" => &JGL_ITEM_PLAN,
+        "MID" => &MID_ITEM_PLAN,
+        "ADC" => &ADC_ITEM_PLAN,
+        "SUP" => &SUP_ITEM_PLAN,
+        _ => &TOP_ITEM_PLAN,
+    }
+}
+
+fn try_auto_buy_items(runtime: &mut RuntimeState) {
+    for idx in 0..runtime.champions.len() {
+        let (alive, role, at_base, item_count, gold, name) = {
+            let champion = &runtime.champions[idx];
+            (
+                champion.alive,
+                champion.role.clone(),
+                dist(champion.pos, base_position_for(&champion.team)) <= 0.075,
+                champion.items.len(),
+                champion.gold,
+                champion.name.clone(),
+            )
+        };
+
+        if !alive || !at_base || item_count >= 6 {
+            continue;
+        }
+
+        let plan = role_item_plan(&role);
+        let Some(next_item) = plan.get(item_count) else {
+            continue;
+        };
+
+        if gold < next_item.cost {
+            continue;
+        }
+
+        let champion = &mut runtime.champions[idx];
+        champion.gold -= next_item.cost;
+        champion.items.push(next_item.key.to_string());
+        champion.attack_damage += next_item.attack_damage;
+        if next_item.max_hp > 0.0 {
+            champion.max_hp += next_item.max_hp;
+            champion.hp = (champion.hp + next_item.max_hp).min(champion.max_hp);
+        }
+
+        log_event(
+            runtime,
+            &format!("{} bought {}", name, next_item.key),
+            "info",
+        );
+    }
+}
+
 fn push_event(events: &mut Vec<RuntimeEvent>, at: f64, text: &str, kind: &str) {
     events.push(RuntimeEvent {
         t: at,
@@ -5258,6 +6432,8 @@ fn cleanup_tick(runtime: &mut RuntimeState) {
     runtime
         .minions
         .retain(|minion| minion.alive && minion.path_index < minion.path.len());
+
+    try_auto_buy_items(runtime);
 
     if runtime.events.len() > EVENT_CAP {
         let drain = runtime.events.len() - EVENT_CAP;
@@ -5333,6 +6509,7 @@ mod tests {
             gold: 0,
             xp: 0,
             level: 1,
+            items: Vec::new(),
             last_damaged_by_champion_id: None,
             last_damaged_at: -999.0,
             state: "lane".to_string(),
@@ -5387,6 +6564,8 @@ mod tests {
             time_sec: LANE_COMBAT_UNLOCK_AT + 1.0,
             running: true,
             speed: 1.0,
+            ai_mode: SimulatorAiMode::Rules,
+            policy: SimulatorPolicyConfig::default(),
             winner: None,
             show_walls: false,
             champions,
@@ -5412,6 +6591,7 @@ mod tests {
             },
             events: Vec::new(),
             lane_combat_state_by_champion: HashMap::new(),
+            telemetry_decisions: Vec::new(),
             extra: HashMap::new(),
         }
     }
@@ -5588,5 +6768,73 @@ mod tests {
 
         let target = pick_combat_target(&runtime, 0, runtime.time_sec, &neutral);
         assert!(!matches!(target, Some(CombatTarget::Structure(_))));
+    }
+
+    #[test]
+    fn red_jungler_macro_prefers_own_side_buffs_first() {
+        let red_jgl = test_champion("jgl-red", "red", "JGL", "bot", Vec2 { x: 0.75, y: 0.55 });
+        let blue_jgl = test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.25, y: 0.46 });
+
+        let mut entities = HashMap::new();
+        entities.insert(
+            "blue-buff-blue".to_string(),
+            test_neutral_timer("blue-buff-blue", Vec2 { x: 0.25, y: 0.46 }, true),
+        );
+        entities.insert(
+            "blue-buff-red".to_string(),
+            test_neutral_timer("blue-buff-red", Vec2 { x: 0.48, y: 0.26 }, true),
+        );
+
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities,
+            extra: HashMap::new(),
+        };
+
+        let red_pick = pick_macro_objective_pos(&red_jgl, &neutral, 120.0);
+        let blue_pick = pick_macro_objective_pos(&blue_jgl, &neutral, 120.0);
+
+        assert_eq!(red_pick.map(|p| (p.x, p.y)), Some((0.48, 0.26)));
+        assert_eq!(blue_pick.map(|p| (p.x, p.y)), Some((0.25, 0.46)));
+    }
+
+    #[test]
+    fn champion_levels_up_when_xp_threshold_reached() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let champion = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.5, y: 0.5 });
+        let mut runtime = test_runtime(vec![champion], vec![], vec![], neutral);
+        let champion_id = runtime.champions[0].id.clone();
+
+        add_gold_xp_to_champion(&mut runtime, &champion_id, 0, 700);
+
+        assert!(runtime.champions[0].level >= 3);
+        assert!(runtime.champions[0].max_hp > 100.0);
+    }
+
+    #[test]
+    fn nexus_is_not_targetable_while_nexus_towers_alive() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let laner = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.885, y: 0.12 });
+        let mut nexus = test_structure("red-nexus", "red", "base", Vec2 { x: 0.8912760416666666, y: 0.1171875 });
+        nexus.kind = "nexus".to_string();
+        let nexus_tower = test_structure("red-nexus-top-tower", "red", "base", Vec2 { x: 0.845703125, y: 0.1328125 });
+
+        let runtime = test_runtime(vec![laner], vec![], vec![nexus, nexus_tower], neutral.clone());
+        let target = pick_combat_target(&runtime, 0, runtime.time_sec, &neutral);
+
+        assert!(!matches!(target, Some(CombatTarget::Structure(idx)) if runtime.structures[idx].kind == "nexus"));
     }
 }

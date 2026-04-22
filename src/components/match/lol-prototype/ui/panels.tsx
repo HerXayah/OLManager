@@ -1,4 +1,4 @@
-import type { SimEvent } from "../engine/types";
+import type { ChampionState, SimEvent, TeamId } from "../engine/types";
 
 function ts(sec: number) {
   const m = Math.floor(sec / 60).toString().padStart(2, "0");
@@ -59,6 +59,203 @@ export function EventFeedPanel({ events }: EventsProps) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+const ROLE_ORDER: ChampionState["role"][] = ["TOP", "JGL", "MID", "ADC", "SUP"];
+
+function championIconUrl(championId: string | undefined) {
+  if (!championId) return null;
+  return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${championId}.png`;
+}
+
+function sortByRole(champions: ChampionState[]) {
+  return [...champions].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
+}
+
+interface LecLowerThirdProps {
+  champions: ChampionState[];
+  championByPlayerId?: Record<string, string>;
+  timeSec?: number;
+}
+function Slot({ className = "h-4 w-4", trinket = false }: { className?: string; trinket?: boolean }) {
+  return <div className={`${className} border ${trinket ? "border-amber-400/90" : "border-white/15"} bg-black`} />;
+}
+
+function manaRatio(champion: ChampionState | undefined) {
+  if (!champion) return 0.45;
+  const laneBias: Record<ChampionState["role"], number> = {
+    TOP: 0.45,
+    JGL: 0.62,
+    MID: 0.76,
+    ADC: 0.58,
+    SUP: 0.66,
+  };
+  const xpProgress = (champion.xp % 100) / 100;
+  return Math.max(0.18, Math.min(1, (laneBias[champion.role] + xpProgress) / 2));
+}
+
+function pseudoCs(champion: ChampionState | undefined) {
+  if (!champion) return 0;
+  // Temporary CS proxy until real last-hit stat exists:
+  // start at 0 CS on spawn (champions begin with ~500g).
+  return Math.max(0, Math.round((champion.gold - 500) / 22));
+}
+
+function purchasedItemCount(champion: ChampionState | undefined) {
+  const maybeItems = (champion as (ChampionState & { items?: string[] }) | undefined)?.items;
+  return Array.isArray(maybeItems) ? Math.min(6, maybeItems.length) : 0;
+}
+
+function SidePane({ champion, team, championByPlayerId, timeSec }: {
+  champion: ChampionState | undefined;
+  team: TeamId;
+  championByPlayerId?: Record<string, string>;
+  timeSec: number;
+}) {
+  const red = team === "red";
+  const icon = championIconUrl(champion && championByPlayerId ? championByPlayerId[champion.id] : undefined);
+  const hpBase = champion && champion.maxHp > 0 ? Math.max(0, Math.min(1, champion.hp / champion.maxHp)) : 0;
+  const hp = champion && !champion.alive ? 0 : hpBase;
+  const mp = manaRatio(champion);
+  const cs = pseudoCs(champion);
+  const respawnText = champion && !champion.alive && champion.respawnAt > timeSec
+    ? `${Math.ceil(champion.respawnAt - timeSec)}`
+    : "";
+  const level = champion?.level ?? 1;
+  const name = champion?.name ?? "-";
+  const kda = champion ? `${champion.kills}/${champion.deaths}/${champion.assists}` : "0/0/0";
+  const boughtItems = purchasedItemCount(champion);
+
+  return (
+    <div className={`side ${red ? "red" : "blue"} flex flex-1 items-center gap-[6px] px-[10px] ${red ? "border-r-[3px] border-r-orange-400" : "border-l-[3px] border-l-cyan-400"}`}>
+      {red && (
+        <div className={`stats flex min-w-0 flex-1 flex-col gap-[1px] px-[5px] text-right`}>
+          <div className="top-info flex flex-row-reverse justify-between text-[10px] font-black uppercase">
+            <span className="truncate">{name}</span>
+            <span className="farm text-amber-300">{cs}</span>
+          </div>
+          <div className="bars flex flex-col gap-[1px]">
+            <div className="hp h-[7px] rounded-[1px] bg-rose-400 shadow-[0_0_6px_rgba(248,113,113,0.3)]" style={{ width: `${hp <= 0 ? 0 : Math.max(8, hp * 100)}%` }} />
+            <div className="mp ml-auto h-[2px] bg-blue-500" style={{ width: `${Math.max(8, mp * 55)}%` }} />
+          </div>
+          <div className="kda text-[8px] font-bold text-white/45">{kda}</div>
+        </div>
+      )}
+
+      {!red && (
+        <>
+          <div className="box-empty respawn h-[22px] w-[22px]" />
+          <div className="items-group flex gap-[2px]">
+            <Slot className="trinket h-[18px] w-[18px]" trinket />
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <Slot
+                // eslint-disable-next-line react/no-array-index-key
+                key={`blue-item-${idx}`}
+                className={`item h-[18px] w-[18px] ${idx < boughtItems ? "border-emerald-300/90 bg-emerald-400/35" : ""}`}
+              />
+            ))}
+          </div>
+          <div className="spells flex flex-col gap-[1px]">
+            <Slot className="spell h-[16px] w-[16px]" />
+            <Slot className="spell h-[16px] w-[16px]" />
+          </div>
+          <div className="portrait-container relative h-[34px] w-[34px] border border-white/15 bg-black">
+            {icon ? <img src={icon} alt={name} className={`h-full w-full object-cover ${champion && !champion.alive ? "grayscale opacity-55" : ""}`} /> : null}
+            {champion && !champion.alive && respawnText && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-[12px] font-black text-amber-300">
+                {respawnText}
+              </div>
+            )}
+            <div className="lvl absolute -bottom-[2px] -right-[2px] flex h-[12px] w-[12px] items-center justify-center border border-cyan-400 bg-black text-[8px] font-black">
+              {level}
+            </div>
+          </div>
+        </>
+      )}
+
+      {!red && (
+        <div className="stats flex min-w-0 flex-1 flex-col gap-[1px] px-[5px] text-left">
+          <div className="top-info flex justify-between text-[10px] font-black uppercase">
+            <span className="truncate">{name}</span>
+            <span className="farm text-amber-300">{cs}</span>
+          </div>
+          <div className="bars flex flex-col gap-[1px]">
+            <div className="hp h-[7px] rounded-[1px] bg-emerald-400 shadow-[0_0_6px_rgba(74,222,128,0.3)]" style={{ width: `${hp <= 0 ? 0 : Math.max(8, hp * 100)}%` }} />
+            <div className="mp h-[2px] bg-blue-500" style={{ width: `${Math.max(8, mp * 55)}%` }} />
+          </div>
+          <div className="kda text-[8px] font-bold text-white/45">{kda}</div>
+        </div>
+      )}
+
+      {red && (
+        <>
+          <div className="portrait-container relative h-[34px] w-[34px] border border-white/15 bg-black">
+            {icon ? <img src={icon} alt={name} className={`h-full w-full object-cover ${champion && !champion.alive ? "grayscale opacity-55" : ""}`} /> : null}
+            {champion && !champion.alive && respawnText && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/45 text-[12px] font-black text-amber-300">
+                {respawnText}
+              </div>
+            )}
+            <div className="lvl absolute -bottom-[2px] -left-[2px] flex h-[12px] w-[12px] items-center justify-center border border-orange-400 bg-black text-[8px] font-black">
+              {level}
+            </div>
+          </div>
+          <div className="spells flex flex-col gap-[1px]">
+            <Slot className="spell h-[16px] w-[16px]" />
+            <Slot className="spell h-[16px] w-[16px]" />
+          </div>
+          <div className="items-group flex gap-[2px]">
+            {Array.from({ length: 6 }).map((_, idx) => (
+              <Slot
+                // eslint-disable-next-line react/no-array-index-key
+                key={`red-item-${idx}`}
+                className={`item h-[18px] w-[18px] ${idx < boughtItems ? "border-emerald-300/90 bg-emerald-400/35" : ""}`}
+              />
+            ))}
+            <Slot className="trinket h-[18px] w-[18px]" trinket />
+          </div>
+          <div className="box-empty respawn h-[22px] w-[22px]" />
+        </>
+      )}
+    </div>
+  );
+}
+
+export function LecLowerThirdPanel({ champions, championByPlayerId, timeSec = 0 }: LecLowerThirdProps) {
+  const blueByRole = sortByRole(champions.filter((c) => c.team === "blue"));
+  const redByRole = sortByRole(champions.filter((c) => c.team === "red"));
+
+  const matchups = ROLE_ORDER.map((role) => {
+    const blue = blueByRole.find((c) => c.role === role);
+    const red = redByRole.find((c) => c.role === role);
+    return { role, blue, red };
+  });
+
+  return (
+    <div className="hud-board mx-auto w-full max-w-[1400px] px-[20px] py-[10px]">
+      {matchups.map(({ role, blue, red }) => {
+        const blueGold = blue?.gold ?? 0;
+        const redGold = red?.gold ?? 0;
+        const diff = Math.abs(blueGold - redGold);
+        const diffLabel = diff >= 1000 ? `${(diff / 1000).toFixed(1)}K` : `${diff}`;
+        const toBlue = blueGold >= redGold;
+
+        return (
+          <div key={role} className="player-row flex h-[42px] bg-[#0a0a0a] border border-white/[0.05]">
+            <SidePane champion={blue} team="blue" championByPlayerId={championByPlayerId} timeSec={timeSec} />
+
+            <div className="gold-indicator flex w-[80px] items-center justify-center border-x border-white/[0.05] bg-[#080808]">
+              <span className={`arrow to-blue mr-[6px] text-[11px] ${toBlue ? "text-cyan-300 drop-shadow-[0_0_3px_rgba(34,211,238,1)]" : "text-transparent"}`}>◀</span>
+              <span className="gold-value text-[11px] font-black text-white">{diffLabel}</span>
+              <span className={`arrow to-red ml-[6px] text-[11px] ${!toBlue ? "text-orange-400 drop-shadow-[0_0_3px_rgba(249,115,22,1)]" : "text-transparent"}`}>▶</span>
+            </div>
+
+            <SidePane champion={red} team="red" championByPlayerId={championByPlayerId} timeSec={timeSec} />
+          </div>
+        );
+      })}
     </div>
   );
 }

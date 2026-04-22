@@ -10,6 +10,24 @@ import type { MatchState, TeamId } from "../engine/types";
  */
 
 export type LolSimV1EventType = "kill" | "tower" | "dragon" | "baron" | "nexus" | "spawn" | "recall" | "info";
+export type LolSimV1AiMode = "rules" | "hybrid";
+
+export interface LolSimV1TelemetryConfig {
+  enabled?: boolean;
+  sampleEveryTicks?: number;
+  outcomeWindowTicks?: number;
+  decisionChangeOnly?: boolean;
+  outputPath?: string;
+}
+
+export interface LolSimV1PolicyConfig {
+  noDiveHpMin?: number;
+  tradeRetreatHpRatio?: number;
+  tradeHpDisadvantageAllowance?: number;
+  laneChaseLeashRadius?: number;
+  hybridOpenTradeConfidenceHigh?: number;
+  hybridDisengageConfidenceLow?: number;
+}
 
 export interface LolSimV1SimEvent {
   t: number;
@@ -39,6 +57,9 @@ export type LolSimV1RuntimeState = Pick<
 export interface LolSimV1InitRequest {
   sessionId: string;
   seed: string;
+  aiMode?: LolSimV1AiMode;
+  policy?: LolSimV1PolicyConfig;
+  telemetry?: LolSimV1TelemetryConfig;
   snapshot: MatchSnapshot;
   championByPlayerId: Record<string, string>;
   championProfilesById: Record<string, ChampionCombatProfile>;
@@ -64,6 +85,9 @@ export interface LolSimV1TickRequest {
 export interface LolSimV1ResetRequest {
   sessionId: string;
   seed: string;
+  aiMode?: LolSimV1AiMode;
+  policy?: LolSimV1PolicyConfig;
+  telemetry?: LolSimV1TelemetryConfig;
   initialState?: LolSimV1RuntimeState;
 }
 

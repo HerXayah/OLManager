@@ -5,10 +5,10 @@ import { NavGrid } from "./lol-prototype/engine/navigation";
 import { PrototypeSimulation } from "./lol-prototype/engine/simulation";
 import type { ChampionCombatProfile } from "./lol-prototype/engine/simulation";
 import type { MatchState } from "./lol-prototype/engine/types";
-import type { LolSimV1RuntimeState } from "./lol-prototype/backend/contract-v1";
+import type { LolSimV1AiMode, LolSimV1RuntimeState } from "./lol-prototype/backend/contract-v1";
 import { LolSimV2Client } from "./lol-prototype/backend/tauri-client";
 import { renderSimulation } from "./lol-prototype/ui/render";
-import { EventFeedPanel, ScoreboardPanel } from "./lol-prototype/ui/panels";
+import { LecLowerThirdPanel } from "./lol-prototype/ui/panels";
 
 export interface ChampionSelectionByPlayer {
   home: Record<string, string>;
@@ -31,6 +31,11 @@ const SPEEDS = [
   { id: "x12", value: 12 },
 ];
 
+const AI_MODES: Array<{ id: LolSimV1AiMode; label: string }> = [
+  { id: "rules", label: "Rules" },
+  { id: "hybrid", label: "Hybrid" },
+];
+
 const DDRAGON_VERSION = "14.24.1";
 const USE_RUST_SIM_V2 = true;
 
@@ -47,17 +52,13 @@ function normalizeAttackRange(attackRange: number) {
   return 0.049;
 }
 
-function compactGold(gold: number) {
-  if (gold < 1000) return `${Math.round(gold)}g`;
-  return `${(gold / 1000).toFixed(1)}k`;
-}
-
 export default function LolMatchLive({ snapshot, championSelections, onSnapshotUpdate, onImportantEvent, onFullTime }: Props) {
   const walls = useMemo(() => getWalls(), []);
   const nav = useMemo(() => new NavGrid(walls), [walls]);
   const [seed, setSeed] = useState("lol-prototype-1");
   const [running, setRunning] = useState(true);
   const [speed, setSpeed] = useState(4);
+  const [aiMode, setAiMode] = useState<LolSimV1AiMode>("hybrid");
   const [tick, setTick] = useState(0);
 
   const championByPlayerId = useMemo<Record<string, string>>(() => {
@@ -116,6 +117,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   const backendClientRef = useRef<LolSimV2Client | null>(null);
   const backendStateRef = useRef<LolSimV1RuntimeState | null>(null);
   const backendTickInFlightRef = useRef(false);
+  const backendPendingDtRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
   const finishedRef = useRef(false);
@@ -131,6 +133,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     backendClientRef.current = null;
     backendStateRef.current = null;
     backendTickInFlightRef.current = false;
+    backendPendingDtRef.current = 0;
     finishedRef.current = false;
 
     if (!USE_RUST_SIM_V2) return;
@@ -142,6 +145,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     void client
       .init({
         seed,
+        aiMode,
         snapshot,
         championByPlayerId,
         championProfilesById,
@@ -150,7 +154,6 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       .then((response) => {
         if (disposed || backendClientRef.current !== client) return;
         backendStateRef.current = response.state;
-        setTick((v) => v + 1);
       })
       .catch(() => {
         if (disposed || backendClientRef.current !== client) return;
@@ -165,10 +168,11 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
         backendClientRef.current = null;
         backendStateRef.current = null;
         backendTickInFlightRef.current = false;
+        backendPendingDtRef.current = 0;
       }
       void client.dispose().catch(() => undefined);
     };
-  }, [nav, seed, snapshot, championByPlayerId, championProfilesById]);
+  }, [aiMode, nav, seed, snapshot, championByPlayerId, championProfilesById]);
 
   useEffect(() => {
     const loop = (ts: number) => {
@@ -184,19 +188,23 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
 
       const backendClient = USE_RUST_SIM_V2 ? backendClientRef.current : null;
       if (backendClient && backendStateRef.current) {
+        // Acumulador anti-tirones: si backend está ocupado, no perdemos tiempo simulado.
+        backendPendingDtRef.current = Math.min(0.5, backendPendingDtRef.current + dt);
         if (!backendTickInFlightRef.current) {
           backendTickInFlightRef.current = true;
+          const dtForBackend = Math.min(0.05, backendPendingDtRef.current);
+          backendPendingDtRef.current = Math.max(0, backendPendingDtRef.current - dtForBackend);
           void backendClient
-            .tick({ dtSec: dt, running, speed })
+            .tick({ dtSec: dtForBackend, running, speed })
             .then((response) => {
               if (backendClientRef.current !== backendClient) return;
               backendStateRef.current = response.state;
-              setTick((v) => v + 1);
             })
             .catch(() => {
               if (backendClientRef.current !== backendClient) return;
               backendClientRef.current = null;
               backendStateRef.current = null;
+              backendPendingDtRef.current = 0;
             })
             .finally(() => {
               if (backendClientRef.current === backendClient) {
@@ -258,6 +266,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       backendClientRef.current = null;
       backendStateRef.current = null;
       backendTickInFlightRef.current = false;
+      backendPendingDtRef.current = 0;
       if (client) {
         void client.dispose().catch(() => undefined);
       }
@@ -265,18 +274,6 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   }, []);
 
   const state = currentState();
-  const teamHud = (() => {
-    const blueTeam = state?.champions.filter((c) => c.team === "blue") ?? [];
-    const redTeam = state?.champions.filter((c) => c.team === "red") ?? [];
-    const blueAvg = blueTeam.length ? blueTeam.reduce((sum, c) => sum + c.level, 0) / blueTeam.length : 1;
-    const redAvg = redTeam.length ? redTeam.reduce((sum, c) => sum + c.level, 0) / redTeam.length : 1;
-    return {
-      blueGold: state?.stats.blue.gold ?? 0,
-      redGold: state?.stats.red.gold ?? 0,
-      blueAvg,
-      redAvg,
-    };
-  })();
   const status = state?.winner
     ? `Winner: ${state.winner.toUpperCase()}`
     : running
@@ -293,7 +290,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     if (backendClient && backendStateRef.current) {
       backendTickInFlightRef.current = false;
       void backendClient
-        .reset({ seed, initialState: { ...sim.state, speed } })
+        .reset({ seed, aiMode, initialState: { ...sim.state, speed } })
         .then((response) => {
           if (backendClientRef.current !== backendClient) return;
           backendStateRef.current = response.state;
@@ -323,84 +320,54 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   void tick;
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100">
-      <div className="mx-auto max-w-[1400px] p-4 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
-        <div className="rounded-2xl border border-cyan-500/20 bg-[#070f21] p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-widest text-cyan-300">Prototype · simulator.js baseline</p>
-              <p className="text-sm font-semibold">{snapshot.home_team.name} vs {snapshot.away_team.name}</p>
-            </div>
-            <div className="text-right text-xs text-cyan-300">
-              <p>{Math.floor((state?.timeSec ?? 0) / 60)}:{Math.floor((state?.timeSec ?? 0) % 60).toString().padStart(2, "0")}</p>
-              <p>{status}</p>
-            </div>
-          </div>
-
-          <div className="w-full flex justify-center">
-            <div className="relative w-full max-w-[980px]">
-              <canvas ref={canvasRef} className="w-full aspect-square rounded-xl border border-cyan-500/25 bg-black" />
-              <div className="pointer-events-none absolute bottom-3 left-3 rounded border border-cyan-400/40 bg-[#00121f]/85 px-2 py-1 text-[11px] text-cyan-100">
-                <p className="font-semibold text-cyan-300">Blue</p>
-                <p>Gold {compactGold(teamHud.blueGold)} · Avg Lv {teamHud.blueAvg.toFixed(1)}</p>
-              </div>
-              <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-rose-400/40 bg-[#240611]/85 px-2 py-1 text-[11px] text-rose-100 text-right">
-                <p className="font-semibold text-rose-300">Red</p>
-                <p>Gold {compactGold(teamHud.redGold)} · Avg Lv {teamHud.redAvg.toFixed(1)}</p>
-              </div>
-            </div>
-          </div>
+    <div className="h-screen w-screen overflow-hidden bg-[#050505] text-white">
+      <div className="flex h-full w-full flex-col items-center justify-center">
+        <div className="map-container flex w-full flex-[0_0_auto] justify-center">
+          <canvas
+            ref={canvasRef}
+            className="h-[60vh] w-auto max-w-[92vw] object-contain"
+          />
         </div>
 
-        <div className="space-y-3">
-          <ScoreboardPanel
-            timeSec={state?.timeSec ?? 0}
-            status={status}
-            blue={{
-              ...(state?.stats.blue ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
-              avgLevel: teamHud.blueAvg,
-            }}
-            red={{
-              ...(state?.stats.red ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
-              avgLevel: teamHud.redAvg,
-            }}
-          />
+        <div className="hud-board w-full">
+          <LecLowerThirdPanel champions={state?.champions ?? []} championByPlayerId={championByPlayerId} timeSec={state?.timeSec ?? 0} />
 
-          <div className="rounded-xl border border-cyan-500/25 bg-[#0a142b] p-3 text-xs">
-            <p className="mb-2 uppercase tracking-widest text-cyan-300">Controls</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button className="rounded border border-cyan-500/30 bg-slate-900/50 px-2 py-1" onClick={() => setRunning((v) => !v)}>
-                {running ? "Pause" : "Play"}
-              </button>
-              <button className="rounded border border-cyan-500/30 bg-slate-900/50 px-2 py-1" onClick={handleReset}>
-                Reset Match
-              </button>
-              <button className="rounded border border-cyan-500/30 bg-slate-900/50 px-2 py-1 col-span-2" onClick={toggleWalls}>
-                Toggle Show Walls
-              </button>
-            </div>
-            <div className="mt-2 grid grid-cols-3 gap-1">
-              {SPEEDS.map((s) => (
-                <button
-                  key={s.id}
-                  className={`rounded border px-2 py-1 ${speed === s.value ? "border-cyan-300 bg-cyan-500/20" : "border-cyan-500/30 bg-slate-900/50"}`}
-                  onClick={() => setSpeed(s.value)}
-                >
-                  {s.id}
-                </button>
-              ))}
-            </div>
-            <div className="mt-2">
-              <label className="text-[11px] text-cyan-200">Seed</label>
-              <input
-                value={seed}
-                onChange={(e) => setSeed(e.target.value)}
-                className="mt-1 w-full rounded border border-cyan-500/30 bg-slate-950 px-2 py-1 text-xs"
-              />
-            </div>
+          <div className="mx-auto mt-1 flex w-full max-w-[1400px] items-center justify-between px-[20px] text-[10px] text-white/55">
+            <span>{snapshot.home_team.name} vs {snapshot.away_team.name}</span>
+            <span>{Math.floor((state?.timeSec ?? 0) / 60)}:{Math.floor((state?.timeSec ?? 0) % 60).toString().padStart(2, "0")} · {status}</span>
           </div>
 
-          <EventFeedPanel events={state?.events ?? []} />
+          <div className="mx-auto mt-1 flex w-full max-w-[1400px] flex-wrap items-center justify-center gap-1 px-[20px] pb-2 text-[10px] text-white/75">
+            <button className="rounded border border-cyan-500/30 bg-black/60 px-2 py-1" onClick={() => setRunning((v) => !v)}>
+              {running ? "Pause" : "Play"}
+            </button>
+            <button className="rounded border border-cyan-500/30 bg-black/60 px-2 py-1" onClick={handleReset}>Reset</button>
+            <button className="rounded border border-cyan-500/30 bg-black/60 px-2 py-1" onClick={toggleWalls}>Walls</button>
+            {SPEEDS.map((s) => (
+              <button
+                key={s.id}
+                className={`rounded border px-2 py-1 ${speed === s.value ? "border-cyan-300 bg-cyan-500/20" : "border-cyan-500/30 bg-black/60"}`}
+                onClick={() => setSpeed(s.value)}
+              >
+                {s.id}
+              </button>
+            ))}
+            {AI_MODES.map((mode) => (
+              <button
+                key={mode.id}
+                className={`rounded border px-2 py-1 ${aiMode === mode.id ? "border-cyan-300 bg-cyan-500/20" : "border-cyan-500/30 bg-black/60"}`}
+                onClick={() => setAiMode(mode.id)}
+              >
+                {mode.label}
+              </button>
+            ))}
+            <input
+              value={seed}
+              onChange={(e) => setSeed(e.target.value)}
+              className="rounded border border-cyan-500/30 bg-black/70 px-2 py-1 text-[10px]"
+              aria-label="Simulation seed"
+            />
+          </div>
         </div>
       </div>
     </div>
