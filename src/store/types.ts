@@ -75,48 +75,92 @@ export interface TeamData {
   history: TeamSeasonRecord[];
 }
 
+export type MatchOutcome = "Win" | "Loss";
+
+export type TeamSide = "Blue" | "Red";
+
+export type LolRole = "Top" | "Jungle" | "Mid" | "ADC" | "Support";
+
+export type MatchEndReason = "NexusDestroyed" | "Surrender";
+
+type LegacyCompatibilityValue = any;
+
 export interface PlayerSeasonStats {
-  appearances: number;
-  goals: number;
+  games_played?: number;
+  wins?: number;
+  losses?: number;
+  kills?: number;
+  deaths?: number;
   assists: number;
-  clean_sheets: number;
-  yellow_cards: number;
-  red_cards: number;
-  avg_rating: number;
-  minutes_played: number;
-  shots?: number;
-  shots_on_target?: number;
-  passes_completed?: number;
-  passes_attempted?: number;
-  tackles_won?: number;
-  interceptions?: number;
-  fouls_committed?: number;
+  cs?: number;
+  gold_earned?: number;
+  damage_to_champions?: number;
+  vision_score?: number;
+  wards_placed?: number;
+  wards_cleared?: number;
+  time_played_seconds?: number;
+  /**
+   * Temporary compatibility layer for Block 1.
+   * Allows legacy callers/tests to keep compiling while the LoL-first contract
+   * is propagated through the rest of the app in later migration blocks.
+   */
+  [legacyField: string]: LegacyCompatibilityValue;
 }
 
-export interface PlayerMatchHistoryEntryData {
+export interface PlayerMatchStatsRecord {
   fixture_id: string;
+  season?: number;
   date: string;
   competition: string;
   matchday: number;
+  player_id?: string;
+  team_id?: string;
   opponent_team_id: string;
-  opponent_name: string;
-  team_goals: number;
-  opponent_goals: number;
+  side?: TeamSide;
+  result?: MatchOutcome;
+  role?: LolRole;
   champion_id?: string | null;
-  champion_win?: boolean | null;
-  minutes_played: number;
-  goals: number;
+  game_duration_seconds?: number;
+  kills?: number;
+  deaths?: number;
   assists: number;
-  shots: number;
-  shots_on_target: number;
-  passes_completed?: number;
-  passes_attempted?: number;
-  tackles_won?: number;
-  interceptions?: number;
-  fouls_committed?: number;
-  yellow_cards?: number;
-  red_cards?: number;
+  cs?: number;
+  gold_earned?: number;
+  damage_to_champions?: number;
+  vision_score?: number;
+  wards_placed?: number;
+  wards_cleared?: number;
   rating: number;
+  opponent_name?: string;
+  /** Temporary compatibility layer during the domain migration. */
+  [legacyField: string]: LegacyCompatibilityValue;
+}
+
+export type PlayerMatchHistoryEntryData = PlayerMatchStatsRecord;
+
+export interface TeamMatchStatsRecord {
+  fixture_id: string;
+  season?: number;
+  matchday: number;
+  date: string;
+  competition: string;
+  team_id: string;
+  opponent_team_id: string;
+  side?: TeamSide;
+  result?: MatchOutcome;
+  game_duration_seconds?: number;
+  kills?: number;
+  deaths?: number;
+  gold_earned?: number;
+  damage_to_champions?: number;
+  towers_destroyed?: number;
+  inhibitors_destroyed?: number;
+  dragons_taken?: number;
+  barons_taken?: number;
+  heralds_taken?: number;
+  void_grubs_taken?: number;
+  /** Temporary compatibility layer during the domain migration. */
+  [legacyField: string]: LegacyCompatibilityValue;
 }
 
 export interface CareerEntry {
@@ -273,12 +317,7 @@ export interface MessageContext {
   team_id: string | null;
   player_id: string | null;
   fixture_id: string | null;
-  match_result: null | {
-    home_team_id: string;
-    away_team_id: string;
-    home_goals: number;
-    away_goals: number;
-  };
+  match_result: MatchResult | null;
   scout_report?: ScoutReportData;
   delegated_renewal_report?: DelegatedRenewalReportMessageData;
 }
@@ -331,14 +370,20 @@ export interface FixtureData {
   away_team_id: string;
   competition: "League" | "Friendly" | "PreseasonTournament" | "Playoffs";
   status: "Scheduled" | "InProgress" | "Completed";
-  result: null | {
-    home_goals: number;
-    away_goals: number;
-    home_scorers: { player_id: string; minute: number }[];
-    away_scorers: { player_id: string; minute: number }[];
-    player_champion_picks?: { player_id: string; champion_id: string }[];
-    report?: CompactMatchReportData | null;
-  };
+  result: MatchResult | null;
+}
+
+export interface MatchResult {
+  home_wins?: number;
+  away_wins?: number;
+  ended_by?: MatchEndReason;
+  game_duration_seconds?: number;
+  report?: CompactMatchReportData | null;
+  /**
+   * Temporary compatibility layer for legacy scoreline consumers.
+   * These keys are intentionally not modeled explicitly anymore.
+   */
+  [legacyField: string]: LegacyCompatibilityValue;
 }
 
 export interface CompactMatchEventData {

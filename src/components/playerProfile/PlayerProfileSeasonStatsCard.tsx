@@ -3,6 +3,11 @@ import { Card, CardBody, CardHeader } from "../ui";
 
 type TranslateFn = (key: string) => string;
 
+function resolveLabel(t: TranslateFn, key: string, fallback: string): string {
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+}
+
 interface PlayerProfileSeasonStatsCardProps {
     stats: PlayerSeasonStats;
     t: TranslateFn;
@@ -12,27 +17,46 @@ export default function PlayerProfileSeasonStatsCard({
     stats,
     t,
 }: PlayerProfileSeasonStatsCardProps) {
+    const timePlayedMinutes = Math.floor((stats.time_played_seconds ?? 0) / 60);
+
     return (
         <Card className="lg:col-span-2">
-            <CardHeader>{t("playerProfile.seasonStats")}</CardHeader>
+            <CardHeader>
+                {resolveLabel(t, "playerProfile.seasonStats", "Season Stats")}
+            </CardHeader>
             <CardBody>
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                    <StatBox label={t("playerProfile.apps")} value={stats.appearances} />
-                    <StatBox label={t("playerProfile.goals")} value={stats.goals} />
-                    <StatBox label={t("playerProfile.assists")} value={stats.assists} />
-                    <StatBox label={t("playerProfile.mins")} value={stats.minutes_played} />
                     <StatBox
-                        label={t("playerProfile.cleanSheets")}
-                        value={stats.clean_sheets}
+                        label={resolveLabel(t, "playerProfile.gamesPlayed", "Games")}
+                        value={stats.games_played ?? 0}
                     />
                     <StatBox
-                        label={t("playerProfile.yellows")}
-                        value={stats.yellow_cards}
+                        label={resolveLabel(t, "playerProfile.wins", "Wins")}
+                        value={stats.wins ?? 0}
                     />
-                    <StatBox label={t("playerProfile.reds")} value={stats.red_cards} />
                     <StatBox
-                        label={t("playerProfile.avgRating")}
-                        value={stats.avg_rating > 0 ? stats.avg_rating.toFixed(1) : "-"}
+                        label={resolveLabel(t, "playerProfile.losses", "Losses")}
+                        value={stats.losses ?? 0}
+                    />
+                    <StatBox
+                        label={resolveLabel(t, "playerProfile.kills", "Kills")}
+                        value={stats.kills ?? 0}
+                    />
+                    <StatBox
+                        label={resolveLabel(t, "playerProfile.deaths", "Deaths")}
+                        value={stats.deaths ?? 0}
+                    />
+                    <StatBox
+                        label={resolveLabel(t, "playerProfile.assists", "Assists")}
+                        value={stats.assists ?? 0}
+                    />
+                    <StatBox
+                        label={resolveLabel(t, "playerProfile.cs", "CS")}
+                        value={stats.cs ?? 0}
+                    />
+                    <StatBox
+                        label={resolveLabel(t, "playerProfile.timePlayed", "Time")}
+                        value={timePlayedMinutes}
                     />
                 </div>
             </CardBody>

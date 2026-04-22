@@ -1,6 +1,7 @@
 // Shared types for match simulation components — mirrors Rust engine types
 
 import type { TFunction } from "i18next";
+import type { LolRole } from "../../store/gameStore";
 
 export interface MatchEvent {
   minute: number;
@@ -74,8 +75,6 @@ export interface LolTeamStructuresState {
   nexus_alive: boolean;
   nexus_hp: number;
 }
-
-export type LolRole = "Top" | "Jungle" | "Mid" | "Adc" | "Support";
 
 export type LolTask = "MoveToLane" | "JungleClear" | "HoldLane" | "RotateObjective" | "Recall";
 

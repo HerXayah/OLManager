@@ -21,14 +21,6 @@ function formatRate(value: number | null): string {
     return value.toFixed(2);
 }
 
-function formatPercentage(value: number | null): string {
-    if (value === null) {
-        return "-";
-    }
-
-    return Number.isInteger(value) ? `${value}%` : `${value.toFixed(1)}%`;
-}
-
 function formatOrdinal(value: number | null, unavailableLabel: string): string {
     if (value === null) {
         return unavailableLabel;
@@ -107,30 +99,17 @@ export default function PlayerProfileAdvancedStatsCard({
 }: PlayerProfileAdvancedStatsCardProps) {
     const labels = {
         title: resolveLabel(t, "playerProfile.advancedStats", "Advanced Stats"),
-        shots: resolveLabel(t, "playerProfile.shots", "Shots"),
-        shotsOnTarget: resolveLabel(
+        kills: resolveLabel(t, "playerProfile.kills", "Kills"),
+        deaths: resolveLabel(t, "playerProfile.deaths", "Deaths"),
+        assists: resolveLabel(t, "playerProfile.assists", "Assists"),
+        cs: resolveLabel(t, "playerProfile.cs", "CS"),
+        damageToChampions: resolveLabel(
             t,
-            "playerProfile.shotsOnTarget",
-            "Shots On Target",
+            "playerProfile.damageToChampions",
+            "Damage to Champions",
         ),
-        passes: resolveLabel(t, "playerProfile.passes", "Passes"),
-        tacklesWon: resolveLabel(t, "playerProfile.tacklesWon", "Tackles Won"),
-        interceptions: resolveLabel(
-            t,
-            "playerProfile.interceptions",
-            "Interceptions",
-        ),
-        foulsCommitted: resolveLabel(
-            t,
-            "playerProfile.foulsCommitted",
-            "Fouls Committed",
-        ),
-        per90: resolveLabel(t, "playerProfile.per90", "Per 90"),
-        passAccuracy: resolveLabel(
-            t,
-            "playerProfile.passAccuracy",
-            "Pass Accuracy",
-        ),
+        visionScore: resolveLabel(t, "playerProfile.visionScore", "Vision Score"),
+        perGame: resolveLabel(t, "playerProfile.perGame", "Per Game"),
         percentile: resolveLabel(t, "playerProfile.percentile", "Percentile"),
         percentileUnavailable: resolveLabel(
             t,
@@ -145,11 +124,11 @@ export default function PlayerProfileAdvancedStatsCard({
             <CardBody>
                 <div className="space-y-3">
                     <AdvancedStatRow
-                        label={labels.shots}
-                        primaryValue={String(summary.metrics.shots.total)}
-                        secondaryLabel={labels.per90}
-                        secondaryValue={formatRate(summary.metrics.shots.per90)}
-                        percentile={summary.metrics.shots.percentile}
+                        label={labels.kills}
+                        primaryValue={String(summary.metrics.kills.total)}
+                        secondaryLabel={labels.perGame}
+                        secondaryValue={formatRate(summary.metrics.kills.perGame)}
+                        percentile={summary.metrics.kills.percentile}
                         t={(key: string) =>
                             key === "playerProfile.percentile"
                                 ? labels.percentile
@@ -157,11 +136,11 @@ export default function PlayerProfileAdvancedStatsCard({
                         }
                     />
                     <AdvancedStatRow
-                        label={labels.shotsOnTarget}
-                        primaryValue={String(summary.metrics.shotsOnTarget.total)}
-                        secondaryLabel={labels.per90}
-                        secondaryValue={formatRate(summary.metrics.shotsOnTarget.per90)}
-                        percentile={summary.metrics.shotsOnTarget.percentile}
+                        label={labels.deaths}
+                        primaryValue={String(summary.metrics.deaths.total)}
+                        secondaryLabel={labels.perGame}
+                        secondaryValue={formatRate(summary.metrics.deaths.perGame)}
+                        percentile={summary.metrics.deaths.percentile}
                         t={(key: string) =>
                             key === "playerProfile.percentile"
                                 ? labels.percentile
@@ -169,11 +148,11 @@ export default function PlayerProfileAdvancedStatsCard({
                         }
                     />
                     <AdvancedStatRow
-                        label={labels.passes}
-                        primaryValue={`${summary.metrics.passes.completed} / ${summary.metrics.passes.attempted}`}
-                        secondaryLabel={labels.passAccuracy}
-                        secondaryValue={formatPercentage(summary.metrics.passes.accuracy)}
-                        percentile={summary.metrics.passes.percentile}
+                        label={labels.assists}
+                        primaryValue={String(summary.metrics.assists.total)}
+                        secondaryLabel={labels.perGame}
+                        secondaryValue={formatRate(summary.metrics.assists.perGame)}
+                        percentile={summary.metrics.assists.percentile}
                         t={(key: string) =>
                             key === "playerProfile.percentile"
                                 ? labels.percentile
@@ -181,11 +160,11 @@ export default function PlayerProfileAdvancedStatsCard({
                         }
                     />
                     <AdvancedStatRow
-                        label={labels.tacklesWon}
-                        primaryValue={String(summary.metrics.tacklesWon.total)}
-                        secondaryLabel={labels.per90}
-                        secondaryValue={formatRate(summary.metrics.tacklesWon.per90)}
-                        percentile={summary.metrics.tacklesWon.percentile}
+                        label={labels.cs}
+                        primaryValue={String(summary.metrics.cs.total)}
+                        secondaryLabel={labels.perGame}
+                        secondaryValue={formatRate(summary.metrics.cs.perGame)}
+                        percentile={summary.metrics.cs.percentile}
                         t={(key: string) =>
                             key === "playerProfile.percentile"
                                 ? labels.percentile
@@ -193,11 +172,11 @@ export default function PlayerProfileAdvancedStatsCard({
                         }
                     />
                     <AdvancedStatRow
-                        label={labels.interceptions}
-                        primaryValue={String(summary.metrics.interceptions.total)}
-                        secondaryLabel={labels.per90}
-                        secondaryValue={formatRate(summary.metrics.interceptions.per90)}
-                        percentile={summary.metrics.interceptions.percentile}
+                        label={labels.damageToChampions}
+                        primaryValue={String(summary.metrics.damageToChampions.total)}
+                        secondaryLabel={labels.perGame}
+                        secondaryValue={formatRate(summary.metrics.damageToChampions.perGame)}
+                        percentile={summary.metrics.damageToChampions.percentile}
                         t={(key: string) =>
                             key === "playerProfile.percentile"
                                 ? labels.percentile
@@ -205,11 +184,11 @@ export default function PlayerProfileAdvancedStatsCard({
                         }
                     />
                     <AdvancedStatRow
-                        label={labels.foulsCommitted}
-                        primaryValue={String(summary.metrics.foulsCommitted.total)}
-                        secondaryLabel={labels.per90}
-                        secondaryValue={formatRate(summary.metrics.foulsCommitted.per90)}
-                        percentile={summary.metrics.foulsCommitted.percentile}
+                        label={labels.visionScore}
+                        primaryValue={String(summary.metrics.visionScore.total)}
+                        secondaryLabel={labels.perGame}
+                        secondaryValue={formatRate(summary.metrics.visionScore.perGame)}
+                        percentile={summary.metrics.visionScore.percentile}
                         t={(key: string) =>
                             key === "playerProfile.percentile"
                                 ? labels.percentile

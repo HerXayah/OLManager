@@ -107,9 +107,13 @@ function buildChampionPerformanceMap(
     const current = bucket.get(championId) ?? { wins: 0, games: 0 };
     current.games += 1;
     const won =
-      typeof entry.champion_win === "boolean"
-        ? entry.champion_win
-        : entry.team_goals > entry.opponent_goals;
+      entry.result === "Win"
+        ? true
+        : entry.result === "Loss"
+          ? false
+          : typeof entry.champion_win === "boolean"
+            ? entry.champion_win
+            : entry.team_goals > entry.opponent_goals;
     if (won) {
       current.wins += 1;
     }
