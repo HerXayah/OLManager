@@ -10,6 +10,7 @@ use crate::application::live_match::{
     step_live_match as step_live_match_service,
 };
 use crate::application::team_talk::apply_team_talk as apply_team_talk_service;
+use domain::stats::MatchOutcome;
 use ofm_core::game::Game;
 use ofm_core::state::StateManager;
 
@@ -117,14 +118,14 @@ pub fn record_fixture_champion_picks(
             .iter_mut()
             .filter(|record| record.fixture_id == fixture_id)
         {
-            record.champion_id = picks
+            record.champion = picks
                 .iter()
                 .find(|pick| pick.player_id == record.player_id)
                 .map(|pick| pick.champion_id.clone());
-            record.champion_win = if record.team_id == winner_team_id {
-                Some(true)
+            record.result = if record.team_id == winner_team_id {
+                MatchOutcome::Win
             } else {
-                Some(false)
+                MatchOutcome::Loss
             };
         }
     });

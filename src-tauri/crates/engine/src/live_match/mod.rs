@@ -270,12 +270,14 @@ impl LiveMatchState {
             .map(|player| player.id.clone())
             .collect();
 
-        MatchReport::from_events_with_players(
+        MatchReport::from_events_with_lol_snapshot(
             self.events,
             self.home_possession_ticks,
             self.away_possession_ticks,
             self.current_minute,
             tracked_player_ids,
+            &self.lol_map.units,
+            self.lol_map.destroyed_nexus_by,
         )
     }
 
@@ -315,7 +317,6 @@ impl LiveMatchState {
         }
     }
 
-
     pub(super) fn add_goal(&mut self, side: Side) {
         match side {
             Side::Home => self.home_score = self.home_score.saturating_add(1),
@@ -330,8 +331,16 @@ impl LiveMatchState {
         player_on_id: &str,
     ) -> Result<(), String> {
         let (team, bench, subs_made) = match side {
-            Side::Home => (&mut self.home, &mut self.home_bench, &mut self.home_subs_made),
-            Side::Away => (&mut self.away, &mut self.away_bench, &mut self.away_subs_made),
+            Side::Home => (
+                &mut self.home,
+                &mut self.home_bench,
+                &mut self.home_subs_made,
+            ),
+            Side::Away => (
+                &mut self.away,
+                &mut self.away_bench,
+                &mut self.away_subs_made,
+            ),
         };
 
         if *subs_made >= self.max_subs {

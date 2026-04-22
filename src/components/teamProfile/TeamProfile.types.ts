@@ -26,21 +26,16 @@ export interface TeamProfileViewModel {
 
 export interface TeamStatsOverview {
   matchesPlayed: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-  possessionAverage: number | null;
+  wins: number;
+  losses: number;
+  draws: number;
   metrics: {
-    shots: { total: number; perMatch: number | null };
-    shotsOnTarget: { total: number; perMatch: number | null };
-    passes: {
-      completed: number;
-      attempted: number;
-      accuracy: number | null;
-    };
-    tacklesWon: { total: number; perMatch: number | null };
-    interceptions: { total: number; perMatch: number | null };
-    foulsCommitted: { total: number; perMatch: number | null };
+    kills: { total: number; perMatch: number | null };
+    deaths: { total: number; perMatch: number | null };
+    goldEarned: { total: number; perMatch: number | null };
+    damageToChampions: { total: number; perMatch: number | null };
+    objectives: { total: number; perMatch: number | null };
+    averageGameDurationSeconds: { total: number; perMatch: number | null };
   };
 }
 
@@ -51,9 +46,12 @@ export interface TeamRecentMatchEntry {
   matchday: number;
   opponentTeamId: string;
   opponentName: string;
-  goalsFor: number;
-  goalsAgainst: number;
-  possessionPct: number;
-  shots: number;
-  shotsOnTarget: number;
+  side: "Blue" | "Red";
+  result: "Win" | "Loss" | "Draw";
+  gameDurationSeconds: number;
+  kills: number;
+  deaths: number;
+  goldEarned: number;
+  damageToChampions: number;
+  objectives: number;
 }

@@ -1,34 +1,56 @@
 use std::collections::HashMap;
 
-use domain::player::{Player, PlayerSeasonStats, Position};
-use domain::stats::PlayerMatchStatsRecord;
+use domain::player::Player;
+use domain::stats::{LolRole, MatchOutcome, PlayerMatchStatsRecord, TeamSide};
 use ofm_core::state::StateManager;
 
 use super::dto::{
-    PlayerAdvancedMetricDto, PlayerAdvancedPassMetricDto, PlayerMatchHistoryEntryDto,
-    PlayerStatsOverviewDto, PlayerStatsOverviewMetricsDto,
+    PlayerAdvancedMetricDto, PlayerMatchHistoryEntryDto, PlayerStatsOverviewDto,
+    PlayerStatsOverviewMetricsDto,
 };
-use super::shared::{
-    calculate_pass_accuracy, calculate_per90, competition_label, opponent_name, percentile_rank,
-};
+use super::shared::{calculate_per_match, competition_label, opponent_name, percentile_rank};
 
-const DEFAULT_MINIMUM_MINUTES: u32 = 180;
+const DEFAULT_MINIMUM_MATCHES: u32 = 3;
 const DEFAULT_MINIMUM_COHORT_SIZE: usize = 3;
 
 #[derive(Debug, Clone, Default)]
 struct PlayerAggregate {
-    minutes_played: u32,
-    shots: u32,
-    shots_on_target: u32,
-    passes_completed: u32,
-    passes_attempted: u32,
-    tackles_won: u32,
-    interceptions: u32,
-    fouls_committed: u32,
+    matches_played: u32,
+    kills: u32,
+    deaths: u32,
+    assists: u32,
+    creep_score: u32,
+    vision_score: u32,
+    wards_placed: u32,
 }
 
-fn position_key(player: &Player) -> &Position {
-    &player.natural_position
+fn position_key(player: &Player) -> String {
+    format!("{:?}", player.natural_position)
+}
+
+fn side_label(side: TeamSide) -> String {
+    match side {
+        TeamSide::Blue => "Blue".to_string(),
+        TeamSide::Red => "Red".to_string(),
+    }
+}
+
+fn outcome_label(outcome: MatchOutcome) -> String {
+    match outcome {
+        MatchOutcome::Win => "Win".to_string(),
+        MatchOutcome::Loss => "Loss".to_string(),
+    }
+}
+
+fn role_label(role: LolRole) -> String {
+    match role {
+        LolRole::Top => "Top".to_string(),
+        LolRole::Jungle => "Jungle".to_string(),
+        LolRole::Mid => "Mid".to_string(),
+        LolRole::Adc => "ADC".to_string(),
+        LolRole::Support => "Support".to_string(),
+        LolRole::Unknown => "Unknown".to_string(),
+    }
 }
 
 fn aggregate_from_history(records: &[PlayerMatchStatsRecord]) -> Option<PlayerAggregate> {
@@ -38,30 +60,16 @@ fn aggregate_from_history(records: &[PlayerMatchStatsRecord]) -> Option<PlayerAg
 
     let mut aggregate = PlayerAggregate::default();
     for record in records {
-        aggregate.minutes_played += record.minutes_played as u32;
-        aggregate.shots += record.shots as u32;
-        aggregate.shots_on_target += record.shots_on_target as u32;
-        aggregate.passes_completed += record.passes_completed as u32;
-        aggregate.passes_attempted += record.passes_attempted as u32;
-        aggregate.tackles_won += record.tackles_won as u32;
-        aggregate.interceptions += record.interceptions as u32;
-        aggregate.fouls_committed += record.fouls_committed as u32;
+        aggregate.matches_played += 1;
+        aggregate.kills += record.kills as u32;
+        aggregate.deaths += record.deaths as u32;
+        aggregate.assists += record.assists as u32;
+        aggregate.creep_score += record.creep_score as u32;
+        aggregate.vision_score += record.vision_score as u32;
+        aggregate.wards_placed += record.wards_placed as u32;
     }
 
     Some(aggregate)
-}
-
-fn aggregate_from_season_stats(stats: &PlayerSeasonStats) -> PlayerAggregate {
-    PlayerAggregate {
-        minutes_played: stats.minutes_played,
-        shots: stats.shots,
-        shots_on_target: stats.shots_on_target,
-        passes_completed: stats.passes_completed,
-        passes_attempted: stats.passes_attempted,
-        tackles_won: stats.tackles_won,
-        interceptions: stats.interceptions,
-        fouls_committed: stats.fouls_committed,
-    }
 }
 
 fn metric_percentile<F>(
@@ -80,127 +88,85 @@ where
     percentile_rank(&values, selector(player_aggregate))
 }
 
+fn metric_dto<F>(
+    aggregate: &PlayerAggregate,
+    peers: &[&PlayerAggregate],
+    can_compute_percentiles: bool,
+    selector_total: F,
+) -> PlayerAdvancedMetricDto
+where
+    F: Fn(&PlayerAggregate) -> u32,
+{
+    let total = selector_total(aggregate);
+
+    PlayerAdvancedMetricDto {
+        total,
+        per_match: calculate_per_match(total, aggregate.matches_played),
+        percentile: if can_compute_percentiles {
+            metric_percentile(
+                peers,
+                |candidate| {
+                    calculate_per_match(selector_total(candidate), candidate.matches_played)
+                },
+                aggregate,
+            )
+        } else {
+            None
+        },
+    }
+}
+
 fn build_overview_from_aggregate(
     player_aggregate: &PlayerAggregate,
     peers: &[PlayerAggregate],
 ) -> PlayerStatsOverviewDto {
     let eligible_peers = peers
         .iter()
-        .filter(|aggregate| aggregate.minutes_played >= DEFAULT_MINIMUM_MINUTES)
+        .filter(|aggregate| aggregate.matches_played >= DEFAULT_MINIMUM_MATCHES)
         .collect::<Vec<_>>();
-    let can_compute_percentiles = player_aggregate.minutes_played >= DEFAULT_MINIMUM_MINUTES
+    let can_compute_percentiles = player_aggregate.matches_played >= DEFAULT_MINIMUM_MATCHES
         && eligible_peers.len() >= DEFAULT_MINIMUM_COHORT_SIZE;
 
     PlayerStatsOverviewDto {
         percentile_eligible: can_compute_percentiles,
+        matches_played: player_aggregate.matches_played,
         metrics: PlayerStatsOverviewMetricsDto {
-            shots: PlayerAdvancedMetricDto {
-                total: player_aggregate.shots,
-                per90: calculate_per90(player_aggregate.shots, player_aggregate.minutes_played),
-                percentile: if can_compute_percentiles {
-                    metric_percentile(
-                        &eligible_peers,
-                        |aggregate| calculate_per90(aggregate.shots, aggregate.minutes_played),
-                        player_aggregate,
-                    )
-                } else {
-                    None
-                },
-            },
-            shots_on_target: PlayerAdvancedMetricDto {
-                total: player_aggregate.shots_on_target,
-                per90: calculate_per90(
-                    player_aggregate.shots_on_target,
-                    player_aggregate.minutes_played,
-                ),
-                percentile: if can_compute_percentiles {
-                    metric_percentile(
-                        &eligible_peers,
-                        |aggregate| {
-                            calculate_per90(aggregate.shots_on_target, aggregate.minutes_played)
-                        },
-                        player_aggregate,
-                    )
-                } else {
-                    None
-                },
-            },
-            passes: PlayerAdvancedPassMetricDto {
-                completed: player_aggregate.passes_completed,
-                attempted: player_aggregate.passes_attempted,
-                accuracy: calculate_pass_accuracy(
-                    player_aggregate.passes_completed,
-                    player_aggregate.passes_attempted,
-                ),
-                percentile: if can_compute_percentiles {
-                    metric_percentile(
-                        &eligible_peers,
-                        |aggregate| {
-                            calculate_pass_accuracy(
-                                aggregate.passes_completed,
-                                aggregate.passes_attempted,
-                            )
-                        },
-                        player_aggregate,
-                    )
-                } else {
-                    None
-                },
-            },
-            tackles_won: PlayerAdvancedMetricDto {
-                total: player_aggregate.tackles_won,
-                per90: calculate_per90(
-                    player_aggregate.tackles_won,
-                    player_aggregate.minutes_played,
-                ),
-                percentile: if can_compute_percentiles {
-                    metric_percentile(
-                        &eligible_peers,
-                        |aggregate| {
-                            calculate_per90(aggregate.tackles_won, aggregate.minutes_played)
-                        },
-                        player_aggregate,
-                    )
-                } else {
-                    None
-                },
-            },
-            interceptions: PlayerAdvancedMetricDto {
-                total: player_aggregate.interceptions,
-                per90: calculate_per90(
-                    player_aggregate.interceptions,
-                    player_aggregate.minutes_played,
-                ),
-                percentile: if can_compute_percentiles {
-                    metric_percentile(
-                        &eligible_peers,
-                        |aggregate| {
-                            calculate_per90(aggregate.interceptions, aggregate.minutes_played)
-                        },
-                        player_aggregate,
-                    )
-                } else {
-                    None
-                },
-            },
-            fouls_committed: PlayerAdvancedMetricDto {
-                total: player_aggregate.fouls_committed,
-                per90: calculate_per90(
-                    player_aggregate.fouls_committed,
-                    player_aggregate.minutes_played,
-                ),
-                percentile: if can_compute_percentiles {
-                    metric_percentile(
-                        &eligible_peers,
-                        |aggregate| {
-                            calculate_per90(aggregate.fouls_committed, aggregate.minutes_played)
-                        },
-                        player_aggregate,
-                    )
-                } else {
-                    None
-                },
-            },
+            kills: metric_dto(
+                player_aggregate,
+                &eligible_peers,
+                can_compute_percentiles,
+                |aggregate| aggregate.kills,
+            ),
+            deaths: metric_dto(
+                player_aggregate,
+                &eligible_peers,
+                can_compute_percentiles,
+                |aggregate| aggregate.deaths,
+            ),
+            assists: metric_dto(
+                player_aggregate,
+                &eligible_peers,
+                can_compute_percentiles,
+                |aggregate| aggregate.assists,
+            ),
+            creep_score: metric_dto(
+                player_aggregate,
+                &eligible_peers,
+                can_compute_percentiles,
+                |aggregate| aggregate.creep_score,
+            ),
+            vision_score: metric_dto(
+                player_aggregate,
+                &eligible_peers,
+                can_compute_percentiles,
+                |aggregate| aggregate.vision_score,
+            ),
+            wards_placed: metric_dto(
+                player_aggregate,
+                &eligible_peers,
+                can_compute_percentiles,
+                |aggregate| aggregate.wards_placed,
+            ),
         },
     }
 }
@@ -219,11 +185,11 @@ fn build_history_overview(
     else {
         return Err("Player not found".to_string());
     };
-    let target_position = position_key(player).clone();
+    let target_position = position_key(player);
     let same_position_ids = game
         .players
         .iter()
-        .filter(|candidate| *position_key(candidate) == target_position)
+        .filter(|candidate| position_key(candidate) == target_position)
         .map(|candidate| candidate.id.clone())
         .collect::<Vec<_>>();
 
@@ -267,46 +233,47 @@ fn build_history_overview(
     )))
 }
 
-fn build_legacy_overview(
-    state: &StateManager,
-    player_id: &str,
-) -> Result<PlayerStatsOverviewDto, String> {
-    let game = state
-        .get_game(|game| game.clone())
-        .ok_or("No active game session".to_string())?;
-    let Some(player) = game
-        .players
-        .iter()
-        .find(|candidate| candidate.id == player_id)
-    else {
-        return Err("Player not found".to_string());
-    };
-    let target_position = position_key(player).clone();
-    let peers = game
-        .players
-        .iter()
-        .filter(|candidate| *position_key(candidate) == target_position)
-        .map(|candidate| aggregate_from_season_stats(&candidate.stats))
-        .collect::<Vec<_>>();
-
-    Ok(build_overview_from_aggregate(
-        &aggregate_from_season_stats(&player.stats),
-        &peers,
-    ))
+fn build_legacy_overview() -> PlayerStatsOverviewDto {
+    // Transitional compatibility for legacy saves without LoL match history.
+    PlayerStatsOverviewDto {
+        percentile_eligible: false,
+        matches_played: 0,
+        metrics: PlayerStatsOverviewMetricsDto {
+            kills: PlayerAdvancedMetricDto {
+                total: 0,
+                per_match: None,
+                percentile: None,
+            },
+            deaths: PlayerAdvancedMetricDto {
+                total: 0,
+                per_match: None,
+                percentile: None,
+            },
+            assists: PlayerAdvancedMetricDto {
+                total: 0,
+                per_match: None,
+                percentile: None,
+            },
+            creep_score: PlayerAdvancedMetricDto {
+                total: 0,
+                per_match: None,
+                percentile: None,
+            },
+            vision_score: PlayerAdvancedMetricDto {
+                total: 0,
+                per_match: None,
+                percentile: None,
+            },
+            wards_placed: PlayerAdvancedMetricDto {
+                total: 0,
+                per_match: None,
+                percentile: None,
+            },
+        },
+    }
 }
 
 fn to_dto(state: &StateManager, record: &PlayerMatchStatsRecord) -> PlayerMatchHistoryEntryDto {
-    let team_goals = if record.team_id == record.home_team_id {
-        record.home_goals
-    } else {
-        record.away_goals
-    };
-    let opponent_goals = if record.team_id == record.home_team_id {
-        record.away_goals
-    } else {
-        record.home_goals
-    };
-
     PlayerMatchHistoryEntryDto {
         fixture_id: record.fixture_id.clone(),
         date: record.date.clone(),
@@ -314,23 +281,20 @@ fn to_dto(state: &StateManager, record: &PlayerMatchStatsRecord) -> PlayerMatchH
         matchday: record.matchday,
         opponent_team_id: record.opponent_team_id.clone(),
         opponent_name: opponent_name(state, &record.opponent_team_id),
-        team_goals,
-        opponent_goals,
-        champion_id: record.champion_id.clone(),
-        champion_win: record.champion_win,
-        minutes_played: record.minutes_played,
-        goals: record.goals,
+        side: side_label(record.side),
+        result: outcome_label(record.result),
+        role: role_label(record.role),
+        champion_id: record.champion.clone(),
+        champion_win: Some(matches!(record.result, MatchOutcome::Win)),
+        game_duration_seconds: record.duration_seconds,
+        kills: record.kills,
+        deaths: record.deaths,
         assists: record.assists,
-        shots: record.shots,
-        shots_on_target: record.shots_on_target,
-        passes_completed: record.passes_completed,
-        passes_attempted: record.passes_attempted,
-        tackles_won: record.tackles_won,
-        interceptions: record.interceptions,
-        fouls_committed: record.fouls_committed,
-        yellow_cards: record.yellow_cards,
-        red_cards: record.red_cards,
-        rating: record.rating,
+        cs: record.creep_score,
+        gold_earned: record.gold_earned,
+        damage_to_champions: record.damage_dealt,
+        vision_score: record.vision_score,
+        wards_placed: record.wards_placed,
     }
 }
 
@@ -374,5 +338,12 @@ pub(super) fn get_player_stats_overview_internal(
         return Ok(overview);
     }
 
-    build_legacy_overview(state, player_id)
+    let game = state
+        .get_game(|game| game.clone())
+        .ok_or("No active game session".to_string())?;
+    if game.players.iter().all(|candidate| candidate.id != player_id) {
+        return Err("Player not found".to_string());
+    }
+
+    Ok(build_legacy_overview())
 }

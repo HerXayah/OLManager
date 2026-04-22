@@ -1,8 +1,10 @@
 use chrono::{TimeZone, Utc};
 use domain::league::FixtureCompetition;
 use domain::manager::Manager;
-use domain::player::{Player, PlayerAttributes, PlayerSeasonStats, Position};
-use domain::stats::{PlayerMatchStatsRecord, StatsState, TeamMatchStatsRecord};
+use domain::player::{Player, PlayerAttributes, Position};
+use domain::stats::{
+    LolRole, MatchOutcome, PlayerMatchStatsRecord, StatsState, TeamMatchStatsRecord, TeamSide,
+};
 use domain::team::Team;
 use ofm_core::clock::GameClock;
 use ofm_core::game::Game;
@@ -82,403 +84,212 @@ fn make_game(players: Vec<Player>) -> Game {
         18_000,
     );
 
-    Game::new(
-        clock,
-        manager,
-        vec![team, opponent],
-        players,
-        vec![],
-        vec![],
-    )
+    Game::new(clock, manager, vec![team, opponent], players, vec![], vec![])
 }
 
-fn sample_stats_state() -> StatsState {
-    StatsState {
-        player_matches: vec![
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-older".to_string(),
-                season: 2025,
-                matchday: 1,
-                date: "2025-06-10".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-1".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-1".to_string(),
-                away_team_id: "team-2".to_string(),
-                home_goals: 2,
-                away_goals: 1,
-                minutes_played: 90,
-                goals: 1,
-                assists: 0,
-                shots: 4,
-                shots_on_target: 2,
-                passes_completed: 20,
-                passes_attempted: 24,
-                tackles_won: 1,
-                interceptions: 0,
-                fouls_committed: 1,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.2,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-latest".to_string(),
-                season: 2025,
-                matchday: 2,
-                date: "2025-06-17".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-1".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-3".to_string(),
-                home_team_id: "team-3".to_string(),
-                away_team_id: "team-1".to_string(),
-                home_goals: 0,
-                away_goals: 3,
-                minutes_played: 88,
-                goals: 2,
-                assists: 1,
-                shots: 5,
-                shots_on_target: 3,
-                passes_completed: 24,
-                passes_attempted: 28,
-                tackles_won: 2,
-                interceptions: 1,
-                fouls_committed: 0,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 8.4,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-other-player".to_string(),
-                season: 2025,
-                matchday: 2,
-                date: "2025-06-17".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-2".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-3".to_string(),
-                home_team_id: "team-3".to_string(),
-                away_team_id: "team-1".to_string(),
-                home_goals: 0,
-                away_goals: 3,
-                minutes_played: 90,
-                goals: 0,
-                assists: 0,
-                shots: 1,
-                shots_on_target: 0,
-                passes_completed: 40,
-                passes_attempted: 48,
-                tackles_won: 4,
-                interceptions: 3,
-                fouls_committed: 2,
-                yellow_cards: 1,
-                red_cards: 0,
-                rating: 7.0,
-            },
-        ],
-        team_matches: vec![],
+fn player_record(
+    fixture_id: &str,
+    player_id: &str,
+    side: TeamSide,
+    result: MatchOutcome,
+    kills: u16,
+    deaths: u16,
+    assists: u16,
+    creep_score: u16,
+) -> PlayerMatchStatsRecord {
+    PlayerMatchStatsRecord {
+        fixture_id: fixture_id.to_string(),
+        season: 2025,
+        matchday: 1,
+        date: fixture_id.to_string(),
+        competition: FixtureCompetition::League,
+        player_id: player_id.to_string(),
+        team_id: "team-1".to_string(),
+        opponent_team_id: "team-2".to_string(),
+        side,
+        result,
+        role: LolRole::Mid,
+        champion: Some("ahri".to_string()),
+        duration_seconds: 1800,
+        kills,
+        deaths,
+        assists,
+        creep_score,
+        gold_earned: 12_000,
+        damage_dealt: 20_000,
+        vision_score: 30,
+        wards_placed: 12,
     }
 }
 
-fn sample_team_stats_state() -> StatsState {
-    StatsState {
-        player_matches: vec![],
-        team_matches: vec![
-            TeamMatchStatsRecord {
-                fixture_id: "fixture-1".to_string(),
-                season: 2025,
-                matchday: 1,
-                date: "2025-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-1".to_string(),
-                away_team_id: "team-2".to_string(),
-                goals_for: 2,
-                goals_against: 0,
-                possession_pct: 58,
-                shots: 14,
-                shots_on_target: 6,
-                passes_completed: 420,
-                passes_attempted: 500,
-                tackles_won: 18,
-                interceptions: 11,
-                fouls_committed: 9,
-                yellow_cards: 1,
-                red_cards: 0,
-            },
-            TeamMatchStatsRecord {
-                fixture_id: "fixture-2".to_string(),
-                season: 2026,
-                matchday: 1,
-                date: "2026-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-2".to_string(),
-                away_team_id: "team-1".to_string(),
-                goals_for: 3,
-                goals_against: 1,
-                possession_pct: 62,
-                shots: 16,
-                shots_on_target: 7,
-                passes_completed: 460,
-                passes_attempted: 540,
-                tackles_won: 20,
-                interceptions: 13,
-                fouls_committed: 10,
-                yellow_cards: 2,
-                red_cards: 0,
-            },
-        ],
+fn team_record(
+    fixture_id: &str,
+    side: TeamSide,
+    result: MatchOutcome,
+    kills: u16,
+    deaths: u16,
+) -> TeamMatchStatsRecord {
+    TeamMatchStatsRecord {
+        fixture_id: fixture_id.to_string(),
+        season: 2025,
+        matchday: 1,
+        date: fixture_id.to_string(),
+        competition: FixtureCompetition::League,
+        team_id: "team-1".to_string(),
+        opponent_team_id: "team-2".to_string(),
+        side,
+        result,
+        duration_seconds: 2100,
+        kills,
+        deaths,
+        gold_earned: 60_000,
+        damage_dealt: 95_000,
+        objectives: 7,
     }
 }
 
 #[test]
-fn get_player_stats_overview_aggregates_history_and_uses_exact_position_cohorts() {
-    let mut player = make_player("player-1", "team-1", Position::Striker);
-    player.stats = PlayerSeasonStats {
-        appearances: 1,
-        goals: 1,
-        assists: 1,
-        clean_sheets: 0,
-        yellow_cards: 0,
-        red_cards: 0,
-        avg_rating: 7.0,
-        minutes_played: 90,
-        shots: 2,
-        shots_on_target: 1,
-        passes_completed: 10,
-        passes_attempted: 12,
-        tackles_won: 1,
-        interceptions: 0,
-        fouls_committed: 1,
-    };
-    let peer_a = make_player("player-2", "team-1", Position::Striker);
-    let peer_b = make_player("player-3", "team-1", Position::Striker);
-    let broad_bucket_peer = make_player("player-4", "team-1", Position::Forward);
-
+fn get_player_match_history_returns_lol_first_fields() {
     let state = StateManager::new();
-    state.set_game(make_game(vec![player, peer_a, peer_b, broad_bucket_peer]));
+    state.set_game(make_game(vec![make_player("player-1", "team-1", Position::Striker)]));
     state.set_stats_state(StatsState {
         player_matches: vec![
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-a".to_string(),
-                season: 2025,
-                matchday: 1,
-                date: "2025-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-1".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-1".to_string(),
-                away_team_id: "team-2".to_string(),
-                home_goals: 2,
-                away_goals: 0,
-                minutes_played: 90,
-                goals: 1,
-                assists: 1,
-                shots: 6,
-                shots_on_target: 3,
-                passes_completed: 25,
-                passes_attempted: 30,
-                tackles_won: 4,
-                interceptions: 2,
-                fouls_committed: 1,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 8.1,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-b".to_string(),
-                season: 2026,
-                matchday: 1,
-                date: "2026-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-1".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-2".to_string(),
-                away_team_id: "team-1".to_string(),
-                home_goals: 1,
-                away_goals: 3,
-                minutes_played: 90,
-                goals: 2,
-                assists: 0,
-                shots: 4,
-                shots_on_target: 2,
-                passes_completed: 20,
-                passes_attempted: 25,
-                tackles_won: 2,
-                interceptions: 1,
-                fouls_committed: 2,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 8.4,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-peer-a-1".to_string(),
-                season: 2025,
-                matchday: 1,
-                date: "2025-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-2".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-1".to_string(),
-                away_team_id: "team-2".to_string(),
-                home_goals: 1,
-                away_goals: 0,
-                minutes_played: 90,
-                goals: 0,
-                assists: 0,
-                shots: 2,
-                shots_on_target: 1,
-                passes_completed: 18,
-                passes_attempted: 24,
-                tackles_won: 1,
-                interceptions: 1,
-                fouls_committed: 1,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 6.9,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-peer-a-2".to_string(),
-                season: 2026,
-                matchday: 1,
-                date: "2026-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-2".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-2".to_string(),
-                away_team_id: "team-1".to_string(),
-                home_goals: 1,
-                away_goals: 1,
-                minutes_played: 90,
-                goals: 1,
-                assists: 0,
-                shots: 3,
-                shots_on_target: 1,
-                passes_completed: 20,
-                passes_attempted: 28,
-                tackles_won: 2,
-                interceptions: 1,
-                fouls_committed: 2,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.1,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-peer-b-1".to_string(),
-                season: 2025,
-                matchday: 1,
-                date: "2025-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-3".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-1".to_string(),
-                away_team_id: "team-2".to_string(),
-                home_goals: 0,
-                away_goals: 0,
-                minutes_played: 90,
-                goals: 0,
-                assists: 0,
-                shots: 3,
-                shots_on_target: 1,
-                passes_completed: 19,
-                passes_attempted: 24,
-                tackles_won: 2,
-                interceptions: 1,
-                fouls_committed: 1,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.0,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-peer-b-2".to_string(),
-                season: 2026,
-                matchday: 1,
-                date: "2026-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-3".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-2".to_string(),
-                away_team_id: "team-1".to_string(),
-                home_goals: 0,
-                away_goals: 1,
-                minutes_played: 90,
-                goals: 0,
-                assists: 0,
-                shots: 4,
-                shots_on_target: 2,
-                passes_completed: 18,
-                passes_attempted: 22,
-                tackles_won: 1,
-                interceptions: 1,
-                fouls_committed: 1,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.2,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-forward-only-1".to_string(),
-                season: 2025,
-                matchday: 1,
-                date: "2025-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-4".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-1".to_string(),
-                away_team_id: "team-2".to_string(),
-                home_goals: 1,
-                away_goals: 1,
-                minutes_played: 90,
-                goals: 0,
-                assists: 0,
-                shots: 30,
-                shots_on_target: 12,
-                passes_completed: 40,
-                passes_attempted: 45,
-                tackles_won: 1,
-                interceptions: 0,
-                fouls_committed: 2,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.3,
-            },
-            PlayerMatchStatsRecord {
-                fixture_id: "fixture-forward-only-2".to_string(),
-                season: 2026,
-                matchday: 1,
-                date: "2026-08-01".to_string(),
-                competition: FixtureCompetition::League,
-                player_id: "player-4".to_string(),
-                team_id: "team-1".to_string(),
-                opponent_team_id: "team-2".to_string(),
-                home_team_id: "team-2".to_string(),
-                away_team_id: "team-1".to_string(),
-                home_goals: 0,
-                away_goals: 1,
-                minutes_played: 90,
-                goals: 0,
-                assists: 0,
-                shots: 30,
-                shots_on_target: 14,
-                passes_completed: 42,
-                passes_attempted: 48,
-                tackles_won: 1,
-                interceptions: 0,
-                fouls_committed: 2,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.4,
-            },
+            player_record(
+                "2025-06-10",
+                "player-1",
+                TeamSide::Blue,
+                MatchOutcome::Win,
+                3,
+                1,
+                8,
+                210,
+            ),
+            player_record(
+                "2025-06-17",
+                "player-1",
+                TeamSide::Red,
+                MatchOutcome::Loss,
+                1,
+                4,
+                2,
+                190,
+            ),
+        ],
+        team_matches: vec![],
+    });
+
+    let history = get_player_match_history_internal(&state, "player-1", Some(1)).unwrap();
+
+    assert_eq!(history.len(), 1);
+    assert_eq!(history[0].fixture_id, "2025-06-17");
+    assert_eq!(history[0].side, "Red");
+    assert_eq!(history[0].result, "Loss");
+    assert_eq!(history[0].role, "Mid");
+    assert_eq!(history[0].kills, 1);
+    assert_eq!(history[0].cs, 190);
+    assert_eq!(history[0].game_duration_seconds, 1800);
+}
+
+#[test]
+fn get_player_stats_overview_aggregates_lol_metrics_by_position() {
+    let state = StateManager::new();
+    state.set_game(make_game(vec![
+        make_player("player-1", "team-1", Position::Striker),
+        make_player("player-2", "team-1", Position::Striker),
+        make_player("player-3", "team-1", Position::Striker),
+    ]));
+    state.set_stats_state(StatsState {
+        player_matches: vec![
+            player_record(
+                "2025-08-01-a",
+                "player-1",
+                TeamSide::Blue,
+                MatchOutcome::Win,
+                6,
+                2,
+                10,
+                250,
+            ),
+            player_record(
+                "2025-08-08-a",
+                "player-1",
+                TeamSide::Red,
+                MatchOutcome::Win,
+                5,
+                1,
+                9,
+                240,
+            ),
+            player_record(
+                "2025-08-15-a",
+                "player-1",
+                TeamSide::Blue,
+                MatchOutcome::Loss,
+                4,
+                3,
+                7,
+                230,
+            ),
+            player_record(
+                "2025-08-01-b",
+                "player-2",
+                TeamSide::Blue,
+                MatchOutcome::Win,
+                2,
+                4,
+                5,
+                180,
+            ),
+            player_record(
+                "2025-08-08-b",
+                "player-2",
+                TeamSide::Red,
+                MatchOutcome::Loss,
+                1,
+                5,
+                4,
+                170,
+            ),
+            player_record(
+                "2025-08-15-b",
+                "player-2",
+                TeamSide::Blue,
+                MatchOutcome::Win,
+                3,
+                4,
+                6,
+                175,
+            ),
+            player_record(
+                "2025-08-01-c",
+                "player-3",
+                TeamSide::Blue,
+                MatchOutcome::Win,
+                1,
+                3,
+                7,
+                160,
+            ),
+            player_record(
+                "2025-08-08-c",
+                "player-3",
+                TeamSide::Red,
+                MatchOutcome::Loss,
+                2,
+                4,
+                5,
+                165,
+            ),
+            player_record(
+                "2025-08-15-c",
+                "player-3",
+                TeamSide::Blue,
+                MatchOutcome::Win,
+                2,
+                2,
+                6,
+                170,
+            ),
         ],
         team_matches: vec![],
     });
@@ -486,178 +297,56 @@ fn get_player_stats_overview_aggregates_history_and_uses_exact_position_cohorts(
     let overview = get_player_stats_overview_internal(&state, "player-1").unwrap();
 
     assert!(overview.percentile_eligible);
-    assert_eq!(overview.metrics.shots.total, 10);
-    assert_eq!(overview.metrics.shots.per90, Some(5.0));
-    assert_eq!(overview.metrics.shots.percentile, Some(100));
-    assert_eq!(overview.metrics.passes.completed, 45);
-    assert_eq!(overview.metrics.passes.attempted, 55);
-    assert_eq!(overview.metrics.passes.accuracy, Some(81.8));
-    assert_eq!(overview.metrics.passes.percentile, Some(100));
+    assert_eq!(overview.matches_played, 3);
+    assert_eq!(overview.metrics.kills.total, 15);
+    assert_eq!(overview.metrics.kills.per_match, Some(5.0));
+    assert_eq!(overview.metrics.kills.percentile, Some(100));
+    assert_eq!(overview.metrics.vision_score.total, 90);
+    assert_eq!(overview.metrics.wards_placed.total, 36);
 }
 
 #[test]
-fn get_player_stats_overview_falls_back_to_current_season_totals_for_legacy_saves() {
-    let mut player = make_player("player-1", "team-1", Position::Striker);
-    player.stats = PlayerSeasonStats {
-        appearances: 10,
-        goals: 4,
-        assists: 3,
-        clean_sheets: 0,
-        yellow_cards: 1,
-        red_cards: 0,
-        avg_rating: 7.2,
-        minutes_played: 450,
-        shots: 20,
-        shots_on_target: 10,
-        passes_completed: 80,
-        passes_attempted: 100,
-        tackles_won: 9,
-        interceptions: 6,
-        fouls_committed: 5,
-    };
-    let mut peer_a = make_player("player-2", "team-1", Position::Striker);
-    peer_a.stats = PlayerSeasonStats {
-        appearances: 10,
-        goals: 2,
-        assists: 2,
-        clean_sheets: 0,
-        yellow_cards: 0,
-        red_cards: 0,
-        avg_rating: 7.0,
-        minutes_played: 450,
-        shots: 10,
-        shots_on_target: 5,
-        passes_completed: 70,
-        passes_attempted: 100,
-        tackles_won: 6,
-        interceptions: 4,
-        fouls_committed: 3,
-    };
-    let mut peer_b = make_player("player-3", "team-1", Position::Striker);
-    peer_b.stats = PlayerSeasonStats {
-        appearances: 10,
-        goals: 3,
-        assists: 2,
-        clean_sheets: 0,
-        yellow_cards: 0,
-        red_cards: 0,
-        avg_rating: 7.0,
-        minutes_played: 450,
-        shots: 15,
-        shots_on_target: 8,
-        passes_completed: 75,
-        passes_attempted: 100,
-        tackles_won: 7,
-        interceptions: 5,
-        fouls_committed: 4,
-    };
-
+fn get_team_stats_overview_aggregates_lol_team_metrics() {
     let state = StateManager::new();
-    state.set_game(make_game(vec![player, peer_a, peer_b]));
-
-    let overview = get_player_stats_overview_internal(&state, "player-1").unwrap();
-
-    assert!(overview.percentile_eligible);
-    assert_eq!(overview.metrics.shots.total, 20);
-    assert_eq!(overview.metrics.shots.per90, Some(4.0));
-    assert_eq!(overview.metrics.passes.accuracy, Some(80.0));
-    assert_eq!(overview.metrics.shots.percentile, Some(100));
-}
-
-#[test]
-fn get_player_match_history_returns_latest_matches_first_with_limit() {
-    let state = StateManager::new();
-    state.set_stats_state(sample_stats_state());
-
-    let history = get_player_match_history_internal(&state, "player-1", Some(1)).unwrap();
-
-    assert_eq!(history.len(), 1);
-    assert_eq!(history[0].fixture_id, "fixture-latest");
-    assert_eq!(history[0].opponent_team_id, "team-3");
-    assert_eq!(history[0].goals, 2);
-}
-
-#[test]
-fn get_player_match_history_returns_empty_when_stats_state_is_missing() {
-    let state = StateManager::new();
-
-    let history = get_player_match_history_internal(&state, "player-1", None).unwrap();
-
-    assert!(history.is_empty());
-}
-
-#[test]
-fn get_team_stats_overview_aggregates_totals_and_match_averages() {
-    let state = StateManager::new();
-    state.set_game(make_game(vec![make_player(
-        "player-1",
-        "team-1",
-        Position::Striker,
-    )]));
-    state.set_stats_state(sample_team_stats_state());
+    state.set_game(make_game(vec![make_player("player-1", "team-1", Position::Striker)]));
+    state.set_stats_state(StatsState {
+        player_matches: vec![],
+        team_matches: vec![
+            team_record("2025-08-01", TeamSide::Blue, MatchOutcome::Win, 18, 9),
+            team_record("2025-08-08", TeamSide::Red, MatchOutcome::Loss, 11, 17),
+        ],
+    });
 
     let overview = get_team_stats_overview_internal(&state, "team-1")
         .unwrap()
         .expect("expected team overview");
 
     assert_eq!(overview.matches_played, 2);
-    assert_eq!(overview.goals_for, 5);
-    assert_eq!(overview.goals_against, 1);
-    assert_eq!(overview.goal_difference, 4);
-    assert_eq!(overview.possession_average, Some(60.0));
-    assert_eq!(overview.metrics.shots.total, 30);
-    assert_eq!(overview.metrics.shots.per_match, Some(15.0));
-    assert_eq!(overview.metrics.shots_on_target.total, 13);
-    assert_eq!(overview.metrics.shots_on_target.per_match, Some(6.5));
-    assert_eq!(overview.metrics.passes.completed, 880);
-    assert_eq!(overview.metrics.passes.attempted, 1040);
-    assert_eq!(overview.metrics.passes.accuracy, Some(84.6));
-    assert_eq!(overview.metrics.tackles_won.per_match, Some(19.0));
+    assert_eq!(overview.wins, 1);
+    assert_eq!(overview.losses, 1);
+    assert_eq!(overview.metrics.kills.total, 29);
+    assert_eq!(overview.metrics.kills.per_match, Some(14.5));
+    assert_eq!(overview.metrics.average_game_duration_seconds.total, 4200);
 }
 
 #[test]
-fn get_team_stats_overview_returns_none_without_history() {
+fn get_team_match_history_returns_lol_first_fields() {
     let state = StateManager::new();
-    state.set_game(make_game(vec![make_player(
-        "player-1",
-        "team-1",
-        Position::Striker,
-    )]));
-
-    let overview = get_team_stats_overview_internal(&state, "team-1").unwrap();
-
-    assert!(overview.is_none());
-}
-
-#[test]
-fn get_team_match_history_returns_latest_matches_first_with_limit() {
-    let state = StateManager::new();
-    state.set_game(make_game(vec![make_player(
-        "player-1",
-        "team-1",
-        Position::Striker,
-    )]));
-    state.set_stats_state(sample_team_stats_state());
+    state.set_game(make_game(vec![make_player("player-1", "team-1", Position::Striker)]));
+    state.set_stats_state(StatsState {
+        player_matches: vec![],
+        team_matches: vec![
+            team_record("2025-08-01", TeamSide::Blue, MatchOutcome::Win, 18, 9),
+            team_record("2025-08-08", TeamSide::Red, MatchOutcome::Loss, 11, 17),
+        ],
+    });
 
     let history = get_team_match_history_internal(&state, "team-1", Some(1)).unwrap();
 
     assert_eq!(history.len(), 1);
-    assert_eq!(history[0].fixture_id, "fixture-2");
-    assert_eq!(history[0].opponent_team_id, "team-2");
-    assert_eq!(history[0].goals_for, 3);
-    assert_eq!(history[0].goals_against, 1);
-}
-
-#[test]
-fn get_team_match_history_returns_empty_when_stats_state_is_missing() {
-    let state = StateManager::new();
-    state.set_game(make_game(vec![make_player(
-        "player-1",
-        "team-1",
-        Position::Striker,
-    )]));
-
-    let history = get_team_match_history_internal(&state, "team-1", None).unwrap();
-
-    assert!(history.is_empty());
+    assert_eq!(history[0].fixture_id, "2025-08-08");
+    assert_eq!(history[0].side, "Red");
+    assert_eq!(history[0].result, "Loss");
+    assert_eq!(history[0].kills, 11);
+    assert_eq!(history[0].objectives, 7);
 }

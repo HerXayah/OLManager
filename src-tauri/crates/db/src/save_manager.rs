@@ -404,7 +404,9 @@ mod tests {
     use domain::league::{Fixture, FixtureCompetition, FixtureStatus, League, StandingEntry};
     use domain::player::{Footedness, Player, PlayerAttributes, Position};
     use domain::staff::{StaffAttributes, StaffRole};
-    use domain::stats::{PlayerMatchStatsRecord, StatsState, TeamMatchStatsRecord};
+    use domain::stats::{
+        LolRole, MatchOutcome, PlayerMatchStatsRecord, StatsState, TeamMatchStatsRecord, TeamSide,
+    };
     use domain::team::Team;
     use ofm_core::clock::GameClock;
     use ofm_core::game::{BoardObjective, ObjectiveType, ScoutingAssignment};
@@ -567,23 +569,19 @@ mod tests {
                 player_id: "p-001".to_string(),
                 team_id: "team-001".to_string(),
                 opponent_team_id: "team-002".to_string(),
-                home_team_id: "team-001".to_string(),
-                away_team_id: "team-002".to_string(),
-                home_goals: 2,
-                away_goals: 1,
-                minutes_played: 90,
-                goals: 1,
-                assists: 1,
-                shots: 4,
-                shots_on_target: 2,
-                passes_completed: 38,
-                passes_attempted: 44,
-                tackles_won: 3,
-                interceptions: 2,
-                fouls_committed: 1,
-                yellow_cards: 0,
-                red_cards: 0,
-                rating: 7.8,
+                side: TeamSide::Blue,
+                result: MatchOutcome::Win,
+                role: LolRole::Mid,
+                champion: Some("ahri".to_string()),
+                duration_seconds: 1800,
+                kills: 4,
+                deaths: 1,
+                assists: 7,
+                creep_score: 210,
+                gold_earned: 13_500,
+                damage_dealt: 22_000,
+                vision_score: 24,
+                wards_placed: 10,
             }],
             team_matches: vec![TeamMatchStatsRecord {
                 fixture_id: "fix-current".to_string(),
@@ -593,20 +591,14 @@ mod tests {
                 competition: FixtureCompetition::League,
                 team_id: "team-001".to_string(),
                 opponent_team_id: "team-002".to_string(),
-                home_team_id: "team-001".to_string(),
-                away_team_id: "team-002".to_string(),
-                goals_for: 2,
-                goals_against: 1,
-                possession_pct: 54,
-                shots: 12,
-                shots_on_target: 6,
-                passes_completed: 410,
-                passes_attempted: 470,
-                tackles_won: 15,
-                interceptions: 9,
-                fouls_committed: 11,
-                yellow_cards: 2,
-                red_cards: 0,
+                side: TeamSide::Blue,
+                result: MatchOutcome::Win,
+                duration_seconds: 1800,
+                kills: 18,
+                deaths: 9,
+                gold_earned: 63_200,
+                damage_dealt: 94_100,
+                objectives: 8,
             }],
         }
     }
@@ -817,9 +809,9 @@ mod tests {
         assert_eq!(loaded_stats.player_matches.len(), 1);
         assert_eq!(loaded_stats.team_matches.len(), 1);
         assert_eq!(loaded_stats.player_matches[0].player_id, "p-001");
-        assert_eq!(loaded_stats.player_matches[0].shots, 4);
+        assert_eq!(loaded_stats.player_matches[0].kills, 4);
         assert_eq!(loaded_stats.team_matches[0].team_id, "team-001");
-        assert_eq!(loaded_stats.team_matches[0].shots_on_target, 6);
+        assert_eq!(loaded_stats.team_matches[0].deaths, 9);
     }
 
     #[test]

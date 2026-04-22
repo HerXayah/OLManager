@@ -107,8 +107,8 @@ pub fn build_round_summary(
                 home_team_name: team_name(game, &fixture.home_team_id),
                 away_team_id: fixture.away_team_id.clone(),
                 away_team_name: team_name(game, &fixture.away_team_id),
-                home_goals: result.home_goals,
-                away_goals: result.away_goals,
+                home_goals: result.home_wins,
+                away_goals: result.away_wins,
             })
         })
         .collect();
@@ -174,7 +174,7 @@ fn build_notable_upset(game: &Game, fixtures: &[&Fixture]) -> Option<NotableUpse
         .iter()
         .filter_map(|fixture| {
             let result = fixture.result.as_ref()?;
-            if result.home_goals == result.away_goals {
+            if result.home_wins == result.away_wins {
                 return None;
             }
 
@@ -210,7 +210,7 @@ fn build_notable_upset(game: &Game, fixtures: &[&Fixture]) -> Option<NotableUpse
                 return None;
             };
 
-            let winner_id = if result.home_goals > result.away_goals {
+            let winner_id = if result.home_wins > result.away_wins {
                 fixture.home_team_id.as_str()
             } else {
                 fixture.away_team_id.as_str()
@@ -229,8 +229,8 @@ fn build_notable_upset(game: &Game, fixtures: &[&Fixture]) -> Option<NotableUpse
                 underdog_team_name,
                 underdog_strength,
                 strength_gap: (favorite_strength - underdog_strength).abs(),
-                home_goals: result.home_goals,
-                away_goals: result.away_goals,
+                home_goals: result.home_wins,
+                away_goals: result.away_wins,
             })
         })
         .max_by(|left, right| {

@@ -1,28 +1,44 @@
-use domain::stats::TeamMatchStatsRecord;
+use domain::stats::{MatchOutcome, TeamMatchStatsRecord, TeamSide};
 use ofm_core::state::StateManager;
 
 use super::dto::{
-    TeamAdvancedMetricDto, TeamAdvancedPassMetricDto, TeamMatchHistoryEntryDto,
-    TeamStatsOverviewDto, TeamStatsOverviewMetricsDto,
+    TeamAdvancedMetricDto, TeamMatchHistoryEntryDto, TeamStatsOverviewDto,
+    TeamStatsOverviewMetricsDto,
 };
-use super::shared::{
-    calculate_average, calculate_pass_accuracy, competition_label, ensure_team_exists,
-    opponent_name,
-};
+use super::shared::{calculate_average, competition_label, ensure_team_exists, opponent_name};
 
 #[derive(Debug, Clone, Default)]
 struct TeamAggregate {
     matches_played: u32,
-    goals_for: u32,
-    goals_against: u32,
-    possession_total: u32,
-    shots: u32,
-    shots_on_target: u32,
-    passes_completed: u32,
-    passes_attempted: u32,
-    tackles_won: u32,
-    interceptions: u32,
-    fouls_committed: u32,
+    wins: u32,
+    losses: u32,
+    duration_seconds_total: u32,
+    kills: u32,
+    deaths: u32,
+    gold_earned: u32,
+    damage_dealt: u32,
+    objectives: u32,
+}
+
+fn side_label(side: TeamSide) -> String {
+    match side {
+        TeamSide::Blue => "Blue".to_string(),
+        TeamSide::Red => "Red".to_string(),
+    }
+}
+
+fn outcome_label(outcome: MatchOutcome) -> String {
+    match outcome {
+        MatchOutcome::Win => "Win".to_string(),
+        MatchOutcome::Loss => "Loss".to_string(),
+    }
+}
+
+fn metric_dto(total: u32, matches_played: u32) -> TeamAdvancedMetricDto {
+    TeamAdvancedMetricDto {
+        total,
+        per_match: calculate_average(total, matches_played),
+    }
 }
 
 fn aggregate_team_history(records: &[TeamMatchStatsRecord]) -> Option<TeamAggregate> {
@@ -33,16 +49,17 @@ fn aggregate_team_history(records: &[TeamMatchStatsRecord]) -> Option<TeamAggreg
     let mut aggregate = TeamAggregate::default();
     for record in records {
         aggregate.matches_played += 1;
-        aggregate.goals_for += record.goals_for as u32;
-        aggregate.goals_against += record.goals_against as u32;
-        aggregate.possession_total += record.possession_pct as u32;
-        aggregate.shots += record.shots as u32;
-        aggregate.shots_on_target += record.shots_on_target as u32;
-        aggregate.passes_completed += record.passes_completed as u32;
-        aggregate.passes_attempted += record.passes_attempted as u32;
-        aggregate.tackles_won += record.tackles_won as u32;
-        aggregate.interceptions += record.interceptions as u32;
-        aggregate.fouls_committed += record.fouls_committed as u32;
+        aggregate.duration_seconds_total += record.duration_seconds;
+        aggregate.kills += record.kills as u32;
+        aggregate.deaths += record.deaths as u32;
+        aggregate.gold_earned += record.gold_earned;
+        aggregate.damage_dealt += record.damage_dealt;
+        aggregate.objectives += record.objectives as u32;
+
+        match record.result {
+            MatchOutcome::Win => aggregate.wins += 1,
+            MatchOutcome::Loss => aggregate.losses += 1,
+        }
     }
 
     Some(aggregate)
@@ -51,47 +68,23 @@ fn aggregate_team_history(records: &[TeamMatchStatsRecord]) -> Option<TeamAggreg
 fn build_team_overview(aggregate: &TeamAggregate) -> TeamStatsOverviewDto {
     TeamStatsOverviewDto {
         matches_played: aggregate.matches_played,
-        goals_for: aggregate.goals_for,
-        goals_against: aggregate.goals_against,
-        goal_difference: aggregate.goals_for as i32 - aggregate.goals_against as i32,
-        possession_average: calculate_average(aggregate.possession_total, aggregate.matches_played),
+        wins: aggregate.wins,
+        losses: aggregate.losses,
         metrics: TeamStatsOverviewMetricsDto {
-            shots: TeamAdvancedMetricDto {
-                total: aggregate.shots,
-                per_match: calculate_average(aggregate.shots, aggregate.matches_played),
-            },
-            shots_on_target: TeamAdvancedMetricDto {
-                total: aggregate.shots_on_target,
-                per_match: calculate_average(aggregate.shots_on_target, aggregate.matches_played),
-            },
-            passes: TeamAdvancedPassMetricDto {
-                completed: aggregate.passes_completed,
-                attempted: aggregate.passes_attempted,
-                accuracy: calculate_pass_accuracy(
-                    aggregate.passes_completed,
-                    aggregate.passes_attempted,
-                ),
-            },
-            tackles_won: TeamAdvancedMetricDto {
-                total: aggregate.tackles_won,
-                per_match: calculate_average(aggregate.tackles_won, aggregate.matches_played),
-            },
-            interceptions: TeamAdvancedMetricDto {
-                total: aggregate.interceptions,
-                per_match: calculate_average(aggregate.interceptions, aggregate.matches_played),
-            },
-            fouls_committed: TeamAdvancedMetricDto {
-                total: aggregate.fouls_committed,
-                per_match: calculate_average(aggregate.fouls_committed, aggregate.matches_played),
-            },
+            kills: metric_dto(aggregate.kills, aggregate.matches_played),
+            deaths: metric_dto(aggregate.deaths, aggregate.matches_played),
+            gold_earned: metric_dto(aggregate.gold_earned, aggregate.matches_played),
+            damage_to_champions: metric_dto(aggregate.damage_dealt, aggregate.matches_played),
+            objectives: metric_dto(aggregate.objectives, aggregate.matches_played),
+            average_game_duration_seconds: metric_dto(
+                aggregate.duration_seconds_total,
+                aggregate.matches_played,
+            ),
         },
     }
 }
 
-fn to_team_history_dto(
-    state: &StateManager,
-    record: &TeamMatchStatsRecord,
-) -> TeamMatchHistoryEntryDto {
+fn to_team_history_dto(state: &StateManager, record: &TeamMatchStatsRecord) -> TeamMatchHistoryEntryDto {
     TeamMatchHistoryEntryDto {
         fixture_id: record.fixture_id.clone(),
         date: record.date.clone(),
@@ -99,11 +92,14 @@ fn to_team_history_dto(
         matchday: record.matchday,
         opponent_team_id: record.opponent_team_id.clone(),
         opponent_name: opponent_name(state, &record.opponent_team_id),
-        goals_for: record.goals_for,
-        goals_against: record.goals_against,
-        possession_pct: record.possession_pct,
-        shots: record.shots,
-        shots_on_target: record.shots_on_target,
+        side: side_label(record.side),
+        result: outcome_label(record.result),
+        game_duration_seconds: record.duration_seconds,
+        kills: record.kills,
+        deaths: record.deaths,
+        gold_earned: record.gold_earned,
+        damage_to_champions: record.damage_dealt,
+        objectives: record.objectives,
     }
 }
 

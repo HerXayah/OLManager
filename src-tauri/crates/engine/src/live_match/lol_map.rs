@@ -140,6 +140,8 @@ pub struct LolUnitState {
     #[serde(default)]
     pub gold: f64,
     #[serde(default)]
+    pub damage_dealt: f64,
+    #[serde(default)]
     pub item_tier: u8,
 }
 
@@ -287,6 +289,7 @@ impl LolMapState {
                 level: 1,
                 xp: 0.0,
                 gold: 500.0,
+                damage_dealt: 0.0,
                 item_tier: 0,
             });
         }
@@ -314,6 +317,7 @@ impl LolMapState {
                 level: 1,
                 xp: 0.0,
                 gold: 500.0,
+                damage_dealt: 0.0,
                 item_tier: 0,
             });
         }
@@ -395,9 +399,17 @@ impl LiveMatchState {
             .is_some_and(|m| minute >= m)
             && minute >= 20;
 
-        if self.lol_map.objectives.dragon.alive && self.lol_map.objectives.dragon.current_kind.is_none() {
+        if self.lol_map.objectives.dragon.alive
+            && self.lol_map.objectives.dragon.current_kind.is_none()
+        {
             self.lol_map.objectives.dragon.current_kind = Some(next_dragon_kind(rng));
-            push_event(self, minute, EventType::ObjectiveSpawned, Side::Home, events);
+            push_event(
+                self,
+                minute,
+                EventType::ObjectiveSpawned,
+                Side::Home,
+                events,
+            );
         }
 
         let mut inhibitor_respawn_events: Vec<Side> = Vec::new();
@@ -448,8 +460,18 @@ impl LiveMatchState {
             *blue_wave = (*blue_wave - crash * 0.90).max(0.0);
             *red_wave = (*red_wave - crash * 0.90).max(0.0);
 
-            distribute_wave_income(&mut self.lol_map.units, Side::Home, home_anchor, crash * 32.0);
-            distribute_wave_income(&mut self.lol_map.units, Side::Away, away_anchor, crash * 32.0);
+            distribute_wave_income(
+                &mut self.lol_map.units,
+                Side::Home,
+                home_anchor,
+                crash * 32.0,
+            );
+            distribute_wave_income(
+                &mut self.lol_map.units,
+                Side::Away,
+                away_anchor,
+                crash * 32.0,
+            );
         }
     }
 
@@ -565,6 +587,9 @@ impl LiveMatchState {
                 * (1.0 - best_dist / 0.095).clamp(0.45, 1.0);
 
             incoming[victim] += damage;
+            if let Some(attacker) = self.lol_map.units.get_mut(i) {
+                attacker.damage_dealt += damage;
+            }
             if damage > highest[victim] {
                 highest[victim] = damage;
                 killer[victim] = Some(i);
@@ -616,12 +641,37 @@ impl LiveMatchState {
         }
     }
 
-    fn resolve_objectives<R: Rng>(&mut self, minute: u8, rng: &mut R, events: &mut Vec<MatchEvent>) {
+    fn resolve_objectives<R: Rng>(
+        &mut self,
+        minute: u8,
+        rng: &mut R,
+        events: &mut Vec<MatchEvent>,
+    ) {
         let objective_points = [
-            ("dragon", self.lol_map.objectives.dragon.alive, objective_anchor("dragon"), 0.12),
-            ("baron", self.lol_map.objectives.baron.alive, objective_anchor("baron"), 0.12),
-            ("herald", self.lol_map.objectives.herald.alive, objective_anchor("herald"), 0.11),
-            ("grubs", self.lol_map.objectives.grubs.alive, objective_anchor("grubs"), 0.11),
+            (
+                "dragon",
+                self.lol_map.objectives.dragon.alive,
+                objective_anchor("dragon"),
+                0.12,
+            ),
+            (
+                "baron",
+                self.lol_map.objectives.baron.alive,
+                objective_anchor("baron"),
+                0.12,
+            ),
+            (
+                "herald",
+                self.lol_map.objectives.herald.alive,
+                objective_anchor("herald"),
+                0.11,
+            ),
+            (
+                "grubs",
+                self.lol_map.objectives.grubs.alive,
+                objective_anchor("grubs"),
+                0.11,
+            ),
         ];
 
         for (name, alive, anchor, radius) in objective_points {
@@ -644,7 +694,8 @@ impl LiveMatchState {
             match name {
                 "dragon" => {
                     self.lol_map.objectives.dragon.alive = false;
-                    self.lol_map.objectives.dragon.next_spawn_minute = Some(minute.saturating_add(5));
+                    self.lol_map.objectives.dragon.next_spawn_minute =
+                        Some(minute.saturating_add(5));
                     self.lol_map.objectives.dragon.last_taken_by = Some(side);
                     if side == Side::Home {
                         self.lol_map.objectives.dragon.home_stacks =
@@ -656,7 +707,8 @@ impl LiveMatchState {
                 }
                 "baron" => {
                     self.lol_map.objectives.baron.alive = false;
-                    self.lol_map.objectives.baron.next_spawn_minute = Some(minute.saturating_add(6));
+                    self.lol_map.objectives.baron.next_spawn_minute =
+                        Some(minute.saturating_add(6));
                     self.lol_map.objectives.baron.last_taken_by = Some(side);
                 }
                 "herald" => {
@@ -683,7 +735,12 @@ impl LiveMatchState {
         }
     }
 
-    fn resolve_structures<R: Rng>(&mut self, minute: u8, rng: &mut R, events: &mut Vec<MatchEvent>) {
+    fn resolve_structures<R: Rng>(
+        &mut self,
+        minute: u8,
+        rng: &mut R,
+        events: &mut Vec<MatchEvent>,
+    ) {
         for attacker in [Side::Home, Side::Away] {
             for lane in [LaneKey::Top, LaneKey::Mid, LaneKey::Bot] {
                 let pressure = lane_pressure(&self.lol_map, attacker, lane, minute);
@@ -702,9 +759,13 @@ impl LiveMatchState {
                 }
 
                 let event_type = match target {
-                    StructureTarget::Outer(_) | StructureTarget::Inner(_) => EventType::TowerDestroyed,
+                    StructureTarget::Outer(_) | StructureTarget::Inner(_) => {
+                        EventType::TowerDestroyed
+                    }
                     StructureTarget::Inhib(_) => EventType::InhibitorDestroyed,
-                    StructureTarget::NexusTop | StructureTarget::NexusBot => EventType::NexusTowerDestroyed,
+                    StructureTarget::NexusTop | StructureTarget::NexusBot => {
+                        EventType::NexusTowerDestroyed
+                    }
                     StructureTarget::Nexus => EventType::NexusDestroyed,
                 };
                 push_event(self, minute, event_type, attacker, events);
@@ -744,12 +805,24 @@ impl LiveMatchState {
 }
 
 fn blue_spawn(slot: usize) -> (f64, f64) {
-    const P: [(f64, f64); 5] = [(0.14, 0.90), (0.18, 0.88), (0.22, 0.86), (0.18, 0.93), (0.24, 0.91)];
+    const P: [(f64, f64); 5] = [
+        (0.14, 0.90),
+        (0.18, 0.88),
+        (0.22, 0.86),
+        (0.18, 0.93),
+        (0.24, 0.91),
+    ];
     P[slot.min(4)]
 }
 
 fn red_spawn(slot: usize) -> (f64, f64) {
-    const P: [(f64, f64); 5] = [(0.86, 0.10), (0.82, 0.12), (0.78, 0.14), (0.82, 0.07), (0.76, 0.09)];
+    const P: [(f64, f64); 5] = [
+        (0.86, 0.10),
+        (0.82, 0.12),
+        (0.78, 0.14),
+        (0.82, 0.07),
+        (0.76, 0.09),
+    ];
     P[slot.min(4)]
 }
 
@@ -926,7 +999,12 @@ fn lane_presence(units: &[LolUnitState], side: Side, lane: LaneKey, anchor: (f64
         .sum()
 }
 
-fn distribute_wave_income(units: &mut [LolUnitState], side: Side, anchor: (f64, f64), gold_pool: f64) {
+fn distribute_wave_income(
+    units: &mut [LolUnitState],
+    side: Side,
+    anchor: (f64, f64),
+    gold_pool: f64,
+) {
     let mut idxs: Vec<usize> = units
         .iter()
         .enumerate()
@@ -1003,7 +1081,10 @@ fn grant_objective_rewards(units: &mut [LolUnitState], side: Side, anchor: (f64,
 }
 
 fn lane_pressure(state: &LolMapState, attacker: Side, lane: LaneKey, minute: u8) -> f64 {
-    let target_anchor = structure_anchor(attacker, next_target(state, attacker, lane).unwrap_or(StructureTarget::Outer(lane)));
+    let target_anchor = structure_anchor(
+        attacker,
+        next_target(state, attacker, lane).unwrap_or(StructureTarget::Outer(lane)),
+    );
     let champ_pressure: f64 = state
         .units
         .iter()
@@ -1035,7 +1116,13 @@ fn lane_pressure(state: &LolMapState, attacker: Side, lane: LaneKey, minute: u8)
         return 0.0;
     }
 
-    let time = if minute < 14 { 0.70 } else if minute < 28 { 1.0 } else { 1.25 };
+    let time = if minute < 14 {
+        0.70
+    } else if minute < 28 {
+        1.0
+    } else {
+        1.25
+    };
     (champ_pressure * 0.28 + wave_adv * 0.16) * time
 }
 
@@ -1121,28 +1208,52 @@ fn deal_structure_damage(
     };
 
     match target {
-        StructureTarget::Outer(LaneKey::Top) => hit(&mut enemy.top.outer_hp, &mut enemy.top.outer_alive, damage),
-        StructureTarget::Outer(LaneKey::Mid) => hit(&mut enemy.mid.outer_hp, &mut enemy.mid.outer_alive, damage),
-        StructureTarget::Outer(LaneKey::Bot) => hit(&mut enemy.bot.outer_hp, &mut enemy.bot.outer_alive, damage),
-        StructureTarget::Inner(LaneKey::Top) => hit(&mut enemy.top.inner_hp, &mut enemy.top.inner_alive, damage),
-        StructureTarget::Inner(LaneKey::Mid) => hit(&mut enemy.mid.inner_hp, &mut enemy.mid.inner_alive, damage),
-        StructureTarget::Inner(LaneKey::Bot) => hit(&mut enemy.bot.inner_hp, &mut enemy.bot.inner_alive, damage),
+        StructureTarget::Outer(LaneKey::Top) => {
+            hit(&mut enemy.top.outer_hp, &mut enemy.top.outer_alive, damage)
+        }
+        StructureTarget::Outer(LaneKey::Mid) => {
+            hit(&mut enemy.mid.outer_hp, &mut enemy.mid.outer_alive, damage)
+        }
+        StructureTarget::Outer(LaneKey::Bot) => {
+            hit(&mut enemy.bot.outer_hp, &mut enemy.bot.outer_alive, damage)
+        }
+        StructureTarget::Inner(LaneKey::Top) => {
+            hit(&mut enemy.top.inner_hp, &mut enemy.top.inner_alive, damage)
+        }
+        StructureTarget::Inner(LaneKey::Mid) => {
+            hit(&mut enemy.mid.inner_hp, &mut enemy.mid.inner_alive, damage)
+        }
+        StructureTarget::Inner(LaneKey::Bot) => {
+            hit(&mut enemy.bot.inner_hp, &mut enemy.bot.inner_alive, damage)
+        }
         StructureTarget::Inhib(LaneKey::Top) => {
-            let down = hit(&mut enemy.top.inhibitor_hp, &mut enemy.top.inhibitor_alive, damage);
+            let down = hit(
+                &mut enemy.top.inhibitor_hp,
+                &mut enemy.top.inhibitor_alive,
+                damage,
+            );
             if down {
                 enemy.top.inhibitor_respawn_minute = Some(minute.saturating_add(5));
             }
             down
         }
         StructureTarget::Inhib(LaneKey::Mid) => {
-            let down = hit(&mut enemy.mid.inhibitor_hp, &mut enemy.mid.inhibitor_alive, damage);
+            let down = hit(
+                &mut enemy.mid.inhibitor_hp,
+                &mut enemy.mid.inhibitor_alive,
+                damage,
+            );
             if down {
                 enemy.mid.inhibitor_respawn_minute = Some(minute.saturating_add(5));
             }
             down
         }
         StructureTarget::Inhib(LaneKey::Bot) => {
-            let down = hit(&mut enemy.bot.inhibitor_hp, &mut enemy.bot.inhibitor_alive, damage);
+            let down = hit(
+                &mut enemy.bot.inhibitor_hp,
+                &mut enemy.bot.inhibitor_alive,
+                damage,
+            );
             if down {
                 enemy.bot.inhibitor_respawn_minute = Some(minute.saturating_add(5));
             }
@@ -1210,7 +1321,12 @@ fn lane_waves_mut(state: &mut LolMapState, lane: LaneKey) -> (&mut f64, &mut f64
     (&mut lane_state.blue_wave, &mut lane_state.red_wave)
 }
 
-fn move_unit_with_walls<R: Rng>(unit: &mut LolUnitState, target: (f64, f64), speed: f64, rng: &mut R) {
+fn move_unit_with_walls<R: Rng>(
+    unit: &mut LolUnitState,
+    target: (f64, f64),
+    speed: f64,
+    rng: &mut R,
+) {
     let dx = target.0 - unit.x;
     let dy = target.1 - unit.y;
     let dist = (dx * dx + dy * dy).sqrt();
@@ -1238,7 +1354,11 @@ fn segment_blocked(a: (f64, f64), b: (f64, f64)) -> bool {
     if point_in_active_wall(b) {
         return true;
     }
-    active_walls().iter().any(|w| polygon_edges(&w.points).iter().any(|(p1, p2)| segments_intersect(a, b, *p1, *p2)))
+    active_walls().iter().any(|w| {
+        polygon_edges(&w.points)
+            .iter()
+            .any(|(p1, p2)| segments_intersect(a, b, *p1, *p2))
+    })
 }
 
 fn point_in_active_wall(point: (f64, f64)) -> bool {
@@ -1279,7 +1399,10 @@ fn polygon_edges(points: &[WallPoint]) -> Vec<((f64, f64), (f64, f64))> {
     let mut edges = Vec::with_capacity(points.len());
     for i in 0..points.len() {
         let a = (points[i].x, points[i].y);
-        let b = (points[(i + 1) % points.len()].x, points[(i + 1) % points.len()].y);
+        let b = (
+            points[(i + 1) % points.len()].x,
+            points[(i + 1) % points.len()].y,
+        );
         edges.push((a, b));
     }
     edges

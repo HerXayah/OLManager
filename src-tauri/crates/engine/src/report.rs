@@ -2,98 +2,62 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::event::{EventType, MatchEvent};
+use crate::live_match::{LolRole, LolUnitState};
 use crate::types::Side;
 
-// ---------------------------------------------------------------------------
-// TeamStats — aggregate stats for one side
-// ---------------------------------------------------------------------------
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MatchReportEndReason {
+    NexusDestroyed,
+    TimeLimit,
+}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TeamStats {
-    pub goals: u8,
-    pub shots: u16,
-    pub shots_on_target: u16,
-    pub shots_off_target: u16,
-    pub shots_blocked: u16,
-    pub passes_completed: u16,
-    pub passes_intercepted: u16,
-    pub tackles: u16,
-    pub interceptions: u16,
-    pub fouls: u16,
-    pub corners: u16,
-    pub free_kicks: u16,
-    pub penalties: u16,
-    pub yellow_cards: u8,
-    pub red_cards: u8,
+    pub kills: u16,
+    pub deaths: u16,
+    pub gold_earned: u32,
+    pub damage_dealt: u32,
+    pub objectives: u16,
     pub possession_ticks: u32,
 }
 
-impl TeamStats {
-    pub fn pass_accuracy(&self) -> f64 {
-        let total = self.passes_completed as f64 + self.passes_intercepted as f64;
-        if total == 0.0 {
-            return 0.0;
-        }
-        self.passes_completed as f64 / total * 100.0
-    }
-}
-
-// ---------------------------------------------------------------------------
-// PlayerMatchStats — individual player performance
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlayerMatchStats {
-    pub minutes_played: u8,
-    pub goals: u8,
-    pub assists: u8,
-    pub shots: u8,
-    pub shots_on_target: u8,
-    pub passes_completed: u8,
-    pub passes_attempted: u8,
-    pub tackles_won: u8,
-    pub interceptions: u8,
-    pub fouls_committed: u8,
-    pub yellow_cards: u8,
-    pub red_cards: u8,
-    /// Match rating 0.0–10.0, computed after the match.
-    pub rating: f32,
+    pub role: Option<LolRole>,
+    pub duration_seconds: u32,
+    pub kills: u16,
+    pub deaths: u16,
+    pub assists: u16,
+    pub creep_score: u16,
+    pub gold_earned: u32,
+    pub damage_dealt: u32,
+    pub vision_score: u16,
+    pub wards_placed: u16,
 }
 
-// ---------------------------------------------------------------------------
-// GoalDetail — enriched goal info for the report
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GoalDetail {
+pub struct KillDetail {
     pub minute: u8,
-    pub scorer_id: String,
-    pub assist_id: Option<String>,
-    pub is_penalty: bool,
+    pub killer_id: String,
+    pub victim_id: Option<String>,
     pub side: Side,
 }
 
-// ---------------------------------------------------------------------------
-// MatchReport — the complete output of a simulated match
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchReport {
-    pub home_goals: u8,
-    pub away_goals: u8,
+    pub home_wins: u8,
+    pub away_wins: u8,
     pub home_stats: TeamStats,
     pub away_stats: TeamStats,
     pub events: Vec<MatchEvent>,
-    pub goals: Vec<GoalDetail>,
+    pub kill_feed: Vec<KillDetail>,
     pub player_stats: HashMap<String, PlayerMatchStats>,
-    /// Possession percentage for the home team (0–100).
     pub home_possession: f64,
-    /// Total simulated minutes (90 + stoppage).
-    pub total_minutes: u8,
+    pub game_duration_seconds: u32,
+    pub ended_by: MatchReportEndReason,
 }
 
 impl MatchReport {
-    /// Build the report from the raw event log and possession counters.
     pub fn from_events(
         events: Vec<MatchEvent>,
         home_possession_ticks: u32,
@@ -109,7 +73,6 @@ impl MatchReport {
         )
     }
 
-    /// Build the report while also assigning minutes played for tracked players.
     pub fn from_events_with_players(
         events: Vec<MatchEvent>,
         home_possession_ticks: u32,
@@ -117,195 +80,219 @@ impl MatchReport {
         total_minutes: u8,
         tracked_player_ids: Vec<String>,
     ) -> Self {
-        let mut home_stats = TeamStats::default();
-        let mut away_stats = TeamStats::default();
-        let mut goals = Vec::new();
-        let mut player_stats: HashMap<String, PlayerMatchStats> = HashMap::new();
+        Self::from_events_internal(
+            events,
+            home_possession_ticks,
+            away_possession_ticks,
+            total_minutes,
+            tracked_player_ids,
+            None,
+            None,
+        )
+    }
 
-        home_stats.possession_ticks = home_possession_ticks;
-        away_stats.possession_ticks = away_possession_ticks;
+    pub fn from_events_with_lol_snapshot(
+        events: Vec<MatchEvent>,
+        home_possession_ticks: u32,
+        away_possession_ticks: u32,
+        total_minutes: u8,
+        tracked_player_ids: Vec<String>,
+        lol_units: &[LolUnitState],
+        destroyed_nexus_by: Option<Side>,
+    ) -> Self {
+        Self::from_events_internal(
+            events,
+            home_possession_ticks,
+            away_possession_ticks,
+            total_minutes,
+            tracked_player_ids,
+            Some(lol_units),
+            destroyed_nexus_by,
+        )
+    }
+
+    fn from_events_internal(
+        events: Vec<MatchEvent>,
+        home_possession_ticks: u32,
+        away_possession_ticks: u32,
+        total_minutes: u8,
+        tracked_player_ids: Vec<String>,
+        lol_units: Option<&[LolUnitState]>,
+        destroyed_nexus_by: Option<Side>,
+    ) -> Self {
+        let mut home_stats = TeamStats {
+            possession_ticks: home_possession_ticks,
+            ..Default::default()
+        };
+        let mut away_stats = TeamStats {
+            possession_ticks: away_possession_ticks,
+            ..Default::default()
+        };
+        let mut kill_feed = Vec::new();
+        let mut player_stats: HashMap<String, PlayerMatchStats> = tracked_player_ids
+            .iter()
+            .cloned()
+            .map(|player_id| (player_id, PlayerMatchStats::default()))
+            .collect();
 
         for event in &events {
-            let stats = match event.side {
-                Side::Home => &mut home_stats,
-                Side::Away => &mut away_stats,
+            let (stats, opposing_stats) = match event.side {
+                Side::Home => (&mut home_stats, &mut away_stats),
+                Side::Away => (&mut away_stats, &mut home_stats),
             };
-
-            // Update player stats helper
             let pid = event.player_id.as_deref().unwrap_or("");
 
             match &event.event_type {
-                EventType::Goal => {
-                    stats.goals += 1;
-                    stats.shots += 1;
-                    stats.shots_on_target += 1;
-                    goals.push(GoalDetail {
+                EventType::Kill | EventType::Goal | EventType::PenaltyGoal => {
+                    stats.kills += 1;
+                    opposing_stats.deaths += 1;
+                    kill_feed.push(KillDetail {
                         minute: event.minute,
-                        scorer_id: pid.to_string(),
-                        assist_id: event.secondary_player_id.clone(),
-                        is_penalty: false,
+                        killer_id: pid.to_string(),
+                        victim_id: event.secondary_player_id.clone(),
                         side: event.side,
                     });
+
                     if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.goals += 1;
-                        ps.shots += 1;
-                        ps.shots_on_target += 1;
+                        player_stats.entry(pid.to_string()).or_default().kills += 1;
                     }
-                    if let Some(ref assist_id) = event.secondary_player_id {
-                        let ps = player_stats.entry(assist_id.clone()).or_default();
-                        ps.assists += 1;
+                    if matches!(&event.event_type, EventType::Goal)
+                        && let Some(assist_id) = event.secondary_player_id.as_ref()
+                    {
+                        player_stats.entry(assist_id.clone()).or_default().assists += 1;
                     }
-                }
-                EventType::PenaltyGoal => {
-                    stats.goals += 1;
-                    stats.shots += 1;
-                    stats.shots_on_target += 1;
-                    stats.penalties += 1;
-                    goals.push(GoalDetail {
-                        minute: event.minute,
-                        scorer_id: pid.to_string(),
-                        assist_id: None,
-                        is_penalty: true,
-                        side: event.side,
-                    });
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.goals += 1;
-                        ps.shots += 1;
-                        ps.shots_on_target += 1;
+                    if matches!(&event.event_type, EventType::Kill)
+                        && let Some(victim_id) = event.secondary_player_id.as_ref()
+                    {
+                        player_stats.entry(victim_id.clone()).or_default().deaths += 1;
                     }
                 }
-                EventType::PenaltyMiss => {
-                    stats.shots += 1;
-                    stats.penalties += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.shots += 1;
-                    }
-                }
-                EventType::ShotOnTarget | EventType::ShotSaved => {
-                    stats.shots += 1;
-                    stats.shots_on_target += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.shots += 1;
-                        ps.shots_on_target += 1;
-                    }
-                }
-                EventType::ShotOffTarget => {
-                    stats.shots += 1;
-                    stats.shots_off_target += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.shots += 1;
-                    }
-                }
-                EventType::ShotBlocked => {
-                    stats.shots += 1;
-                    stats.shots_blocked += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.shots += 1;
-                    }
-                }
-                EventType::PassCompleted => {
-                    stats.passes_completed += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.passes_completed += 1;
-                        ps.passes_attempted += 1;
-                    }
-                }
-                EventType::PassIntercepted => {
-                    stats.passes_intercepted += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.passes_attempted += 1;
-                    }
-                }
-                EventType::Tackle => {
-                    stats.tackles += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.tackles_won += 1;
-                    }
-                }
-                EventType::Interception => {
-                    stats.interceptions += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.interceptions += 1;
-                    }
-                }
-                EventType::Foul => {
-                    stats.fouls += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.fouls_committed += 1;
-                    }
-                }
-                EventType::YellowCard | EventType::SecondYellow => {
-                    stats.yellow_cards += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.yellow_cards += 1;
-                    }
-                }
-                EventType::RedCard => {
-                    stats.red_cards += 1;
-                    if !pid.is_empty() {
-                        let ps = player_stats.entry(pid.to_string()).or_default();
-                        ps.red_cards += 1;
-                    }
-                }
-                EventType::Corner => {
-                    stats.corners += 1;
-                }
-                EventType::FreeKick => {
-                    stats.free_kicks += 1;
-                }
-                EventType::PenaltyAwarded => {
-                    stats.penalties += 1;
-                }
-                EventType::NexusDestroyed => {
-                    // LoL winner condition: destroying enemy nexus.
-                    // Reuse goals field in persisted fixture result as a simple winner marker.
-                    stats.goals += 1;
+                EventType::TowerDestroyed
+                | EventType::InhibitorDestroyed
+                | EventType::NexusTowerDestroyed
+                | EventType::NexusDestroyed
+                | EventType::ObjectiveTaken => {
+                    stats.objectives += 1;
                 }
                 _ => {}
             }
         }
 
-        populate_minutes_played(
+        if let Some(units) = lol_units {
+            let mut home_kills = 0_u16;
+            let mut away_kills = 0_u16;
+            let mut home_deaths = 0_u16;
+            let mut away_deaths = 0_u16;
+            let mut home_gold = 0_u32;
+            let mut away_gold = 0_u32;
+            let mut home_damage = 0_u32;
+            let mut away_damage = 0_u32;
+
+            for unit in units {
+                let stats = player_stats.entry(unit.player_id.clone()).or_default();
+                stats.role = Some(unit.role);
+                stats.kills = unit.kills as u16;
+                stats.deaths = unit.deaths as u16;
+                stats.gold_earned = unit.gold.round().max(0.0) as u32;
+                stats.damage_dealt = unit.damage_dealt.round().max(0.0) as u32;
+
+                match unit.side {
+                    Side::Home => {
+                        home_kills += unit.kills as u16;
+                        home_deaths += unit.deaths as u16;
+                        home_gold += stats.gold_earned;
+                        home_damage += stats.damage_dealt;
+                    }
+                    Side::Away => {
+                        away_kills += unit.kills as u16;
+                        away_deaths += unit.deaths as u16;
+                        away_gold += stats.gold_earned;
+                        away_damage += stats.damage_dealt;
+                    }
+                }
+            }
+
+            home_stats.kills = home_kills;
+            home_stats.deaths = home_deaths;
+            home_stats.gold_earned = home_gold;
+            home_stats.damage_dealt = home_damage;
+            away_stats.kills = away_kills;
+            away_stats.deaths = away_deaths;
+            away_stats.gold_earned = away_gold;
+            away_stats.damage_dealt = away_damage;
+        }
+
+        populate_duration_seconds(
             &events,
             total_minutes,
             &tracked_player_ids,
             &mut player_stats,
         );
 
-        let total_poss = home_possession_ticks + away_possession_ticks;
-        let home_possession = if total_poss > 0 {
-            home_possession_ticks as f64 / total_poss as f64 * 100.0
+        let total_possession = home_possession_ticks + away_possession_ticks;
+        let home_possession = if total_possession > 0 {
+            home_possession_ticks as f64 / total_possession as f64 * 100.0
         } else {
             50.0
         };
 
+        let ended_by = if destroyed_nexus_by.is_some()
+            || events
+                .iter()
+                .any(|event| matches!(&event.event_type, EventType::NexusDestroyed))
+        {
+            MatchReportEndReason::NexusDestroyed
+        } else {
+            MatchReportEndReason::TimeLimit
+        };
+
+        let winner = destroyed_nexus_by
+            .or_else(|| {
+                events.iter().find_map(|event| {
+                    matches!(&event.event_type, EventType::NexusDestroyed).then_some(event.side)
+                })
+            })
+            .unwrap_or_else(|| pick_winner(&home_stats, &away_stats));
+
+        let (home_wins, away_wins) = match winner {
+            Side::Home => (1, 0),
+            Side::Away => (0, 1),
+        };
+
         Self {
-            home_goals: home_stats.goals,
-            away_goals: away_stats.goals,
+            home_wins,
+            away_wins,
             home_stats,
             away_stats,
             events,
-            goals,
+            kill_feed,
             player_stats,
             home_possession,
-            total_minutes,
+            game_duration_seconds: u32::from(total_minutes) * 60,
+            ended_by,
         }
     }
 }
 
-fn populate_minutes_played(
+fn pick_winner(home_stats: &TeamStats, away_stats: &TeamStats) -> Side {
+    use std::cmp::Ordering;
+
+    match home_stats
+        .objectives
+        .cmp(&away_stats.objectives)
+        .then(home_stats.kills.cmp(&away_stats.kills))
+        .then(home_stats.gold_earned.cmp(&away_stats.gold_earned))
+        .then(home_stats.damage_dealt.cmp(&away_stats.damage_dealt))
+        .then(home_stats.possession_ticks.cmp(&away_stats.possession_ticks))
+    {
+        Ordering::Greater => Side::Home,
+        Ordering::Less => Side::Away,
+        // LoL no permite empate; usamos desempate determinista final.
+        Ordering::Equal => Side::Home,
+    }
+}
+
+fn populate_duration_seconds(
     events: &[MatchEvent],
     total_minutes: u8,
     tracked_player_ids: &[String],
@@ -318,13 +305,13 @@ fn populate_minutes_played(
         .collect();
 
     for event in events {
-        match event.event_type {
+        match &event.event_type {
             EventType::Substitution => {
-                if let Some(ref player_off_id) = event.secondary_player_id {
+                if let Some(player_off_id) = event.secondary_player_id.as_ref() {
                     minutes_by_player
                         .insert(player_off_id.clone(), event.minute.min(total_minutes));
                 }
-                if let Some(ref player_on_id) = event.player_id {
+                if let Some(player_on_id) = event.player_id.as_ref() {
                     minutes_by_player.insert(
                         player_on_id.clone(),
                         total_minutes.saturating_sub(event.minute),
@@ -332,7 +319,7 @@ fn populate_minutes_played(
                 }
             }
             EventType::RedCard | EventType::SecondYellow => {
-                if let Some(ref player_id) = event.player_id {
+                if let Some(player_id) = event.player_id.as_ref() {
                     let dismissed_at = event.minute.min(total_minutes);
                     minutes_by_player
                         .entry(player_id.clone())
@@ -345,6 +332,7 @@ fn populate_minutes_played(
     }
 
     for (player_id, minutes_played) in minutes_by_player {
-        player_stats.entry(player_id).or_default().minutes_played = minutes_played;
+        player_stats.entry(player_id).or_default().duration_seconds =
+            u32::from(minutes_played) * 60;
     }
 }

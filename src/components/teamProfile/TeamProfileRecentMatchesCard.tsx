@@ -21,8 +21,9 @@ export default function TeamProfileRecentMatchesCard({
   t,
 }: TeamProfileRecentMatchesCardProps) {
   const title = resolveLabel(t, "teamProfile.recentMatches", "Recent Matches");
-  const possessionLabel = resolveLabel(t, "teamProfile.possession", "Possession");
-  const shotsLabel = resolveLabel(t, "teamProfile.shots", "Shots");
+  const sideLabel = resolveLabel(t, "teamProfile.side", "Side");
+  const scoreLabel = resolveLabel(t, "teamProfile.kda", "K / D / A");
+  const economyLabel = resolveLabel(t, "teamProfile.economy", "Gold / Objectives");
 
   if (matches.length === 0) {
     return null;
@@ -36,7 +37,7 @@ export default function TeamProfileRecentMatchesCard({
           {matches.map((match) => (
             <div
               key={match.fixtureId}
-              className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] gap-3 rounded-lg bg-gray-50 dark:bg-navy-700 px-3 py-2.5"
+              className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,1fr)] gap-3 rounded-lg bg-gray-50 dark:bg-navy-700 px-3 py-2.5"
             >
               <div>
                 <p className="font-heading font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -49,28 +50,28 @@ export default function TeamProfileRecentMatchesCard({
 
               <div className="text-center">
                 <p className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  Score
+                  {sideLabel}
                 </p>
                 <p className="font-heading font-bold text-base text-gray-700 dark:text-gray-200 tabular-nums">
-                  {match.goalsFor}-{match.goalsAgainst}
+                  {match.side} · {match.result}
                 </p>
               </div>
 
               <div className="text-center">
                 <p className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  {possessionLabel}
+                  {scoreLabel}
                 </p>
                 <p className="font-heading font-bold text-base text-gray-700 dark:text-gray-200 tabular-nums">
-                  {match.possessionPct.toFixed(1)}%
+                  {match.kills} / {match.deaths} / {match.objectives}
                 </p>
               </div>
 
               <div className="text-center">
                 <p className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                  {shotsLabel}
+                  {economyLabel}
                 </p>
                 <p className="font-heading font-bold text-base text-gray-700 dark:text-gray-200 tabular-nums">
-                  {match.shots} / {match.shotsOnTarget}
+                  {match.goldEarned} / {match.damageToChampions}
                 </p>
               </div>
             </div>

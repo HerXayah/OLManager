@@ -36,16 +36,19 @@ vi.mock("react-i18next", () => ({
         "teamProfile.leagueStanding": "League Standing",
         "teamProfile.advancedStats": "Team Stats",
         "teamProfile.matchesPlayed": "Matches",
-        "teamProfile.possession": "Possession",
-        "teamProfile.goalDifference": "Goal Difference",
-        "teamProfile.shots": "Shots",
-        "teamProfile.shotsOnTarget": "Shots On Target",
-        "teamProfile.passes": "Passes",
-        "teamProfile.tacklesWon": "Tackles Won",
-        "teamProfile.interceptions": "Interceptions",
-        "teamProfile.foulsCommitted": "Fouls Committed",
+        "teamProfile.wins": "Wins",
+        "teamProfile.losses": "Losses",
+        "teamProfile.draws": "Draws",
+        "teamProfile.kills": "Kills",
+        "teamProfile.deaths": "Deaths",
+        "teamProfile.goldEarned": "Gold Earned",
+        "teamProfile.damageToChampions": "Damage To Champions",
+        "teamProfile.objectives": "Objectives",
+        "teamProfile.averageGameDuration": "Average Game Duration",
         "teamProfile.perMatch": "Per Match",
-        "teamProfile.passAccuracy": "Pass Accuracy",
+        "teamProfile.kda": "K / D / A",
+        "teamProfile.economy": "Gold / Objectives",
+        "teamProfile.side": "Side",
         "finances.wageBudget": "Wage Budget",
         "finances.transferBudget": "Transfer Budget",
         "finances.squadValue": "Squad Value",
@@ -236,17 +239,16 @@ describe("TeamProfile", () => {
       if (command === "get_team_stats_overview") {
         return {
           matchesPlayed: 12,
-          goalsFor: 24,
-          goalsAgainst: 10,
-          goalDifference: 14,
-          possessionAverage: 57.5,
+          wins: 8,
+          losses: 3,
+          draws: 1,
           metrics: {
-            shots: { total: 160, perMatch: 13.3 },
-            shotsOnTarget: { total: 68, perMatch: 5.7 },
-            passes: { completed: 5400, attempted: 6300, accuracy: 85.7 },
-            tacklesWon: { total: 220, perMatch: 18.3 },
-            interceptions: { total: 150, perMatch: 12.5 },
-            foulsCommitted: { total: 110, perMatch: 9.2 },
+            kills: { total: 160, perMatch: 13.3 },
+            deaths: { total: 68, perMatch: 5.7 },
+            goldEarned: { total: 5400, perMatch: 450 },
+            damageToChampions: { total: 6300, perMatch: 525 },
+            objectives: { total: 48, perMatch: 4 },
+            averageGameDurationSeconds: { total: 25200, perMatch: 2100 },
           },
         };
       }
@@ -268,10 +270,10 @@ describe("TeamProfile", () => {
         teamId: "team-1",
       });
       expect(screen.getByText("Team Stats")).toBeInTheDocument();
-      expect(screen.getByText("24")).toBeInTheDocument();
-      expect(screen.getByText("57.5%")).toBeInTheDocument();
-      expect(screen.getByText("5400 / 6300")).toBeInTheDocument();
-      expect(screen.getByText("85.7%")).toBeInTheDocument();
+      expect(screen.getByText("8")).toBeInTheDocument();
+      expect(screen.getByText("160")).toBeInTheDocument();
+      expect(screen.getByText("5400")).toBeInTheDocument();
+      expect(screen.getByText("2100s")).toBeInTheDocument();
     });
   });
 
@@ -287,11 +289,14 @@ describe("TeamProfile", () => {
             matchday: 1,
             opponentTeamId: "team-2",
             opponentName: "Bravo FC",
-            goalsFor: 3,
-            goalsAgainst: 1,
-            possessionPct: 62,
-            shots: 16,
-            shotsOnTarget: 7,
+            side: "Red",
+            result: "Loss",
+            gameDurationSeconds: 2100,
+            kills: 16,
+            deaths: 7,
+            goldEarned: 62000,
+            damageToChampions: 88000,
+            objectives: 3,
           },
         ];
       }
@@ -318,8 +323,9 @@ describe("TeamProfile", () => {
         limit: 5,
       });
       expect(screen.getByText("Bravo FC")).toBeInTheDocument();
-      expect(screen.getByText("3-1")).toBeInTheDocument();
-      expect(screen.getByText("62.0%")).toBeInTheDocument();
+      expect(screen.getByText("Red · Loss")).toBeInTheDocument();
+      expect(screen.getByText("16 / 7 / 3")).toBeInTheDocument();
+      expect(screen.getByText("62000 / 88000")).toBeInTheDocument();
     });
   });
 });

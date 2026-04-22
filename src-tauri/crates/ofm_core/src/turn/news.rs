@@ -42,13 +42,13 @@ fn scorers_for_side(
     side: engine::Side,
 ) -> Vec<(String, u32)> {
     report
-        .goals
+        .kill_feed
         .iter()
-        .filter(|goal| goal.side == side)
-        .map(|goal| {
+        .filter(|kill| kill.side == side)
+        .map(|kill| {
             (
-                player_match_name_or_id(game, &goal.scorer_id),
-                goal.minute as u32,
+                player_match_name_or_id(game, &kill.killer_id),
+                kill.minute as u32,
             )
         })
         .collect()
@@ -61,7 +61,7 @@ fn matchday_results(game: &Game, fixtures: &[&Fixture]) -> Vec<(String, u8, Stri
             let (home_goals, away_goals) = fixture
                 .result
                 .as_ref()
-                .map(|result| (result.home_goals, result.away_goals))
+                .map(|result| (result.home_wins, result.away_wins))
                 .unwrap_or((0, 0));
             (
                 team_name(game, &fixture.home_team_id),
@@ -305,8 +305,8 @@ pub(super) fn generate_match_news(
         &fixture.id,
         &home_name,
         &away_name,
-        report.home_goals,
-        report.away_goals,
+        report.home_wins,
+        report.away_wins,
         home_team_id,
         away_team_id,
         fixture.matchday,

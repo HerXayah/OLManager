@@ -23,7 +23,7 @@ pub enum FixtureCompetition {
 pub struct Fixture {
     pub id: String,
     pub matchday: u32,
-    pub date: String, // ISO 8601 date
+    pub date: String,
     pub home_team_id: String,
     pub away_team_id: String,
     pub competition: FixtureCompetition,
@@ -38,42 +38,47 @@ pub enum FixtureStatus {
     Completed,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum MatchEndReason {
+    NexusDestroyed,
+    TimeLimit,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
 pub struct MatchResult {
-    pub home_goals: u8,
-    pub away_goals: u8,
-    pub home_scorers: Vec<GoalEvent>,
-    pub away_scorers: Vec<GoalEvent>,
-    #[serde(default)]
+    #[serde(alias = "home_goals")]
+    pub home_wins: u8,
+    #[serde(alias = "away_goals")]
+    pub away_wins: u8,
+    pub ended_by: MatchEndReason,
+    pub game_duration_seconds: u32,
     pub report: Option<CompactMatchReport>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GoalEvent {
-    pub player_id: String,
-    pub minute: u8,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(default)]
 pub struct CompactMatchReport {
-    pub total_minutes: u8,
+    pub game_duration_seconds: u32,
     pub home_stats: CompactTeamMatchStats,
     pub away_stats: CompactTeamMatchStats,
     pub events: Vec<CompactMatchEvent>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(default)]
 pub struct CompactTeamMatchStats {
-    pub possession_pct: u8,
-    pub shots: u16,
-    pub shots_on_target: u16,
-    pub fouls: u16,
-    pub corners: u16,
-    pub yellow_cards: u8,
-    pub red_cards: u8,
+    pub kills: u16,
+    pub deaths: u16,
+    pub gold_earned: u32,
+    pub damage_dealt: u32,
+    pub objectives: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(default)]
 pub struct CompactMatchEvent {
     pub minute: u8,
     pub event_type: String,
@@ -150,7 +155,6 @@ impl League {
         }
     }
 
-    /// Sort standings by points, then goal difference, then goals scored
     pub fn sorted_standings(&self) -> Vec<StandingEntry> {
         let mut sorted = self.standings.clone();
         sorted.sort_by(|a, b| {

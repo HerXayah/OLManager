@@ -15,7 +15,47 @@ impl StatsState {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum MatchOutcome {
+    Win,
+    #[serde(alias = "Draw")]
+    #[default]
+    Loss,
+}
+
+impl MatchOutcome {
+    pub fn from_scores(team_score: u8, opponent_score: u8) -> Self {
+        if team_score > opponent_score {
+            Self::Win
+        } else {
+            // LoL no permite empate en el core path; cualquier no-victoria es derrota.
+            Self::Loss
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum TeamSide {
+    #[serde(alias = "Home")]
+    #[default]
+    Blue,
+    #[serde(alias = "Away")]
+    Red,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum LolRole {
+    Top,
+    Jungle,
+    Mid,
+    Adc,
+    Support,
+    #[default]
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(default)]
 pub struct PlayerMatchStatsRecord {
     pub fixture_id: String,
     pub season: u32,
@@ -25,30 +65,24 @@ pub struct PlayerMatchStatsRecord {
     pub player_id: String,
     pub team_id: String,
     pub opponent_team_id: String,
-    pub home_team_id: String,
-    pub away_team_id: String,
-    pub home_goals: u8,
-    pub away_goals: u8,
-    #[serde(default)]
-    pub champion_id: Option<String>,
-    #[serde(default)]
-    pub champion_win: Option<bool>,
-    pub minutes_played: u8,
-    pub goals: u8,
-    pub assists: u8,
-    pub shots: u8,
-    pub shots_on_target: u8,
-    pub passes_completed: u8,
-    pub passes_attempted: u8,
-    pub tackles_won: u8,
-    pub interceptions: u8,
-    pub fouls_committed: u8,
-    pub yellow_cards: u8,
-    pub red_cards: u8,
-    pub rating: f32,
+    pub side: TeamSide,
+    pub result: MatchOutcome,
+    pub role: LolRole,
+    #[serde(alias = "champion_id")]
+    pub champion: Option<String>,
+    pub duration_seconds: u32,
+    pub kills: u16,
+    pub deaths: u16,
+    pub assists: u16,
+    pub creep_score: u16,
+    pub gold_earned: u32,
+    pub damage_dealt: u32,
+    pub vision_score: u16,
+    pub wards_placed: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(default)]
 pub struct TeamMatchStatsRecord {
     pub fixture_id: String,
     pub season: u32,
@@ -57,18 +91,12 @@ pub struct TeamMatchStatsRecord {
     pub competition: FixtureCompetition,
     pub team_id: String,
     pub opponent_team_id: String,
-    pub home_team_id: String,
-    pub away_team_id: String,
-    pub goals_for: u8,
-    pub goals_against: u8,
-    pub possession_pct: u8,
-    pub shots: u16,
-    pub shots_on_target: u16,
-    pub passes_completed: u16,
-    pub passes_attempted: u16,
-    pub tackles_won: u16,
-    pub interceptions: u16,
-    pub fouls_committed: u16,
-    pub yellow_cards: u8,
-    pub red_cards: u8,
+    pub side: TeamSide,
+    pub result: MatchOutcome,
+    pub duration_seconds: u32,
+    pub kills: u16,
+    pub deaths: u16,
+    pub gold_earned: u32,
+    pub damage_dealt: u32,
+    pub objectives: u16,
 }

@@ -277,7 +277,7 @@ where
 
     info!(
         "[turn] match result: {} {} - {} {} (fixture #{})",
-        home_name, report.home_goals, report.away_goals, away_name, idx
+        home_name, report.home_wins, report.away_wins, away_name, idx
     );
     apply_match_report_with_capture(game, idx, &home_team_id, &away_team_id, &report, on_capture);
 }

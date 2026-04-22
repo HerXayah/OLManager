@@ -75,7 +75,7 @@ export interface TeamData {
   history: TeamSeasonRecord[];
 }
 
-export type MatchOutcome = "Win" | "Loss";
+export type MatchOutcome = "Win" | "Loss" | "Draw";
 
 export type TeamSide = "Blue" | "Red";
 

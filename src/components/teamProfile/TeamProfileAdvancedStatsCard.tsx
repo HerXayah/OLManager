@@ -24,12 +24,12 @@ function formatRate(value: number | null): string {
   return value.toFixed(1);
 }
 
-function formatPercentage(value: number | null): string {
+function formatSeconds(value: number | null): string {
   if (value === null) {
     return "-";
   }
 
-  return `${value.toFixed(1)}%`;
+  return `${value.toFixed(0)}s`;
 }
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
@@ -86,37 +86,24 @@ export default function TeamProfileAdvancedStatsCard({
   const labels = {
     title: resolveLabel(t, "teamProfile.advancedStats", "Team Stats"),
     matchesPlayed: resolveLabel(t, "teamProfile.matchesPlayed", "Matches"),
-    goalsFor: resolveLabel(t, "common.gf", "GF"),
-    possession: resolveLabel(t, "teamProfile.possession", "Possession"),
-    goalDifference: resolveLabel(
+    wins: resolveLabel(t, "teamProfile.wins", "Wins"),
+    losses: resolveLabel(t, "teamProfile.losses", "Losses"),
+    draws: resolveLabel(t, "teamProfile.draws", "Draws"),
+    kills: resolveLabel(t, "teamProfile.kills", "Kills"),
+    deaths: resolveLabel(t, "teamProfile.deaths", "Deaths"),
+    goldEarned: resolveLabel(t, "teamProfile.goldEarned", "Gold Earned"),
+    damageToChampions: resolveLabel(
       t,
-      "teamProfile.goalDifference",
-      "Goal Difference",
+      "teamProfile.damageToChampions",
+      "Damage To Champions",
     ),
-    shots: resolveLabel(t, "teamProfile.shots", "Shots"),
-    shotsOnTarget: resolveLabel(
+    objectives: resolveLabel(t, "teamProfile.objectives", "Objectives"),
+    averageGameDuration: resolveLabel(
       t,
-      "teamProfile.shotsOnTarget",
-      "Shots On Target",
-    ),
-    passes: resolveLabel(t, "teamProfile.passes", "Passes"),
-    tacklesWon: resolveLabel(t, "teamProfile.tacklesWon", "Tackles Won"),
-    interceptions: resolveLabel(
-      t,
-      "teamProfile.interceptions",
-      "Interceptions",
-    ),
-    foulsCommitted: resolveLabel(
-      t,
-      "teamProfile.foulsCommitted",
-      "Fouls Committed",
+      "teamProfile.averageGameDuration",
+      "Average Game Duration",
     ),
     perMatch: resolveLabel(t, "teamProfile.perMatch", "Per Match"),
-    passAccuracy: resolveLabel(
-      t,
-      "teamProfile.passAccuracy",
-      "Pass Accuracy",
-    ),
   };
 
   return (
@@ -125,53 +112,47 @@ export default function TeamProfileAdvancedStatsCard({
       <CardBody>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <SummaryStat label={labels.matchesPlayed} value={String(overview.matchesPlayed)} />
-          <SummaryStat label={labels.goalsFor} value={String(overview.goalsFor)} />
-          <SummaryStat
-            label={labels.possession}
-            value={formatPercentage(overview.possessionAverage)}
-          />
-          <SummaryStat
-            label={labels.goalDifference}
-            value={String(overview.goalDifference)}
-          />
+          <SummaryStat label={labels.wins} value={String(overview.wins)} />
+          <SummaryStat label={labels.losses} value={String(overview.losses)} />
+          <SummaryStat label={labels.draws} value={String(overview.draws)} />
         </div>
 
         <div className="space-y-3">
           <MetricRow
-            label={labels.shots}
-            primaryValue={String(overview.metrics.shots.total)}
+            label={labels.kills}
+            primaryValue={String(overview.metrics.kills.total)}
             secondaryLabel={labels.perMatch}
-            secondaryValue={formatRate(overview.metrics.shots.perMatch)}
+            secondaryValue={formatRate(overview.metrics.kills.perMatch)}
           />
           <MetricRow
-            label={labels.shotsOnTarget}
-            primaryValue={String(overview.metrics.shotsOnTarget.total)}
+            label={labels.deaths}
+            primaryValue={String(overview.metrics.deaths.total)}
             secondaryLabel={labels.perMatch}
-            secondaryValue={formatRate(overview.metrics.shotsOnTarget.perMatch)}
+            secondaryValue={formatRate(overview.metrics.deaths.perMatch)}
           />
           <MetricRow
-            label={labels.passes}
-            primaryValue={`${overview.metrics.passes.completed} / ${overview.metrics.passes.attempted}`}
-            secondaryLabel={labels.passAccuracy}
-            secondaryValue={formatPercentage(overview.metrics.passes.accuracy)}
+            label={labels.goldEarned}
+            primaryValue={String(overview.metrics.goldEarned.total)}
+            secondaryLabel={labels.perMatch}
+            secondaryValue={formatRate(overview.metrics.goldEarned.perMatch)}
           />
           <MetricRow
-            label={labels.tacklesWon}
-            primaryValue={String(overview.metrics.tacklesWon.total)}
+            label={labels.damageToChampions}
+            primaryValue={String(overview.metrics.damageToChampions.total)}
             secondaryLabel={labels.perMatch}
-            secondaryValue={formatRate(overview.metrics.tacklesWon.perMatch)}
+            secondaryValue={formatRate(overview.metrics.damageToChampions.perMatch)}
           />
           <MetricRow
-            label={labels.interceptions}
-            primaryValue={String(overview.metrics.interceptions.total)}
+            label={labels.objectives}
+            primaryValue={String(overview.metrics.objectives.total)}
             secondaryLabel={labels.perMatch}
-            secondaryValue={formatRate(overview.metrics.interceptions.perMatch)}
+            secondaryValue={formatRate(overview.metrics.objectives.perMatch)}
           />
           <MetricRow
-            label={labels.foulsCommitted}
-            primaryValue={String(overview.metrics.foulsCommitted.total)}
+            label={labels.averageGameDuration}
+            primaryValue={formatSeconds(overview.metrics.averageGameDurationSeconds.perMatch)}
             secondaryLabel={labels.perMatch}
-            secondaryValue={formatRate(overview.metrics.foulsCommitted.perMatch)}
+            secondaryValue={formatRate(overview.metrics.averageGameDurationSeconds.perMatch)}
           />
         </div>
       </CardBody>

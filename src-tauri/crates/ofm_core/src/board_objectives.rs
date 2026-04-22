@@ -184,9 +184,9 @@ pub fn update_objective_progress(game: &mut Game) {
         .map(|f| {
             let r = f.result.as_ref().unwrap();
             if f.home_team_id == user_team_id {
-                r.home_goals as u32
+                r.home_wins as u32
             } else if f.away_team_id == user_team_id {
-                r.away_goals as u32
+                r.away_wins as u32
             } else {
                 0
             }

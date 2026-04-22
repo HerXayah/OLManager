@@ -15,20 +15,12 @@ pub(super) fn round_to(value: f32, digits: i32) -> f32 {
     (value * factor).round() / factor
 }
 
-pub(super) fn calculate_per90(total: u32, minutes_played: u32) -> Option<f32> {
-    if minutes_played == 0 {
+pub(super) fn calculate_per_match(total: u32, matches_played: u32) -> Option<f32> {
+    if matches_played == 0 {
         return None;
     }
 
-    Some(round_to((total as f32 * 90.0) / minutes_played as f32, 1))
-}
-
-pub(super) fn calculate_pass_accuracy(completed: u32, attempted: u32) -> Option<f32> {
-    if attempted == 0 {
-        return None;
-    }
-
-    Some(round_to((completed as f32 / attempted as f32) * 100.0, 1))
+    Some(round_to(total as f32 / matches_played as f32, 1))
 }
 
 pub(super) fn calculate_average(total: u32, count: u32) -> Option<f32> {

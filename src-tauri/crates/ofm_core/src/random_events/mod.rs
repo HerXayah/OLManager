@@ -294,14 +294,14 @@ pub fn check_random_events(game: &mut Game) {
                     .filter(|f| {
                         if let Some(r) = &f.result {
                             let user_goals = if f.home_team_id == user_team_id {
-                                r.home_goals
+                                r.home_wins
                             } else {
-                                r.away_goals
+                                r.away_wins
                             };
                             let opp_goals = if f.home_team_id == user_team_id {
-                                r.away_goals
+                                r.away_wins
                             } else {
-                                r.home_goals
+                                r.home_wins
                             };
                             user_goals < opp_goals
                         } else {
