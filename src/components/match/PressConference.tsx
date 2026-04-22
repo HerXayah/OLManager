@@ -70,7 +70,6 @@ function generateQuestions(
   const userTeam =
     userSide === "Home" ? snapshot.home_team : snapshot.away_team;
   const isWin = userScore > oppScore;
-  const isLoss = userScore < oppScore;
 
   const questions: PlayerFocusQuestion[] = [];
 
@@ -81,17 +80,11 @@ function generateQuestions(
     outlet: "Sports Daily",
     question: isWin
       ? t("match.press.result.questions.win", { userScore, oppScore, oppName })
-      : isLoss
-        ? t("match.press.result.questions.loss", {
-            userScore,
-            oppScore,
-            oppName,
-          })
-        : t("match.press.result.questions.draw", {
-            userScore,
-            oppScore,
-            oppName,
-          }),
+      : t("match.press.result.questions.loss", {
+          userScore,
+          oppScore,
+          oppName,
+        }),
     responses: isWin
       ? [
           response(t, "humble", "match.press.result.responses.win.humble"),
@@ -102,25 +95,11 @@ function generateQuestions(
           ),
           response(t, "deflect", "match.press.result.responses.win.deflect"),
         ]
-      : isLoss
-        ? [
-            response(t, "accept", "match.press.result.responses.loss.accept"),
-            response(t, "defiant", "match.press.result.responses.loss.defiant"),
-            response(t, "deflect", "match.press.result.responses.loss.deflect"),
-          ]
-        : [
-            response(t, "fair", "match.press.result.responses.draw.fair"),
-            response(
-              t,
-              "frustrated",
-              "match.press.result.responses.draw.frustrated",
-            ),
-            response(
-              t,
-              "positive",
-              "match.press.result.responses.draw.positive",
-            ),
-          ],
+      : [
+          response(t, "accept", "match.press.result.responses.loss.accept"),
+          response(t, "defiant", "match.press.result.responses.loss.defiant"),
+          response(t, "deflect", "match.press.result.responses.loss.deflect"),
+        ],
   });
 
   // 2. Player-focused question — pick a notable player
@@ -185,42 +164,26 @@ function generateQuestions(
       outlet: "Supporters' Voice",
       question: isWin
         ? t("match.press.fans.questions.win")
-        : isLoss
-          ? t("match.press.fans.questions.loss")
-          : t("match.press.fans.questions.draw"),
+        : t("match.press.fans.questions.loss"),
       responses: isWin
         ? [
             response(t, "grateful", "match.press.fans.responses.win.grateful"),
             response(t, "shared", "match.press.fans.responses.win.shared"),
             response(t, "deflect", "match.press.fans.responses.win.deflect"),
           ]
-        : isLoss
-          ? [
-              response(
-                t,
-                "apologize",
-                "match.press.fans.responses.loss.apologize",
-              ),
-              response(
-                t,
-                "patience",
-                "match.press.fans.responses.loss.patience",
-              ),
-              response(t, "curt", "match.press.fans.responses.loss.curt"),
-            ]
-          : [
-              response(
-                t,
-                "appreciate",
-                "match.press.fans.responses.draw.appreciate",
-              ),
-              response(
-                t,
-                "understand",
-                "match.press.fans.responses.draw.understand",
-              ),
-              response(t, "curt", "match.press.fans.responses.draw.curt"),
-            ],
+        : [
+            response(
+              t,
+              "apologize",
+              "match.press.fans.responses.loss.apologize",
+            ),
+            response(
+              t,
+              "patience",
+              "match.press.fans.responses.loss.patience",
+            ),
+            response(t, "curt", "match.press.fans.responses.loss.curt"),
+          ],
     },
   ];
   questions.push(fanQuestions[0]);

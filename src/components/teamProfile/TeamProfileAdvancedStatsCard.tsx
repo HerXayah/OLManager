@@ -88,7 +88,6 @@ export default function TeamProfileAdvancedStatsCard({
     matchesPlayed: resolveLabel(t, "teamProfile.matchesPlayed", "Matches"),
     wins: resolveLabel(t, "teamProfile.wins", "Wins"),
     losses: resolveLabel(t, "teamProfile.losses", "Losses"),
-    draws: resolveLabel(t, "teamProfile.draws", "Draws"),
     kills: resolveLabel(t, "teamProfile.kills", "Kills"),
     deaths: resolveLabel(t, "teamProfile.deaths", "Deaths"),
     goldEarned: resolveLabel(t, "teamProfile.goldEarned", "Gold Earned"),
@@ -114,7 +113,6 @@ export default function TeamProfileAdvancedStatsCard({
           <SummaryStat label={labels.matchesPlayed} value={String(overview.matchesPlayed)} />
           <SummaryStat label={labels.wins} value={String(overview.wins)} />
           <SummaryStat label={labels.losses} value={String(overview.losses)} />
-          <SummaryStat label={labels.draws} value={String(overview.draws)} />
         </div>
 
         <div className="space-y-3">

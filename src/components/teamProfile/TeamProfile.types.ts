@@ -28,7 +28,6 @@ export interface TeamStatsOverview {
   matchesPlayed: number;
   wins: number;
   losses: number;
-  draws: number;
   metrics: {
     kills: { total: number; perMatch: number | null };
     deaths: { total: number; perMatch: number | null };
@@ -47,7 +46,7 @@ export interface TeamRecentMatchEntry {
   opponentTeamId: string;
   opponentName: string;
   side: "Blue" | "Red";
-  result: "Win" | "Loss" | "Draw";
+  result: "Win" | "Loss";
   gameDurationSeconds: number;
   kills: number;
   deaths: number;

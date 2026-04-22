@@ -75,7 +75,7 @@ export interface TeamData {
   history: TeamSeasonRecord[];
 }
 
-export type MatchOutcome = "Win" | "Loss" | "Draw";
+export type MatchOutcome = "Win" | "Loss";
 
 export type TeamSide = "Blue" | "Red";
 
@@ -136,7 +136,27 @@ export interface PlayerMatchStatsRecord {
   [legacyField: string]: LegacyCompatibilityValue;
 }
 
-export type PlayerMatchHistoryEntryData = PlayerMatchStatsRecord;
+export interface PlayerMatchHistoryEntryData {
+  fixtureId: string;
+  date: string;
+  competition: string;
+  matchday: number;
+  opponentTeamId: string;
+  opponentName: string;
+  side: TeamSide;
+  result: MatchOutcome;
+  role: LolRole;
+  championId?: string | null;
+  gameDurationSeconds: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  goldEarned: number;
+  damageToChampions: number;
+  visionScore: number;
+  wardsPlaced: number;
+}
 
 export interface TeamMatchStatsRecord {
   fixture_id: string;

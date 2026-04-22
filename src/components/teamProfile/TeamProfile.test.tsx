@@ -38,7 +38,6 @@ vi.mock("react-i18next", () => ({
         "teamProfile.matchesPlayed": "Matches",
         "teamProfile.wins": "Wins",
         "teamProfile.losses": "Losses",
-        "teamProfile.draws": "Draws",
         "teamProfile.kills": "Kills",
         "teamProfile.deaths": "Deaths",
         "teamProfile.goldEarned": "Gold Earned",
@@ -241,7 +240,6 @@ describe("TeamProfile", () => {
           matchesPlayed: 12,
           wins: 8,
           losses: 3,
-          draws: 1,
           metrics: {
             kills: { total: 160, perMatch: 13.3 },
             deaths: { total: 68, perMatch: 5.7 },

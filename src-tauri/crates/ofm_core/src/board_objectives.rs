@@ -280,6 +280,14 @@ mod tests {
         game
     }
 
+    fn make_result(home_wins: u8, away_wins: u8) -> MatchResult {
+        MatchResult {
+            home_wins,
+            away_wins,
+            ..Default::default()
+        }
+    }
+
     fn make_objective(
         id: &str,
         objective_type: ObjectiveType,
@@ -436,13 +444,7 @@ mod tests {
                 away_team_id: "team2".to_string(),
                 competition: FixtureCompetition::League,
                 status: FixtureStatus::Completed,
-                result: Some(MatchResult {
-                    home_goals: 2,
-                    away_goals: 1,
-                    home_scorers: vec![],
-                    away_scorers: vec![],
-                    report: None,
-                }),
+                result: Some(make_result(2, 1)),
             },
             Fixture {
                 id: "f2".to_string(),
@@ -452,13 +454,7 @@ mod tests {
                 away_team_id: "team1".to_string(),
                 competition: FixtureCompetition::League,
                 status: FixtureStatus::Completed,
-                result: Some(MatchResult {
-                    home_goals: 0,
-                    away_goals: 3,
-                    home_scorers: vec![],
-                    away_scorers: vec![],
-                    report: None,
-                }),
+                result: Some(make_result(0, 3)),
             },
         ];
         game.league = Some(league);
@@ -495,13 +491,7 @@ mod tests {
                 away_team_id: away_team_id.to_string(),
                 competition: FixtureCompetition::League,
                 status,
-                result: score.map(|(home_goals, away_goals)| MatchResult {
-                    home_goals,
-                    away_goals,
-                    home_scorers: vec![],
-                    away_scorers: vec![],
-                    report: None,
-                }),
+                result: score.map(|(home_wins, away_wins)| make_result(home_wins, away_wins)),
             }
         };
         league.standings = vec![
@@ -644,13 +634,7 @@ mod tests {
         assert!(!objective_by_id(&game, "obj_position").met);
 
         league.fixtures[11].status = FixtureStatus::Completed;
-        league.fixtures[11].result = Some(MatchResult {
-            home_goals: 0,
-            away_goals: 1,
-            home_scorers: vec![],
-            away_scorers: vec![],
-            report: None,
-        });
+        league.fixtures[11].result = Some(make_result(0, 1));
         game.league = Some(league);
 
         update_objective_progress(&mut game);

@@ -21,7 +21,6 @@ import {
 import {
   Trophy,
   TrendingDown,
-  Minus,
   Star,
   MessageCircle,
   ChevronRight,
@@ -80,8 +79,7 @@ export default function PostMatchScreen({
   const oppScore =
     userSide === "Home" ? snapshot.away_score : snapshot.home_score;
 
-  const resultType =
-    userScore > oppScore ? "win" : userScore < oppScore ? "loss" : "draw";
+  const resultType = userScore > oppScore ? "win" : "loss";
   const isLeagueFixture =
     currentFixture?.competition !== "Friendly" &&
     currentFixture?.competition !== "PreseasonTournament";
@@ -260,18 +258,14 @@ export default function PostMatchScreen({
   const suggestedTalks: TeamTalkTone[] =
     resultType === "win"
       ? ["praise", "calm", "motivational"]
-      : resultType === "loss"
-        ? ["motivational", "assertive", "disappointed"]
-        : ["calm", "motivational", "assertive"];
+      : ["motivational", "assertive", "disappointed"];
 
   const handleDeliverTalk = async () => {
     if (!selectedTalk) return;
     const context =
       resultType === "win"
         ? "winning"
-        : resultType === "loss"
-          ? "losing"
-          : "drawing";
+        : "losing";
     try {
       const results = await invoke<
         {
@@ -319,14 +313,6 @@ export default function PostMatchScreen({
                   <TrendingDown className="w-4 h-4 text-red-400" />
                   <span className="font-heading font-bold text-sm uppercase tracking-widest text-red-400">
                     {t("match.defeat")}
-                  </span>
-                </div>
-              )}
-              {resultType === "draw" && (
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gray-500/20 rounded-full">
-                  <Minus className="w-4 h-4 text-gray-400" />
-                  <span className="font-heading font-bold text-sm uppercase tracking-widest text-gray-400">
-                    {t("match.draw")}
                   </span>
                 </div>
               )}

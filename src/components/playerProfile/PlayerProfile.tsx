@@ -101,19 +101,12 @@ function buildChampionPerformanceMap(
   const bucket = new Map<string, { wins: number; games: number }>();
 
   history.forEach((entry) => {
-    const championId = entry.champion_id;
+    const championId = entry.championId;
     if (!championId) return;
 
     const current = bucket.get(championId) ?? { wins: 0, games: 0 };
     current.games += 1;
-    const won =
-      entry.result === "Win"
-        ? true
-        : entry.result === "Loss"
-          ? false
-          : typeof entry.champion_win === "boolean"
-            ? entry.champion_win
-            : entry.team_goals > entry.opponent_goals;
+    const won = entry.result === "Win";
     if (won) {
       current.wins += 1;
     }

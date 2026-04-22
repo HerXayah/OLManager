@@ -125,6 +125,14 @@ mod tests {
     use domain::season::{SeasonPhase, TransferWindowStatus};
     use domain::team::Team;
 
+    fn make_result(home_wins: u8, away_wins: u8) -> MatchResult {
+        MatchResult {
+            home_wins,
+            away_wins,
+            ..Default::default()
+        }
+    }
+
     fn make_team(id: &str, name: &str) -> Team {
         Team::new(
             id.to_string(),
@@ -146,13 +154,7 @@ mod tests {
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
             status: status.clone(),
-            result: (status == FixtureStatus::Completed).then_some(MatchResult {
-                home_goals: 1,
-                away_goals: 0,
-                home_scorers: vec![],
-                away_scorers: vec![],
-                report: None,
-            }),
+            result: (status == FixtureStatus::Completed).then_some(make_result(1, 0)),
         }
     }
 

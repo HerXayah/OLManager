@@ -1,7 +1,7 @@
 use rusqlite_migration::{M, Migrations};
 
 /// Number of migrations defined. Keep in sync with the vec in `all_migrations`.
-pub const MIGRATION_COUNT: usize = 20;
+pub const MIGRATION_COUNT: usize = 21;
 
 /// All migrations for a per-save game database.
 /// Each save `.db` file gets this schema applied via `rusqlite_migration`.
@@ -47,6 +47,8 @@ pub fn all_migrations() -> Migrations<'static> {
         M::up(include_str!("sql/v019_player_match_champion_win.sql")),
         // V20: LoL-first stats columns with explicit legacy bridge
         M::up(include_str!("sql/v020_lol_stats_schema.sql")),
+        // V21: Pure LoL stats tables (primary path) + legacy import bridge
+        M::up(include_str!("sql/v021_lol_pure_stats_tables.sql")),
     ])
 }
 
@@ -89,10 +91,18 @@ mod tests {
             tables.contains(&"player_match_stats".to_string()),
             "missing player_match_stats"
         );
+        assert!(
+            tables.contains(&"lol_player_match_stats".to_string()),
+            "missing lol_player_match_stats"
+        );
         assert!(tables.contains(&"staff".to_string()), "missing staff");
         assert!(
             tables.contains(&"team_match_stats".to_string()),
             "missing team_match_stats"
+        );
+        assert!(
+            tables.contains(&"lol_team_match_stats".to_string()),
+            "missing lol_team_match_stats"
         );
         assert!(tables.contains(&"league".to_string()), "missing league");
         assert!(tables.contains(&"fixtures".to_string()), "missing fixtures");

@@ -2,7 +2,7 @@ ALTER TABLE player_match_stats
     ADD COLUMN side TEXT NOT NULL DEFAULT 'Blue';
 
 ALTER TABLE player_match_stats
-    ADD COLUMN result TEXT NOT NULL DEFAULT 'Draw';
+    ADD COLUMN result TEXT NOT NULL DEFAULT 'Loss';
 
 ALTER TABLE player_match_stats
     ADD COLUMN role TEXT NOT NULL DEFAULT 'Unknown';
@@ -42,7 +42,7 @@ SET
         WHEN team_id = home_team_id AND home_goals < away_goals THEN 'Loss'
         WHEN team_id = away_team_id AND away_goals > home_goals THEN 'Win'
         WHEN team_id = away_team_id AND away_goals < home_goals THEN 'Loss'
-        ELSE 'Draw'
+        ELSE 'Loss'
     END,
     duration_seconds = minutes_played * 60,
     kills = goals,
@@ -69,7 +69,7 @@ ALTER TABLE team_match_stats
     ADD COLUMN side TEXT NOT NULL DEFAULT 'Blue';
 
 ALTER TABLE team_match_stats
-    ADD COLUMN result TEXT NOT NULL DEFAULT 'Draw';
+    ADD COLUMN result TEXT NOT NULL DEFAULT 'Loss';
 
 ALTER TABLE team_match_stats
     ADD COLUMN duration_seconds INTEGER NOT NULL DEFAULT 0;
@@ -98,7 +98,7 @@ SET
     result = CASE
         WHEN goals_for > goals_against THEN 'Win'
         WHEN goals_for < goals_against THEN 'Loss'
-        ELSE 'Draw'
+        ELSE 'Loss'
     END,
     duration_seconds = 0,
     kills = shots,

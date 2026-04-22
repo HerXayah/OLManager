@@ -143,9 +143,7 @@ export default function HalfTimeBreak({
     const context =
       userScore > oppScore
         ? "winning"
-        : userScore < oppScore
-          ? "losing"
-          : "drawing";
+        : "losing";
     try {
       const results = await invoke<
         {
