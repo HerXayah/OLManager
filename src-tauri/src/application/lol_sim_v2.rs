@@ -2,10 +2,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
-use std::fs::{OpenOptions, create_dir_all};
+use std::fs::{OpenOptions, create_dir_all, read_dir, remove_file};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Default)]
 pub struct LolSimV2StoreState {
@@ -64,7 +65,7 @@ fn default_no_dive_hp_min() -> f64 { 0.45 }
 fn default_trade_retreat_hp_ratio() -> f64 { 0.36 }
 fn default_trade_hp_disadvantage_allowance() -> f64 { 0.2 }
 fn default_lane_chase_leash_radius() -> f64 { 0.11 }
-fn default_hybrid_open_trade_confidence_high() -> f64 { 0.64 }
+fn default_hybrid_open_trade_confidence_high() -> f64 { 0.63 }
 fn default_hybrid_disengage_confidence_low() -> f64 { 0.38 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,6 +225,45 @@ pub struct LolSimV2StateResponse {
 pub struct LolSimV2DisposeResponse {
     pub session_id: String,
     pub disposed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimV2RunToCompletionRequest {
+    pub seed: String,
+    pub snapshot: Value,
+    #[serde(default)]
+    pub champion_by_player_id: HashMap<String, String>,
+    #[serde(default)]
+    pub champion_profiles_by_id: HashMap<String, LolChampionCombatProfileInput>,
+    #[serde(default)]
+    pub ai_mode: SimulatorAiMode,
+    #[serde(default)]
+    pub policy: SimulatorPolicyConfig,
+    #[serde(default)]
+    pub telemetry: SimulatorTelemetryConfig,
+    #[serde(default = "default_run_to_completion_dt_sec")]
+    pub dt_sec: f64,
+    #[serde(default = "default_run_to_completion_speed")]
+    pub speed: f64,
+    #[serde(default = "default_run_to_completion_max_ticks")]
+    pub max_ticks: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimV2RunToCompletionResponse {
+    pub winner: Option<String>,
+    pub ticks: u64,
+    pub elapsed_simulated_sec: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClearTelemetryFilesResponse {
+    pub directory: String,
+    pub deleted_files: usize,
+    pub skipped_entries: usize,
+    pub existed: bool,
 }
 
 pub fn init(store: &LolSimV2StoreState, request: LolSimV2InitRequest) -> Result<LolSimV2StateResponse, String> {
@@ -405,6 +445,162 @@ pub fn dispose(
     })
 }
 
+pub fn run_to_completion(
+    _store: &LolSimV2StoreState,
+    request: LolSimV2RunToCompletionRequest,
+) -> Result<LolSimV2RunToCompletionResponse, String> {
+    // Use an isolated in-memory store per run to avoid lock contention
+    // between concurrent AFK simulations.
+    let local_store = LolSimV2StoreState::default();
+
+    let session_id = format!(
+        "lol-sim-v2-afk-{}-{}",
+        request.seed,
+        next_run_to_completion_suffix()
+    );
+
+    let run_result = (|| {
+        let mut response = init(
+            &local_store,
+            LolSimV2InitRequest {
+                session_id: session_id.clone(),
+                seed: request.seed,
+                snapshot: request.snapshot,
+                champion_by_player_id: request.champion_by_player_id,
+                champion_profiles_by_id: request.champion_profiles_by_id,
+                initial_state: None,
+                ai_mode: request.ai_mode,
+                policy: request.policy,
+                telemetry: request.telemetry,
+            },
+        )?;
+
+        let mut ticks = 0u64;
+        for _ in 0..request.max_ticks {
+            if read_winner(&response.state).is_some() {
+                break;
+            }
+
+            response = tick(
+                &local_store,
+                LolSimV2TickRequest {
+                    session_id: session_id.clone(),
+                    dt_sec: request.dt_sec,
+                    running: true,
+                    speed: request.speed,
+                },
+            )?;
+            ticks = ticks.saturating_add(1);
+        }
+
+        Ok(LolSimV2RunToCompletionResponse {
+            winner: read_winner(&response.state),
+            ticks,
+            elapsed_simulated_sec: read_time_sec(&response.state),
+        })
+    })();
+
+    let _ = dispose(
+        &local_store,
+        LolSimV2DisposeRequest {
+            session_id: session_id.clone(),
+        },
+    );
+
+    run_result
+}
+
+fn default_run_to_completion_dt_sec() -> f64 {
+    0.2
+}
+
+fn default_run_to_completion_speed() -> f64 {
+    12.0
+}
+
+fn default_run_to_completion_max_ticks() -> u64 {
+    3600
+}
+
+fn next_run_to_completion_suffix() -> u128 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_nanos())
+        .unwrap_or(0)
+}
+
+fn read_winner(state: &Value) -> Option<String> {
+    state
+        .get("winner")
+        .and_then(Value::as_str)
+        .map(ToString::to_string)
+}
+
+fn read_time_sec(state: &Value) -> f64 {
+    state.get("timeSec").and_then(Value::as_f64).unwrap_or(0.0)
+}
+
+pub fn clear_default_telemetry_files() -> Result<ClearTelemetryFilesResponse, String> {
+    let telemetry_dir = default_telemetry_directory();
+    let existed = telemetry_dir.exists();
+
+    if !existed {
+        return Ok(ClearTelemetryFilesResponse {
+            directory: telemetry_dir.to_string_lossy().to_string(),
+            deleted_files: 0,
+            skipped_entries: 0,
+            existed: false,
+        });
+    }
+
+    let mut deleted_files = 0usize;
+    let mut skipped_entries = 0usize;
+
+    for entry in read_dir(&telemetry_dir).map_err(|err| {
+        format!(
+            "failed to read telemetry directory {}: {}",
+            telemetry_dir.to_string_lossy(),
+            err
+        )
+    })? {
+        let entry = entry.map_err(|err| format!("failed to inspect telemetry entry: {}", err))?;
+        let path = entry.path();
+        let extension = path
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.eq_ignore_ascii_case("jsonl"))
+            .unwrap_or(false);
+
+        if !extension || !path.is_file() {
+            skipped_entries += 1;
+            continue;
+        }
+
+        remove_file(&path).map_err(|err| {
+            format!(
+                "failed to remove telemetry file {}: {}",
+                path.to_string_lossy(),
+                err
+            )
+        })?;
+        deleted_files += 1;
+    }
+
+    Ok(ClearTelemetryFilesResponse {
+        directory: telemetry_dir.to_string_lossy().to_string(),
+        deleted_files,
+        skipped_entries,
+        existed: true,
+    })
+}
+
+fn default_telemetry_directory() -> PathBuf {
+    let mut path = std::env::temp_dir();
+    path.push("olmanager");
+    path.push("lol-sim-telemetry");
+    path
+}
+
 fn resolve_telemetry_output_path(config: &SimulatorTelemetryConfig, seed: &str) -> Option<PathBuf> {
     if !config.enabled {
         return None;
@@ -414,9 +610,7 @@ fn resolve_telemetry_output_path(config: &SimulatorTelemetryConfig, seed: &str) 
         return Some(PathBuf::from(custom));
     }
 
-    let mut path = std::env::temp_dir();
-    path.push("olmanager");
-    path.push("lol-sim-telemetry");
+    let mut path = default_telemetry_directory();
     path.push(format!("{}.jsonl", sanitize_for_file_name(seed)));
     Some(path)
 }
@@ -870,6 +1064,8 @@ struct RuntimeEvent {
 struct ChampionRuntime {
     id: String,
     name: String,
+    #[serde(default)]
+    champion_id: String,
     team: String,
     role: String,
     lane: String,
@@ -890,8 +1086,16 @@ struct ChampionRuntime {
     deaths: i64,
     assists: i64,
     gold: i64,
+    #[serde(default)]
+    spent_gold: i64,
     xp: i64,
     level: i64,
+    #[serde(default)]
+    cs: i64,
+    #[serde(default)]
+    has_left_base_once: bool,
+    #[serde(default)]
+    last_support_cs_at: f64,
     #[serde(default)]
     items: Vec<String>,
     last_damaged_by_champion_id: Option<String>,
@@ -975,6 +1179,23 @@ struct ItemTemplate {
     cost: i64,
     attack_damage: f64,
     max_hp: f64,
+}
+
+#[derive(Clone, Copy)]
+enum ItemBuildCategory {
+    Tank,
+    Bruiser,
+    Colossus,
+    AssassinAd,
+    AssassinAp,
+    ControlMage,
+    BattleMage,
+    AdcCrit,
+    AdcAttackSpeed,
+    LethalityMarksman,
+    SupportEngage,
+    SupportEnchanter,
+    SupportDamage,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1120,7 +1341,7 @@ const FIRST_WAVE_CONTEST_UNTIL: f64 = MINION_FIRST_WAVE_AT + 45.0;
 const CHAMPION_DECISION_CADENCE_SEC: f64 = 0.8;
 const MINION_DAMAGE_TO_MINION_MULTIPLIER: f64 = 0.52;
 const MINION_DAMAGE_TO_CHAMPION_MULTIPLIER: f64 = 0.44;
-const CHAMPION_DAMAGE_TO_MINION_MULTIPLIER: f64 = 0.36;
+const CHAMPION_DAMAGE_TO_MINION_MULTIPLIER: f64 = 0.6;
 const RECALL_TRIGGER_HP_RATIO: f64 = 0.34;
 const RECALL_CHANNEL_SEC: f64 = 6.5;
 const RECALL_REACH_BUFFER_SEC: f64 = 0.8;
@@ -1188,6 +1409,12 @@ const SCUTTLE_INITIAL_SPAWN_AT: f64 = 210.0;
 const JUNGLE_CAMP_ENGAGE_RADIUS: f64 = 0.09;
 const OBJECTIVE_ATTEMPT_RADIUS: f64 = 0.12;
 const OBJECTIVE_ASSIST_RADIUS: f64 = 0.24;
+const MAJOR_OBJECTIVE_TEAM_ASSIST_RADIUS: f64 = 0.52;
+const BASE_DEFENSE_RECALL_DISTANCE: f64 = 0.34;
+const NEXUS_DEFENSE_THREAT_RADIUS: f64 = 0.13;
+const ALLY_HELP_RADIUS: f64 = 0.17;
+const ALLY_HELP_DAMAGE_RECENT_SEC: f64 = 3.2;
+const OFFROLE_JUNGLE_REWARD_MULTIPLIER: f64 = 0.65;
 const OBJECTIVE_PATH_MIN_TARGET_DELTA: f64 = 0.014;
 const JUNGLE_DISENGAGE_THREAT_AVOID_RADIUS: f64 = 0.1;
 const VOIDGRUBS_SOFT_CLOSE_AT: f64 = 14.0 * 60.0 + 45.0;
@@ -1204,6 +1431,9 @@ const OBJECTIVE_NEXT_SPAWN_FALLBACK: f64 = 9_999_999.0;
 const NAV_GRID_SIZE: usize = 120;
 const NAV_PATH_MIN_DIRECT_DIST: f64 = 0.012;
 const NAV_PATH_TRIVIAL_NODE_EPSILON: f64 = 0.0095;
+const ITEM_COST_MULTIPLIER: f64 = 0.32;
+const ITEM_COST_MIN: i64 = 300;
+const SUPPORT_CS_MIN_INTERVAL_SEC: f64 = 24.0;
 
 const LEVEL_XP_THRESHOLDS: [i64; 18] = [
     0, 280, 660, 1080, 1560, 2100, 2700, 3360, 4080, 4860, 5700, 6600, 7560, 8580, 9660, 10800,
@@ -1232,49 +1462,121 @@ const JUNGLE_DISENGAGE_FALLBACK_ORDER_RED: [&str; 8] = [
     "scuttle-top",
 ];
 
-const TOP_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "doran_blade", cost: 450, attack_damage: 7.0, max_hp: 80.0 },
-    ItemTemplate { key: "tiamat", cost: 1200, attack_damage: 20.0, max_hp: 0.0 },
-    ItemTemplate { key: "phage", cost: 1100, attack_damage: 15.0, max_hp: 200.0 },
+const TANK_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "sunfire_aegis", cost: 2700, attack_damage: 10.0, max_hp: 350.0 },
+    ItemTemplate { key: "warmogs_armor", cost: 3100, attack_damage: 0.0, max_hp: 1000.0 },
+    ItemTemplate { key: "iceborn_gauntlet", cost: 2900, attack_damage: 18.0, max_hp: 300.0 },
+    ItemTemplate { key: "randuins_omen", cost: 3000, attack_damage: 0.0, max_hp: 350.0 },
+    ItemTemplate { key: "spirit_visage", cost: 2900, attack_damage: 0.0, max_hp: 450.0 },
+    ItemTemplate { key: "plated_steelcaps", cost: 1200, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const BRUISER_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "sundered_sky", cost: 3100, attack_damage: 40.0, max_hp: 300.0 },
+    ItemTemplate { key: "deaths_dance", cost: 3300, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "steraks_gage", cost: 3200, attack_damage: 32.0, max_hp: 450.0 },
+    ItemTemplate { key: "titanic_hydra", cost: 3300, attack_damage: 42.0, max_hp: 550.0 },
+    ItemTemplate { key: "maw_of_malmortius", cost: 3100, attack_damage: 50.0, max_hp: 0.0 },
+    ItemTemplate { key: "mercurys_treads", cost: 1250, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const COLOSSUS_ITEM_PLAN: [ItemTemplate; 6] = [
     ItemTemplate { key: "black_cleaver", cost: 3000, attack_damage: 40.0, max_hp: 400.0 },
-    ItemTemplate { key: "steraks", cost: 3100, attack_damage: 30.0, max_hp: 400.0 },
-    ItemTemplate { key: "guardian_angel", cost: 3200, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "steraks_gage", cost: 3200, attack_damage: 32.0, max_hp: 450.0 },
+    ItemTemplate { key: "hullbreaker", cost: 3000, attack_damage: 40.0, max_hp: 500.0 },
+    ItemTemplate { key: "titanic_hydra", cost: 3300, attack_damage: 42.0, max_hp: 550.0 },
+    ItemTemplate { key: "dead_mans_plate", cost: 2900, attack_damage: 10.0, max_hp: 350.0 },
+    ItemTemplate { key: "plated_steelcaps", cost: 1200, attack_damage: 0.0, max_hp: 0.0 },
 ];
 
-const JGL_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "jungle_companion", cost: 450, attack_damage: 6.0, max_hp: 60.0 },
-    ItemTemplate { key: "caulfields", cost: 1100, attack_damage: 25.0, max_hp: 0.0 },
-    ItemTemplate { key: "eclipse", cost: 2800, attack_damage: 60.0, max_hp: 0.0 },
-    ItemTemplate { key: "black_cleaver", cost: 3000, attack_damage: 40.0, max_hp: 400.0 },
-    ItemTemplate { key: "maw", cost: 2900, attack_damage: 50.0, max_hp: 0.0 },
-    ItemTemplate { key: "guardian_angel", cost: 3200, attack_damage: 55.0, max_hp: 0.0 },
+const ASSASSIN_AD_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "voltaic_cyclosword", cost: 2900, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "opportunity", cost: 2700, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "immortal_shieldbow", cost: 3000, attack_damage: 50.0, max_hp: 0.0 },
+    ItemTemplate { key: "seryldas_grudge", cost: 3200, attack_damage: 45.0, max_hp: 0.0 },
+    ItemTemplate { key: "profane_hydra", cost: 3300, attack_damage: 60.0, max_hp: 0.0 },
+    ItemTemplate { key: "boots_of_swiftness", cost: 1000, attack_damage: 0.0, max_hp: 0.0 },
 ];
 
-const MID_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "dorans_ring", cost: 400, attack_damage: 6.0, max_hp: 70.0 },
-    ItemTemplate { key: "lost_chapter", cost: 1100, attack_damage: 12.0, max_hp: 0.0 },
-    ItemTemplate { key: "ludens", cost: 2900, attack_damage: 35.0, max_hp: 0.0 },
-    ItemTemplate { key: "shadowflame", cost: 3200, attack_damage: 30.0, max_hp: 0.0 },
-    ItemTemplate { key: "zhonyas", cost: 3250, attack_damage: 20.0, max_hp: 0.0 },
-    ItemTemplate { key: "rabadons", cost: 3600, attack_damage: 45.0, max_hp: 0.0 },
+const ASSASSIN_AP_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "stormsurge", cost: 2900, attack_damage: 36.0, max_hp: 0.0 },
+    ItemTemplate { key: "lich_bane", cost: 3200, attack_damage: 32.0, max_hp: 0.0 },
+    ItemTemplate { key: "shadowflame", cost: 3200, attack_damage: 35.0, max_hp: 0.0 },
+    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
+    ItemTemplate { key: "rabadons_deathcap", cost: 3600, attack_damage: 45.0, max_hp: 0.0 },
+    ItemTemplate { key: "sorcerers_shoes", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
 ];
 
-const ADC_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "dorans_blade", cost: 450, attack_damage: 7.0, max_hp: 80.0 },
-    ItemTemplate { key: "noonquiver", cost: 1300, attack_damage: 30.0, max_hp: 0.0 },
-    ItemTemplate { key: "kraken", cost: 3000, attack_damage: 40.0, max_hp: 0.0 },
-    ItemTemplate { key: "phantom_dancer", cost: 2800, attack_damage: 22.0, max_hp: 0.0 },
-    ItemTemplate { key: "infinity_edge", cost: 3400, attack_damage: 55.0, max_hp: 0.0 },
-    ItemTemplate { key: "lord_dominiks", cost: 3000, attack_damage: 40.0, max_hp: 0.0 },
+const CONTROL_MAGE_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "ludens_companion", cost: 2900, attack_damage: 35.0, max_hp: 0.0 },
+    ItemTemplate { key: "void_staff", cost: 3000, attack_damage: 30.0, max_hp: 0.0 },
+    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
+    ItemTemplate { key: "seraphs_embrace", cost: 3000, attack_damage: 28.0, max_hp: 0.0 },
+    ItemTemplate { key: "rabadons_deathcap", cost: 3600, attack_damage: 45.0, max_hp: 0.0 },
+    ItemTemplate { key: "sorcerers_shoes", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
 ];
 
-const SUP_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "world_atlas", cost: 400, attack_damage: 3.0, max_hp: 100.0 },
-    ItemTemplate { key: "kindlegem", cost: 800, attack_damage: 0.0, max_hp: 200.0 },
-    ItemTemplate { key: "locket", cost: 2200, attack_damage: 0.0, max_hp: 300.0 },
-    ItemTemplate { key: "redemption", cost: 2300, attack_damage: 0.0, max_hp: 250.0 },
-    ItemTemplate { key: "zekes", cost: 2400, attack_damage: 0.0, max_hp: 350.0 },
+const BATTLE_MAGE_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "liandrys_torment", cost: 3000, attack_damage: 33.0, max_hp: 300.0 },
+    ItemTemplate { key: "rylais_crystal_scepter", cost: 2600, attack_damage: 25.0, max_hp: 400.0 },
+    ItemTemplate { key: "seraphs_embrace", cost: 3000, attack_damage: 28.0, max_hp: 0.0 },
+    ItemTemplate { key: "cosmic_drive", cost: 3000, attack_damage: 30.0, max_hp: 350.0 },
+    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
+    ItemTemplate { key: "mercurys_treads", cost: 1250, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const ADC_CRIT_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "bloodthirster", cost: 3400, attack_damage: 70.0, max_hp: 0.0 },
+    ItemTemplate { key: "infinity_edge", cost: 3400, attack_damage: 65.0, max_hp: 0.0 },
+    ItemTemplate { key: "mortal_reminder", cost: 3200, attack_damage: 40.0, max_hp: 0.0 },
+    ItemTemplate { key: "rapid_firecannon", cost: 2600, attack_damage: 24.0, max_hp: 0.0 },
+    ItemTemplate { key: "phantom_dancer", cost: 2600, attack_damage: 24.0, max_hp: 0.0 },
+    ItemTemplate { key: "berserkers_greaves", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const ADC_ATTACK_SPEED_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "blade_of_the_ruined_king", cost: 3200, attack_damage: 42.0, max_hp: 0.0 },
+    ItemTemplate { key: "wits_end", cost: 2900, attack_damage: 34.0, max_hp: 0.0 },
+    ItemTemplate { key: "runaans_hurricane", cost: 2650, attack_damage: 24.0, max_hp: 0.0 },
+    ItemTemplate { key: "guinsoos_rageblade", cost: 3000, attack_damage: 36.0, max_hp: 0.0 },
+    ItemTemplate { key: "terminus", cost: 3000, attack_damage: 35.0, max_hp: 0.0 },
+    ItemTemplate { key: "berserkers_greaves", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const LETHALITY_MARKSMAN_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "the_collector", cost: 3100, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "opportunity", cost: 2700, attack_damage: 55.0, max_hp: 0.0 },
+    ItemTemplate { key: "seryldas_grudge", cost: 3200, attack_damage: 45.0, max_hp: 0.0 },
+    ItemTemplate { key: "edge_of_night", cost: 3000, attack_damage: 50.0, max_hp: 0.0 },
+    ItemTemplate { key: "profane_hydra", cost: 3300, attack_damage: 60.0, max_hp: 0.0 },
+    ItemTemplate { key: "ionian_boots_of_lucidity", cost: 900, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const SUPPORT_ENGAGE_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "trailblazer", cost: 2400, attack_damage: 8.0, max_hp: 350.0 },
+    ItemTemplate { key: "zekes_convergence", cost: 2200, attack_damage: 8.0, max_hp: 250.0 },
     ItemTemplate { key: "knights_vow", cost: 2300, attack_damage: 0.0, max_hp: 350.0 },
+    ItemTemplate { key: "locket_of_the_iron_solari", cost: 2200, attack_damage: 0.0, max_hp: 250.0 },
+    ItemTemplate { key: "thornmail", cost: 2450, attack_damage: 0.0, max_hp: 350.0 },
+    ItemTemplate { key: "mobility_boots", cost: 1000, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const SUPPORT_ENCHANTER_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "shurelyas_battlesong", cost: 2200, attack_damage: 10.0, max_hp: 300.0 },
+    ItemTemplate { key: "ardent_censer", cost: 2300, attack_damage: 18.0, max_hp: 0.0 },
+    ItemTemplate { key: "moonstone_renewer", cost: 2200, attack_damage: 14.0, max_hp: 250.0 },
+    ItemTemplate { key: "redemption", cost: 2300, attack_damage: 12.0, max_hp: 250.0 },
+    ItemTemplate { key: "staff_of_flowing_water", cost: 2250, attack_damage: 18.0, max_hp: 0.0 },
+    ItemTemplate { key: "ionian_boots_of_lucidity", cost: 900, attack_damage: 0.0, max_hp: 0.0 },
+];
+
+const SUPPORT_DAMAGE_ITEM_PLAN: [ItemTemplate; 6] = [
+    ItemTemplate { key: "rylais_crystal_scepter", cost: 2600, attack_damage: 25.0, max_hp: 400.0 },
+    ItemTemplate { key: "liandrys_torment", cost: 3000, attack_damage: 33.0, max_hp: 300.0 },
+    ItemTemplate { key: "morellonomicon", cost: 2950, attack_damage: 28.0, max_hp: 350.0 },
+    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
+    ItemTemplate { key: "cryptbloom", cost: 2850, attack_damage: 27.0, max_hp: 0.0 },
+    ItemTemplate { key: "sorcerers_shoes", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
 ];
 
 const LANE_PATH_TOP_BLUE: [Vec2; 11] = [
@@ -1412,6 +1714,7 @@ fn seed_team(
         champions.push(json!({
             "id": player.id,
             "name": player.name,
+            "championId": champion_id.cloned().unwrap_or_default(),
             "team": team,
             "role": role_seed.role,
             "lane": role_seed.lane,
@@ -1435,8 +1738,12 @@ fn seed_team(
             "deaths": 0,
             "assists": 0,
             "gold": 500,
+            "spentGold": 0,
             "xp": 0,
             "level": 1,
+            "cs": 0,
+            "hasLeftBaseOnce": false,
+            "lastSupportCsAt": -999.0,
             "items": [],
             "lastDamagedByChampionId": Value::Null,
             "lastDamagedAt": -999.0,
@@ -3699,6 +4006,16 @@ fn decide_champion_state(
         return;
     }
 
+    if let Some(defense_pos) = allied_nexus_under_threat_pos(champion, champions, minions, structures) {
+        if dist(champion.pos, defense_pos) > BASE_DEFENSE_RECALL_DISTANCE {
+            start_recall(champion, now, champions, minions, structures);
+        } else {
+            champion.state = "objective".to_string();
+            set_champion_direct_path_hysteresis(champion, defense_pos, OBJECTIVE_PATH_MIN_TARGET_DELTA);
+        }
+        return;
+    }
+
     if let Some(timers) = neutral_timers {
         let contested_dragon = contested_dragon_attempt_for_team(&champion.team, champions, timers);
         if should_hard_assist_contested_dragon(champion, contested_dragon) {
@@ -3904,7 +4221,22 @@ fn should_assist_objective_attempt(
         return false;
     };
 
+    if is_major_teamfight_objective(attempt, neutral_timers) {
+        return dist(champion.pos, attempt.pos) <= MAJOR_OBJECTIVE_TEAM_ASSIST_RADIUS
+            && can_rotate_without_suicide(champion, attempt.pos, champions);
+    }
+
     let lane = normalized_lane(&champion.lane);
+    let role = champion.role.as_str();
+    let role_priority = match attempt.key.as_str() {
+        "voidgrubs" | "herald" | "baron" => role == "TOP" || role == "MID",
+        "dragon" | "elder" => role == "ADC" || role == "SUP" || role == "MID",
+        _ => role == "MID",
+    };
+    if role_priority && can_rotate_without_suicide(champion, attempt.pos, champions) {
+        return true;
+    }
+
     if !objective_adjacent_lanes(&attempt.key).iter().any(|adj| *adj == lane) {
         return false;
     }
@@ -3941,6 +4273,75 @@ fn should_hard_assist_contested_dragon(
         return false;
     }
     contested_dragon.is_some()
+}
+
+fn is_major_teamfight_objective(attempt: &NeutralTimerRuntime, neutral_timers: &NeutralTimersRuntime) -> bool {
+    attempt.key == "elder" || attempt.key == "baron" || (attempt.key == "dragon" && neutral_timers.dragon_soul_unlocked)
+}
+
+fn can_rotate_without_suicide(champion: &ChampionRuntime, objective_pos: Vec2, champions: &[ChampionRuntime]) -> bool {
+    let hp_ratio = ratio_or_zero(champion.hp, champion.max_hp);
+    if hp_ratio < 0.38 {
+        return false;
+    }
+
+    let ally_nearby = champions
+        .iter()
+        .filter(|ally| {
+            ally.alive
+                && normalized_team(&ally.team) == normalized_team(&champion.team)
+                && dist(ally.pos, objective_pos) <= OBJECTIVE_ASSIST_RADIUS
+        })
+        .count();
+    let enemy_nearby = champions
+        .iter()
+        .filter(|enemy| {
+            enemy.alive
+                && normalized_team(&enemy.team) != normalized_team(&champion.team)
+                && dist(enemy.pos, objective_pos) <= OBJECTIVE_ASSIST_RADIUS
+        })
+        .count();
+
+    ally_nearby + 1 >= enemy_nearby
+}
+
+fn allied_nexus_under_threat_pos(
+    champion: &ChampionRuntime,
+    champions: &[ChampionRuntime],
+    minions: &[MinionRuntime],
+    structures: &[StructureRuntime],
+) -> Option<Vec2> {
+    let allied_nexus_towers: Vec<&StructureRuntime> = structures
+        .iter()
+        .filter(|structure| {
+            structure.alive
+                && structure.kind == "tower"
+                && structure.id.contains("nexus")
+                && normalized_team(&structure.team) == normalized_team(&champion.team)
+        })
+        .collect();
+
+    if allied_nexus_towers.is_empty() {
+        return None;
+    }
+
+    for tower in allied_nexus_towers {
+        let champion_threat = champions.iter().any(|enemy| {
+            enemy.alive
+                && normalized_team(&enemy.team) != normalized_team(&champion.team)
+                && dist(enemy.pos, tower.pos) <= NEXUS_DEFENSE_THREAT_RADIUS
+        });
+        let minion_threat = minions.iter().any(|enemy| {
+            enemy.alive
+                && normalized_team(&enemy.team) != normalized_team(&champion.team)
+                && dist(enemy.pos, tower.pos) <= NEXUS_DEFENSE_THREAT_RADIUS
+        });
+        if champion_threat || minion_threat {
+            return Some(tower.pos);
+        }
+    }
+
+    None
 }
 
 fn pick_macro_objective_pos(
@@ -4307,29 +4708,6 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
         }
 
         let cadence = minion_stats(&runtime.minions[i].kind).3;
-        let structure_range = runtime.minions[i].attack_range.max(MINION_STRUCTURE_AGGRO_RANGE);
-        let enemy_structure = nearest_enemy_structure_index(
-            &runtime.structures,
-            &runtime.minions[i].team,
-            &runtime.minions[i].lane,
-            runtime.minions[i].pos,
-            structure_range,
-        );
-
-        if let Some(structure_idx) = enemy_structure {
-            if !runtime.structures[structure_idx].alive
-                || !is_structure_targetable(&runtime.structures, &runtime.minions[i].team, &runtime.structures[structure_idx])
-            {
-                continue;
-            }
-
-            let attacker_team = runtime.minions[i].team.clone();
-            let damage = runtime.minions[i].attack_damage;
-            apply_damage_to_structure(runtime, structure_idx, damage, &attacker_team);
-            runtime.minions[i].attack_cd_until = now + cadence;
-            continue;
-        }
-
         let enemy_minion = nearest_enemy_minion_index(&runtime.minions, i, runtime.minions[i].attack_range.max(0.05));
 
         if let Some(enemy_idx) = enemy_minion {
@@ -4351,6 +4729,29 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
             if runtime.minions[enemy_idx].hp <= 0.0 {
                 runtime.minions[enemy_idx].alive = false;
             }
+            continue;
+        }
+
+        let structure_range = runtime.minions[i].attack_range.max(MINION_STRUCTURE_AGGRO_RANGE);
+        let enemy_structure = nearest_enemy_structure_index(
+            &runtime.structures,
+            &runtime.minions[i].team,
+            &runtime.minions[i].lane,
+            runtime.minions[i].pos,
+            structure_range,
+        );
+
+        if let Some(structure_idx) = enemy_structure {
+            if !runtime.structures[structure_idx].alive
+                || !is_structure_targetable(&runtime.structures, &runtime.minions[i].team, &runtime.structures[structure_idx])
+            {
+                continue;
+            }
+
+            let attacker_team = runtime.minions[i].team.clone();
+            let damage = runtime.minions[i].attack_damage;
+            apply_damage_to_structure(runtime, structure_idx, damage, &attacker_team);
+            runtime.minions[i].attack_cd_until = now + cadence;
             continue;
         }
 
@@ -4586,15 +4987,6 @@ fn pick_combat_target(
     }
 
     if champion.role == "JGL" {
-        if let Some(neutral_key) = nearest_attackable_neutral_key(
-            champion,
-            neutral_timers,
-            JUNGLE_CAMP_ENGAGE_RADIUS,
-            OBJECTIVE_ATTEMPT_RADIUS,
-        ) {
-            return Some(CombatTarget::Neutral(neutral_key));
-        }
-
         let nearby_enemy = runtime
             .champions
             .iter()
@@ -4611,7 +5003,19 @@ fn pick_combat_target(
                     .then_with(|| idx_a.cmp(idx_b))
             })
             .map(|(idx, _)| idx);
-        return nearby_enemy.map(CombatTarget::Champion);
+        if let Some(enemy_idx) = nearby_enemy {
+            return Some(CombatTarget::Champion(enemy_idx));
+        }
+
+        if let Some(neutral_key) = nearest_attackable_neutral_key(
+            champion,
+            neutral_timers,
+            JUNGLE_CAMP_ENGAGE_RADIUS,
+            OBJECTIVE_ATTEMPT_RADIUS,
+        ) {
+            return Some(CombatTarget::Neutral(neutral_key));
+        }
+        return None;
     }
 
     if now < LANE_COMBAT_UNLOCK_AT {
@@ -4679,15 +5083,16 @@ fn pick_combat_target(
                 && runtime.champions.iter().any(|ally| {
                     ally.alive
                         && normalized_team(&ally.team) == normalized_team(&champion.team)
-                        && dist(ally.pos, champion.pos) <= 0.12
+                        && (dist(ally.pos, champion.pos) <= ALLY_HELP_RADIUS
+                            || dist(ally.pos, enemy.pos) <= ALLY_HELP_RADIUS)
                         && ally
                             .last_damaged_by_champion_id
                             .as_ref()
                             .map(|id| id == &enemy.id)
                             .unwrap_or(false)
-                        && now - ally.last_damaged_at <= 2.4
+                        && now - ally.last_damaged_at <= ALLY_HELP_DAMAGE_RECENT_SEC
                 })
-                && can_open_trade_window(
+                && (can_open_trade_window(
                     champion,
                     enemy,
                     now,
@@ -4697,7 +5102,7 @@ fn pick_combat_target(
                     &runtime.lane_combat_state_by_champion,
                     runtime.ai_mode,
                     &runtime.policy,
-                )
+                ) || has_local_numbers_advantage(champion, enemy.pos, &runtime.champions, 0.12))
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
             dist(champion.pos, a.pos)
@@ -4771,7 +5176,7 @@ fn pick_combat_target(
                 && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
                 && dist(champion.pos, m.pos) <= laner_farm_search_radius(champion)
                 && m.hp
-                    <= champion.attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * 1.08
+                    <= champion.attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * 1.4
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
             a.hp.partial_cmp(&b.hp)
@@ -5016,9 +5421,9 @@ fn pick_combat_target(
             let d = dist(champion.pos, timer.pos);
             fallback_candidates.push(FallbackCandidate {
                 target: CombatTarget::Neutral(key.clone()),
-                score: d - 0.015,
+                score: d + 0.03,
                 distance: d,
-                kind_rank: 0,
+                kind_rank: 4,
                 stable_key: key,
             });
         }
@@ -5541,6 +5946,19 @@ fn jungle_camp_reward(key: &str) -> Option<(i64, i64)> {
     }
 }
 
+fn jungle_camp_cs_reward(key: &str) -> Option<i64> {
+    match key {
+        "blue-buff-blue" | "blue-buff-red" => Some(2),
+        "red-buff-blue" | "red-buff-red" => Some(2),
+        "wolves-blue" | "wolves-red" => Some(3),
+        "raptors-blue" | "raptors-red" => Some(6),
+        "gromp-blue" | "gromp-red" => Some(1),
+        "krugs-blue" | "krugs-red" => Some(10),
+        "scuttle-top" | "scuttle-bot" => Some(1),
+        _ => None,
+    }
+}
+
 fn mark_neutral_taken(
     runtime: &mut RuntimeState,
     neutral_timers: &mut NeutralTimersRuntime,
@@ -5577,10 +5995,28 @@ fn mark_neutral_taken(
     let killer_id = runtime.champions[champion_idx].id.clone();
     let killer_name = runtime.champions[champion_idx].name.clone();
     let killer_team = runtime.champions[champion_idx].team.clone();
+    let killer_role = runtime.champions[champion_idx].role.clone();
 
     if is_jungle_camp_key(key) {
         if let Some((gold, xp)) = jungle_camp_reward(key) {
-            add_gold_xp_to_champion(runtime, &killer_id, gold, xp);
+            let (award_gold, award_xp) = if killer_role == "JGL" {
+                (gold, xp)
+            } else {
+                (
+                    ((gold as f64) * OFFROLE_JUNGLE_REWARD_MULTIPLIER).round() as i64,
+                    ((xp as f64) * OFFROLE_JUNGLE_REWARD_MULTIPLIER).round() as i64,
+                )
+            };
+            add_gold_xp_to_champion(runtime, &killer_id, award_gold, award_xp);
+        }
+        if let Some(base_cs) = jungle_camp_cs_reward(key) {
+            let award_cs = if killer_role == "JGL" {
+                base_cs
+            } else {
+                ((base_cs as f64) * OFFROLE_JUNGLE_REWARD_MULTIPLIER).round() as i64
+            }
+            .max(1);
+            add_cs_to_champion(runtime, &killer_id, award_cs);
         }
         log_event(runtime, &format!("{} cleared {}", killer_name, timer_label), "info");
         return;
@@ -6097,6 +6533,19 @@ fn add_gold_xp_to_champion(runtime: &mut RuntimeState, champion_id: &str, gold: 
     }
 }
 
+fn add_cs_to_champion(runtime: &mut RuntimeState, champion_id: &str, cs: i64) {
+    if cs <= 0 {
+        return;
+    }
+    if let Some(champion) = runtime
+        .champions
+        .iter_mut()
+        .find(|champion| champion.id == champion_id)
+    {
+        champion.cs += cs;
+    }
+}
+
 fn register_minion_death(runtime: &mut RuntimeState, minion_idx: usize) {
     if !runtime.minions[minion_idx].alive {
         return;
@@ -6116,13 +6565,21 @@ fn register_minion_death(runtime: &mut RuntimeState, minion_idx: usize) {
     };
 
     if let Some(champion_id) = last_hit {
+        let now = runtime.time_sec;
         if let Some(champion) = runtime
             .champions
             .iter_mut()
             .find(|champion| champion.id == champion_id)
         {
+            if champion.role == "SUP" && (now - champion.last_support_cs_at) < SUPPORT_CS_MIN_INTERVAL_SEC {
+                return;
+            }
             champion.gold += gold;
             champion.xp += xp;
+            champion.cs += 1;
+            if champion.role == "SUP" {
+                champion.last_support_cs_at = now;
+            }
             apply_level_scaling(champion);
             let team_stats = team_stats_mut(&mut runtime.stats, &champion.team);
             team_stats.gold += gold;
@@ -6289,7 +6746,7 @@ fn nearest_enemy_structure_index(
         .filter(|(_, structure)| {
             structure.alive
                 && normalized_team(&structure.team) != normalized_team(team)
-                && (normalized_lane(&structure.lane) == normalized_lane(lane) || structure.kind == "nexus")
+                && (normalized_lane(&structure.lane) == normalized_lane(lane) || structure.lane == "base")
                 && is_structure_targetable(structures, team, structure)
                 && dist(structure.pos, from) <= range
         })
@@ -6348,46 +6805,286 @@ fn nearest_enemy_champion_for_structure(
         .map(|(idx, _)| idx)
 }
 
-fn role_item_plan(role: &str) -> &'static [ItemTemplate; 6] {
-    match role {
-        "TOP" => &TOP_ITEM_PLAN,
-        "JGL" => &JGL_ITEM_PLAN,
-        "MID" => &MID_ITEM_PLAN,
-        "ADC" => &ADC_ITEM_PLAN,
-        "SUP" => &SUP_ITEM_PLAN,
-        _ => &TOP_ITEM_PLAN,
+fn normalize_champion_key(raw: &str) -> String {
+    raw.chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
+fn category_plan(category: ItemBuildCategory) -> &'static [ItemTemplate; 6] {
+    match category {
+        ItemBuildCategory::Tank => &TANK_ITEM_PLAN,
+        ItemBuildCategory::Bruiser => &BRUISER_ITEM_PLAN,
+        ItemBuildCategory::Colossus => &COLOSSUS_ITEM_PLAN,
+        ItemBuildCategory::AssassinAd => &ASSASSIN_AD_ITEM_PLAN,
+        ItemBuildCategory::AssassinAp => &ASSASSIN_AP_ITEM_PLAN,
+        ItemBuildCategory::ControlMage => &CONTROL_MAGE_ITEM_PLAN,
+        ItemBuildCategory::BattleMage => &BATTLE_MAGE_ITEM_PLAN,
+        ItemBuildCategory::AdcCrit => &ADC_CRIT_ITEM_PLAN,
+        ItemBuildCategory::AdcAttackSpeed => &ADC_ATTACK_SPEED_ITEM_PLAN,
+        ItemBuildCategory::LethalityMarksman => &LETHALITY_MARKSMAN_ITEM_PLAN,
+        ItemBuildCategory::SupportEngage => &SUPPORT_ENGAGE_ITEM_PLAN,
+        ItemBuildCategory::SupportEnchanter => &SUPPORT_ENCHANTER_ITEM_PLAN,
+        ItemBuildCategory::SupportDamage => &SUPPORT_DAMAGE_ITEM_PLAN,
     }
+}
+
+fn classify_item_build(role: &str, champion_id: &str) -> ItemBuildCategory {
+    let champion = normalize_champion_key(champion_id);
+    let c = champion.as_str();
+
+    if role == "SUP" {
+        if matches!(c, "brand" | "velkoz" | "zyra" | "xerath" | "lux") {
+            return ItemBuildCategory::SupportDamage;
+        }
+        if matches!(
+            c,
+            "bard"
+                | "ivern"
+                | "janna"
+                | "karma"
+                | "lulu"
+                | "milio"
+                | "morgana"
+                | "nami"
+                | "renataglasc"
+                | "seraphine"
+                | "sona"
+                | "soraka"
+                | "yuumi"
+        ) {
+            return ItemBuildCategory::SupportEnchanter;
+        }
+        if matches!(
+            c,
+            "alistar" | "blitzcrank" | "braum" | "leona" | "nautilus" | "pyke" | "rakan" | "rell" | "thresh"
+        ) {
+            return ItemBuildCategory::SupportEngage;
+        }
+    }
+
+    if role == "ADC" {
+        if matches!(c, "kaisa" | "kalista" | "kogmaw" | "masteryi" | "twitch" | "varus" | "vayne" | "yunara") {
+            return ItemBuildCategory::AdcAttackSpeed;
+        }
+        if matches!(c, "graves" | "jhin" | "kindred" | "missfortune" | "quinn" | "senna" | "smolder") {
+            return ItemBuildCategory::LethalityMarksman;
+        }
+    }
+
+    if matches!(
+        c,
+        "alistar"
+            | "amumu"
+            | "braum"
+            | "chogath"
+            | "galio"
+            | "ksante"
+            | "leona"
+            | "malphite"
+            | "maokai"
+            | "nautilus"
+            | "ornn"
+            | "poppy"
+            | "rammus"
+            | "rell"
+            | "sejuani"
+            | "shen"
+            | "sion"
+            | "tahmkench"
+            | "taric"
+            | "zac"
+    ) {
+        return ItemBuildCategory::Tank;
+    }
+
+    if matches!(
+        c,
+        "darius"
+            | "drmundo"
+            | "garen"
+            | "illaoi"
+            | "mordekaiser"
+            | "nasus"
+            | "sett"
+            | "shyvana"
+            | "trundle"
+            | "udyr"
+            | "urgot"
+            | "yorick"
+    ) {
+        return ItemBuildCategory::Colossus;
+    }
+
+    if matches!(c, "akshan" | "khazix" | "naafiri" | "nocturne" | "pyke" | "qiyana" | "rengar" | "shaco" | "talon" | "zed" | "kayn") {
+        return ItemBuildCategory::AssassinAd;
+    }
+
+    if matches!(c, "akali" | "ekko" | "evelynn" | "fizz" | "kassadin" | "katarina" | "leblanc" | "nidalee") {
+        return ItemBuildCategory::AssassinAp;
+    }
+
+    if matches!(
+        c,
+        "anivia"
+            | "aurelionsol"
+            | "azir"
+            | "heimerdinger"
+            | "hwei"
+            | "lissandra"
+            | "lux"
+            | "malzahar"
+            | "mel"
+            | "neeko"
+            | "orianna"
+            | "ryze"
+            | "syndra"
+            | "taliyah"
+            | "vex"
+            | "viktor"
+            | "xerath"
+            | "ziggs"
+            | "zoe"
+    ) {
+        return ItemBuildCategory::ControlMage;
+    }
+
+    if matches!(c, "cassiopeia" | "karthus" | "vladimir" | "swain" | "rumble" | "singed" | "sylas" | "gwen" | "lillia" | "morgana") {
+        return ItemBuildCategory::BattleMage;
+    }
+
+    if matches!(
+        c,
+        "aatrox"
+            | "ambessa"
+            | "briar"
+            | "camille"
+            | "diana"
+            | "ekko"
+            | "elise"
+            | "fiora"
+            | "gnar"
+            | "hecarim"
+            | "irelia"
+            | "jarvaniv"
+            | "jax"
+            | "kled"
+            | "leesin"
+            | "olaf"
+            | "pantheon"
+            | "reksai"
+            | "renekton"
+            | "riven"
+            | "skarner"
+            | "vi"
+            | "volibear"
+            | "warwick"
+            | "wukong"
+            | "xinzhao"
+            | "yasuo"
+            | "yone"
+            | "belveth"
+            | "zaahen"
+    ) {
+        return ItemBuildCategory::Bruiser;
+    }
+
+    if matches!(
+        c,
+        "aphelios" | "ashe" | "caitlyn" | "draven" | "jinx" | "lucian" | "nilah" | "samira" | "sivir" | "tristana" | "xayah" | "tryndamere"
+    ) {
+        return ItemBuildCategory::AdcCrit;
+    }
+
+    if matches!(c, "graves" | "jhin" | "kindred" | "missfortune" | "quinn" | "senna" | "smolder") {
+        return ItemBuildCategory::LethalityMarksman;
+    }
+
+    match role {
+        "TOP" | "JGL" => ItemBuildCategory::Bruiser,
+        "MID" => ItemBuildCategory::ControlMage,
+        "ADC" => ItemBuildCategory::AdcCrit,
+        "SUP" => ItemBuildCategory::SupportEnchanter,
+        _ => ItemBuildCategory::Bruiser,
+    }
+}
+
+fn champion_item_plan(role: &str, champion_id: &str) -> &'static [ItemTemplate; 6] {
+    category_plan(classify_item_build(role, champion_id))
+}
+
+fn effective_item_cost(base_cost: i64) -> i64 {
+    ((base_cost as f64) * ITEM_COST_MULTIPLIER)
+        .round()
+        .max(ITEM_COST_MIN as f64) as i64
+}
+
+fn is_boots_item_key(key: &str) -> bool {
+    matches!(
+        key,
+        "plated_steelcaps"
+            | "mercurys_treads"
+            | "boots_of_swiftness"
+            | "sorcerers_shoes"
+            | "berserkers_greaves"
+            | "ionian_boots_of_lucidity"
+            | "mobility_boots"
+    )
 }
 
 fn try_auto_buy_items(runtime: &mut RuntimeState) {
     for idx in 0..runtime.champions.len() {
-        let (alive, role, at_base, item_count, gold, name) = {
+        {
+            let champion = &mut runtime.champions[idx];
+            let base_pos = base_position_for(&champion.team);
+            if dist(champion.pos, base_pos) > 0.12 {
+                champion.has_left_base_once = true;
+            }
+        }
+
+        let (alive, role, champion_id, at_base, item_count, gold, name, owned_items, has_left_base_once) = {
             let champion = &runtime.champions[idx];
             (
                 champion.alive,
                 champion.role.clone(),
+                champion.champion_id.clone(),
                 dist(champion.pos, base_position_for(&champion.team)) <= 0.075,
                 champion.items.len(),
                 champion.gold,
                 champion.name.clone(),
+                champion.items.clone(),
+                champion.has_left_base_once,
             )
         };
 
-        if !alive || !at_base || item_count >= 6 {
+        if !alive || !at_base || item_count >= 6 || !has_left_base_once {
             continue;
         }
 
-        let plan = role_item_plan(&role);
-        let Some(next_item) = plan.get(item_count) else {
+        let plan = champion_item_plan(&role, &champion_id);
+        let has_boots = owned_items.iter().any(|item| is_boots_item_key(item));
+
+        let next_item = if !has_boots {
+            plan.iter().find(|candidate| is_boots_item_key(candidate.key))
+        } else {
+            plan.iter()
+                .find(|candidate| !owned_items.iter().any(|owned| owned == candidate.key))
+        };
+
+        let Some(next_item) = next_item else {
             continue;
         };
 
-        if gold < next_item.cost {
+        let buy_cost = effective_item_cost(next_item.cost);
+
+        if gold < buy_cost {
             continue;
         }
 
         let champion = &mut runtime.champions[idx];
-        champion.gold -= next_item.cost;
+        champion.gold -= buy_cost;
+        champion.spent_gold += buy_cost;
         champion.items.push(next_item.key.to_string());
         champion.attack_damage += next_item.attack_damage;
         if next_item.max_hp > 0.0 {
@@ -6487,6 +7184,7 @@ mod tests {
         ChampionRuntime {
             id: id.to_string(),
             name: id.to_string(),
+            champion_id: String::new(),
             team: team.to_string(),
             role: role.to_string(),
             lane: lane.to_string(),
@@ -6507,8 +7205,12 @@ mod tests {
             deaths: 0,
             assists: 0,
             gold: 0,
+            spent_gold: 0,
             xp: 0,
             level: 1,
+            cs: 0,
+            has_left_base_once: false,
+            last_support_cs_at: -999.0,
             items: Vec::new(),
             last_damaged_by_champion_id: None,
             last_damaged_at: -999.0,
@@ -6666,7 +7368,7 @@ mod tests {
     }
 
     #[test]
-    fn minion_prioritizes_structure_over_minion_when_both_in_range() {
+    fn minion_prioritizes_minion_over_structure_when_both_in_range() {
         let neutral = NeutralTimersRuntime {
             dragon_soul_unlocked: false,
             elder_unlocked: false,
@@ -6688,8 +7390,33 @@ mod tests {
         let minion_hp_before = runtime.minions[1].hp;
         resolve_minion_combat(&mut runtime);
 
-        assert!(runtime.structures[0].hp < tower_hp_before);
-        assert_eq!(runtime.minions[1].hp, minion_hp_before);
+        assert_eq!(runtime.structures[0].hp, tower_hp_before);
+        assert!(runtime.minions[1].hp < minion_hp_before);
+    }
+
+    #[test]
+    fn minion_can_target_base_structure_when_in_front() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut blue = test_minion("m-blue-1", "blue", "mid", Vec2 { x: 0.79, y: 0.22 });
+        blue.attack_damage = 10.0;
+        blue.attack_range = 0.06;
+
+        let mut red_inhib = test_structure("red-inhib-mid", "red", "base", Vec2 { x: 0.7832, y: 0.2240 });
+        red_inhib.kind = "inhib".to_string();
+        red_inhib.hp = 200.0;
+
+        let mut runtime = test_runtime(vec![], vec![blue], vec![red_inhib], neutral);
+        let hp_before = runtime.structures[0].hp;
+
+        resolve_minion_combat(&mut runtime);
+
+        assert!(runtime.structures[0].hp < hp_before);
     }
 
     #[test]

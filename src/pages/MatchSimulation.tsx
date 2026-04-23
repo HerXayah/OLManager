@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { useGameStore, GameStateData } from "../store/gameStore";
+import { useSettingsStore } from "../store/settingsStore";
 import {
   MatchSnapshot,
   MatchEvent,
@@ -17,6 +18,11 @@ import type { ChampionSelectionByPlayer } from "../components/match/LolMatchLive
 import MatchTacticsStage from "../components/match/MatchTacticsStage";
 import LolResultScreen from "../components/match/LolResultScreen";
 import PressConference from "../components/match/PressConference";
+import {
+  lolSimV2ClearTelemetryFiles,
+  lolSimV2RunToCompletion,
+} from "../components/match/lol-prototype/backend/tauri-client";
+import type { LolSimV1PolicyConfig, LolSimV1RuntimeState } from "../components/match/lol-prototype/backend/contract-v1";
 
 // ---------------------------------------------------------------------------
 // Multi-stage Match Day Orchestrator
@@ -33,6 +39,43 @@ interface FinishLiveMatchResponse {
   round_summary?: unknown;
 }
 
+const PARALLEL_SIMULATION_COUNT = 8;
+const PARALLEL_SIM_MAX_TICKS = 3600;
+const PARALLEL_SIM_DT_SEC = 0.2;
+const PARALLEL_SIM_SPEED = 12;
+const PARALLEL_SIMS_CHECKPOINT_KEY = "lol-sim-v2:parallel-sims-checkpoints";
+
+interface ParallelSimsCheckpoint {
+  runId: string;
+  atIso: string;
+  batch: number;
+  batchDurationSec: number;
+  simsPerHour: number;
+  blueWins: number;
+  redWins: number;
+  unresolved: number;
+  totalSims: number;
+  totalBlueWins: number;
+  totalRedWins: number;
+  totalUnresolved: number;
+}
+
+function saveParallelSimsCheckpoint(checkpoint: ParallelSimsCheckpoint) {
+  if (typeof window === "undefined") return;
+
+  try {
+    const raw = window.localStorage.getItem(PARALLEL_SIMS_CHECKPOINT_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    list.push(checkpoint);
+
+    const bounded = list.slice(-1000);
+    window.localStorage.setItem(PARALLEL_SIMS_CHECKPOINT_KEY, JSON.stringify(bounded));
+  } catch (error) {
+    console.warn("[MatchSimulation] parallelSims:checkpointSaveFailed", error);
+  }
+}
+
 export default function MatchSimulation() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -40,6 +83,11 @@ export default function MatchSimulation() {
   const routeState = (location.state as MatchRouteState | null) ?? null;
   const matchMode = routeState?.mode || "live";
   const { gameState, setGameState } = useGameStore();
+  const { settings } = useSettingsStore();
+  const simPolicy = useMemo<LolSimV1PolicyConfig>(() => ({
+    hybridOpenTradeConfidenceHigh: settings.lol_hybrid_open_trade_confidence_high,
+    hybridDisengageConfidenceLow: settings.lol_hybrid_disengage_confidence_low,
+  }), [settings.lol_hybrid_disengage_confidence_low, settings.lol_hybrid_open_trade_confidence_high]);
   const [snapshot, setSnapshot] = useState<MatchSnapshot | null>(
     routeState?.snapshot ?? null,
   );
@@ -49,6 +97,9 @@ export default function MatchSimulation() {
   const [userSide, setUserSide] = useState<"Home" | "Away" | null>(null);
   const [isSpectator, setIsSpectator] = useState(matchMode === "spectator");
   const [hasFinalizedMatch, setHasFinalizedMatch] = useState(false);
+  const [isRunningParallelSims, setIsRunningParallelSims] = useState(false);
+  const [parallelSimsFeedback, setParallelSimsFeedback] = useState<string | null>(null);
+  const parallelSimsLoopActiveRef = useRef(false);
 
   useEffect(() => {
     console.info("[MatchSimulation] mount", {
@@ -96,6 +147,12 @@ export default function MatchSimulation() {
       userSide,
     });
   }, [isSpectator, snapshot, stage, userSide]);
+
+  useEffect(() => {
+    return () => {
+      parallelSimsLoopActiveRef.current = false;
+    };
+  }, []);
 
   // Fetch initial snapshot
   useEffect(() => {
@@ -250,6 +307,8 @@ export default function MatchSimulation() {
     return swapSnapshotSides(snapshot);
   }, [managerTeamId, snapshot, swapSnapshotSides, userSelectedSide]);
 
+  const renderSnapshot = activeSnapshot ?? snapshot;
+
   // Callbacks for stage transitions
   const handleStartMatch = useCallback(() => {
     console.info("[MatchSimulation] handleStartMatch");
@@ -325,6 +384,143 @@ export default function MatchSimulation() {
     console.info("[MatchSimulation] handleContinueFromTactics");
     setStage("first_half");
   }, []);
+
+  const runSingleParallelSimulation = useCallback(async (
+    runIndex: number,
+    runSnapshot: MatchSnapshot,
+    championMapByPlayerId: Record<string, string>,
+    runSeedBase: string,
+  ): Promise<LolSimV1RuntimeState["winner"]> => {
+    const response = await lolSimV2RunToCompletion({
+      seed: `${runSeedBase}-${runIndex + 1}`,
+      aiMode: "hybrid",
+      policy: simPolicy,
+      snapshot: runSnapshot,
+      championByPlayerId: championMapByPlayerId,
+      championProfilesById: {},
+      dtSec: PARALLEL_SIM_DT_SEC,
+      speed: PARALLEL_SIM_SPEED,
+      maxTicks: PARALLEL_SIM_MAX_TICKS,
+    });
+
+    return response.winner ?? null;
+  }, [simPolicy]);
+
+  const handleRunParallelSims = useCallback(async () => {
+    if (!renderSnapshot) {
+      return;
+    }
+
+    if (isRunningParallelSims) {
+      parallelSimsLoopActiveRef.current = false;
+      setParallelSimsFeedback(
+        t("match.parallelSimsStopping", { defaultValue: "Deteniendo simulaciones..." }),
+      );
+      return;
+    }
+
+    setIsRunningParallelSims(true);
+    parallelSimsLoopActiveRef.current = true;
+    setParallelSimsFeedback(
+      t("match.parallelSimsPreparing", { defaultValue: "Preparando simulaciones..." }),
+    );
+
+    const championMapByPlayerId: Record<string, string> = {
+      ...(championSelections?.home ?? {}),
+      ...(championSelections?.away ?? {}),
+    };
+    const runSeedBase = `post-draft-${Date.now()}`;
+    const runId = `parallel-sims-${Date.now()}`;
+
+    try {
+      const clearResult = await lolSimV2ClearTelemetryFiles();
+      console.info("[MatchSimulation] parallelSims:telemetryCleared", clearResult);
+
+      let batch = 0;
+      let totalSims = 0;
+      let totalBlueWins = 0;
+      let totalRedWins = 0;
+      let totalUnresolved = 0;
+
+      while (parallelSimsLoopActiveRef.current) {
+        batch += 1;
+        setParallelSimsFeedback(
+          t("match.parallelSimsRunning", {
+            defaultValue: `Corriendo 8 simulaciones en paralelo... (Lote ${batch})`,
+          }),
+        );
+
+        const batchStartedAt = performance.now();
+        const winners = await Promise.all(
+          Array.from({ length: PARALLEL_SIMULATION_COUNT }, (_, index) =>
+            runSingleParallelSimulation(
+              index + batch * 1000,
+              renderSnapshot,
+              championMapByPlayerId,
+              runSeedBase,
+            ),
+          ),
+        );
+        const batchDurationSeconds = (performance.now() - batchStartedAt) / 1_000;
+        const approxSimsPerHour = batchDurationSeconds > 0
+          ? Math.round((winners.length * 3_600) / batchDurationSeconds)
+          : 0;
+
+        const blueWins = winners.filter((winner) => winner === "blue").length;
+        const redWins = winners.filter((winner) => winner === "red").length;
+        const unresolved = winners.length - blueWins - redWins;
+
+        totalSims += winners.length;
+        totalBlueWins += blueWins;
+        totalRedWins += redWins;
+        totalUnresolved += unresolved;
+
+        saveParallelSimsCheckpoint({
+          runId,
+          atIso: new Date().toISOString(),
+          batch,
+          batchDurationSec: Number(batchDurationSeconds.toFixed(3)),
+          simsPerHour: approxSimsPerHour,
+          blueWins,
+          redWins,
+          unresolved,
+          totalSims,
+          totalBlueWins,
+          totalRedWins,
+          totalUnresolved,
+        });
+
+        setParallelSimsFeedback(
+          t("match.parallelSimsDone", {
+            defaultValue: `Lote ${batch} listo en ${batchDurationSeconds.toFixed(1)}s · Azul ${blueWins} / Rojo ${redWins} / Sin ganador ${unresolved} · ~${approxSimsPerHour} sims/h · Total ${totalSims}`,
+          }),
+        );
+      }
+
+      setParallelSimsFeedback(
+        t("match.parallelSimsStopped", {
+          defaultValue: "Simulaciones detenidas.",
+        }),
+      );
+    } catch (error) {
+      console.error("[MatchSimulation] parallelSims:failed", error);
+      setParallelSimsFeedback(
+        t("match.parallelSimsFailed", {
+          defaultValue: "No se pudieron ejecutar las 8 simulaciones.",
+        }),
+      );
+    } finally {
+      parallelSimsLoopActiveRef.current = false;
+      setIsRunningParallelSims(false);
+    }
+  }, [
+    championSelections?.away,
+    championSelections?.home,
+    isRunningParallelSims,
+    renderSnapshot,
+    runSingleParallelSimulation,
+    t,
+  ]);
 
   const finalizeMatch = useCallback(async (): Promise<boolean> => {
     if (hasFinalizedMatch) {
@@ -404,8 +600,6 @@ export default function MatchSimulation() {
     );
   }
 
-  const renderSnapshot = activeSnapshot ?? snapshot;
-
   // Render the current stage
   switch (stage) {
     case "prematch":
@@ -423,7 +617,7 @@ export default function MatchSimulation() {
     case "draft":
       return (
         <ChampionDraft
-          snapshot={renderSnapshot}
+          snapshot={renderSnapshot ?? snapshot}
           onComplete={handleDraftComplete}
           controlledSide={userSelectedSide}
           seriesLength={seriesLength}
@@ -439,6 +633,9 @@ export default function MatchSimulation() {
           gameState={gameState}
           onGameUpdate={setGameState}
           onContinue={handleContinueFromTactics}
+          onRunParallelSims={handleRunParallelSims}
+          isRunningParallelSims={isRunningParallelSims}
+          parallelSimsFeedback={parallelSimsFeedback}
         />
       );
 

@@ -23,7 +23,17 @@ vi.mock("react-router-dom", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, options?: string | { defaultValue?: string }) => {
+      if (typeof options === "string") {
+        return options;
+      }
+
+      if (options && typeof options === "object" && "defaultValue" in options) {
+        return options.defaultValue ?? key;
+      }
+
+      return key;
+    },
     i18n: { language: "en" },
   }),
 }));
@@ -50,14 +60,46 @@ vi.mock("../components/match/PreMatchSetup", () => ({
 }));
 
 vi.mock("../components/match/ChampionDraft", () => ({
-  default: ({ onComplete }: { onComplete?: () => void }) => (
-    <button data-testid="champion-draft" onClick={onComplete}>
+  default: ({ onComplete }: { onComplete?: (payload?: unknown) => void }) => (
+    <button
+      data-testid="champion-draft"
+      onClick={() =>
+        onComplete?.({
+          blue: { picks: [] },
+          red: { picks: [] },
+        } as never)
+      }
+    >
       Complete Draft
     </button>
   ),
 }));
 
-vi.mock("../components/match/MatchLive", () => ({
+vi.mock("../components/match/MatchTacticsStage", () => ({
+  default: ({
+    onContinue,
+    onRunParallelSims,
+    isRunningParallelSims,
+    parallelSimsFeedback,
+  }: {
+    onContinue?: () => void;
+    onRunParallelSims?: () => void;
+    isRunningParallelSims?: boolean;
+    parallelSimsFeedback?: string | null;
+  }) => (
+    <div data-testid="tactics-stage">
+      <button data-testid="tactics-run-sims" onClick={onRunParallelSims} disabled={isRunningParallelSims}>
+        8 Sims
+      </button>
+      <button data-testid="tactics-continue" onClick={onContinue}>
+        Continue to Live
+      </button>
+      <div data-testid="tactics-feedback">{parallelSimsFeedback ?? "none"}</div>
+    </div>
+  ),
+}));
+
+vi.mock("../components/match/LolMatchLive", () => ({
   default: ({
     snapshot,
     onFullTime,
@@ -75,17 +117,17 @@ vi.mock("../components/match/HalfTimeBreak", () => ({
   default: () => <div data-testid="halftime" />,
 }));
 
-vi.mock("../components/match/PostMatchScreen", () => ({
+vi.mock("../components/match/LolResultScreen", () => ({
   default: ({
     onFinish,
-    roundSummary,
+    importantEvents,
   }: {
     onFinish?: () => void;
-    roundSummary?: unknown;
+    importantEvents?: unknown;
   }) => (
     <div>
       <div data-testid="postmatch-round-summary">
-        {roundSummary ? JSON.stringify(roundSummary) : "null"}
+        {importantEvents ? JSON.stringify(importantEvents) : "null"}
       </div>
       <button data-testid="postmatch-finish" onClick={onFinish}>
         Finish Match
@@ -353,6 +395,18 @@ describe("MatchSimulation", function (): void {
     render(<MatchSimulation />);
 
     await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("champion-draft"));
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("tactics-stage")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tactics-continue"));
+
+    await waitFor(function (): void {
       expect(screen.getByTestId("match-live")).toHaveTextContent("Home FC");
     });
   });
@@ -373,6 +427,12 @@ describe("MatchSimulation", function (): void {
     });
 
     fireEvent.click(screen.getByTestId("champion-draft"));
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("tactics-stage")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tactics-continue"));
 
     await waitFor(function (): void {
       expect(screen.getByTestId("match-live")).toHaveTextContent("Home FC");
@@ -400,6 +460,16 @@ describe("MatchSimulation", function (): void {
     });
 
     render(<MatchSimulation />);
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("champion-draft"));
+    await waitFor(function (): void {
+      expect(screen.getByTestId("tactics-stage")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("tactics-continue"));
 
     await waitFor(function (): void {
       expect(screen.getByTestId("match-live")).toHaveTextContent("Home FC");
@@ -445,6 +515,16 @@ describe("MatchSimulation", function (): void {
     render(<MatchSimulation />);
 
     await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("champion-draft"));
+    await waitFor(function (): void {
+      expect(screen.getByTestId("tactics-stage")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("tactics-continue"));
+
+    await waitFor(function (): void {
       expect(screen.getByTestId("match-live")).toHaveTextContent("Home FC");
     });
 
@@ -457,9 +537,7 @@ describe("MatchSimulation", function (): void {
 
     expect(setGameStateMock).toHaveBeenCalledWith(finishedGame);
 
-    expect(screen.getByTestId("postmatch-round-summary")).toHaveTextContent(
-      '"matchday":1',
-    );
+    expect(screen.getByTestId("postmatch-round-summary")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("postmatch-finish"));
 

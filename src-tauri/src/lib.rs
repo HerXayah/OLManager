@@ -153,7 +153,9 @@ pub fn run() {
             lol_sim_v2_init,
             lol_sim_v2_tick,
             lol_sim_v2_reset,
-            lol_sim_v2_dispose
+            lol_sim_v2_dispose,
+            lol_sim_v2_clear_telemetry_files,
+            lol_sim_v2_run_to_completion
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

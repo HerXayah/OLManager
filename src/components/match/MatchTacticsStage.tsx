@@ -6,12 +6,18 @@ interface MatchTacticsStageProps {
   gameState: GameStateData;
   onGameUpdate: (next: GameStateData) => void;
   onContinue: () => void;
+  onRunParallelSims: () => void;
+  isRunningParallelSims: boolean;
+  parallelSimsFeedback: string | null;
 }
 
 export default function MatchTacticsStage({
   gameState,
   onGameUpdate,
   onContinue,
+  onRunParallelSims,
+  isRunningParallelSims,
+  parallelSimsFeedback,
 }: MatchTacticsStageProps) {
   const { t } = useTranslation();
 
@@ -31,13 +37,31 @@ export default function MatchTacticsStage({
             </p>
           </div>
 
-          <button
-            onClick={onContinue}
-            className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 text-white font-heading uppercase tracking-wider text-xs"
-          >
-            {t("match.startLive", { defaultValue: "Ir al Live" })}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRunParallelSims}
+              className="px-4 py-2 rounded-lg bg-primary-700 hover:bg-primary-600 text-white font-heading uppercase tracking-wider text-xs"
+            >
+              {isRunningParallelSims
+                ? t("match.stopParallelSims", { defaultValue: "Detener Sims" })
+                : t("match.runParallelSims", { defaultValue: "8 Sims" })}
+            </button>
+
+            <button
+              onClick={onContinue}
+              disabled={isRunningParallelSims}
+              className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 disabled:bg-primary-900/60 disabled:cursor-not-allowed text-white font-heading uppercase tracking-wider text-xs"
+            >
+              {t("match.startLive", { defaultValue: "Ir al Live" })}
+            </button>
+          </div>
         </div>
+
+        {parallelSimsFeedback ? (
+          <p className="mb-4 text-xs text-primary-800 dark:text-primary-200">
+            {parallelSimsFeedback}
+          </p>
+        ) : null}
 
         <TacticsTab
           gameState={gameState}

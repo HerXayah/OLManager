@@ -1,9 +1,11 @@
 use tauri::State;
 
 use crate::application::lol_sim_v2::{
-    LolSimV2DisposeRequest, LolSimV2DisposeResponse, LolSimV2ResetRequest, LolSimV2StateResponse,
-    LolSimV2StoreState, LolSimV2TickRequest, init as init_service, reset as reset_service,
-    tick as tick_service,
+    ClearTelemetryFilesResponse, LolSimV2DisposeRequest, LolSimV2DisposeResponse,
+    LolSimV2ResetRequest, LolSimV2RunToCompletionRequest, LolSimV2RunToCompletionResponse,
+    LolSimV2StateResponse, LolSimV2StoreState, LolSimV2TickRequest,
+    clear_default_telemetry_files as clear_telemetry_files_service, init as init_service,
+    reset as reset_service, run_to_completion as run_to_completion_service, tick as tick_service,
 };
 
 #[tauri::command]
@@ -36,4 +38,17 @@ pub fn lol_sim_v2_dispose(
     request: LolSimV2DisposeRequest,
 ) -> Result<LolSimV2DisposeResponse, String> {
     crate::application::lol_sim_v2::dispose(&state, request)
+}
+
+#[tauri::command]
+pub fn lol_sim_v2_clear_telemetry_files() -> Result<ClearTelemetryFilesResponse, String> {
+    clear_telemetry_files_service()
+}
+
+#[tauri::command]
+pub async fn lol_sim_v2_run_to_completion(
+    state: State<'_, LolSimV2StoreState>,
+    request: LolSimV2RunToCompletionRequest,
+) -> Result<LolSimV2RunToCompletionResponse, String> {
+    run_to_completion_service(&state, request)
 }

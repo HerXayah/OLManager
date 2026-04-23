@@ -100,6 +100,25 @@ export interface LolSimV1DisposeResponse {
   disposed: boolean;
 }
 
+export interface LolSimV1RunToCompletionRequest {
+  seed: string;
+  aiMode?: LolSimV1AiMode;
+  policy?: LolSimV1PolicyConfig;
+  telemetry?: LolSimV1TelemetryConfig;
+  snapshot: MatchSnapshot;
+  championByPlayerId: Record<string, string>;
+  championProfilesById: Record<string, ChampionCombatProfile>;
+  dtSec: number;
+  speed: number;
+  maxTicks: number;
+}
+
+export interface LolSimV1RunToCompletionResponse {
+  winner: TeamId | null;
+  ticks: number;
+  elapsedSimulatedSec: number;
+}
+
 export interface LolSimV1ControlSnapshot {
   sessionId: string;
   seed: string;

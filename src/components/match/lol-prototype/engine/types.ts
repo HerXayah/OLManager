@@ -31,8 +31,11 @@ export interface ChampionState {
   deaths: number;
   assists: number;
   gold: number;
+  spentGold: number;
   xp: number;
   level: number;
+  cs: number;
+  items: string[];
   lastDamagedByChampionId: string | null;
   lastDamagedAt: number;
   state: "lane" | "fight" | "objective" | "recall";

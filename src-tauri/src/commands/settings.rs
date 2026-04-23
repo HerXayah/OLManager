@@ -16,6 +16,10 @@ pub struct AppSettings {
     pub ui_scale: String, // "small" | "normal" | "large" | "xlarge"
     #[serde(default)]
     pub high_contrast: bool,
+    #[serde(default = "default_lol_hybrid_open_trade_confidence_high")]
+    pub lol_hybrid_open_trade_confidence_high: f64,
+    #[serde(default = "default_lol_hybrid_disengage_confidence_low")]
+    pub lol_hybrid_disengage_confidence_low: f64,
 }
 
 fn default_language() -> String {
@@ -24,6 +28,8 @@ fn default_language() -> String {
 fn default_ui_scale() -> String {
     "normal".to_string()
 }
+fn default_lol_hybrid_open_trade_confidence_high() -> f64 { 0.63 }
+fn default_lol_hybrid_disengage_confidence_low() -> f64 { 0.38 }
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -38,6 +44,8 @@ impl Default for AppSettings {
             confirm_advance: false,
             ui_scale: "normal".to_string(),
             high_contrast: false,
+            lol_hybrid_open_trade_confidence_high: default_lol_hybrid_open_trade_confidence_high(),
+            lol_hybrid_disengage_confidence_low: default_lol_hybrid_disengage_confidence_low(),
         }
     }
 }

@@ -4,6 +4,8 @@ import type {
   LolSimV1DisposeRequest,
   LolSimV1DisposeResponse,
   LolSimV1InitRequest,
+  LolSimV1RunToCompletionRequest,
+  LolSimV1RunToCompletionResponse,
   LolSimV1ResetRequest,
   LolSimV1StateResponse,
   LolSimV1TickRequest,
@@ -23,6 +25,23 @@ export async function lolSimV2Reset(request: LolSimV1ResetRequest): Promise<LolS
 
 export async function lolSimV2Dispose(request: LolSimV1DisposeRequest): Promise<LolSimV1DisposeResponse> {
   return invoke<LolSimV1DisposeResponse>("lol_sim_v2_dispose", { request });
+}
+
+export async function lolSimV2RunToCompletion(
+  request: LolSimV1RunToCompletionRequest,
+): Promise<LolSimV1RunToCompletionResponse> {
+  return invoke<LolSimV1RunToCompletionResponse>("lol_sim_v2_run_to_completion", { request });
+}
+
+export interface LolSimV2ClearTelemetryResponse {
+  directory: string;
+  deleted_files: number;
+  skipped_entries: number;
+  existed: boolean;
+}
+
+export async function lolSimV2ClearTelemetryFiles(): Promise<LolSimV2ClearTelemetryResponse> {
+  return invoke<LolSimV2ClearTelemetryResponse>("lol_sim_v2_clear_telemetry_files");
 }
 
 function createSessionId() {

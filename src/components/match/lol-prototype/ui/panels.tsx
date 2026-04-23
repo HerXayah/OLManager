@@ -70,6 +70,11 @@ function championIconUrl(championId: string | undefined) {
   return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${championId}.png`;
 }
 
+function itemIconUrl(itemKey: string | undefined) {
+  if (!itemKey) return null;
+  return `/lol-item-icons/${itemKey}.png`;
+}
+
 function sortByRole(champions: ChampionState[]) {
   return [...champions].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
 }
@@ -79,8 +84,13 @@ interface LecLowerThirdProps {
   championByPlayerId?: Record<string, string>;
   timeSec?: number;
 }
-function Slot({ className = "h-4 w-4", trinket = false }: { className?: string; trinket?: boolean }) {
-  return <div className={`${className} border ${trinket ? "border-amber-400/90" : "border-white/15"} bg-black`} />;
+function Slot({ className = "h-4 w-4", trinket = false, itemKey }: { className?: string; trinket?: boolean; itemKey?: string }) {
+  const icon = itemIconUrl(itemKey);
+  return (
+    <div className={`${className} relative overflow-hidden border ${trinket ? "border-amber-400/90" : "border-white/15"} bg-black`}>
+      {!trinket && icon ? <img src={icon} alt={itemKey} className="h-full w-full object-cover" loading="lazy" /> : null}
+    </div>
+  );
 }
 
 function manaRatio(champion: ChampionState | undefined) {
@@ -96,16 +106,13 @@ function manaRatio(champion: ChampionState | undefined) {
   return Math.max(0.18, Math.min(1, (laneBias[champion.role] + xpProgress) / 2));
 }
 
-function pseudoCs(champion: ChampionState | undefined) {
-  if (!champion) return 0;
-  // Temporary CS proxy until real last-hit stat exists:
-  // start at 0 CS on spawn (champions begin with ~500g).
-  return Math.max(0, Math.round((champion.gold - 500) / 22));
+function purchasedItemCount(champion: ChampionState | undefined) {
+  return champion ? Math.min(6, champion.items.length) : 0;
 }
 
-function purchasedItemCount(champion: ChampionState | undefined) {
-  const maybeItems = (champion as (ChampionState & { items?: string[] }) | undefined)?.items;
-  return Array.isArray(maybeItems) ? Math.min(6, maybeItems.length) : 0;
+function championTotalGold(champion: ChampionState | undefined) {
+  if (!champion) return 0;
+  return champion.gold + champion.spentGold;
 }
 
 function SidePane({ champion, team, championByPlayerId, timeSec }: {
@@ -119,7 +126,7 @@ function SidePane({ champion, team, championByPlayerId, timeSec }: {
   const hpBase = champion && champion.maxHp > 0 ? Math.max(0, Math.min(1, champion.hp / champion.maxHp)) : 0;
   const hp = champion && !champion.alive ? 0 : hpBase;
   const mp = manaRatio(champion);
-  const cs = pseudoCs(champion);
+  const cs = champion?.cs ?? 0;
   const respawnText = champion && !champion.alive && champion.respawnAt > timeSec
     ? `${Math.ceil(champion.respawnAt - timeSec)}`
     : "";
@@ -127,6 +134,7 @@ function SidePane({ champion, team, championByPlayerId, timeSec }: {
   const name = champion?.name ?? "-";
   const kda = champion ? `${champion.kills}/${champion.deaths}/${champion.assists}` : "0/0/0";
   const boughtItems = purchasedItemCount(champion);
+  const itemKeys = champion?.items ?? [];
 
   return (
     <div className={`side ${red ? "red" : "blue"} flex flex-1 items-center gap-[6px] px-[10px] ${red ? "border-r-[3px] border-r-orange-400" : "border-l-[3px] border-l-cyan-400"}`}>
@@ -153,6 +161,7 @@ function SidePane({ champion, team, championByPlayerId, timeSec }: {
               <Slot
                 // eslint-disable-next-line react/no-array-index-key
                 key={`blue-item-${idx}`}
+                itemKey={idx < boughtItems ? itemKeys[idx] : undefined}
                 className={`item h-[18px] w-[18px] ${idx < boughtItems ? "border-emerald-300/90 bg-emerald-400/35" : ""}`}
               />
             ))}
@@ -211,6 +220,7 @@ function SidePane({ champion, team, championByPlayerId, timeSec }: {
               <Slot
                 // eslint-disable-next-line react/no-array-index-key
                 key={`red-item-${idx}`}
+                itemKey={idx < boughtItems ? itemKeys[idx] : undefined}
                 className={`item h-[18px] w-[18px] ${idx < boughtItems ? "border-emerald-300/90 bg-emerald-400/35" : ""}`}
               />
             ))}
@@ -236,8 +246,8 @@ export function LecLowerThirdPanel({ champions, championByPlayerId, timeSec = 0 
   return (
     <div className="hud-board mx-auto w-full max-w-[1400px] px-[20px] py-[10px]">
       {matchups.map(({ role, blue, red }) => {
-        const blueGold = blue?.gold ?? 0;
-        const redGold = red?.gold ?? 0;
+        const blueGold = championTotalGold(blue);
+        const redGold = championTotalGold(red);
         const diff = Math.abs(blueGold - redGold);
         const diffLabel = diff >= 1000 ? `${(diff / 1000).toFixed(1)}K` : `${diff}`;
         const toBlue = blueGold >= redGold;

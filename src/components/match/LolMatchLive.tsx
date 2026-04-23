@@ -5,10 +5,11 @@ import { NavGrid } from "./lol-prototype/engine/navigation";
 import { PrototypeSimulation } from "./lol-prototype/engine/simulation";
 import type { ChampionCombatProfile } from "./lol-prototype/engine/simulation";
 import type { MatchState } from "./lol-prototype/engine/types";
-import type { LolSimV1AiMode, LolSimV1RuntimeState } from "./lol-prototype/backend/contract-v1";
+import type { LolSimV1AiMode, LolSimV1PolicyConfig, LolSimV1RuntimeState } from "./lol-prototype/backend/contract-v1";
 import { LolSimV2Client } from "./lol-prototype/backend/tauri-client";
 import { renderSimulation } from "./lol-prototype/ui/render";
 import { LecLowerThirdPanel } from "./lol-prototype/ui/panels";
+import { useSettingsStore } from "../../store/settingsStore";
 
 export interface ChampionSelectionByPlayer {
   home: Record<string, string>;
@@ -26,14 +27,9 @@ interface Props {
 }
 
 const SPEEDS = [
-  { id: "x4", value: 4 },
-  { id: "x8", value: 8 },
-  { id: "x12", value: 12 },
-];
-
-const AI_MODES: Array<{ id: LolSimV1AiMode; label: string }> = [
-  { id: "rules", label: "Rules" },
-  { id: "hybrid", label: "Hybrid" },
+  { id: "x1", value: 4 },
+  { id: "x2", value: 8 },
+  { id: "x4", value: 12 },
 ];
 
 const DDRAGON_VERSION = "14.24.1";
@@ -52,13 +48,24 @@ function normalizeAttackRange(attackRange: number) {
   return 0.049;
 }
 
+function randomSeed10Digits() {
+  const firstDigit = Math.floor(Math.random() * 9) + 1;
+  const rest = Math.floor(Math.random() * 1_000_000_000).toString().padStart(9, "0");
+  return `${firstDigit}${rest}`;
+}
+
 export default function LolMatchLive({ snapshot, championSelections, onSnapshotUpdate, onImportantEvent, onFullTime }: Props) {
   const walls = useMemo(() => getWalls(), []);
   const nav = useMemo(() => new NavGrid(walls), [walls]);
-  const [seed, setSeed] = useState("lol-prototype-1");
+  const [seed] = useState(randomSeed10Digits);
   const [running, setRunning] = useState(true);
   const [speed, setSpeed] = useState(4);
-  const [aiMode, setAiMode] = useState<LolSimV1AiMode>("hybrid");
+  const aiMode: LolSimV1AiMode = "hybrid";
+  const { settings } = useSettingsStore();
+  const simPolicy = useMemo<LolSimV1PolicyConfig>(() => ({
+    hybridOpenTradeConfidenceHigh: settings.lol_hybrid_open_trade_confidence_high,
+    hybridDisengageConfidenceLow: settings.lol_hybrid_disengage_confidence_low,
+  }), [settings.lol_hybrid_disengage_confidence_low, settings.lol_hybrid_open_trade_confidence_high]);
   const [tick, setTick] = useState(0);
 
   const championByPlayerId = useMemo<Record<string, string>>(() => {
@@ -146,6 +153,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       .init({
         seed,
         aiMode,
+        policy: simPolicy,
         snapshot,
         championByPlayerId,
         championProfilesById,
@@ -172,7 +180,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       }
       void client.dispose().catch(() => undefined);
     };
-  }, [aiMode, nav, seed, snapshot, championByPlayerId, championProfilesById]);
+  }, [aiMode, nav, seed, simPolicy, snapshot, championByPlayerId, championProfilesById]);
 
   useEffect(() => {
     const loop = (ts: number) => {
@@ -284,13 +292,15 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     const sim = simRef.current;
     if (!sim) return;
 
-    sim.reset(seed);
+    const nextSeed = randomSeed10Digits();
+
+    sim.reset(nextSeed);
 
     const backendClient = USE_RUST_SIM_V2 ? backendClientRef.current : null;
     if (backendClient && backendStateRef.current) {
       backendTickInFlightRef.current = false;
       void backendClient
-        .reset({ seed, aiMode, initialState: { ...sim.state, speed } })
+        .reset({ seed: nextSeed, aiMode, policy: simPolicy, initialState: { ...sim.state, speed } })
         .then((response) => {
           if (backendClientRef.current !== backendClient) return;
           backendStateRef.current = response.state;
@@ -352,21 +362,6 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
                 {s.id}
               </button>
             ))}
-            {AI_MODES.map((mode) => (
-              <button
-                key={mode.id}
-                className={`rounded border px-2 py-1 ${aiMode === mode.id ? "border-cyan-300 bg-cyan-500/20" : "border-cyan-500/30 bg-black/60"}`}
-                onClick={() => setAiMode(mode.id)}
-              >
-                {mode.label}
-              </button>
-            ))}
-            <input
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              className="rounded border border-cyan-500/30 bg-black/70 px-2 py-1 text-[10px]"
-              aria-label="Simulation seed"
-            />
           </div>
         </div>
       </div>
