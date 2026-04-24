@@ -136,6 +136,25 @@ vi.mock("../components/match/LolResultScreen", () => ({
   ),
 }));
 
+vi.mock("../components/match/DraftResultScreen", () => ({
+  default: ({
+    onContinue,
+    result,
+  }: {
+    onContinue?: () => void;
+    result?: unknown;
+  }) => (
+    <div>
+      <div data-testid="postmatch-round-summary">
+        {result ? JSON.stringify(result) : "null"}
+      </div>
+      <button data-testid="postmatch-finish" onClick={onContinue}>
+        Finish Match
+      </button>
+    </div>
+  ),
+}));
+
 vi.mock("../components/match/PressConference", () => ({
   default: () => <div data-testid="press" />,
 }));
@@ -327,6 +346,7 @@ describe("MatchSimulation", function (): void {
       gameState: makeGameState(),
       setGameState: setGameStateMock,
     };
+    localStorage.clear();
   });
 
   it("renders the current live snapshot when get_match_snapshot succeeds", async function (): Promise<void> {
@@ -478,7 +498,12 @@ describe("MatchSimulation", function (): void {
     fireEvent.click(screen.getByTestId("match-live"));
 
     await waitFor(function (): void {
-      expect(mockedInvoke).toHaveBeenLastCalledWith("finish_live_match");
+      expect(mockedInvoke).toHaveBeenLastCalledWith(
+        "finish_live_match",
+        expect.objectContaining({
+          lolReport: expect.anything(),
+        }),
+      );
       expect(screen.getByTestId("postmatch-finish")).toBeInTheDocument();
     });
 
@@ -531,7 +556,12 @@ describe("MatchSimulation", function (): void {
     fireEvent.click(screen.getByTestId("match-live"));
 
     await waitFor(function (): void {
-      expect(mockedInvoke).toHaveBeenLastCalledWith("finish_live_match");
+      expect(mockedInvoke).toHaveBeenLastCalledWith(
+        "finish_live_match",
+        expect.objectContaining({
+          lolReport: expect.anything(),
+        }),
+      );
       expect(screen.getByTestId("postmatch-finish")).toBeInTheDocument();
     });
 
@@ -543,6 +573,75 @@ describe("MatchSimulation", function (): void {
 
     await waitFor(function (): void {
       expect(navigateMock).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
+  it("persists updated series scoreboard after each playoff map", async function (): Promise<void> {
+    locationState = {
+      mode: "spectator",
+      snapshot: makeSnapshot(),
+    };
+
+    const gameStateWithPlayoff = makeGameState();
+    gameStateWithPlayoff.league = {
+      id: "league-1",
+      name: "Test League",
+      season: 1,
+      fixtures: [
+        {
+          id: "fixture-playoff-1",
+          matchday: 12,
+          date: "2026-08-01",
+          home_team_id: "home1",
+          away_team_id: "away1",
+          competition: "Playoffs",
+          status: "InProgress",
+          result: {
+            home_wins: 1,
+            away_wins: 1,
+          },
+        },
+      ],
+      standings: [],
+    };
+
+    gameStoreState = {
+      gameState: gameStateWithPlayoff,
+      setGameState: setGameStateMock,
+    };
+
+    mockedInvoke.mockResolvedValueOnce(makeSnapshot()).mockResolvedValueOnce({
+      game: gameStateWithPlayoff,
+      round_summary: null,
+    });
+
+    render(<MatchSimulation />);
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("champion-draft"));
+    await waitFor(function (): void {
+      expect(screen.getByTestId("tactics-stage")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("tactics-continue"));
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("match-live")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("match-live"));
+
+    await waitFor(function (): void {
+      const stored = localStorage.getItem("fixture-draft-result:fixture-playoff-1");
+      expect(stored).not.toBeNull();
+      const parsed = JSON.parse(stored ?? "{}");
+      expect(parsed.seriesGameIndex).toBe(3);
+      expect(parsed.homeSeriesWins).toBe(2);
+      expect(parsed.awaySeriesWins).toBe(1);
+      expect(parsed.userSeriesWins).toBe(2);
+      expect(parsed.opponentSeriesWins).toBe(1);
     });
   });
 });

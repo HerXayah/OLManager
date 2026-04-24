@@ -28,8 +28,8 @@ fn default_language() -> String {
 fn default_ui_scale() -> String {
     "normal".to_string()
 }
-fn default_lol_hybrid_open_trade_confidence_high() -> f64 { 0.63 }
-fn default_lol_hybrid_disengage_confidence_low() -> f64 { 0.38 }
+fn default_lol_hybrid_open_trade_confidence_high() -> f64 { 0.60 }
+fn default_lol_hybrid_disengage_confidence_low() -> f64 { 0.32 }
 
 impl Default for AppSettings {
     fn default() -> Self {

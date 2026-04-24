@@ -142,6 +142,34 @@ function drawHpBar(ctx: CanvasRenderingContext2D, x: number, y: number, width: n
   ctx.fillRect(x - width / 2, y, width * clampedRatio, ENTITY_HP_BAR_HEIGHT);
 }
 
+function drawSegmentedHpBar(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  ratio: number,
+  color: string,
+  segments: number,
+) {
+  const safeSegments = Math.max(1, segments);
+  const clampedRatio = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
+  const gap = 1.5;
+  const totalGap = gap * (safeSegments - 1);
+  const segWidth = (width - totalGap) / safeSegments;
+  const startX = x - width / 2;
+
+  for (let i = 0; i < safeSegments; i += 1) {
+    const segX = startX + i * (segWidth + gap);
+    const segStartRatio = i / safeSegments;
+    const segFill = Math.max(0, Math.min(1, (clampedRatio - segStartRatio) * safeSegments));
+
+    ctx.fillStyle = ENTITY_HP_BAR_BG;
+    ctx.fillRect(segX, y, segWidth, ENTITY_HP_BAR_HEIGHT);
+    ctx.fillStyle = color;
+    ctx.fillRect(segX, y, segWidth * segFill, ENTITY_HP_BAR_HEIGHT);
+  }
+}
+
 function championIconUrl(championId: string | undefined) {
   if (!championId) return null;
   return `https://ddragon.leagueoflegends.com/cdn/14.24.1/img/champion/${championId}.png`;
@@ -220,7 +248,11 @@ export function renderSimulation(
         ctx.arc(px, py, 5.2, 0, Math.PI * 2);
         ctx.fill();
       }
-      drawHpBar(ctx, px, py - LOL_MAP_OBJECTIVE_ICON_SIZE / 2 - 6, 36, timer.hp / timer.maxHp, "#f59e0b");
+      if (timer.key === "voidgrubs") {
+        drawSegmentedHpBar(ctx, px, py - LOL_MAP_OBJECTIVE_ICON_SIZE / 2 - 6, 36, timer.hp / timer.maxHp, "#f59e0b", 3);
+      } else {
+        drawHpBar(ctx, px, py - LOL_MAP_OBJECTIVE_ICON_SIZE / 2 - 6, 36, timer.hp / timer.maxHp, "#f59e0b");
+      }
     });
 
   state.structures.filter((s) => s.alive).forEach((s) => {

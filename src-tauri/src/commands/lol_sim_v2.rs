@@ -3,9 +3,11 @@ use tauri::State;
 use crate::application::lol_sim_v2::{
     ClearTelemetryFilesResponse, LolSimV2DisposeRequest, LolSimV2DisposeResponse,
     LolSimV2ResetRequest, LolSimV2RunToCompletionRequest, LolSimV2RunToCompletionResponse,
-    LolSimV2StateResponse, LolSimV2StoreState, LolSimV2TickRequest,
+    LolSimV2SkipToEndRequest, LolSimV2SkipToEndResponse, LolSimV2StateResponse,
+    LolSimV2StoreState, LolSimV2TickRequest,
     clear_default_telemetry_files as clear_telemetry_files_service, init as init_service,
-    reset as reset_service, run_to_completion as run_to_completion_service, tick as tick_service,
+    reset as reset_service, run_to_completion as run_to_completion_service,
+    skip_to_end as skip_to_end_service, tick as tick_service,
 };
 
 #[tauri::command]
@@ -51,4 +53,12 @@ pub async fn lol_sim_v2_run_to_completion(
     request: LolSimV2RunToCompletionRequest,
 ) -> Result<LolSimV2RunToCompletionResponse, String> {
     run_to_completion_service(&state, request)
+}
+
+#[tauri::command]
+pub fn lol_sim_v2_skip_to_end(
+    state: State<'_, LolSimV2StoreState>,
+    request: LolSimV2SkipToEndRequest,
+) -> Result<LolSimV2SkipToEndResponse, String> {
+    skip_to_end_service(&state, request)
 }

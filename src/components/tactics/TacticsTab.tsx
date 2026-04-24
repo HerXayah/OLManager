@@ -1,6 +1,19 @@
 import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpRight,
+  Brain,
+  Compass,
+  Crosshair,
+  Feather,
+  Flame,
+  Scale,
+  Shield,
+  Zap,
+} from "lucide-react";
 import type {
   GameStateData,
   LolTacticsData,
@@ -14,6 +27,7 @@ import {
   computeRoleModifiers,
   type DraftRole,
 } from "../../lib/lolTactics";
+import { Card, CardBody, CardHeader } from "../ui";
 
 interface TacticsTabProps {
   gameState: GameStateData;
@@ -65,134 +79,134 @@ const ROLE_ICON_URLS: Record<DraftRole, string> = {
     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png",
 };
 
-const STRONG_SIDE_OPTIONS: Array<{ value: StrongSide; label: string; icon: string; description: string }> = [
+const STRONG_SIDE_OPTIONS: Array<{ value: StrongSide; label: string; icon: JSX.Element; description: string }> = [
   {
     value: "Top",
     label: "Top",
-    icon: "🛡️",
+    icon: <Shield className="h-4 w-4" />,
     description: "Jugamos para top: prioridad de recursos y ganks arriba.",
   },
   {
     value: "Mid",
     label: "Mid",
-    icon: "⚡",
+    icon: <Brain className="h-4 w-4" />,
     description: "El eje del mapa es mid: control de tempo y rotaciones.",
   },
   {
     value: "Bot",
     label: "Bot",
-    icon: "🎯",
+    icon: <Crosshair className="h-4 w-4" />,
     description: "Invertimos en botlane para escalar peleas y objetivos.",
   },
 ];
 
-const GAME_TIMING_OPTIONS: Array<{ value: GameTiming; label: string; icon: string; description: string }> = [
+const GAME_TIMING_OPTIONS: Array<{ value: GameTiming; label: string; icon: JSX.Element; description: string }> = [
   {
     value: "Early",
     label: "Early game",
-    icon: "🔥",
+    icon: <Flame className="h-4 w-4 text-red-500" />,
     description: "Buscamos ventaja antes de minuto 14 con ritmo agresivo.",
   },
   {
     value: "Mid",
     label: "Mid game",
-    icon: "⚖️",
+    icon: <Scale className="h-4 w-4 text-accent-500" />,
     description: "Pico de poder en mid game con setup de objetivos.",
   },
   {
     value: "Late",
     label: "Late game",
-    icon: "📈",
+    icon: <Feather className="h-4 w-4 text-blue-500" />,
     description: "Priorizamos escalado y ejecución en peleas largas.",
   },
 ];
 
-const JUNGLE_STYLE_OPTIONS: Array<{ value: JungleStyle; label: string; icon: string; description: string }> = [
+const JUNGLE_STYLE_OPTIONS: Array<{ value: JungleStyle; label: string; icon: JSX.Element; description: string }> = [
   {
     value: "Ganker",
     label: "Gankear",
-    icon: "🎯",
+    icon: <Crosshair className="h-4 w-4" />,
     description: "JUNGLE de presión en líneas: castiga errores temprano.",
   },
   {
     value: "Invader",
     label: "Invadir",
-    icon: "🗡️",
+    icon: <Zap className="h-4 w-4" />,
     description: "Entramos a JUNGLE rival para negar recursos y visión.",
   },
   {
     value: "Farmer",
     label: "Farmear",
-    icon: "🌾",
+    icon: <Feather className="h-4 w-4" />,
     description: "Maximizamos farmeo para llegar fuertes a mid/late.",
   },
   {
     value: "Enabler",
     label: "Habilitar",
-    icon: "🧠",
+    icon: <Brain className="h-4 w-4" />,
     description: "JUNGLE habilita carries con cobertura y tempo.",
   },
 ];
 
-const JUNGLE_PATHING_OPTIONS: Array<{ value: JunglePathing; label: string; icon: string; description: string }> = [
+const JUNGLE_PATHING_OPTIONS: Array<{ value: JunglePathing; label: string; icon: JSX.Element; description: string }> = [
   {
     value: "TopToBot",
     label: "Top → Bot",
-    icon: "⬇️",
+    icon: <ArrowDown className="h-4 w-4" />,
     description: "Abrimos arriba para terminar jugando por bot side.",
   },
   {
     value: "BotToTop",
     label: "Bot → Top",
-    icon: "⬆️",
+    icon: <ArrowUp className="h-4 w-4" />,
     description: "Abrimos abajo para impactar top en primeras ventanas.",
   },
 ];
 
-const FIGHT_PLAN_OPTIONS: Array<{ value: FightPlan; label: string; icon: string; description: string }> = [
+const FIGHT_PLAN_OPTIONS: Array<{ value: FightPlan; label: string; icon: JSX.Element; description: string }> = [
   {
     value: "FrontToBack",
     label: "Front to back",
-    icon: "🧱",
+    icon: <Shield className="h-4 w-4" />,
     description: "Pelea ordenada: front line protege al carry.",
   },
   {
     value: "Pick",
     label: "Cazadas",
-    icon: "🎣",
+    icon: <Crosshair className="h-4 w-4" />,
     description: "Jugamos visión y cazadas para pelear en ventaja.",
   },
   {
     value: "Dive",
     label: "Invade",
-    icon: "🚀",
+    icon: <Zap className="h-4 w-4" />,
     description: "Entradas explosivas al backline para borrar carries.",
   },
   {
     value: "Siege",
     label: "Acecho",
-    icon: "🏹",
+    icon: <Brain className="h-4 w-4" />,
     description: "Presión de rango y estructura, sin overextender.",
   },
 ];
 
-const SUPPORT_ROAMING_OPTIONS: Array<{ value: SupportRoaming; label: string; icon: string; description: string }> = [
+const SUPPORT_ROAMING_OPTIONS: Array<{ value: SupportRoaming; label: string; icon: JSX.Element; description: string }> = [
   {
     value: "Lane",
     label: "Jugar línea",
-    icon: "🧷",
+    icon: <Shield className="h-4 w-4" />,
     description: "Support prioriza 2v2 de bot, peel y control de oleada.",
   },
   {
     value: "RoamMid",
     label: "Rotar a mid",
-    icon: "🧭",
+    icon: <Compass className="h-4 w-4" />,
     description: "Después del reset, rota a mid para picks y control de visión.",
   },
   {
     value: "RoamTop",
     label: "Rotar a top",
-    icon: "🗺️",
+    icon: <ArrowUpRight className="h-4 w-4" />,
     description: "Rotaciones tempranas a top para dives, grubs y tempo de mapa.",
   },
 ];
@@ -229,38 +243,40 @@ function Section<T extends string>({
   onChange,
 }: {
   title: string;
-  options: Array<{ value: T; label: string; icon: string; description: string }>;
+  options: Array<{ value: T; label: string; icon: JSX.Element; description: string }>;
   value: T;
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="rounded-xl border border-gray-100 dark:border-navy-700 bg-white dark:bg-navy-800/40 p-4">
-      <p className="text-sm font-heading font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200 mb-3">
-        {title}
-      </p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {options.map((option) => {
-          const active = option.value === value;
-          return (
-            <button
-              key={option.value}
-              className={`rounded-lg border px-3 py-3 text-sm font-heading font-bold transition-colors ${
-                active
-                  ? "border-accent-400 text-accent-400 bg-accent-500/10"
-                  : "border-gray-200 dark:border-navy-600 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-navy-900/40 hover:border-primary-400"
-              }`}
-              onClick={() => onChange(option.value)}
-            >
-              <span className="block text-base mb-1">{option.icon}</span>
-              <span className="block">{option.label}</span>
-              <span className="block text-[11px] leading-tight font-normal mt-1 opacity-85">
-                {option.description}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <Card accent="primary">
+      <CardHeader className="text-base">{title}</CardHeader>
+      <CardBody className="p-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {options.map((option) => {
+            const active = option.value === value;
+            return (
+              <button
+                key={option.value}
+                className={`rounded-xl border-2 px-3 py-3 text-left transition-all ${
+                  active
+                    ? "border-primary-500 bg-primary-50 dark:bg-primary-500/10 shadow-md shadow-primary-500/10"
+                    : "border-gray-200 dark:border-navy-600 hover:border-gray-300 dark:hover:border-navy-500"
+                }`}
+                onClick={() => onChange(option.value)}
+              >
+                <span className="mb-1 block text-base text-gray-700 dark:text-gray-200">{option.icon}</span>
+                <span className="block font-heading text-sm font-bold uppercase tracking-wider text-gray-800 dark:text-gray-100">
+                  {option.label}
+                </span>
+                <span className="mt-1 block text-[11px] leading-tight text-gray-500 dark:text-gray-400">
+                  {option.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 
@@ -365,32 +381,20 @@ export default function TacticsTab({
   }
 
   return (
-    <div className="max-w-7xl mx-auto flex flex-col gap-4">
-      <div className="rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/70 dark:bg-primary-900/20 p-4">
-        <p className="text-sm font-heading font-bold text-primary-800 dark:text-primary-200 uppercase tracking-wide">
-          Plan de juego
-        </p>
-        <p className="mt-2 text-sm text-primary-900/90 dark:text-primary-100/90 leading-relaxed">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+      <Card accent="accent">
+        <CardHeader>Plan de juego</CardHeader>
+        <CardBody>
+          <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200">
           Estas tácticas definen cómo juega tu equipo en simulación. Se aplican al impacto por rol y al comportamiento macro
           (objetivos/tempo) durante la partida. También quedan listas para scrims, para ajustar antes del partido y entre mapas
           en series Bo3/Bo5.
-        </p>
-      </div>
+          </p>
+        </CardBody>
+      </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.6fr_1fr] gap-4 items-start">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.6fr_1fr]">
         <div className="flex flex-col gap-4">
-          <Section<StrongSide>
-            title={t("tactics.strongSide", { defaultValue: "Lado fuerte" })}
-            value={tactics.strong_side}
-            onChange={(value) =>
-              void persist({
-                ...tactics,
-                strong_side: value,
-              })
-            }
-            options={STRONG_SIDE_OPTIONS}
-          />
-
           <Section<GameTiming>
             title={t("tactics.gameTiming", { defaultValue: "Timing de partida" })}
             value={tactics.game_timing}
@@ -401,6 +405,18 @@ export default function TacticsTab({
               })
             }
             options={GAME_TIMING_OPTIONS}
+          />
+
+          <Section<StrongSide>
+            title={t("tactics.strongSide", { defaultValue: "Lado fuerte" })}
+            value={tactics.strong_side}
+            onChange={(value) =>
+              void persist({
+                ...tactics,
+                strong_side: value,
+              })
+            }
+            options={STRONG_SIDE_OPTIONS}
           />
 
           <Section<JungleStyle>
@@ -452,12 +468,14 @@ export default function TacticsTab({
           />
         </div>
 
-        <aside className="rounded-xl border border-gray-100 dark:border-navy-700 bg-white dark:bg-navy-800/40 p-4 sticky top-2">
-          <h3 className="text-sm font-heading font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200">
+        <aside className="sticky top-2">
+          <Card>
+            <CardHeader>
             Impacto y coherencia
-          </h3>
+            </CardHeader>
+            <CardBody className="p-4">
 
-          <div className="mt-3 rounded-lg border border-gray-100 dark:border-navy-700 bg-gray-50 dark:bg-navy-900/50 p-3">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-navy-600 dark:bg-navy-900/50">
             <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Coherencia táctica</p>
             <p className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">
               {coherenceScore >= 1 ? "Alta" : coherenceScore >= 0 ? "Media" : "Baja"}
@@ -484,17 +502,17 @@ export default function TacticsTab({
             ))}
           </div>
 
-          <div className="mt-4 border-t border-gray-100 dark:border-navy-700 pt-3">
+          <div className="mt-4 border-t border-gray-100 pt-3 dark:border-navy-700">
             <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Impacto por rol</p>
             <div className="mt-2 space-y-2.5">
               {roleImpactRows.map((row) => (
                 <div
                   key={row.role}
-                  className="rounded-xl border border-[#1a2a4a] bg-[#0b1730] px-3 py-2.5"
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 dark:border-navy-600 dark:bg-navy-800/40"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-md bg-[#12284b] border border-white/10 flex items-center justify-center shrink-0">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-100 dark:border-white/10 dark:bg-navy-700">
                         <img
                           src={ROLE_ICON_URLS[row.role]}
                           alt={ROLE_META[row.role].name}
@@ -507,18 +525,18 @@ export default function TacticsTab({
                         <img
                           src={playerPhotoUrl(row.playerId) ?? ""}
                           alt={row.playerName}
-                          className="w-10 h-10 object-cover shrink-0"
+                          className="h-10 w-10 shrink-0 rounded object-cover"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-10 h-10 bg-[#12284b]/40 shrink-0" />
+                        <div className="h-10 w-10 shrink-0 rounded bg-gray-100 dark:bg-navy-700/40" />
                       )}
 
                       <div className="min-w-0">
-                        <p className="text-sm font-heading font-bold truncate text-white">
+                        <p className="truncate text-sm font-heading font-bold text-gray-900 dark:text-gray-100">
                           {row.playerName}
                         </p>
-                        <p className="text-[11px] text-blue-200/75">
+                        <p className="text-[11px] text-gray-500 dark:text-gray-300">
                           {Math.round(row.base)} OVR · {ROLE_META[row.role].name}
                         </p>
                       </div>
@@ -533,7 +551,7 @@ export default function TacticsTab({
                         {row.modifier >= 0 ? "+" : ""}
                         {row.modifier.toFixed(1)}
                       </p>
-                      <p className="text-[10px] text-blue-200/55">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400">
                         ±{row.variance.toFixed(1)} varianza
                       </p>
                     </div>
@@ -543,9 +561,11 @@ export default function TacticsTab({
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
             Tip: si el score de coherencia es bajo, intentá alinear lado fuerte + ruta de JUNGLE + timing.
           </p>
+            </CardBody>
+          </Card>
         </aside>
       </div>
 

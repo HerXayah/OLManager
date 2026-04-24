@@ -17,7 +17,13 @@ import LolMatchLive from "../components/match/LolMatchLive";
 import type { ChampionSelectionByPlayer } from "../components/match/LolMatchLive";
 import MatchTacticsStage from "../components/match/MatchTacticsStage";
 import LolResultScreen from "../components/match/LolResultScreen";
+import DraftResultScreen from "../components/match/DraftResultScreen";
 import PressConference from "../components/match/PressConference";
+import {
+  simulateDraftMatchResult,
+  type DraftPlayerResult,
+  type DraftMatchResult,
+} from "../components/match/draftResultSimulator";
 import {
   lolSimV2ClearTelemetryFiles,
   lolSimV2RunToCompletion,
@@ -42,6 +48,18 @@ interface MatchRouteState {
 interface FinishLiveMatchResponse {
   game: GameStateData;
   round_summary?: unknown;
+}
+
+interface StoredFixtureDraftResult {
+  snapshot: MatchSnapshot;
+  controlledSide: "blue" | "red";
+  result: DraftMatchResult;
+  seriesLength?: 1 | 3 | 5;
+  seriesGameIndex?: number;
+  userSeriesWins?: number;
+  opponentSeriesWins?: number;
+  homeSeriesWins?: number;
+  awaySeriesWins?: number;
 }
 
 const DEFAULT_LOL_TACTICS: LolTacticsData = {
@@ -114,9 +132,26 @@ function attachLolTacticsToSnapshot(snapshot: MatchSnapshot, gameState: GameStat
 }
 
 function buildLolMatchReport(runtime: LolSimV1RuntimeState): LolSimV1MatchReportInput {
+  const safeStats = {
+    blue: {
+      kills: runtime.stats?.blue?.kills ?? 0,
+      towers: runtime.stats?.blue?.towers ?? 0,
+      dragons: runtime.stats?.blue?.dragons ?? 0,
+      barons: runtime.stats?.blue?.barons ?? 0,
+      gold: runtime.stats?.blue?.gold ?? 0,
+    },
+    red: {
+      kills: runtime.stats?.red?.kills ?? 0,
+      towers: runtime.stats?.red?.towers ?? 0,
+      dragons: runtime.stats?.red?.dragons ?? 0,
+      barons: runtime.stats?.red?.barons ?? 0,
+      gold: runtime.stats?.red?.gold ?? 0,
+    },
+  };
+
   return {
     winner: runtime.winner,
-    timeSec: runtime.timeSec,
+    timeSec: runtime.timeSec ?? 0,
     events: (runtime.events ?? []).map((event) => ({
       t: event.t,
       text: event.text,
@@ -124,20 +159,20 @@ function buildLolMatchReport(runtime: LolSimV1RuntimeState): LolSimV1MatchReport
     })),
     stats: {
       blue: {
-        kills: runtime.stats.blue.kills,
-        deaths: runtime.stats.red.kills,
-        gold: runtime.stats.blue.gold,
-        towers: runtime.stats.blue.towers,
-        dragons: runtime.stats.blue.dragons,
-        barons: runtime.stats.blue.barons,
+        kills: safeStats.blue.kills,
+        deaths: safeStats.red.kills,
+        gold: safeStats.blue.gold,
+        towers: safeStats.blue.towers,
+        dragons: safeStats.blue.dragons,
+        barons: safeStats.blue.barons,
       },
       red: {
-        kills: runtime.stats.red.kills,
-        deaths: runtime.stats.blue.kills,
-        gold: runtime.stats.red.gold,
-        towers: runtime.stats.red.towers,
-        dragons: runtime.stats.red.dragons,
-        barons: runtime.stats.red.barons,
+        kills: safeStats.red.kills,
+        deaths: safeStats.blue.kills,
+        gold: safeStats.red.gold,
+        towers: safeStats.red.towers,
+        dragons: safeStats.red.dragons,
+        barons: safeStats.red.barons,
       },
     },
     champions: (runtime.champions ?? []).map((champion) => ({
@@ -152,6 +187,338 @@ function buildLolMatchReport(runtime: LolSimV1RuntimeState): LolSimV1MatchReport
       gold: champion.gold,
       spentGold: champion.spentGold,
     })),
+  };
+}
+
+function normalizeDraftPayload(
+  payload: ChampionDraftResultPayload | null,
+  selections: ChampionSelectionByPlayer | null,
+  snapshot: MatchSnapshot | null,
+): ChampionDraftResultPayload | null {
+  if (
+    payload?.blue?.picks &&
+    payload?.red?.picks &&
+    Array.isArray(payload.history)
+  ) {
+    return payload;
+  }
+
+  if (!selections || !snapshot) return null;
+
+  const roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const;
+
+  const buildPicks = (
+    players: MatchSnapshot["home_team"]["players"],
+    championsByPlayer: Record<string, string>,
+    rolesByPlayer: Record<string, "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT">,
+  ) => {
+    const taken = new Set<string>();
+    return roles.map((role) => {
+      const byRole = players.find((player) => rolesByPlayer[player.id] === role && !taken.has(player.id));
+      const fallback = players.find((player) => !taken.has(player.id));
+      const selectedPlayer = byRole ?? fallback;
+      if (selectedPlayer) {
+        taken.add(selectedPlayer.id);
+      }
+      return {
+        role,
+        championId: selectedPlayer ? championsByPlayer[selectedPlayer.id] ?? `generic-${role.toLowerCase()}` : `generic-${role.toLowerCase()}`,
+      };
+    });
+  };
+
+  const baseScore = { mastery: 0, synergy: 0, counter: 0, comfort: 0, total: 0 };
+
+  return {
+    blue: {
+      picks: buildPicks(
+        snapshot.home_team.players,
+        selections.home,
+        selections.homeRoles,
+      ),
+      bans: [],
+      score: baseScore,
+    },
+    red: {
+      picks: buildPicks(
+        snapshot.away_team.players,
+        selections.away,
+        selections.awayRoles,
+      ),
+      bans: [],
+      score: baseScore,
+    },
+    history: [],
+  };
+}
+
+function parseRuntimeEventSide(text: string | undefined): "blue" | "red" | null {
+  const upper = (text ?? "").toUpperCase();
+  if (upper.includes("BLUE")) return "blue";
+  if (upper.includes("RED")) return "red";
+  return null;
+}
+
+function runtimeEventToDraftType(event: { type?: string; text?: string }):
+  | "first_blood"
+  | "voidgrubs"
+  | "dragon"
+  | "dragon_soul"
+  | "elder"
+  | "herald"
+  | "baron"
+  | "turret"
+  | "inhibitor"
+  | "nexus_turret"
+  | "nexus" {
+  const text = (event.text ?? "").toLowerCase();
+  if (text.includes("first blood")) return "first_blood";
+  if (text.includes("voidgrub")) return "voidgrubs";
+  if (text.includes("dragon soul") || text.includes(" soul")) return "dragon_soul";
+  if (text.includes("elder")) return "elder";
+  if (text.includes("baron")) return "baron";
+  if (text.includes("herald")) return "herald";
+  if (text.includes("inhib")) return "inhibitor";
+  if (text.includes("nexus") && text.includes("turret")) return "nexus_turret";
+  if (text.includes("nexus")) return "nexus";
+  if (text.includes("tower") || text.includes("turret")) return "turret";
+  if (text.includes("dragon")) return "dragon";
+
+  switch ((event.type ?? "").toLowerCase()) {
+    case "kill":
+      return "first_blood";
+    case "tower":
+      return "turret";
+    case "dragon":
+      return "dragon";
+    case "baron":
+      return "baron";
+    case "nexus":
+      return "nexus";
+    default:
+      return "herald";
+  }
+}
+
+function draftTypeLabel(type: ReturnType<typeof runtimeEventToDraftType>): string {
+  switch (type) {
+    case "first_blood":
+      return "First Blood";
+    case "voidgrubs":
+      return "Voidgrubs x3";
+    case "dragon":
+      return "Dragon";
+    case "dragon_soul":
+      return "Dragon Soul";
+    case "elder":
+      return "Elder Dragon";
+    case "herald":
+      return "Herald";
+    case "baron":
+      return "Baron";
+    case "turret":
+      return "Turret";
+    case "inhibitor":
+      return "Inhibitor";
+    case "nexus_turret":
+      return "Nexus Turret";
+    case "nexus":
+      return "Nexus";
+  }
+}
+
+function runtimeRoleToDraftRole(role: string | undefined): DraftPlayerResult["role"] {
+  switch ((role ?? "").toUpperCase()) {
+    case "JGL":
+    case "JUNGLE":
+      return "JUNGLE";
+    case "SUP":
+    case "SUPPORT":
+      return "SUPPORT";
+    case "ADC":
+      return "ADC";
+    case "TOP":
+      return "TOP";
+    case "MID":
+    default:
+      return "MID";
+  }
+}
+
+function buildDraftResultFromRuntime(params: {
+  runtime: LolSimV1RuntimeState;
+  snapshot: MatchSnapshot;
+  championSelections: ChampionSelectionByPlayer | null;
+}): DraftMatchResult {
+  const { runtime, snapshot, championSelections } = params;
+  const durationMinutes = Math.max(1, Math.floor((runtime.timeSec ?? 0) / 60));
+
+  const blueKills = runtime.stats?.blue?.kills ?? 0;
+  const redKills = runtime.stats?.red?.kills ?? 0;
+
+  const champions = runtime.champions ?? [];
+  const selectionByPlayerId = {
+    ...(championSelections?.home ?? {}),
+    ...(championSelections?.away ?? {}),
+  };
+  const playerResults: DraftPlayerResult[] = champions.map((champion) => ({
+    side: champion.team === "red" ? "red" : "blue",
+    playerId: champion.id,
+    playerName: champion.name,
+    role: runtimeRoleToDraftRole(champion.role),
+    championId: selectionByPlayerId[champion.id] ?? null,
+    kills: champion.kills ?? 0,
+    deaths: champion.deaths ?? 0,
+    assists: champion.assists ?? 0,
+    gold: champion.gold ?? 0,
+    rating: ((champion.kills ?? 0) * 2 + (champion.assists ?? 0) * 1.1 - (champion.deaths ?? 0) * 1.2 + (champion.gold ?? 0) / 1000),
+  }));
+
+  const fallbackRows: DraftPlayerResult[] = [
+    ...snapshot.home_team.players.map((player, idx) => ({
+      side: "blue" as const,
+      playerId: player.id,
+      playerName: player.name,
+      role: (["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const)[idx] ?? "MID",
+      championId: selectionByPlayerId[player.id] ?? null,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      gold: 0,
+      rating: 5,
+    })),
+    ...snapshot.away_team.players.map((player, idx) => ({
+      side: "red" as const,
+      playerId: player.id,
+      playerName: player.name,
+      role: (["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const)[idx] ?? "MID",
+      championId: selectionByPlayerId[player.id] ?? null,
+      kills: 0,
+      deaths: 0,
+      assists: 0,
+      gold: 0,
+      rating: 5,
+    })),
+  ];
+
+  const resolvedRows = playerResults.length > 0 ? playerResults : fallbackRows;
+  const mvp = [...resolvedRows].sort((a, b) => b.rating - a.rating)[0] ?? fallbackRows[0];
+
+  const blueGold = runtime.stats?.blue?.gold ?? 0;
+  const redGold = runtime.stats?.red?.gold ?? 0;
+  const timelineEvents = (runtime.events ?? [])
+    .map((event) => {
+      const side = parseRuntimeEventSide(event.text);
+      if (!side) return null;
+      const type = runtimeEventToDraftType(event);
+      return {
+        minute: Math.max(0, Math.floor((event.t ?? 0) / 60)),
+        side,
+        type,
+        label: draftTypeLabel(type),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+    .slice(-20);
+
+  const finalDelta = blueGold - redGold;
+  const timelinePoints = Math.max(8, Math.min(24, Math.floor(durationMinutes / 2) + 1));
+  const timelineMinutes = Array.from({ length: timelinePoints }, (_, idx) =>
+    Math.floor((idx / Math.max(1, timelinePoints - 1)) * durationMinutes),
+  );
+  if (timelineMinutes[timelineMinutes.length - 1] !== durationMinutes) {
+    timelineMinutes.push(durationMinutes);
+  }
+
+  const eventImpact = (type: ReturnType<typeof runtimeEventToDraftType>, side: "blue" | "red") => {
+    const sign = side === "blue" ? 1 : -1;
+    switch (type) {
+      case "first_blood":
+        return sign * 450;
+      case "voidgrubs":
+        return sign * 320;
+      case "dragon":
+        return sign * 220;
+      case "dragon_soul":
+        return sign * 700;
+      case "elder":
+        return sign * 1100;
+      case "herald":
+        return sign * 380;
+      case "baron":
+        return sign * 900;
+      case "turret":
+        return sign * 650;
+      case "inhibitor":
+        return sign * 850;
+      case "nexus_turret":
+        return sign * 1050;
+      case "nexus":
+        return sign * 2000;
+      default:
+        return 0;
+    }
+  };
+
+  const rawTimeline = timelineMinutes.map((minute, idx) => {
+    if (idx === 0) return 0;
+    const progress = Math.max(0, Math.min(1, minute / Math.max(1, durationMinutes)));
+    const base = finalDelta * Math.pow(progress, 1.08);
+    const events = timelineEvents
+      .filter((event) => event.minute <= minute)
+      .reduce((sum, event) => sum + eventImpact(event.type, event.side), 0);
+    const jitter = Math.round((Math.sin(minute + idx) * 0.5 + 0.5) * 120 * (1 - progress));
+    return base + events * 0.35 + jitter;
+  });
+
+  const rawFirst = rawTimeline[0] ?? 0;
+  const rawLast = rawTimeline[rawTimeline.length - 1] ?? 0;
+  const scale = Math.abs(rawLast - rawFirst) < 1 ? 1 : (finalDelta / (rawLast - rawFirst));
+  const goldDiffTimeline = timelineMinutes.map((minute, idx) => ({
+    minute,
+    diff: Math.round((rawTimeline[idx] - rawFirst) * scale),
+  }));
+
+  const winnerSide = runtime.winner === "red" ? "red" : "blue";
+
+  return {
+    winnerSide,
+    durationMinutes,
+    blueKills,
+    redKills,
+    mvp,
+    playerResults: resolvedRows,
+    goldDiffTimeline,
+    timelineEvents,
+    objectives: {
+      blue: {
+        voidgrubs: 0,
+        dragons: runtime.stats?.blue?.dragons ?? 0,
+        dragonSoul: false,
+        elderDragons: 0,
+        heralds: 0,
+        barons: runtime.stats?.blue?.barons ?? 0,
+        towers: runtime.stats?.blue?.towers ?? 0,
+        inhibitors: 0,
+      },
+      red: {
+        voidgrubs: 0,
+        dragons: runtime.stats?.red?.dragons ?? 0,
+        dragonSoul: false,
+        elderDragons: 0,
+        heralds: 0,
+        barons: runtime.stats?.red?.barons ?? 0,
+        towers: runtime.stats?.red?.towers ?? 0,
+        inhibitors: 0,
+      },
+    },
+    power: {
+      blue: 50,
+      red: 50,
+      diff: 0,
+      autoWin: false,
+      winProbBlue: 50,
+    },
   };
 }
 
@@ -192,6 +559,30 @@ function saveParallelSimsCheckpoint(checkpoint: ParallelSimsCheckpoint) {
   }
 }
 
+function persistFixtureDraftResult(
+  fixtureId: string,
+  payload: StoredFixtureDraftResult,
+) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      `fixture-draft-result:${fixtureId}`,
+      JSON.stringify(payload),
+    );
+  } catch (error) {
+    console.warn("[MatchSimulation] fixtureResult:saveFailed", {
+      error,
+      fixtureId,
+    });
+  }
+}
+
+function readSeriesWins(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.floor(value));
+}
+
 export default function MatchSimulation() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -210,6 +601,8 @@ export default function MatchSimulation() {
   const [stage, setStage] = useState<MatchDayStage>("prematch");
   const [importantEvents, setImportantEvents] = useState<MatchEvent[]>([]);
   const [finalRuntimeState, setFinalRuntimeState] = useState<LolSimV1RuntimeState | null>(null);
+  const [draftPayload, setDraftPayload] = useState<ChampionDraftResultPayload | null>(null);
+  const [draftResultSimulation, setDraftResultSimulation] = useState<DraftMatchResult | null>(null);
   const [championSelections, setChampionSelections] = useState<ChampionSelectionByPlayer | null>(null);
   const [userSide, setUserSide] = useState<"Home" | "Away" | null>(null);
   const [isSpectator, setIsSpectator] = useState(matchMode === "spectator");
@@ -439,6 +832,7 @@ export default function MatchSimulation() {
   const handleDraftComplete = useCallback((_payload: ChampionDraftResultPayload) => {
     console.info("[MatchSimulation] handleDraftComplete");
     const payload = _payload;
+    setDraftPayload(payload);
     if (activeSnapshot) {
       const roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const;
       const inferRole = (position: string): typeof roles[number] => {
@@ -665,8 +1059,9 @@ export default function MatchSimulation() {
     }
   }, [hasFinalizedMatch, setGameState]);
 
-  const handleFullTime = useCallback((finalRuntimeState: LolSimV1RuntimeState) => {
+  const handleFullTime = useCallback((finalRuntimeState: LolSimV1RuntimeState, meta?: { source: "live" | "skip" }) => {
     console.info("[MatchSimulation] handleFullTime");
+    const source = meta?.source ?? "live";
     setFinalRuntimeState(finalRuntimeState);
     const mappedEvents: MatchEvent[] = (finalRuntimeState.events ?? []).map((event) => ({
       minute: Math.max(0, Math.floor((event.t ?? 0) / 60)),
@@ -677,13 +1072,144 @@ export default function MatchSimulation() {
       secondary_player_id: null,
     }));
     setImportantEvents(mappedEvents);
+
+    const safeDraftPayload = normalizeDraftPayload(draftPayload, championSelections, renderSnapshotWithTactics ?? null);
+
+    const snapshotForResult = renderSnapshotWithTactics ?? snapshot;
+    if (!snapshotForResult) {
+      void (async () => {
+        const finalized = await finalizeMatch(buildLolMatchReport(finalRuntimeState));
+        if (finalized) {
+          setStage("draft_result");
+        }
+      })();
+      return;
+    }
+
+    const runtimeBasedResult = buildDraftResultFromRuntime({
+      runtime: finalRuntimeState,
+      snapshot: snapshotForResult,
+      championSelections,
+    });
+
+    let resultToPersist = runtimeBasedResult;
+
+    let simulatedForSkip: DraftMatchResult | null = null;
+
+    if (source === "skip" && safeDraftPayload && renderSnapshotWithTactics && gameState) {
+      try {
+        const simulated = simulateDraftMatchResult({
+          snapshot: renderSnapshotWithTactics,
+          gameState,
+          draft: safeDraftPayload,
+        });
+        setDraftResultSimulation(simulated);
+        resultToPersist = simulated;
+        simulatedForSkip = simulated;
+      } catch (error) {
+        console.error("[MatchSimulation] draftResultFallback:failed", error);
+        setDraftResultSimulation(null);
+      }
+    } else {
+      setDraftResultSimulation(null);
+    }
+
+    if (currentFixture?.id) {
+      const targetSeriesWins = seriesLength === 1 ? 1 : seriesLength === 3 ? 2 : 3;
+      const existingHomeWins = Math.min(
+        targetSeriesWins,
+        readSeriesWins(currentFixture.result?.home_wins) ||
+          readSeriesWins(currentFixture.result?.home_goals),
+      );
+      const existingAwayWins = Math.min(
+        targetSeriesWins,
+        readSeriesWins(currentFixture.result?.away_wins) ||
+          readSeriesWins(currentFixture.result?.away_goals),
+      );
+
+      const winnerTeamId =
+        resultToPersist.winnerSide === "blue"
+          ? snapshotForResult.home_team.id
+          : snapshotForResult.away_team.id;
+
+      const homeSeriesWins = Math.min(
+        targetSeriesWins,
+        winnerTeamId === currentFixture.home_team_id
+          ? existingHomeWins + 1
+          : existingHomeWins,
+      );
+      const awaySeriesWins = Math.min(
+        targetSeriesWins,
+        winnerTeamId === currentFixture.away_team_id
+          ? existingAwayWins + 1
+          : existingAwayWins,
+      );
+      const managerTeamId = gameState?.manager.team_id ?? null;
+      const userSeriesWins =
+        managerTeamId === currentFixture.home_team_id
+          ? homeSeriesWins
+          : managerTeamId === currentFixture.away_team_id
+            ? awaySeriesWins
+            : 0;
+      const opponentSeriesWins =
+        managerTeamId === currentFixture.home_team_id
+          ? awaySeriesWins
+          : managerTeamId === currentFixture.away_team_id
+            ? homeSeriesWins
+            : 0;
+
+      persistFixtureDraftResult(currentFixture.id, {
+        snapshot: snapshotForResult,
+        controlledSide: userSelectedSide,
+        result: resultToPersist,
+        seriesLength,
+        seriesGameIndex: homeSeriesWins + awaySeriesWins,
+        userSeriesWins,
+        opponentSeriesWins,
+        homeSeriesWins,
+        awaySeriesWins,
+      });
+    }
+
+    const runtimeForFinalize = simulatedForSkip
+      ? {
+        ...finalRuntimeState,
+        winner: simulatedForSkip.winnerSide,
+        timeSec: simulatedForSkip.durationMinutes * 60,
+        stats: {
+          ...(finalRuntimeState.stats ?? {
+            blue: { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 },
+            red: { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 },
+          }),
+          blue: {
+            ...(finalRuntimeState.stats?.blue ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
+            kills: simulatedForSkip.blueKills,
+          },
+          red: {
+            ...(finalRuntimeState.stats?.red ?? { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 }),
+            kills: simulatedForSkip.redKills,
+          },
+        },
+      }
+      : finalRuntimeState;
+
     void (async () => {
-      const finalized = await finalizeMatch(buildLolMatchReport(finalRuntimeState));
+      const finalized = await finalizeMatch(buildLolMatchReport(runtimeForFinalize));
       if (finalized) {
         setStage("draft_result");
       }
     })();
-  }, [finalizeMatch]);
+  }, [
+    championSelections,
+    currentFixture?.id,
+    draftPayload,
+    finalizeMatch,
+    gameState,
+    renderSnapshotWithTactics,
+    seriesLength,
+    snapshot,
+    userSelectedSide,
+  ]);
 
   const handlePressConference = useCallback(() => {
     console.info("[MatchSimulation] handlePressConference");
@@ -771,6 +1297,48 @@ export default function MatchSimulation() {
       );
 
     case "draft_result":
+      {
+        const runtimeBasedResult = finalRuntimeState
+          ? buildDraftResultFromRuntime({
+            runtime: finalRuntimeState,
+            snapshot: renderSnapshotWithTactics ?? snapshot,
+            championSelections,
+          })
+          : null;
+        const draftScreenResult = draftResultSimulation ?? runtimeBasedResult;
+
+        if (draftScreenResult) {
+          return (
+            <DraftResultScreen
+              snapshot={renderSnapshotWithTactics ?? snapshot}
+              controlledSide={userSelectedSide}
+              result={draftScreenResult}
+              seriesLength={seriesLength}
+              onPressConference={handlePressConference}
+              onContinue={(nextUserSide) => {
+                if (nextUserSide) {
+                  setUserSelectedSide(nextUserSide);
+                }
+                void handleFinishMatch();
+              }}
+            />
+          );
+        }
+
+        return (
+          <LolResultScreen
+            snapshot={renderSnapshotWithTactics ?? snapshot}
+            gameState={gameState}
+            currentFixture={currentFixture}
+            userSide={userSide}
+            importantEvents={importantEvents}
+            finalRuntimeState={finalRuntimeState}
+            onPressConference={handlePressConference}
+            onFinish={handleFinishMatch}
+          />
+        );
+      }
+
     case "postmatch":
       return (
         <LolResultScreen

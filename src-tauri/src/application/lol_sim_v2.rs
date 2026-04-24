@@ -66,8 +66,8 @@ fn default_no_dive_hp_min() -> f64 { 0.45 }
 fn default_trade_retreat_hp_ratio() -> f64 { 0.36 }
 fn default_trade_hp_disadvantage_allowance() -> f64 { 0.2 }
 fn default_lane_chase_leash_radius() -> f64 { 0.11 }
-fn default_hybrid_open_trade_confidence_high() -> f64 { 0.63 }
-fn default_hybrid_disengage_confidence_low() -> f64 { 0.38 }
+fn default_hybrid_open_trade_confidence_high() -> f64 { 0.60 }
+fn default_hybrid_disengage_confidence_low() -> f64 { 0.32 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,7 +97,7 @@ impl Default for SimulatorTelemetryConfig {
 }
 
 fn default_telemetry_enabled() -> bool {
-    true
+    false
 }
 
 fn default_telemetry_sample_every_ticks() -> u64 {
@@ -276,6 +276,28 @@ pub struct LolSimV2RunToCompletionResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimV2SkipToEndRequest {
+    pub session_id: String,
+    #[serde(default = "default_skip_to_end_dt_sec")]
+    pub dt_sec: f64,
+    #[serde(default = "default_skip_to_end_speed")]
+    pub speed: f64,
+    #[serde(default = "default_skip_to_end_max_ticks")]
+    pub max_ticks: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimV2SkipToEndResponse {
+    pub session_id: String,
+    pub state: Value,
+    pub winner: Option<String>,
+    pub ticks: u64,
+    pub elapsed_simulated_sec: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClearTelemetryFilesResponse {
     pub directory: String,
     pub deleted_files: usize,
@@ -385,6 +407,7 @@ pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<
 
     spawn_waves_if_due(&mut runtime, session);
     move_champions(&mut runtime, dt);
+    maybe_deploy_rift_herald_charge(&mut runtime);
     place_wards(&mut runtime);
     process_sweepers(&mut runtime);
     move_minions(&mut runtime, dt);
@@ -533,6 +556,119 @@ pub fn run_to_completion(
     run_result
 }
 
+pub fn skip_to_end(
+    store: &LolSimV2StoreState,
+    request: LolSimV2SkipToEndRequest,
+) -> Result<LolSimV2SkipToEndResponse, String> {
+    if request.max_ticks == 0 {
+        let sessions = store
+            .sessions
+            .lock()
+            .map_err(|_| "lol sim v2 session store lock poisoned".to_string())?;
+
+        let session = sessions
+            .get(&request.session_id)
+            .ok_or_else(|| format!("lol sim v2 session not found: {}", request.session_id))?;
+
+        return Ok(LolSimV2SkipToEndResponse {
+            session_id: request.session_id,
+            winner: read_winner(&session.state),
+            elapsed_simulated_sec: read_time_sec(&session.state),
+            ticks: 0,
+            state: session.state.clone(),
+        });
+    }
+
+    let mut sessions = store
+        .sessions
+        .lock()
+        .map_err(|_| "lol sim v2 session store lock poisoned".to_string())?;
+
+    let session = sessions
+        .get_mut(&request.session_id)
+        .ok_or_else(|| format!("lol sim v2 session not found: {}", request.session_id))?;
+
+    ensure_runtime_state_defaults(&mut session.state);
+
+    let mut runtime: RuntimeState = serde_json::from_value(session.state.clone())
+        .map_err(|err| format!("failed to decode lol_sim_v2 runtime state: {err}"))?;
+    runtime.lane_combat_state_by_champion = session.lane_combat_state_by_champion.clone();
+    runtime.ai_mode = session.ai_mode;
+    runtime.policy = session.policy.clone();
+    runtime.telemetry_decisions.clear();
+    runtime
+        .extra
+        .insert(SKIP_FAST_MODE_EXTRA_KEY.to_string(), Value::Bool(true));
+
+    let previous_telemetry_enabled = session.telemetry.config.enabled;
+    session.telemetry.config.enabled = false;
+    session.telemetry.pending.clear();
+
+    let dt = request.dt_sec.clamp(0.0, 0.05) * request.speed.max(0.0);
+    if dt <= 0.0 {
+        runtime.extra.remove(SKIP_FAST_MODE_EXTRA_KEY);
+        session.telemetry.config.enabled = previous_telemetry_enabled;
+        session.lane_combat_state_by_champion = runtime.lane_combat_state_by_champion.clone();
+        session.state = serde_json::to_value(runtime)
+            .map_err(|err| format!("failed to encode lol_sim_v2 runtime state: {err}"))?;
+        return Ok(LolSimV2SkipToEndResponse {
+            session_id: request.session_id,
+            winner: read_winner(&session.state),
+            elapsed_simulated_sec: read_time_sec(&session.state),
+            ticks: 0,
+            state: session.state.clone(),
+        });
+    }
+
+    let mut ticks = 0u64;
+    while ticks < request.max_ticks {
+        if runtime.winner.is_some() {
+            break;
+        }
+
+        let fast_skip_macro_tick = ticks % 3 == 0;
+
+        runtime.speed = request.speed.max(0.0);
+        runtime.running = true;
+        runtime.time_sec += dt;
+        session.tick_index = session.tick_index.saturating_add(1);
+
+        spawn_waves_if_due(&mut runtime, session);
+        move_champions(&mut runtime, dt);
+        if fast_skip_macro_tick {
+            place_wards(&mut runtime);
+            process_sweepers(&mut runtime);
+        }
+        move_minions(&mut runtime, dt);
+        resolve_minion_combat(&mut runtime);
+        resolve_champion_combat(&mut runtime);
+        resolve_structure_combat(&mut runtime);
+        tick_neutral_timers(&mut runtime);
+        cleanup_tick(&mut runtime);
+        process_telemetry(&mut runtime, session);
+
+        ticks = ticks.saturating_add(1);
+        if runtime.winner.is_some() {
+            runtime.running = false;
+            break;
+        }
+    }
+
+    runtime.extra.remove(SKIP_FAST_MODE_EXTRA_KEY);
+    session.telemetry.config.enabled = previous_telemetry_enabled;
+    session.lane_combat_state_by_champion = runtime.lane_combat_state_by_champion.clone();
+    session.state = serde_json::to_value(runtime)
+        .map_err(|err| format!("failed to encode lol_sim_v2 runtime state: {err}"))?;
+
+    Ok(LolSimV2SkipToEndResponse {
+        session_id: request.session_id,
+        winner: read_winner(&session.state),
+        elapsed_simulated_sec: read_time_sec(&session.state),
+        ticks,
+        state: session.state.clone(),
+    })
+}
+
 fn default_run_to_completion_dt_sec() -> f64 {
     0.2
 }
@@ -543,6 +679,18 @@ fn default_run_to_completion_speed() -> f64 {
 
 fn default_run_to_completion_max_ticks() -> u64 {
     3600
+}
+
+fn default_skip_to_end_dt_sec() -> f64 {
+    default_run_to_completion_dt_sec()
+}
+
+fn default_skip_to_end_speed() -> f64 {
+    default_run_to_completion_speed()
+}
+
+fn default_skip_to_end_max_ticks() -> u64 {
+    default_run_to_completion_max_ticks()
 }
 
 fn next_run_to_completion_suffix() -> u128 {
@@ -1336,7 +1484,11 @@ struct RuntimeTeamBuffState {
     cloud_stacks: i64,
     hextech_stacks: i64,
     chemtech_stacks: i64,
+    #[serde(default)]
+    voidgrub_stacks: i64,
     dragon_stacks: i64,
+    #[serde(default)]
+    dragon_history: Vec<String>,
     soul_kind: Option<String>,
 }
 
@@ -1351,7 +1503,9 @@ impl Default for RuntimeTeamBuffState {
             cloud_stacks: 0,
             hextech_stacks: 0,
             chemtech_stacks: 0,
+            voidgrub_stacks: 0,
             dragon_stacks: 0,
+            dragon_history: Vec::new(),
             soul_kind: None,
         }
     }
@@ -1598,7 +1752,8 @@ const TOWER_ATTACK_CADENCE_SEC: f64 = 1.0;
 const TOWER_AGGRO_LOCK_SEC: f64 = 2.6;
 const TOWER_AGGRO_VICTIM_RADIUS: f64 = 0.09;
 const TOWER_AGGRO_ATTACKER_RADIUS: f64 = 0.10;
-const EVENT_CAP: usize = 80;
+const EVENT_CAP: usize = 200;
+const SKIP_FAST_MODE_EXTRA_KEY: &str = "skipFastMode";
 const MINION_MELEE_MAX_HP: f64 = 118.0;
 const MINION_MELEE_MOVE_SPEED: f64 = 0.068;
 const MINION_MELEE_ATTACK_RANGE: f64 = 0.035;
@@ -1636,6 +1791,8 @@ const BARON_SECURE_GOLD: i64 = 80;
 const BARON_SECURE_XP: i64 = 140;
 const OBJECTIVE_SECURE_GOLD: i64 = 45;
 const OBJECTIVE_SECURE_XP: i64 = 90;
+const VOIDGRUB_TOWER_DAMAGE_PER_STACK: f64 = 0.03;
+const VOIDGRUB_TOWER_DAMAGE_MAX: f64 = 0.09;
 const OBJECTIVE_NEXT_SPAWN_FALLBACK: f64 = 9_999_999.0;
 const NAV_GRID_SIZE: usize = 120;
 const NAV_PATH_MIN_DIRECT_DIST: f64 = 0.012;
@@ -1643,8 +1800,8 @@ const NAV_PATH_TRIVIAL_NODE_EPSILON: f64 = 0.0095;
 const ITEM_COST_MULTIPLIER: f64 = 0.32;
 const ITEM_COST_MIN: i64 = 300;
 const SUPPORT_CS_MIN_INTERVAL_SEC: f64 = 24.0;
-const SUPPORT_ROAM_UNLOCK_AT_SEC: f64 = 2.5 * 60.0;
-const SUPPORT_OPEN_ROAM_AT_SEC: f64 = 10.0 * 60.0;
+const SUPPORT_ROAM_UNLOCK_AT_SEC: f64 = 15.0 * 60.0;
+const SUPPORT_OPEN_ROAM_AT_SEC: f64 = 15.0 * 60.0;
 const SUMMONER_FLASH_CD_SEC: f64 = 300.0;
 const SUMMONER_IGNITE_CD_SEC: f64 = 180.0;
 const SUMMONER_HEAL_CD_SEC: f64 = 240.0;
@@ -2437,12 +2594,18 @@ fn team_buffs_ref<'a>(buffs: &'a RuntimeBuffState, team: &str) -> &'a RuntimeTea
 }
 
 fn current_dragon_kind(neutral_timers: &NeutralTimersRuntime) -> String {
-    neutral_timers
+    let raw = neutral_timers
         .extra
         .get("dragonCurrentKind")
         .and_then(Value::as_str)
-        .map(|kind| kind.to_string())
-        .unwrap_or_else(|| "infernal".to_string())
+        .unwrap_or("infernal")
+        .trim()
+        .to_lowercase();
+
+    match raw.as_str() {
+        "infernal" | "ocean" | "mountain" | "cloud" | "hextech" | "chemtech" => raw,
+        _ => "infernal".to_string(),
+    }
 }
 
 fn set_current_dragon_kind(neutral_timers: &mut NeutralTimersRuntime, kind: &str) {
@@ -2454,6 +2617,19 @@ fn set_current_dragon_kind(neutral_timers: &mut NeutralTimersRuntime, kind: &str
 fn choose_different_dragon_kind(base_kind: &str, seed: i64) -> &'static str {
     const KINDS: [&str; 6] = ["infernal", "ocean", "mountain", "cloud", "hextech", "chemtech"];
     let mut options: Vec<&str> = KINDS.into_iter().filter(|kind| *kind != base_kind).collect();
+    if options.is_empty() {
+        return "infernal";
+    }
+    let idx = (seed.unsigned_abs() as usize) % options.len();
+    options.swap_remove(idx)
+}
+
+fn choose_dragon_kind_excluding(excluded: &[&str], seed: i64) -> &'static str {
+    const KINDS: [&str; 6] = ["infernal", "ocean", "mountain", "cloud", "hextech", "chemtech"];
+    let mut options: Vec<&str> = KINDS
+        .into_iter()
+        .filter(|kind| !excluded.iter().any(|excluded_kind| excluded_kind == kind))
+        .collect();
     if options.is_empty() {
         return "infernal";
     }
@@ -3588,6 +3764,19 @@ fn trade_confidence_score(features: TradeConfidenceFeatures) -> f64 {
     clamp_ratio_01(sigmoid(logit))
 }
 
+fn calibrate_trade_confidence(raw_confidence: f64) -> f64 {
+    let raw = clamp_ratio_01(raw_confidence);
+
+    // Telemetry-driven reliability correction:
+    // very high raw confidence (>= 0.8) was over-optimistic in AFK runs.
+    if raw <= 0.7 {
+        return raw;
+    }
+
+    // Compress the high-confidence tail while keeping ordering stable.
+    0.7 + (raw - 0.7) * 0.35
+}
+
 fn trade_confidence_features(
     champion: &ChampionRuntime,
     enemy: &ChampionRuntime,
@@ -3905,11 +4094,11 @@ fn evaluate_open_trade_window(
     }
 
     let features = trade_confidence_features(champion, enemy, now, champions, minions, structures);
-    let confidence = trade_confidence_score(features);
+    let confidence = calibrate_trade_confidence(trade_confidence_score(features));
     let hp_gap = enemy_hp_ratio - (hp_ratio + 0.08);
     let wave_gap = pressure.enemy_lane_minions as i64 - pressure.ally_lane_minions as i64;
     let score_gap = pressure.enemy_score - (pressure.ally_score + 0.05);
-    let borderline_reject = !rule_decision && hp_gap <= 0.05 && wave_gap <= 1 && score_gap <= 0.2;
+    let borderline_reject = !rule_decision && hp_gap <= 0.08 && wave_gap <= 2 && score_gap <= 0.35;
     let hybrid_decision =
         rule_decision || (borderline_reject && confidence >= policy.hybrid_open_trade_confidence_high);
 
@@ -4060,13 +4249,13 @@ fn evaluate_disengage_champion_trade(
     }
 
     let features = trade_confidence_features(champion, enemy, now, champions, minions, structures);
-    let confidence = trade_confidence_score(features);
+    let confidence = calibrate_trade_confidence(trade_confidence_score(features));
     let pressure_margin = enemy_pressure - (allied_pressure + 0.7);
     let hp_margin = (self_hp_ratio + policy.trade_hp_disadvantage_allowance) - enemy_hp_ratio;
     let leash_margin = dist(enemy.pos, lane_anchor) - policy.lane_chase_leash_radius;
     let borderline_risk = !rule_decision
-        && (pressure_margin > -0.35 || hp_margin < 0.08 || leash_margin > -0.015)
-        && (self_hp_ratio < policy.trade_retreat_hp_ratio + 0.12);
+        && (pressure_margin > -0.2 || hp_margin < 0.04 || leash_margin > -0.008)
+        && (self_hp_ratio < policy.trade_retreat_hp_ratio + 0.08);
     let hybrid_decision =
         rule_decision || (borderline_risk && confidence <= policy.hybrid_disengage_confidence_low);
 
@@ -5507,6 +5696,10 @@ fn move_minions(runtime: &mut RuntimeState, dt: f64) {
                 runtime.minions[i].alive = false;
                 continue;
             }
+            let lane_push_summon = runtime.minions[i].summon_kind.as_deref() == Some("herald");
+            if lane_push_summon {
+                // Herald acts as a lane pusher summon, not an owner-orbit pet.
+            } else {
             let owner_id = runtime.minions[i].owner_champion_id.clone();
             let owner = owner_id
                 .as_ref()
@@ -5532,6 +5725,7 @@ fn move_minions(runtime: &mut RuntimeState, dt: f64) {
             runtime.minions[i].pos.x = clamp(runtime.minions[i].pos.x, 0.01, 0.99);
             runtime.minions[i].pos.y = clamp(runtime.minions[i].pos.y, 0.01, 0.99);
             continue;
+            }
         }
 
         let snapshot = runtime.minions[i].clone();
@@ -7058,6 +7252,127 @@ fn next_summon_id(runtime: &mut RuntimeState) -> String {
     format!("summon-{next}")
 }
 
+fn set_rift_herald_charge(runtime: &mut RuntimeState, killer_team: &str, killer_id: &str) {
+    runtime
+        .extra
+        .insert("heraldReady".to_string(), Value::from(true));
+    runtime
+        .extra
+        .insert("heraldTeam".to_string(), Value::from(normalized_team(killer_team)));
+    runtime
+        .extra
+        .insert("heraldCarrierId".to_string(), Value::from(killer_id));
+}
+
+fn clear_rift_herald_charge(runtime: &mut RuntimeState) {
+    runtime
+        .extra
+        .insert("heraldReady".to_string(), Value::from(false));
+    runtime.extra.remove("heraldTeam");
+    runtime.extra.remove("heraldCarrierId");
+}
+
+fn maybe_deploy_rift_herald_charge(runtime: &mut RuntimeState) {
+    let ready = runtime
+        .extra
+        .get("heraldReady")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if !ready {
+        return;
+    }
+
+    let carrier_id = runtime
+        .extra
+        .get("heraldCarrierId")
+        .and_then(Value::as_str)
+        .map(|value| value.to_string());
+    let herald_team = runtime
+        .extra
+        .get("heraldTeam")
+        .and_then(Value::as_str)
+        .map(normalized_team)
+        .unwrap_or("blue")
+        .to_string();
+
+    let carrier_idx = if let Some(carrier_id) = carrier_id {
+        runtime
+            .champions
+            .iter()
+            .position(|champion| champion.alive && champion.id == carrier_id)
+    } else {
+        runtime
+            .champions
+            .iter()
+            .position(|champion| champion.alive && normalized_team(&champion.team) == normalized_team(&herald_team) && champion.role == "JGL")
+    };
+
+    let Some(carrier_idx) = carrier_idx else {
+        return;
+    };
+
+    let carrier = runtime.champions[carrier_idx].clone();
+    let enemy_tower_idx = runtime
+        .structures
+        .iter()
+        .enumerate()
+        .filter(|(_, structure)| {
+            structure.alive
+                && structure.kind == "tower"
+                && normalized_lane(&structure.lane) == normalized_lane(&carrier.lane)
+                && is_structure_targetable(&runtime.structures, &carrier.team, structure)
+        })
+        .min_by(|(idx_a, a), (idx_b, b)| {
+            dist(a.pos, carrier.pos)
+                .partial_cmp(&dist(b.pos, carrier.pos))
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| idx_a.cmp(idx_b))
+        })
+        .map(|(idx, _)| idx);
+
+    let Some(enemy_tower_idx) = enemy_tower_idx else {
+        clear_rift_herald_charge(runtime);
+        return;
+    };
+
+    let enemy_tower_pos = runtime.structures[enemy_tower_idx].pos;
+    if dist(carrier.pos, enemy_tower_pos) > 0.12 {
+        return;
+    }
+
+    let summon = MinionRuntime {
+        id: format!("herald-{}", next_summon_id(runtime)),
+        team: carrier.team.clone(),
+        lane: carrier.lane.clone(),
+        pos: Vec2 {
+            x: clamp(carrier.pos.x + 0.012, 0.01, 0.99),
+            y: clamp(carrier.pos.y + 0.012, 0.01, 0.99),
+        },
+        hp: 420.0,
+        max_hp: 420.0,
+        alive: true,
+        kind: "summon".to_string(),
+        last_hit_by_champion_id: None,
+        owner_champion_id: None,
+        summon_kind: Some("herald".to_string()),
+        summon_expires_at: runtime.time_sec + 55.0,
+        attack_cd_until: runtime.time_sec,
+        move_speed: 0.058,
+        attack_range: 0.065,
+        attack_damage: 34.0,
+        path: lane_path_for(&carrier.team, &carrier.lane),
+        path_index: 0,
+    };
+
+    runtime.minions.push(summon);
+    log_event(
+        runtime,
+        &format!("{} deployed rift herald", normalized_team(&carrier.team).to_uppercase()),
+        "info",
+    );
+    clear_rift_herald_charge(runtime);
+}
+
 fn try_cast_special_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> Option<bool> {
     let champion = runtime.champions.get(champion_idx)?.clone();
     let key = champion.champion_id.to_lowercase();
@@ -7839,6 +8154,10 @@ fn mark_neutral_taken(
     let killer_role = runtime.champions[champion_idx].role.clone();
 
     if is_jungle_camp_key(key) {
+        if killer_role == "SUP" && runtime.time_sec >= SUPPORT_OPEN_ROAM_AT_SEC {
+            log_event(runtime, &format!("{} skipped {}", killer_name, timer_label), "info");
+            return;
+        }
         if let Some((gold, xp)) = jungle_camp_reward(key) {
             let (award_gold, award_xp) = if killer_role == "JGL" {
                 (
@@ -7909,6 +8228,29 @@ fn mark_neutral_taken(
         return;
     }
 
+    if key == "herald" {
+        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD + 20, OBJECTIVE_SECURE_XP + 30);
+        set_rift_herald_charge(runtime, &killer_team, &killer_id);
+        log_event(
+            runtime,
+            &format!("{} secured rift herald", normalized_team(&killer_team).to_uppercase()),
+            "info",
+        );
+        return;
+    }
+
+    if key == "voidgrubs" {
+        // Voidgrubs stacks are awarded incrementally while damaging the camp.
+        // At kill time we only grant completion rewards.
+        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD, OBJECTIVE_SECURE_XP);
+        log_event(
+            runtime,
+            &format!("{} cleared voidgrub camp", normalized_team(&killer_team).to_uppercase()),
+            "info",
+        );
+        return;
+    }
+
     if is_objective_neutral_key(key) {
         add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD, OBJECTIVE_SECURE_XP);
         log_event(
@@ -7934,6 +8276,12 @@ fn attack_neutral_if_in_range(
     if champion_idx >= runtime.champions.len() || !runtime.champions[champion_idx].alive {
         return false;
     }
+    if runtime.champions[champion_idx].role == "SUP"
+        && runtime.time_sec >= SUPPORT_OPEN_ROAM_AT_SEC
+        && is_jungle_camp_key(key)
+    {
+        return false;
+    }
 
     let distance = dist(runtime.champions[champion_idx].pos, timer.pos);
     let max_range = if is_objective_neutral_key(key) {
@@ -7949,9 +8297,45 @@ fn attack_neutral_if_in_range(
     runtime.champions[champion_idx].attack_cd_until = runtime.time_sec + 0.78;
 
     let mut killed = false;
+    let mut voidgrub_segments_gained: i64 = 0;
     if let Some(timer_mut) = neutral_timers.entities.get_mut(key) {
+        let prev_hp = timer_mut.hp;
         timer_mut.hp -= damage;
         killed = timer_mut.hp <= 0.0;
+
+        if key == "voidgrubs" {
+            let prev_ratio = (prev_hp / timer_mut.max_hp).clamp(0.0, 1.0);
+            let next_ratio = (timer_mut.hp.max(0.0) / timer_mut.max_hp).clamp(0.0, 1.0);
+            let prev_segments_cleared = ((1.0 - prev_ratio) * 3.0).floor() as i64;
+            let next_segments_cleared = ((1.0 - next_ratio) * 3.0).floor() as i64;
+            voidgrub_segments_gained = (next_segments_cleared - prev_segments_cleared).max(0);
+        }
+    }
+
+    if key == "voidgrubs" && voidgrub_segments_gained > 0 {
+        let killer_team = runtime.champions[champion_idx].team.clone();
+        let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+        {
+            let team_buffs = team_buffs_mut(&mut buffs, &killer_team);
+            team_buffs.voidgrub_stacks = (team_buffs.voidgrub_stacks + voidgrub_segments_gained).clamp(0, 3);
+        }
+        set_runtime_buffs(runtime, &buffs);
+
+        let killer_id = runtime.champions[champion_idx].id.clone();
+        add_gold_xp_to_champion(
+            runtime,
+            &killer_id,
+            (OBJECTIVE_SECURE_GOLD / 3) * voidgrub_segments_gained,
+            (OBJECTIVE_SECURE_XP / 3) * voidgrub_segments_gained,
+        );
+
+        for _ in 0..voidgrub_segments_gained {
+            log_event(
+                runtime,
+                &format!("{} secured voidgrub", normalized_team(&killer_team).to_uppercase()),
+                "info",
+            );
+        }
     }
     if killed {
         mark_neutral_taken(runtime, neutral_timers, key, Some(champion_idx));
@@ -8074,10 +8458,27 @@ fn tick_neutral_timers(runtime: &mut RuntimeState) {
             if timer.alive {
                 if let Some(grace_until) = timer.combat_grace_until {
                     if now >= grace_until {
+                        let had_remaining_hp = timer.hp > 0.0;
                         timer.alive = false;
                         timer.hp = 0.0;
                         timer.next_spawn_at = None;
                         despawn_text = Some(format!("{} despawned", timer.label));
+
+                        if key == "voidgrubs" && had_remaining_hp {
+                            let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+                            let total = (buffs.blue.voidgrub_stacks + buffs.red.voidgrub_stacks).clamp(0, 3);
+                            let remaining = (3 - total).max(0);
+                            if remaining > 0 {
+                                let winner_team = if buffs.red.voidgrub_stacks > buffs.blue.voidgrub_stacks {
+                                    "red"
+                                } else {
+                                    "blue"
+                                };
+                                let target = team_buffs_mut(&mut buffs, winner_team);
+                                target.voidgrub_stacks = (target.voidgrub_stacks + remaining).clamp(0, 3);
+                                set_runtime_buffs(runtime, &buffs);
+                            }
+                        }
                     }
                 }
             }
@@ -8650,6 +9051,10 @@ fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut Neutr
     {
         let team_buffs = team_buffs_mut(&mut buffs, killer_team);
         add_dragon_stack_for_kind(team_buffs, &dragon_kind);
+        if team_buffs.dragon_history.len() >= 8 {
+            team_buffs.dragon_history.remove(0);
+        }
+        team_buffs.dragon_history.push(dragon_kind.clone());
     }
 
     let total_dragons = buffs.blue.dragon_stacks + buffs.red.dragon_stacks;
@@ -8661,19 +9066,33 @@ fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut Neutr
         let second_kind = choose_different_dragon_kind(&dragon_kind, runtime.time_sec as i64 + runtime.events.len() as i64);
         set_current_dragon_kind(neutral_timers, second_kind);
     } else if total_dragons == 2 {
+        let first_kind = neutral_timers
+            .extra
+            .get("dragonFirstKind")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("")
+            .to_string();
         neutral_timers
             .extra
             .insert("dragonSecondKind".to_string(), Value::from(dragon_kind.as_str()));
+        let rift_kind = choose_dragon_kind_excluding(
+            &[first_kind.as_str(), dragon_kind.as_str()],
+            runtime.time_sec as i64 + runtime.events.len() as i64 + 37,
+        );
         neutral_timers
             .extra
-            .insert("dragonSoulRiftKind".to_string(), Value::from(dragon_kind.as_str()));
-        set_current_dragon_kind(neutral_timers, &dragon_kind);
+            .insert("dragonSoulRiftKind".to_string(), Value::from(rift_kind));
+        set_current_dragon_kind(neutral_timers, rift_kind);
     }
 
     let soul_rift_kind = neutral_timers
         .extra
         .get("dragonSoulRiftKind")
         .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
         .unwrap_or(dragon_kind.as_str())
         .to_string();
 
@@ -8695,7 +9114,7 @@ fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut Neutr
             elder.unlocked = true;
             elder.next_spawn_at = Some(runtime.time_sec + 6.0 * 60.0);
         }
-    } else {
+    } else if total_dragons != 1 {
         set_current_dragon_kind(neutral_timers, &soul_rift_kind);
     }
 
@@ -8744,6 +9163,14 @@ fn prerequisite_tower_alive(structures: &[StructureRuntime], structure_id: &str)
         let prerequisite = structure_id.replace("-inhib-tower", "-inner");
         return Some(structure_alive_by_id(structures, &prerequisite));
     }
+    if structure_id.contains("-nexus-top-tower") {
+        let prerequisite = structure_id.replace("-nexus-top-tower", "-inhib-top");
+        return Some(structure_alive_by_id(structures, &prerequisite));
+    }
+    if structure_id.contains("-nexus-bot-tower") {
+        let prerequisite = structure_id.replace("-nexus-bot-tower", "-inhib-bot");
+        return Some(structure_alive_by_id(structures, &prerequisite));
+    }
     None
 }
 
@@ -8790,7 +9217,14 @@ fn apply_damage_to_structure(runtime: &mut RuntimeState, structure_idx: usize, r
     }
 
     let multiplier = tower_damage_multiplier(runtime.time_sec, &runtime.structures[structure_idx]);
-    let damage = raw_damage.max(0.0) * multiplier;
+    let mut damage = raw_damage.max(0.0) * multiplier;
+    if runtime.structures[structure_idx].kind == "tower" {
+        let buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), attacker_team);
+        let voidgrub_bonus = (buffs.voidgrub_stacks as f64 * VOIDGRUB_TOWER_DAMAGE_PER_STACK)
+            .min(VOIDGRUB_TOWER_DAMAGE_MAX)
+            .max(0.0);
+        damage *= 1.0 + voidgrub_bonus;
+    }
     if damage <= 0.0 {
         return;
     }
@@ -8824,6 +9258,9 @@ fn add_cs_to_champion(runtime: &mut RuntimeState, champion_id: &str, cs: i64) {
         .iter_mut()
         .find(|champion| champion.id == champion_id)
     {
+        if champion.role == "SUP" && runtime.time_sec >= SUPPORT_OPEN_ROAM_AT_SEC {
+            return;
+        }
         champion.cs += cs;
     }
 }
@@ -9403,7 +9840,20 @@ fn push_event(events: &mut Vec<RuntimeEvent>, at: f64, text: &str, kind: &str) {
 }
 
 fn log_event(runtime: &mut RuntimeState, text: &str, kind: &str) {
+    if runtime_is_skip_fast_mode(runtime)
+        && !matches!(kind, "kill" | "tower" | "dragon" | "baron" | "nexus")
+    {
+        return;
+    }
     push_event(&mut runtime.events, runtime.time_sec, text, kind);
+}
+
+fn runtime_is_skip_fast_mode(runtime: &RuntimeState) -> bool {
+    runtime
+        .extra
+        .get(SKIP_FAST_MODE_EXTRA_KEY)
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
 }
 
 fn team_stats_mut<'a>(stats: &'a mut RuntimeStats, team: &str) -> &'a mut RuntimeTeamStats {
@@ -9815,6 +10265,57 @@ mod tests {
         red_inhib.hp = 200.0;
 
         let mut runtime = test_runtime(vec![], vec![blue], vec![red_inhib], neutral);
+        let hp_before = runtime.structures[0].hp;
+
+        resolve_minion_combat(&mut runtime);
+
+        assert!(runtime.structures[0].hp < hp_before);
+    }
+
+    #[test]
+    fn minion_cannot_target_nexus_tower_while_lane_inhib_alive() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut blue = test_minion("m-blue-1", "blue", "top", Vec2 { x: 0.846, y: 0.133 });
+        blue.attack_damage = 10.0;
+        blue.attack_range = 0.06;
+
+        let mut red_nexus_top_tower =
+            test_structure("red-nexus-top-tower", "red", "base", Vec2 { x: 0.845703125, y: 0.1328125 });
+        red_nexus_top_tower.hp = 200.0;
+        let red_inhib_top = test_structure("red-inhib-top", "red", "base", Vec2 { x: 0.7545572916666666, y: 0.09114583333333333 });
+
+        let mut runtime = test_runtime(vec![], vec![blue], vec![red_nexus_top_tower, red_inhib_top], neutral);
+        let hp_before = runtime.structures[0].hp;
+
+        resolve_minion_combat(&mut runtime);
+
+        assert_eq!(runtime.structures[0].hp, hp_before);
+    }
+
+    #[test]
+    fn minion_can_target_nexus_tower_after_lane_inhib_is_down() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut blue = test_minion("m-blue-1", "blue", "top", Vec2 { x: 0.846, y: 0.133 });
+        blue.attack_damage = 10.0;
+        blue.attack_range = 0.06;
+
+        let mut red_nexus_top_tower =
+            test_structure("red-nexus-top-tower", "red", "base", Vec2 { x: 0.845703125, y: 0.1328125 });
+        red_nexus_top_tower.hp = 200.0;
+
+        let mut runtime = test_runtime(vec![], vec![blue], vec![red_nexus_top_tower], neutral);
         let hp_before = runtime.structures[0].hp;
 
         resolve_minion_combat(&mut runtime);
@@ -10598,6 +11099,64 @@ mod tests {
         let blue_buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), "blue");
         assert_eq!(blue_buffs.dragon_stacks, 4);
         assert_eq!(blue_buffs.soul_kind.as_deref(), Some("infernal"));
+    }
+
+    #[test]
+    fn dragon_cycle_progresses_a_b_then_soul_rift_c_repeats() {
+        let mut entities = HashMap::new();
+        let mut dragon = test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true);
+        dragon.next_spawn_at = Some(0.0);
+        entities.insert("dragon".to_string(), dragon);
+
+        let mut elder = test_neutral_timer("elder", Vec2 { x: 0.6738, y: 0.7031 }, false);
+        elder.unlocked = false;
+        elder.next_spawn_at = None;
+        entities.insert("elder".to_string(), elder);
+
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities,
+            extra: HashMap::new(),
+        };
+
+        let killer_blue = test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
+        let killer_red = test_champion("jgl-red", "red", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
+        let mut runtime = test_runtime(vec![killer_blue, killer_red], vec![], vec![], neutral);
+
+        let mut timers = decode_neutral_timers_state(&runtime.neutral_timers)
+            .unwrap_or_else(|| panic!("failed to decode neutral timers"));
+
+        runtime.time_sec = 600.0;
+        let first_kind = process_dragon_capture(&mut runtime, &mut timers, "blue");
+        runtime.time_sec += 5.0;
+        let second_kind = process_dragon_capture(&mut runtime, &mut timers, "red");
+        runtime.time_sec += 5.0;
+        let third_kind = process_dragon_capture(&mut runtime, &mut timers, "blue");
+        runtime.time_sec += 5.0;
+        let fourth_kind = process_dragon_capture(&mut runtime, &mut timers, "red");
+
+        assert_ne!(first_kind, second_kind);
+        assert_ne!(third_kind, first_kind);
+        assert_ne!(third_kind, second_kind);
+        assert_eq!(fourth_kind, third_kind);
+
+        assert_eq!(
+            timers.extra.get("dragonFirstKind").and_then(Value::as_str),
+            Some(first_kind.as_str())
+        );
+        assert_eq!(
+            timers.extra.get("dragonSecondKind").and_then(Value::as_str),
+            Some(second_kind.as_str())
+        );
+        assert_eq!(
+            timers.extra.get("dragonSoulRiftKind").and_then(Value::as_str),
+            Some(third_kind.as_str())
+        );
+        assert_eq!(
+            timers.extra.get("dragonCurrentKind").and_then(Value::as_str),
+            Some(third_kind.as_str())
+        );
     }
 
     #[test]

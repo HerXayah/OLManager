@@ -126,6 +126,21 @@ export interface LolSimV1RunToCompletionResponse {
   elapsedSimulatedSec: number;
 }
 
+export interface LolSimV1SkipToEndRequest {
+  sessionId: string;
+  dtSec?: number;
+  speed?: number;
+  maxTicks?: number;
+}
+
+export interface LolSimV1SkipToEndResponse {
+  sessionId: string;
+  state: LolSimV1RuntimeState;
+  winner: TeamId | null;
+  ticks: number;
+  elapsedSimulatedSec: number;
+}
+
 export interface LolSimV1MatchReportEventInput {
   t: number;
   text: string;

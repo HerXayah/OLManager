@@ -17,8 +17,8 @@ const DEFAULT_SETTINGS = {
   confirm_advance: false,
   ui_scale: "normal",
   high_contrast: false,
-  lol_hybrid_open_trade_confidence_high: 0.63,
-  lol_hybrid_disengage_confidence_low: 0.38,
+  lol_hybrid_open_trade_confidence_high: 0.6,
+  lol_hybrid_disengage_confidence_low: 0.32,
 } as const;
 
 beforeEach(() => {

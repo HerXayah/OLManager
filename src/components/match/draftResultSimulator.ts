@@ -88,7 +88,9 @@ export interface DraftTimelineEvent {
     | "herald"
     | "baron"
     | "turret"
-    | "inhibitor";
+    | "inhibitor"
+    | "nexus_turret"
+    | "nexus";
   label: string;
 }
 
@@ -707,22 +709,30 @@ export function simulateDraftMatchResult(params: {
     nextBaronSpawn = takeMinute + 6;
   }
 
-  // Torres/Inhibidores: escalado más realista por duración
-  const winnerTowers = clamp(Math.round(2 + durationMinutes * 0.14 + rand() * 1.5), 4, 11);
-  const loserTowers = clamp(Math.round(1 + durationMinutes * 0.08 + rand() * 1.3), 1, 8);
+  // Torres/Inhibidores/Nexo: secuencia más parecida a LoL real
+  const winnerTowers = clamp(
+    Math.round(6 + durationMinutes * 0.16 + rand() * 1.4 + Math.abs(powerDiff) / 5),
+    8,
+    11,
+  );
+  const loserTowers = clamp(
+    Math.round(2 + durationMinutes * 0.07 + rand() * 1.1 - Math.abs(powerDiff) / 9),
+    0,
+    8,
+  );
 
-  const adjustedWinnerTowers = Math.max(winnerTowers, loserTowers + 1);
-  const adjustedLoserTowers = Math.min(loserTowers, adjustedWinnerTowers - 1);
+  const adjustedWinnerTowers = Math.max(winnerTowers, loserTowers + 2);
+  const adjustedLoserTowers = Math.min(loserTowers, adjustedWinnerTowers - 2);
 
   const winnerInhibitors = clamp(
-    Math.floor(Math.max(0, adjustedWinnerTowers - 6) / 2) + (rand() < 0.35 ? 1 : 0),
-    0,
+    1 + Math.floor(Math.max(0, adjustedWinnerTowers - 8) / 1.5) + (rand() < 0.35 ? 1 : 0),
+    1,
     3,
   );
   const loserInhibitors = clamp(
-    Math.floor(Math.max(0, adjustedLoserTowers - 8) / 3) + (rand() < 0.1 ? 1 : 0),
+    Math.floor(Math.max(0, adjustedLoserTowers - 8) / 2),
     0,
-    2,
+    1,
   );
 
   if (winnerSide === "blue") {
@@ -737,22 +747,48 @@ export function simulateDraftMatchResult(params: {
     blueObjectives.inhibitors = loserInhibitors;
   }
 
-  for (let i = 0; i < blueObjectives.towers; i += 1) {
-    const minute = clamp(12 + Math.floor(rand() * Math.max(1, durationMinutes - 12)), 12, durationMinutes - 1);
-    timelineEvents.push({ minute, side: "blue", type: "turret", label: "Turret" });
-  }
-  for (let i = 0; i < redObjectives.towers; i += 1) {
-    const minute = clamp(12 + Math.floor(rand() * Math.max(1, durationMinutes - 12)), 12, durationMinutes - 1);
-    timelineEvents.push({ minute, side: "red", type: "turret", label: "Turret" });
-  }
-  for (let i = 0; i < blueObjectives.inhibitors; i += 1) {
-    const minute = clamp(22 + Math.floor(rand() * Math.max(1, durationMinutes - 22)), 22, durationMinutes - 1);
-    timelineEvents.push({ minute, side: "blue", type: "inhibitor", label: "Inhibitor" });
-  }
-  for (let i = 0; i < redObjectives.inhibitors; i += 1) {
-    const minute = clamp(22 + Math.floor(rand() * Math.max(1, durationMinutes - 22)), 22, durationMinutes - 1);
-    timelineEvents.push({ minute, side: "red", type: "inhibitor", label: "Inhibitor" });
-  }
+  const pushTimedEvents = (
+    side: Side,
+    type: DraftTimelineEvent["type"],
+    label: string,
+    count: number,
+    startMinute: number,
+    endMinute: number,
+  ) => {
+    if (count <= 0) return;
+    const start = clamp(startMinute, 1, Math.max(1, durationMinutes - 1));
+    const end = clamp(endMinute, start, Math.max(start, durationMinutes - 1));
+    for (let i = 0; i < count; i += 1) {
+      const ratio = (i + 1) / (count + 1);
+      const minute = Math.round(start + (end - start) * ratio + (rand() - 0.5) * 1.6);
+      timelineEvents.push({
+        minute: clamp(minute, start, end),
+        side,
+        type,
+        label,
+      });
+    }
+  };
+
+  const winnerNonNexusTowers = Math.max(0, adjustedWinnerTowers - 2);
+  const loserNonNexusTowers = adjustedLoserTowers;
+
+  const winnerSideForEndgame: Side = winnerSide;
+  const loserSideForEndgame: Side = winnerSide === "blue" ? "red" : "blue";
+  const winnerInhibCount = winnerSideForEndgame === "blue" ? blueObjectives.inhibitors : redObjectives.inhibitors;
+  const loserInhibCount = loserSideForEndgame === "blue" ? blueObjectives.inhibitors : redObjectives.inhibitors;
+
+  // Distribución de estructuras para que el cierre de partida sea lógico:
+  // el ganador tumba torres de línea + inhibidores + torres de nexo + nexo.
+  pushTimedEvents(loserSideForEndgame, "turret", "Turret", loserNonNexusTowers, 11, Math.max(12, durationMinutes - 10));
+  pushTimedEvents(winnerSideForEndgame, "turret", "Turret", winnerNonNexusTowers, 11, Math.max(12, durationMinutes - 6));
+
+  pushTimedEvents(loserSideForEndgame, "inhibitor", "Inhibitor", loserInhibCount, Math.max(20, durationMinutes - 10), Math.max(21, durationMinutes - 7));
+  pushTimedEvents(winnerSideForEndgame, "inhibitor", "Inhibitor", winnerInhibCount, Math.max(22, durationMinutes - 7), Math.max(23, durationMinutes - 3));
+
+  timelineEvents.push({ minute: Math.max(20, durationMinutes - 2), side: winnerSideForEndgame, type: "nexus_turret", label: "Nexus Turret" });
+  timelineEvents.push({ minute: Math.max(21, durationMinutes - 1), side: winnerSideForEndgame, type: "nexus_turret", label: "Nexus Turret" });
+  timelineEvents.push({ minute: Math.max(22, durationMinutes), side: winnerSideForEndgame, type: "nexus", label: "Nexus" });
 
   timelineEvents.sort((a, b) => a.minute - b.minute);
 
@@ -843,7 +879,10 @@ export function simulateDraftMatchResult(params: {
     return bImpact - aImpact;
   })[0];
 
-  const timelineMinutes = Array.from({ length: Math.floor(durationMinutes / 5) + 1 }, (_, idx) => idx * 5);
+  const timelineMinutes = Array.from({ length: Math.floor(durationMinutes / 2) + 1 }, (_, idx) => idx * 2);
+  if (timelineMinutes[timelineMinutes.length - 1] !== durationMinutes) {
+    timelineMinutes.push(durationMinutes);
+  }
 
   const eventGoldImpact = (event: DraftTimelineEvent): number => {
     const sign = event.side === "blue" ? 1 : -1;
@@ -866,6 +905,10 @@ export function simulateDraftMatchResult(params: {
         return sign * 650;
       case "inhibitor":
         return sign * 850;
+      case "nexus_turret":
+        return sign * 1050;
+      case "nexus":
+        return sign * 2000;
       default:
         return 0;
     }
@@ -874,46 +917,55 @@ export function simulateDraftMatchResult(params: {
   const blueSoulMinute = timelineEvents.find((event) => event.type === "dragon_soul" && event.side === "blue")?.minute;
   const redSoulMinute = timelineEvents.find((event) => event.type === "dragon_soul" && event.side === "red")?.minute;
 
-  const winnerTrendPerMinute =
-    (winnerSide === "blue" ? 1 : -1) *
-    (110 + Math.abs(powerDiff) * 15 + Math.abs(blueKills - redKills) * 5);
+  const blueTotalGold = bluePlayerResults.reduce((sum, player) => sum + player.gold, 0);
+  const redTotalGold = redPlayerResults.reduce((sum, player) => sum + player.gold, 0);
+  let finalGoldDiff = blueTotalGold - redTotalGold;
+  if (finalGoldDiff === 0) {
+    finalGoldDiff = winnerSide === "blue" ? 900 : -900;
+  }
 
-  const goldDiffTimeline = timelineMinutes.map((minute, idx) => {
-    if (idx === 0) return { minute, diff: 0 };
-
-    const eventContribution = timelineEvents
+  const eventContributionByMinute = timelineMinutes.map((minute) => {
+    return timelineEvents
       .filter((event) => event.minute <= minute)
       .reduce((sum, event) => sum + eventGoldImpact(event), 0);
+  });
 
-    const trendContribution = Math.round(winnerTrendPerMinute * minute);
+  const rawDiffTimeline = timelineMinutes.map((minute, idx) => {
+    if (idx === 0) return 0;
+    const progress = clamp(minute / Math.max(1, durationMinutes), 0, 1);
+    const baseCurve = finalGoldDiff * Math.pow(progress, 1.12);
+    const eventContribution = eventContributionByMinute[idx] * 0.42;
 
     let soulMomentum = 0;
     if (typeof blueSoulMinute === "number" && minute > blueSoulMinute) {
-      soulMomentum += (minute - blueSoulMinute) * 40;
+      soulMomentum += (minute - blueSoulMinute) * 32;
     }
     if (typeof redSoulMinute === "number" && minute > redSoulMinute) {
-      soulMomentum -= (minute - redSoulMinute) * 40;
+      soulMomentum -= (minute - redSoulMinute) * 32;
     }
 
-    const jitter = Math.round((rand() - 0.5) * 240 * (1 - minute / Math.max(1, durationMinutes)));
+    const volatility = (1 - progress) * (220 + Math.abs(powerDiff) * 10);
+    const jitter = Math.round((rand() - 0.5) * volatility);
 
-    const diff = clamp(
-      Math.round(eventContribution + trendContribution + soulMomentum + jitter),
-      -20000,
-      20000,
-    );
-    return { minute, diff };
+    return baseCurve + eventContribution + soulMomentum + jitter;
   });
 
-  if (goldDiffTimeline.length > 0) {
-    const last = goldDiffTimeline[goldDiffTimeline.length - 1];
-    if ((winnerSide === "blue" && last.diff < 0) || (winnerSide === "red" && last.diff > 0)) {
-      goldDiffTimeline[goldDiffTimeline.length - 1] = {
-        minute: last.minute,
-        diff: Math.round(-last.diff * 0.65),
-      };
-    }
-  }
+  const rawFirst = rawDiffTimeline[0] ?? 0;
+  const rawLast = rawDiffTimeline[rawDiffTimeline.length - 1] ?? 0;
+  const denominator = rawLast - rawFirst;
+
+  const goldDiffTimeline = timelineMinutes.map((minute, idx) => {
+    const rawValue = rawDiffTimeline[idx] ?? 0;
+    const normalized =
+      Math.abs(denominator) < 1
+        ? (finalGoldDiff * minute) / Math.max(1, durationMinutes)
+        : ((rawValue - rawFirst) / denominator) * finalGoldDiff;
+
+    return {
+      minute,
+      diff: clamp(Math.round(normalized), -22000, 22000),
+    };
+  });
 
   return {
     winnerSide,

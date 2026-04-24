@@ -20,6 +20,7 @@ interface DraftResultScreenProps {
   userSeriesWins?: number;
   opponentSeriesWins?: number;
   canUserChooseSide?: boolean;
+  onPressConference?: () => void;
   onContinue: (nextUserSide?: Side) => void;
 }
 
@@ -97,6 +98,7 @@ export default function DraftResultScreen({
   userSeriesWins = 0,
   opponentSeriesWins = 0,
   canUserChooseSide = false,
+  onPressConference,
   onContinue,
 }: DraftResultScreenProps) {
   const { t } = useTranslation();
@@ -268,6 +270,15 @@ export default function DraftResultScreen({
 
         <div className="flex justify-end">
           <div className="flex items-center gap-2">
+            {onPressConference ? (
+              <button
+                className="rounded-md border border-white/20 bg-white/5 hover:bg-white/10 text-white font-heading font-bold uppercase tracking-wide px-4 py-2"
+                onClick={onPressConference}
+              >
+                {t("match.pressConference", { defaultValue: "Press Conference" })}
+              </button>
+            ) : null}
+
             {canUserChooseSide ? (
               <div className="flex items-center gap-1 rounded-md border border-white/15 bg-[#081028] px-1 py-1">
                 <button
@@ -289,7 +300,9 @@ export default function DraftResultScreen({
               className="rounded-md bg-orange-500 hover:bg-orange-400 text-navy-900 font-heading font-bold uppercase tracking-wide px-6 py-2"
               onClick={() => onContinue()}
             >
-              {seriesLength > 1 ? `Game ${nextGameLabel}` : "Continue"}
+              {seriesLength > 1
+                ? `${t("match.game", { defaultValue: "Game" })} ${nextGameLabel}`
+                : t("match.continue", { defaultValue: "Continue" })}
             </button>
           </div>
         </div>

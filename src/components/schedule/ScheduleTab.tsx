@@ -32,6 +32,8 @@ interface StoredFixtureDraftResult {
   seriesGameIndex?: number;
   userSeriesWins?: number;
   opponentSeriesWins?: number;
+  homeSeriesWins?: number;
+  awaySeriesWins?: number;
 }
 
 const TEAM_LOGO_BY_NORMALIZED_NAME: Record<string, string> = {
@@ -57,26 +59,68 @@ function inferBestOf(fixture: FixtureData): 1 | 3 | 5 {
   return fixture.matchday >= 14 ? 5 : 3;
 }
 
-function normalizeLolScore(fixture: FixtureData): { home: number; away: number } | null {
+function toNonNegativeNumber(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.floor(value));
+}
+
+function normalizeLolScore(
+  fixture: FixtureData,
+  storedResult: StoredFixtureDraftResult | null,
+  userTeamId: string,
+): { home: number; away: number } | null {
   if (!fixture.result) return null;
 
   const bo = inferBestOf(fixture);
-  const rawHome = fixture.result.home_goals;
-  const rawAway = fixture.result.away_goals;
+  const rawHomeWins =
+    toNonNegativeNumber(fixture.result.home_wins) ??
+    toNonNegativeNumber(fixture.result.home_goals);
+  const rawAwayWins =
+    toNonNegativeNumber(fixture.result.away_wins) ??
+    toNonNegativeNumber(fixture.result.away_goals);
+
+  let storedHomeWins = toNonNegativeNumber(storedResult?.homeSeriesWins);
+  let storedAwayWins = toNonNegativeNumber(storedResult?.awaySeriesWins);
+
+  if (
+    (storedHomeWins === null || storedAwayWins === null) &&
+    storedResult?.snapshot &&
+    typeof storedResult.userSeriesWins === "number" &&
+    typeof storedResult.opponentSeriesWins === "number"
+  ) {
+    const isUserHome = storedResult.snapshot.home_team.id === userTeamId;
+    const isUserAway = storedResult.snapshot.away_team.id === userTeamId;
+    if (isUserHome) {
+      storedHomeWins = storedResult.userSeriesWins;
+      storedAwayWins = storedResult.opponentSeriesWins;
+    } else if (isUserAway) {
+      storedHomeWins = storedResult.opponentSeriesWins;
+      storedAwayWins = storedResult.userSeriesWins;
+    }
+  }
 
   if (bo === 1) {
+    const rawHome = rawHomeWins ?? 0;
+    const rawAway = rawAwayWins ?? 0;
     if (rawHome === rawAway) return { home: 0, away: 0 };
     return rawHome > rawAway ? { home: 1, away: 0 } : { home: 0, away: 1 };
   }
 
   const targetWins = bo === 3 ? 2 : 3;
-  const homeWon = rawHome > rawAway;
-  const loserRaw = homeWon ? rawAway : rawHome;
-  const loserWins = Math.max(0, Math.min(targetWins - 1, loserRaw));
+  const resultHomeWins = rawHomeWins !== null ? Math.min(targetWins, rawHomeWins) : null;
+  const resultAwayWins = rawAwayWins !== null ? Math.min(targetWins, rawAwayWins) : null;
+  const preferredHomeWins = storedHomeWins !== null ? Math.min(targetWins, storedHomeWins) : null;
+  const preferredAwayWins = storedAwayWins !== null ? Math.min(targetWins, storedAwayWins) : null;
 
-  return homeWon
-    ? { home: targetWins, away: loserWins }
-    : { home: loserWins, away: targetWins };
+  if (preferredHomeWins !== null && preferredAwayWins !== null) {
+    return { home: preferredHomeWins, away: preferredAwayWins };
+  }
+
+  if (resultHomeWins !== null && resultAwayWins !== null) {
+    return { home: resultHomeWins, away: resultAwayWins };
+  }
+
+  return null;
 }
 
 function getTeamLogoPath(teams: GameStateData["teams"], teamId: string): string | null {
@@ -262,15 +306,16 @@ export default function ScheduleTab({
               <CardBody className="p-0">
                 <div className="divide-y divide-gray-100 dark:divide-navy-600">
                   {fixtures.map((f) => {
+                    const storedDraftResult = readStoredFixtureDraftResult(f.id);
                     const isUserMatch =
                       f.home_team_id === userTeamId ||
                       f.away_team_id === userTeamId;
                     const completed = f.status === "Completed";
                     const bo = inferBestOf(f);
-                    const score = completed ? normalizeLolScore(f) : null;
+                    const score = normalizeLolScore(f, storedDraftResult, userTeamId);
                     const homeLogo = getTeamLogoPath(gameState.teams, f.home_team_id);
                     const awayLogo = getTeamLogoPath(gameState.teams, f.away_team_id);
-                    const hasStoredResult = !!readStoredFixtureDraftResult(f.id);
+                    const hasStoredResult = !!storedDraftResult;
 
                     const userResultTone = (() => {
                       if (!isUserMatch || !completed || !score) return "";

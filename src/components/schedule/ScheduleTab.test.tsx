@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FixtureData, GameStateData, TeamData } from "../../store/gameStore";
 import ScheduleTab from "./ScheduleTab";
@@ -152,6 +152,10 @@ function createGameState(withLeague: boolean): GameStateData {
 }
 
 describe("ScheduleTab", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("renders the empty state when there is no league", () => {
     render(<ScheduleTab gameState={createGameState(false)} onSelectTeam={vi.fn()} />);
 
@@ -167,5 +171,72 @@ describe("ScheduleTab", () => {
     fireEvent.click(screen.getByText("Beta FC"));
 
     expect(onSelectTeam).toHaveBeenCalledWith("team-2");
+  });
+
+  it("renders playoff series score from home_wins and away_wins", () => {
+    const playoffFixture = createFixture({
+      competition: "Playoffs",
+      matchday: 12,
+      result: {
+        home_wins: 2,
+        away_wins: 1,
+      },
+    });
+
+    render(
+      <ScheduleTab
+        gameState={{
+          ...createGameState(true),
+          league: {
+            ...createGameState(true).league!,
+            fixtures: [playoffFixture],
+          },
+        }}
+        onSelectTeam={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("2 - 1")).toBeInTheDocument();
+  });
+
+  it("uses stored fixture series wins when available", () => {
+    const playoffFixture = createFixture({
+      id: "fixture-playoff-1",
+      competition: "Playoffs",
+      matchday: 12,
+      result: {
+        home_goals: 0,
+        away_goals: 0,
+      },
+    });
+
+    localStorage.setItem(
+      "fixture-draft-result:fixture-playoff-1",
+      JSON.stringify({
+        snapshot: {
+          home_team: { id: "team-1", name: "Alpha FC", players: [] },
+          away_team: { id: "team-2", name: "Beta FC", players: [] },
+        },
+        controlledSide: "blue",
+        result: { winnerSide: "blue" },
+        homeSeriesWins: 2,
+        awaySeriesWins: 1,
+      }),
+    );
+
+    render(
+      <ScheduleTab
+        gameState={{
+          ...createGameState(true),
+          league: {
+            ...createGameState(true).league!,
+            fixtures: [playoffFixture],
+          },
+        }}
+        onSelectTeam={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("2 - 1")).toBeInTheDocument();
   });
 });

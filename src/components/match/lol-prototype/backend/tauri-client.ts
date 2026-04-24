@@ -7,6 +7,8 @@ import type {
   LolSimV1RunToCompletionRequest,
   LolSimV1RunToCompletionResponse,
   LolSimV1ResetRequest,
+  LolSimV1SkipToEndRequest,
+  LolSimV1SkipToEndResponse,
   LolSimV1StateResponse,
   LolSimV1TickRequest,
 } from "./contract-v1";
@@ -31,6 +33,12 @@ export async function lolSimV2RunToCompletion(
   request: LolSimV1RunToCompletionRequest,
 ): Promise<LolSimV1RunToCompletionResponse> {
   return invoke<LolSimV1RunToCompletionResponse>("lol_sim_v2_run_to_completion", { request });
+}
+
+export async function lolSimV2SkipToEnd(
+  request: LolSimV1SkipToEndRequest,
+): Promise<LolSimV1SkipToEndResponse> {
+  return invoke<LolSimV1SkipToEndResponse>("lol_sim_v2_skip_to_end", { request });
 }
 
 export interface LolSimV2ClearTelemetryResponse {
@@ -69,5 +77,9 @@ export class LolSimV2Client {
 
   async dispose(): Promise<LolSimV1DisposeResponse> {
     return lolSimV2Dispose({ sessionId: this.sessionId });
+  }
+
+  async skipToEnd(request?: Omit<LolSimV1SkipToEndRequest, "sessionId">): Promise<LolSimV1SkipToEndResponse> {
+    return lolSimV2SkipToEnd({ sessionId: this.sessionId, ...(request ?? {}) });
   }
 }
