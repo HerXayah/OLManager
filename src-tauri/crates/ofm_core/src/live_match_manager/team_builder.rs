@@ -62,11 +62,13 @@ pub(super) fn build_team_with_bench(game: &Game, team_id: &str) -> (TeamData, Ve
         None => ("Unknown".into(), "4-4-2".into(), PlayStyle::Balanced),
     };
 
-    // Collect all available (non-injured) players for this team
+    // Collect all players for this team.
+    // NOTE: For LoL/live prototype we should not apply football injury filtering,
+    // otherwise rosters can drop below 5 and UI shows empty player slots.
     let available_players: Vec<&domain::player::Player> = game
         .players
         .iter()
-        .filter(|p| p.team_id.as_deref() == Some(team_id) && p.injury.is_none())
+        .filter(|p| p.team_id.as_deref() == Some(team_id))
         .collect();
     let mut used_ids = std::collections::HashSet::new();
     let mut starting_xi = Vec::with_capacity(5);

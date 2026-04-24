@@ -395,13 +395,14 @@ fn auto_select_set_pieces_prefers_high_shooting_penalty() {
 }
 
 // ---------------------------------------------------------------------------
-// Injured players excluded from starting XI
+// LoL roster should ignore football injuries
 // ---------------------------------------------------------------------------
 
 #[test]
-fn injured_players_excluded_from_xi() {
+fn injuries_do_not_reduce_lol_starting_five() {
     let mut game = make_game_with_fixture();
-    // Injure all but 11 players on team1
+    // Injure all players on team1 (football-domain data).
+    // For LoL prototype roster build, this must NOT reduce to <5 players.
     let team1_players: Vec<String> = game
         .players
         .iter()
@@ -409,8 +410,7 @@ fn injured_players_excluded_from_xi() {
         .map(|p| p.id.clone())
         .collect();
 
-    // Injure some players
-    for id in &team1_players[11..] {
+    for id in &team1_players {
         if let Some(p) = game.players.iter_mut().find(|p| p.id == *id) {
             p.injury = Some(domain::player::Injury {
                 name: "Hamstring".to_string(),
@@ -423,10 +423,10 @@ fn injured_players_excluded_from_xi() {
         live_match_manager::create_live_match(&game, 0, MatchMode::Instant, false).unwrap();
     let snap = session.snapshot();
 
-    // The starting XI should only have non-injured players
-    assert!(
-        snap.home_team.players.len() <= 11,
-        "Starting XI should have at most 11"
+    assert_eq!(
+        snap.home_team.players.len(),
+        5,
+        "LoL home roster should remain full even if football injuries exist"
     );
 }
 
