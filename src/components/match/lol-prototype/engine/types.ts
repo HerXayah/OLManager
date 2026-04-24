@@ -8,6 +8,17 @@ export interface Vec2 {
   y: number;
 }
 
+export interface SummonerSpellState {
+  key: string;
+  cdUntil: number;
+}
+
+export interface UltimateState {
+  archetype: string;
+  icon: string;
+  cdUntil: number;
+}
+
 export interface ChampionState {
   id: string;
   name: string;
@@ -36,11 +47,18 @@ export interface ChampionState {
   level: number;
   cs: number;
   items: string[];
+  trinketKey?: string;
+  wardCdUntil?: number;
+  sweeperCdUntil?: number;
+  sweeperActiveUntil?: number;
+  summonerSpells?: SummonerSpellState[];
+  ultimate?: UltimateState | null;
   lastDamagedByChampionId: string | null;
   lastDamagedAt: number;
   state: "lane" | "fight" | "objective" | "recall";
   recallAnchor: Vec2 | null;
   recallChannelUntil: number;
+  realmBanishedUntil?: number;
 }
 
 export interface MinionState {
@@ -51,8 +69,11 @@ export interface MinionState {
   hp: number;
   maxHp: number;
   alive: boolean;
-  kind: "melee" | "ranged";
+  kind: "melee" | "ranged" | "summon";
   lastHitByChampionId: string | null;
+  ownerChampionId?: string | null;
+  summonKind?: string | null;
+  summonExpiresAt?: number;
   attackCdUntil: number;
   moveSpeed: number;
   attackRange: number;
@@ -78,6 +99,13 @@ export interface ObjectiveState {
   pos: Vec2;
   alive: boolean;
   nextSpawnAt: number;
+  currentKind?: string;
+  firstKind?: string;
+  secondKind?: string;
+  soulRiftKind?: string;
+  homeStacks?: number;
+  awayStacks?: number;
+  soulClaimedBy?: "Home" | "Away" | null;
 }
 
 export type NeutralTimerKey =
@@ -119,11 +147,13 @@ export interface NeutralTimerState {
   timesSpawned: number;
   timesTaken: number;
   pos: Vec2;
+  dragonCurrentKind?: string;
 }
 
 export interface NeutralTimersState {
   dragonSoulUnlocked: boolean;
   elderUnlocked: boolean;
+  dragonCurrentKind?: string;
   entities: Record<NeutralTimerKey, NeutralTimerState>;
 }
 
@@ -133,6 +163,14 @@ export interface TeamStats {
   dragons: number;
   barons: number;
   gold: number;
+}
+
+export interface WardState {
+  id: string;
+  team: TeamId;
+  ownerChampionId: string;
+  pos: Vec2;
+  expiresAt: number;
 }
 
 export interface SimEvent {
@@ -156,6 +194,7 @@ export interface MatchState {
   champions: ChampionState[];
   minions: MinionState[];
   structures: StructureState[];
+  wards?: WardState[];
   objectives: Record<"dragon" | "baron", ObjectiveState>;
   neutralTimers: NeutralTimersState;
   stats: Record<TeamId, TeamStats>;

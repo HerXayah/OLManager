@@ -25,6 +25,7 @@ pub struct LolSimV2Session {
     pub snapshot: Value,
     pub champion_by_player_id: HashMap<String, String>,
     pub champion_profiles_by_id: HashMap<String, LolChampionCombatProfileInput>,
+    pub champion_ultimates_by_id: HashMap<String, LolChampionUltimateInput>,
     pub lane_combat_state_by_champion: HashMap<String, LanerCombatStateRuntime>,
     pub ai_mode: SimulatorAiMode,
     pub policy: SimulatorPolicyConfig,
@@ -111,6 +112,10 @@ fn default_telemetry_decision_change_only() -> bool {
     true
 }
 
+fn default_visible_stat() -> f64 {
+    70.0
+}
+
 #[derive(Debug, Clone, Default)]
 struct TelemetryRuntime {
     config: SimulatorTelemetryConfig,
@@ -167,6 +172,14 @@ pub struct LolChampionCombatProfileInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LolChampionUltimateInput {
+    pub archetype: String,
+    #[serde(default)]
+    pub icon: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LolSimV2InitRequest {
     pub session_id: String,
     pub seed: String,
@@ -175,6 +188,8 @@ pub struct LolSimV2InitRequest {
     pub champion_by_player_id: HashMap<String, String>,
     #[serde(default)]
     pub champion_profiles_by_id: HashMap<String, LolChampionCombatProfileInput>,
+    #[serde(default)]
+    pub champion_ultimates_by_id: HashMap<String, LolChampionUltimateInput>,
     pub initial_state: Option<Value>,
     #[serde(default)]
     pub ai_mode: SimulatorAiMode,
@@ -237,6 +252,8 @@ pub struct LolSimV2RunToCompletionRequest {
     #[serde(default)]
     pub champion_profiles_by_id: HashMap<String, LolChampionCombatProfileInput>,
     #[serde(default)]
+    pub champion_ultimates_by_id: HashMap<String, LolChampionUltimateInput>,
+    #[serde(default)]
     pub ai_mode: SimulatorAiMode,
     #[serde(default)]
     pub policy: SimulatorPolicyConfig,
@@ -276,6 +293,7 @@ pub fn init(store: &LolSimV2StoreState, request: LolSimV2InitRequest) -> Result<
         &request.snapshot,
         &request.champion_by_player_id,
         &request.champion_profiles_by_id,
+        &request.champion_ultimates_by_id,
         request.ai_mode,
     );
     ensure_runtime_state_defaults(&mut state);
@@ -291,6 +309,7 @@ pub fn init(store: &LolSimV2StoreState, request: LolSimV2InitRequest) -> Result<
         snapshot: request.snapshot,
         champion_by_player_id: request.champion_by_player_id,
         champion_profiles_by_id: request.champion_profiles_by_id,
+        champion_ultimates_by_id: request.champion_ultimates_by_id,
         lane_combat_state_by_champion: HashMap::new(),
         ai_mode: request.ai_mode,
         policy: request.policy,
@@ -366,6 +385,8 @@ pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<
 
     spawn_waves_if_due(&mut runtime, session);
     move_champions(&mut runtime, dt);
+    place_wards(&mut runtime);
+    process_sweepers(&mut runtime);
     move_minions(&mut runtime, dt);
     resolve_minion_combat(&mut runtime);
     resolve_champion_combat(&mut runtime);
@@ -404,6 +425,7 @@ pub fn reset(store: &LolSimV2StoreState, request: LolSimV2ResetRequest) -> Resul
         &session.snapshot,
         &session.champion_by_player_id,
         &session.champion_profiles_by_id,
+        &session.champion_ultimates_by_id,
         request.ai_mode,
     );
     session.ai_mode = request.ai_mode;
@@ -468,6 +490,7 @@ pub fn run_to_completion(
                 snapshot: request.snapshot,
                 champion_by_player_id: request.champion_by_player_id,
                 champion_profiles_by_id: request.champion_profiles_by_id,
+                champion_ultimates_by_id: request.champion_ultimates_by_id,
                 initial_state: None,
                 ai_mode: request.ai_mode,
                 policy: request.policy,
@@ -857,7 +880,15 @@ fn default_runtime_state() -> Value {
             "blue": { "kills": 0, "towers": 0, "dragons": 0, "barons": 0, "gold": 2500 },
             "red": { "kills": 0, "towers": 0, "dragons": 0, "barons": 0, "gold": 2500 }
         },
-        "events": [{ "t": 0.0, "text": "Match started", "type": "info" }]
+        "events": [{ "t": 0.0, "text": "Match started", "type": "info" }],
+        "teamTactics": {
+            "blue": RuntimeTeamTactics::default(),
+            "red": RuntimeTeamTactics::default()
+        },
+        "teamBuffs": {
+            "blue": RuntimeTeamBuffState::default(),
+            "red": RuntimeTeamBuffState::default()
+        }
     })
 }
 
@@ -924,12 +955,42 @@ fn ensure_runtime_state_defaults(state: &mut Value) {
             Value::Array(vec![json!({ "t": 0.0, "text": "Match started", "type": "info" })]),
         );
     }
+    if !root.contains_key("teamTactics") {
+        root.insert(
+            "teamTactics".to_string(),
+            json!({
+                "blue": RuntimeTeamTactics::default(),
+                "red": RuntimeTeamTactics::default(),
+            }),
+        );
+    }
+    if !root.contains_key("teamBuffs") {
+        root.insert(
+            "teamBuffs".to_string(),
+            json!({
+                "blue": RuntimeTeamBuffState::default(),
+                "red": RuntimeTeamBuffState::default(),
+            }),
+        );
+    }
 }
 
 #[derive(Clone)]
 struct SnapshotPlayer {
     id: String,
     name: String,
+    dribbling: f64,
+    agility: f64,
+    pace: f64,
+    composure: f64,
+    shooting: f64,
+    positioning: f64,
+    teamwork: f64,
+    stamina: f64,
+    decisions: f64,
+    vision: f64,
+    passing: f64,
+    leadership: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -953,6 +1014,8 @@ struct RuntimeState {
     champions: Vec<ChampionRuntime>,
     minions: Vec<MinionRuntime>,
     structures: Vec<StructureRuntime>,
+    #[serde(default)]
+    wards: Vec<WardRuntime>,
     objectives: Value,
     neutral_timers: Value,
     stats: RuntimeStats,
@@ -1061,6 +1124,32 @@ struct RuntimeEvent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct WardRuntime {
+    id: String,
+    team: String,
+    owner_champion_id: String,
+    pos: Vec2,
+    expires_at: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeSummonerSpellSlot {
+    key: String,
+    cd_until: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeUltimateSlot {
+    archetype: String,
+    #[serde(default)]
+    icon: String,
+    cd_until: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ChampionRuntime {
     id: String,
     name: String,
@@ -1098,11 +1187,45 @@ struct ChampionRuntime {
     last_support_cs_at: f64,
     #[serde(default)]
     items: Vec<String>,
+    #[serde(default = "default_visible_stat")]
+    gameplay_score: f64,
+    #[serde(default = "default_visible_stat")]
+    iq_score: f64,
+    #[serde(default = "default_visible_stat")]
+    competitive_score: f64,
+    #[serde(default)]
+    summoner_spells: Vec<RuntimeSummonerSpellSlot>,
+    #[serde(default)]
+    ultimate: Option<RuntimeUltimateSlot>,
+    #[serde(default)]
+    ignite_dot_until: f64,
+    #[serde(default)]
+    ignite_source_id: Option<String>,
     last_damaged_by_champion_id: Option<String>,
     last_damaged_at: f64,
     state: String,
     recall_anchor: Option<Vec2>,
     recall_channel_until: f64,
+    #[serde(default)]
+    realm_banished_until: f64,
+    #[serde(default)]
+    realm_return_pos: Option<Vec2>,
+    #[serde(default)]
+    ward_cd_until: f64,
+    #[serde(default)]
+    sweeper_cd_until: f64,
+    #[serde(default)]
+    sweeper_active_until: f64,
+    #[serde(default)]
+    trinket_key: String,
+    #[serde(default)]
+    trinket_swapped: bool,
+    #[serde(default)]
+    support_roam_uses: i64,
+    #[serde(default)]
+    support_roam_cd_until: f64,
+    #[serde(default)]
+    support_last_roam_role: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1117,6 +1240,12 @@ struct MinionRuntime {
     alive: bool,
     kind: String,
     last_hit_by_champion_id: Option<String>,
+    #[serde(default)]
+    owner_champion_id: Option<String>,
+    #[serde(default)]
+    summon_kind: Option<String>,
+    #[serde(default)]
+    summon_expires_at: f64,
     attack_cd_until: f64,
     move_speed: f64,
     attack_range: f64,
@@ -1179,6 +1308,72 @@ struct ItemTemplate {
     cost: i64,
     attack_damage: f64,
     max_hp: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RuntimeTeamTactics {
+    strong_side: String,
+    game_timing: String,
+    jungle_style: String,
+    jungle_pathing: String,
+    fight_plan: String,
+    support_roaming: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RuntimeRoleImpact {
+    modifier: f64,
+    variance: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RuntimeTeamBuffState {
+    baron_until: f64,
+    elder_until: f64,
+    infernal_stacks: i64,
+    mountain_stacks: i64,
+    ocean_stacks: i64,
+    cloud_stacks: i64,
+    hextech_stacks: i64,
+    chemtech_stacks: i64,
+    dragon_stacks: i64,
+    soul_kind: Option<String>,
+}
+
+impl Default for RuntimeTeamBuffState {
+    fn default() -> Self {
+        Self {
+            baron_until: 0.0,
+            elder_until: 0.0,
+            infernal_stacks: 0,
+            mountain_stacks: 0,
+            ocean_stacks: 0,
+            cloud_stacks: 0,
+            hextech_stacks: 0,
+            chemtech_stacks: 0,
+            dragon_stacks: 0,
+            soul_kind: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct RuntimeBuffState {
+    blue: RuntimeTeamBuffState,
+    red: RuntimeTeamBuffState,
+}
+
+impl Default for RuntimeTeamTactics {
+    fn default() -> Self {
+        Self {
+            strong_side: "Bot".to_string(),
+            game_timing: "Mid".to_string(),
+            jungle_style: "Enabler".to_string(),
+            jungle_pathing: "TopToBot".to_string(),
+            fight_plan: "FrontToBack".to_string(),
+            support_roaming: "Lane".to_string(),
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1321,8 +1516,8 @@ const STRUCTURE_LAYOUT: [StructureSeed; 30] = [
     StructureSeed { id: "red-top-outer", team: "red", lane: "top", kind: "tower", pos: Vec2 { x: 0.275390625, y: 0.07161458333333333 } },
     StructureSeed { id: "red-top-inner", team: "red", lane: "top", kind: "tower", pos: Vec2 { x: 0.533203125, y: 0.08203125 } },
     StructureSeed { id: "red-top-inhib-tower", team: "red", lane: "top", kind: "tower", pos: Vec2 { x: 0.912109375, y: 0.3125 } },
-    StructureSeed { id: "red-mid-outer", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.6569010416666666, y: 0.33203125 } },
-    StructureSeed { id: "red-mid-inner", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.595703125, y: 0.44140625 } },
+    StructureSeed { id: "red-mid-outer", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.595703125, y: 0.44140625 } },
+    StructureSeed { id: "red-mid-inner", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.6569010416666666, y: 0.33203125 } },
     StructureSeed { id: "red-mid-inhib-tower", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.740234375, y: 0.26171875 } },
     StructureSeed { id: "red-bot-inner", team: "red", lane: "bot", kind: "tower", pos: Vec2 { x: 0.9016927083333334, y: 0.44921875 } },
     StructureSeed { id: "red-bot-outer", team: "red", lane: "bot", kind: "tower", pos: Vec2 { x: 0.9303385416666666, y: 0.7057291666666666 } },
@@ -1372,6 +1567,18 @@ const ASSIST_RADIUS: f64 = 0.11;
 const CHAMPION_KILL_GOLD: i64 = 300;
 const CHAMPION_ASSIST_GOLD_TOTAL: i64 = 150;
 const CHAMPION_KILL_XP: i64 = 220;
+const CHAMPION_KILL_GOLD_MIN: i64 = 170;
+const CHAMPION_KILL_GOLD_MAX: i64 = 650;
+const CHAMPION_KILL_XP_MIN: i64 = 150;
+const CHAMPION_KILL_XP_MAX: i64 = 360;
+const CHAMPION_RESPAWN_BASE_SEC: f64 = 14.0;
+const CHAMPION_RESPAWN_PER_LEVEL_SEC: f64 = 1.35;
+const BARON_BUFF_DURATION_SEC: f64 = 180.0;
+const ELDER_BUFF_DURATION_SEC: f64 = 150.0;
+const ELDER_EXECUTE_HP_RATIO: f64 = 0.20;
+const BARON_MINION_AURA_RADIUS: f64 = 0.12;
+const BARON_MINION_DAMAGE_MULTIPLIER: f64 = 1.35;
+const BARON_MINION_DAMAGE_REDUCTION: f64 = 0.35;
 const CHAMPION_MAX_LEVEL: i64 = 18;
 const CHAMPION_LEVEL_UP_HP_GAIN: f64 = 92.0;
 const CHAMPION_LEVEL_UP_AD_GAIN: f64 = 3.8;
@@ -1415,6 +1622,8 @@ const NEXUS_DEFENSE_THREAT_RADIUS: f64 = 0.13;
 const ALLY_HELP_RADIUS: f64 = 0.17;
 const ALLY_HELP_DAMAGE_RECENT_SEC: f64 = 3.2;
 const OFFROLE_JUNGLE_REWARD_MULTIPLIER: f64 = 0.65;
+const JGL_JUNGLE_GOLD_MULTIPLIER: f64 = 0.78;
+const JGL_JUNGLE_XP_MULTIPLIER: f64 = 0.90;
 const OBJECTIVE_PATH_MIN_TARGET_DELTA: f64 = 0.014;
 const JUNGLE_DISENGAGE_THREAT_AVOID_RADIUS: f64 = 0.1;
 const VOIDGRUBS_SOFT_CLOSE_AT: f64 = 14.0 * 60.0 + 45.0;
@@ -1434,32 +1643,57 @@ const NAV_PATH_TRIVIAL_NODE_EPSILON: f64 = 0.0095;
 const ITEM_COST_MULTIPLIER: f64 = 0.32;
 const ITEM_COST_MIN: i64 = 300;
 const SUPPORT_CS_MIN_INTERVAL_SEC: f64 = 24.0;
+const SUPPORT_ROAM_UNLOCK_AT_SEC: f64 = 2.5 * 60.0;
+const SUPPORT_OPEN_ROAM_AT_SEC: f64 = 10.0 * 60.0;
+const SUMMONER_FLASH_CD_SEC: f64 = 300.0;
+const SUMMONER_IGNITE_CD_SEC: f64 = 180.0;
+const SUMMONER_HEAL_CD_SEC: f64 = 240.0;
+const SUMMONER_SMITE_CD_SEC: f64 = 90.0;
+const SUMMONER_TP_CD_SEC: f64 = 300.0;
+const SUMMONER_TP_UNLOCK_AT_SEC: f64 = 6.0 * 60.0;
+const SUMMONER_FLASH_RANGE: f64 = 0.085;
+const SUMMONER_IGNITE_RANGE: f64 = 0.072;
+const SUMMONER_IGNITE_DURATION_SEC: f64 = 5.0;
+const SUMMONER_IGNITE_DPS: f64 = 18.0;
+const SUMMONER_HEAL_RADIUS: f64 = 0.085;
+const SUMMONER_HEAL_SELF_RATIO: f64 = 0.22;
+const SUMMONER_HEAL_ALLY_RATIO: f64 = 0.18;
+const SUMMONER_SMITE_RANGE: f64 = 0.095;
+const SUMMONER_SMITE_DAMAGE: f64 = 600.0;
+const ULTIMATE_UNLOCK_LEVEL: i64 = 6;
+const ULTIMATE_BASE_CD_SEC: f64 = 120.0;
+const ULTIMATE_BURST_RANGE: f64 = 0.085;
+const ULTIMATE_GLOBAL_RANGE: f64 = 0.18;
+const ULTIMATE_MORDE_REALM_DURATION_SEC: f64 = 30.0;
+const ULTIMATE_SUMMON_DAMAGE_RATIO: f64 = 0.45;
+const ULTIMATE_SUMMON_HP_RATIO: f64 = 0.5;
+const WARD_UNLOCK_AT_SEC: f64 = 90.0;
+const WARD_DURATION_SEC: f64 = 95.0;
+const WARD_COOLDOWN_SEC: f64 = 120.0;
+const WARD_VISION_RADIUS: f64 = 0.18;
+const CHAMPION_VISION_RADIUS: f64 = 0.145;
+const MINION_VISION_RADIUS: f64 = 0.10;
+const STRUCTURE_VISION_RADIUS: f64 = 0.16;
+const SWEEPER_COOLDOWN_SEC: f64 = 95.0;
+const SWEEPER_DURATION_SEC: f64 = 10.0;
+const SWEEPER_CLEAR_RADIUS: f64 = 0.145;
+const TRINKET_SWAP_UNLOCK_AT_SEC: f64 = 6.0 * 60.0;
+const TRINKET_WARDING_TOTEM: &str = "WardingTotem";
+const TRINKET_ORACLE_LENS: &str = "OracleLens";
+
+fn summon_profile(champion_key: &str) -> (&'static str, f64, f64, f64) {
+    match champion_key {
+        "yorick" => ("maiden", 0.55, 0.50, 45.0),
+        "annie" => ("tibbers", 0.50, 0.52, 45.0),
+        "ivern" => ("daisy", 0.58, 0.44, 60.0),
+        "shaco" => ("clone", 0.45, 0.48, 20.0),
+        _ => ("summon", ULTIMATE_SUMMON_HP_RATIO, ULTIMATE_SUMMON_DAMAGE_RATIO, 35.0),
+    }
+}
 
 const LEVEL_XP_THRESHOLDS: [i64; 18] = [
     0, 280, 660, 1080, 1560, 2100, 2700, 3360, 4080, 4860, 5700, 6600, 7560, 8580, 9660, 10800,
     12000, 13260,
-];
-
-const JUNGLE_DISENGAGE_FALLBACK_ORDER_BLUE: [&str; 8] = [
-    "gromp-blue",
-    "blue-buff-blue",
-    "wolves-blue",
-    "raptors-blue",
-    "red-buff-blue",
-    "krugs-blue",
-    "scuttle-top",
-    "scuttle-bot",
-];
-
-const JUNGLE_DISENGAGE_FALLBACK_ORDER_RED: [&str; 8] = [
-    "gromp-red",
-    "blue-buff-red",
-    "wolves-red",
-    "raptors-red",
-    "red-buff-red",
-    "krugs-red",
-    "scuttle-bot",
-    "scuttle-top",
 ];
 
 const TANK_ITEM_PLAN: [ItemTemplate; 6] = [
@@ -1622,12 +1856,20 @@ fn create_initial_state(
     snapshot: &Value,
     champion_by_player_id: &HashMap<String, String>,
     champion_profiles_by_id: &HashMap<String, LolChampionCombatProfileInput>,
+    champion_ultimates_by_id: &HashMap<String, LolChampionUltimateInput>,
     ai_mode: SimulatorAiMode,
 ) -> Value {
     // TODO(parity-chunk-b): port movement, wave spawn/advance, and combat systems from TS simulation.ts.
-    let champions = create_champions(seed, snapshot, champion_by_player_id, champion_profiles_by_id);
+    let champions = create_champions(
+        seed,
+        snapshot,
+        champion_by_player_id,
+        champion_profiles_by_id,
+        champion_ultimates_by_id,
+    );
     let structures = create_structures();
     let neutral_timers = build_neutral_timers_state();
+    let team_tactics = build_team_tactics_state(snapshot);
 
     json!({
         "timeSec": 0.0,
@@ -1637,8 +1879,9 @@ fn create_initial_state(
         "winner": Value::Null,
         "champions": champions,
         "minions": [],
-        "structures": structures,
-        "objectives": {
+            "structures": structures,
+            "wards": [],
+            "objectives": {
             "dragon": { "key": "dragon", "pos": { "x": 0.673828125, "y": 0.703125 }, "alive": false, "nextSpawnAt": 5.0 * 60.0 },
             "baron": { "key": "baron", "pos": { "x": 0.3274739583333333, "y": 0.2981770833333333 }, "alive": false, "nextSpawnAt": 20.0 * 60.0 }
         },
@@ -1648,6 +1891,7 @@ fn create_initial_state(
             "red": { "kills": 0, "towers": 0, "dragons": 0, "barons": 0, "gold": 2500 }
         },
         "events": [{ "t": 0.0, "text": "Match started", "type": "info" }],
+        "teamTactics": team_tactics,
         "showWalls": false,
     })
 }
@@ -1657,30 +1901,41 @@ fn create_champions(
     snapshot: &Value,
     champion_by_player_id: &HashMap<String, String>,
     champion_profiles_by_id: &HashMap<String, LolChampionCombatProfileInput>,
+    champion_ultimates_by_id: &HashMap<String, LolChampionUltimateInput>,
 ) -> Vec<Value> {
     let mut rng = Mulberry32::new(hash_seed(seed));
     let mut champions = Vec::new();
 
     let home_players = snapshot_team_players(snapshot, "home_team");
     let away_players = snapshot_team_players(snapshot, "away_team");
+    let home_tactics = extract_runtime_team_tactics(snapshot, "home", "home_team");
+    let away_tactics = extract_runtime_team_tactics(snapshot, "away", "away_team");
 
     seed_team(
         &mut champions,
         &home_players,
+        "home",
         "blue",
         BASE_POSITION_BLUE,
+        &home_tactics,
+        snapshot,
         champion_by_player_id,
         champion_profiles_by_id,
+        champion_ultimates_by_id,
         &mut rng,
     );
 
     seed_team(
         &mut champions,
         &away_players,
+        "away",
         "red",
         BASE_POSITION_RED,
+        &away_tactics,
+        snapshot,
         champion_by_player_id,
         champion_profiles_by_id,
+        champion_ultimates_by_id,
         &mut rng,
     );
 
@@ -1690,10 +1945,14 @@ fn create_champions(
 fn seed_team(
     champions: &mut Vec<Value>,
     players: &[SnapshotPlayer],
+    side_key: &str,
     team: &str,
     base_pos: Vec2,
+    team_tactics: &RuntimeTeamTactics,
+    snapshot: &Value,
     champion_by_player_id: &HashMap<String, String>,
     champion_profiles_by_id: &HashMap<String, LolChampionCombatProfileInput>,
+    champion_ultimates_by_id: &HashMap<String, LolChampionUltimateInput>,
     rng: &mut Mulberry32,
 ) {
     for (index, player) in players.iter().take(5).enumerate() {
@@ -1710,8 +1969,103 @@ fn seed_team(
         let attack_range = profile
             .map(|p| p.attack_range)
             .unwrap_or(if attack_type == "ranged" { 0.056 } else { 0.049 });
+        let role_impact = extract_runtime_role_impact(snapshot, side_key, &player.id);
+        let role_modifier = role_impact
+            .as_ref()
+            .map(|impact| impact.modifier.clamp(-4.0, 4.0))
+            .unwrap_or(0.0);
+        let role_variance = role_impact
+            .as_ref()
+            .map(|impact| impact.variance.clamp(0.5, 4.5))
+            .unwrap_or(1.0);
 
-        champions.push(json!({
+        let (
+            mechanics,
+            laning,
+            teamfighting,
+            macro_stat,
+            consistency,
+            shotcalling,
+            champion_pool,
+            discipline,
+            mental_resilience,
+        ) = player_visible_stats(player);
+
+        let gameplay_score = (mechanics + laning + teamfighting) / 3.0;
+        let iq_score = (macro_stat + consistency + shotcalling) / 3.0;
+        let competitive_score = (champion_pool + discipline + mental_resilience) / 3.0;
+
+        let gameplay_delta = stat_delta(gameplay_score);
+        let iq_delta = stat_delta(iq_score);
+        let competitive_delta = stat_delta(competitive_score);
+        let mechanics_delta = stat_delta(mechanics);
+        let laning_delta = stat_delta(laning);
+        let teamfighting_delta = stat_delta(teamfighting);
+        let consistency_delta = stat_delta(consistency);
+        let discipline_delta = stat_delta(discipline);
+        let champion_pool_delta = stat_delta(champion_pool);
+
+        let max_hp = (max_hp * (1.0 + role_modifier * 0.012 + competitive_delta * 0.04 + teamfighting_delta * 0.02))
+            .clamp(120.0, 340.0);
+        let attack_damage = (14.0 + rng.next_f64() * 5.0)
+            * (1.0 + role_modifier * 0.016 + gameplay_delta * 0.06 + mechanics_delta * 0.03);
+        let move_speed = (0.043 + rng.next_f64() * 0.008 + (role_modifier * 0.00035) + iq_delta * 0.001 + laning_delta * 0.0006)
+            .clamp(0.036, 0.062);
+
+        let spawn_pos = Vec2 {
+            x: base_pos.x + role_seed.offset.x,
+            y: base_pos.y + role_seed.offset.y,
+        };
+
+        let jgl_start = if role_seed.role == "JGL" {
+            if normalized_team(team) == "blue" {
+                if team_tactics.jungle_pathing == "BotToTop" {
+                    Vec2 { x: 0.5266927083333334, y: 0.7421875 }
+                } else {
+                    Vec2 { x: 0.24934895833333334, y: 0.4622395833333333 }
+                }
+            } else if team_tactics.jungle_pathing == "BotToTop" {
+                Vec2 { x: 0.7545572916666666, y: 0.5403645833333334 }
+            } else {
+                Vec2 { x: 0.478515625, y: 0.26171875 }
+            }
+        } else {
+            spawn_pos
+        };
+
+        let initial_target_path = if role_seed.role == "JGL" {
+            vec![json!({ "x": jgl_start.x, "y": jgl_start.y })]
+        } else {
+            Vec::new()
+        };
+        let initial_state = if role_seed.role == "JGL" { "objective" } else { "lane" };
+        let consistency_factor = (1.0 - consistency_delta * 0.26 - discipline_delta * 0.12 - champion_pool_delta * 0.08)
+            .clamp(0.65, 1.35);
+        let decision_jitter = (((role_variance - 1.0).max(0.0) * 0.35) + rng.next_f64() * 0.08) * consistency_factor;
+        let initial_next_decision_at = if role_seed.role == "JGL" {
+            6.0 + decision_jitter
+        } else {
+            decision_jitter
+        };
+        let summoner_spells = default_summoner_spells_for_role(role_seed.role);
+        let ultimate = champion_id
+            .and_then(|id| champion_ultimates_by_id.get(id))
+            .map(|slot| {
+                json!({
+                    "archetype": slot.archetype,
+                    "icon": slot.icon,
+                    "cdUntil": 0.0,
+                })
+            })
+            .unwrap_or_else(|| {
+                json!({
+                    "archetype": default_ultimate_archetype_for_role(role_seed.role),
+                    "icon": "",
+                    "cdUntil": 0.0,
+                })
+            });
+
+        let mut champion_json = json!({
             "id": player.id,
             "name": player.name,
             "championId": champion_id.cloned().unwrap_or_default(),
@@ -1719,21 +2073,21 @@ fn seed_team(
             "role": role_seed.role,
             "lane": role_seed.lane,
             "pos": {
-                "x": base_pos.x + role_seed.offset.x,
-                "y": base_pos.y + role_seed.offset.y,
+                "x": spawn_pos.x,
+                "y": spawn_pos.y,
             },
             "hp": max_hp,
             "maxHp": max_hp,
             "alive": true,
             "respawnAt": 0.0,
             "attackCdUntil": 0.0,
-            "moveSpeed": 0.043 + rng.next_f64() * 0.008,
+            "moveSpeed": move_speed,
             "attackRange": attack_range,
             "attackType": attack_type,
-            "attackDamage": 14.0 + rng.next_f64() * 5.0,
-            "targetPath": [],
+            "attackDamage": attack_damage,
+            "targetPath": initial_target_path,
             "targetPathIndex": 0,
-            "nextDecisionAt": 0.0,
+            "nextDecisionAt": initial_next_decision_at,
             "kills": 0,
             "deaths": 0,
             "assists": 0,
@@ -1745,12 +2099,58 @@ fn seed_team(
             "hasLeftBaseOnce": false,
             "lastSupportCsAt": -999.0,
             "items": [],
+            "gameplayScore": gameplay_score,
+            "iqScore": iq_score,
+            "competitiveScore": competitive_score,
+            "summonerSpells": summoner_spells,
+            "igniteDotUntil": 0.0,
+            "igniteSourceId": Value::Null,
             "lastDamagedByChampionId": Value::Null,
             "lastDamagedAt": -999.0,
-            "state": "lane",
+            "state": initial_state,
             "recallAnchor": Value::Null,
             "recallChannelUntil": 0.0,
-        }));
+        });
+
+        if let Some(obj) = champion_json.as_object_mut() {
+            obj.insert("ultimate".to_string(), ultimate);
+            obj.insert("realmBanishedUntil".to_string(), Value::from(0.0));
+            obj.insert("realmReturnPos".to_string(), Value::Null);
+            obj.insert("wardCdUntil".to_string(), Value::from(0.0));
+            obj.insert("sweeperCdUntil".to_string(), Value::from(0.0));
+            obj.insert("sweeperActiveUntil".to_string(), Value::from(0.0));
+            obj.insert("trinketKey".to_string(), Value::from(TRINKET_WARDING_TOTEM));
+            obj.insert("trinketSwapped".to_string(), Value::from(false));
+            obj.insert("supportRoamUses".to_string(), Value::from(0));
+            obj.insert("supportRoamCdUntil".to_string(), Value::from(0.0));
+            obj.insert("supportLastRoamRole".to_string(), Value::from(""));
+        }
+
+        champions.push(champion_json);
+    }
+}
+
+fn default_summoner_spells_for_role(role: &str) -> Vec<Value> {
+    let keys: [&str; 2] = match role {
+        "JGL" => ["Smite", "Flash"],
+        "TOP" => ["Teleport", "Flash"],
+        "MID" => ["Ignite", "Flash"],
+        "ADC" => ["Heal", "Flash"],
+        _ => ["Ignite", "Flash"],
+    };
+    keys
+        .iter()
+        .map(|key| json!({ "key": key, "cdUntil": 0.0 }))
+        .collect()
+}
+
+fn default_ultimate_archetype_for_role(role: &str) -> &'static str {
+    match role {
+        "TOP" => "engage",
+        "JGL" => "global",
+        "MID" => "burst",
+        "ADC" => "execute",
+        _ => "utility",
     }
 }
 
@@ -1879,11 +2279,207 @@ fn snapshot_team_players(snapshot: &Value, team_key: &str) -> Vec<SnapshotPlayer
                         .and_then(Value::as_str)
                         .unwrap_or(&id)
                         .to_string();
-                    Some(SnapshotPlayer { id, name })
+                    let stat = |key: &str| {
+                        player
+                            .get(key)
+                            .and_then(Value::as_f64)
+                            .unwrap_or(70.0)
+                            .clamp(1.0, 99.0)
+                    };
+                    Some(SnapshotPlayer {
+                        id,
+                        name,
+                        dribbling: stat("dribbling"),
+                        agility: stat("agility"),
+                        pace: stat("pace"),
+                        composure: stat("composure"),
+                        shooting: stat("shooting"),
+                        positioning: stat("positioning"),
+                        teamwork: stat("teamwork"),
+                        stamina: stat("stamina"),
+                        decisions: stat("decisions"),
+                        vision: stat("vision"),
+                        passing: stat("passing"),
+                        leadership: stat("leadership"),
+                    })
                 })
                 .collect()
         })
         .unwrap_or_default()
+}
+
+fn avg4(a: f64, b: f64, c: f64, d: f64) -> f64 {
+    (a + b + c + d) / 4.0
+}
+
+fn player_visible_stats(player: &SnapshotPlayer) -> (f64, f64, f64, f64, f64, f64, f64, f64, f64) {
+    let mechanics = avg4(player.dribbling, player.agility, player.pace, player.composure);
+    let laning = avg4(player.shooting, player.positioning, player.dribbling, player.composure);
+    let teamfighting = avg4(player.teamwork, player.stamina, player.decisions, player.composure);
+    let macro_stat = avg4(player.vision, player.decisions, player.positioning, player.passing);
+    let consistency = avg4(player.decisions, player.vision, player.composure, player.teamwork);
+    let shotcalling = avg4(player.leadership, player.teamwork, player.vision, player.decisions);
+    let champion_pool = avg4(player.dribbling, player.agility, player.vision, player.passing);
+    let discipline = avg4(player.decisions, player.composure, player.teamwork, player.leadership);
+    let mental_resilience = avg4(player.composure, player.teamwork, player.leadership, player.stamina);
+    (
+        mechanics,
+        laning,
+        teamfighting,
+        macro_stat,
+        consistency,
+        shotcalling,
+        champion_pool,
+        discipline,
+        mental_resilience,
+    )
+}
+
+fn stat_delta(score: f64) -> f64 {
+    ((score - 70.0) / 30.0).clamp(-1.0, 1.0)
+}
+
+fn champion_micro_damage_multiplier(champion: &ChampionRuntime) -> f64 {
+    let gameplay = stat_delta(champion.gameplay_score);
+    (1.0 + gameplay * 0.09).clamp(0.88, 1.16)
+}
+
+fn champion_lane_damage_multiplier(champion: &ChampionRuntime) -> f64 {
+    let gameplay = stat_delta(champion.gameplay_score);
+    (1.0 + gameplay * 0.11).clamp(0.86, 1.18)
+}
+
+fn champion_structure_focus_multiplier(champion: &ChampionRuntime) -> f64 {
+    let iq_delta = stat_delta(champion.iq_score);
+    (1.0 + iq_delta * 0.08).clamp(0.88, 1.14)
+}
+
+fn extract_runtime_team_tactics(snapshot: &Value, side_key: &str, team_key: &str) -> RuntimeTeamTactics {
+    let from_root = snapshot
+        .get("lol_tactics")
+        .and_then(Value::as_object)
+        .and_then(|obj| obj.get(side_key))
+        .cloned();
+    let from_team = snapshot
+        .get(team_key)
+        .and_then(Value::as_object)
+        .and_then(|obj| obj.get("lol_tactics"))
+        .cloned();
+
+    let payload = from_root.or(from_team);
+    payload
+        .and_then(|value| serde_json::from_value::<RuntimeTeamTactics>(value).ok())
+        .unwrap_or_default()
+}
+
+fn build_team_tactics_state(snapshot: &Value) -> Value {
+    let blue = extract_runtime_team_tactics(snapshot, "home", "home_team");
+    let red = extract_runtime_team_tactics(snapshot, "away", "away_team");
+    json!({ "blue": blue, "red": red })
+}
+
+fn extract_runtime_role_impact(snapshot: &Value, side_key: &str, player_id: &str) -> Option<RuntimeRoleImpact> {
+    snapshot
+        .get("lol_role_impact_by_player")
+        .and_then(Value::as_object)
+        .and_then(|obj| obj.get(side_key))
+        .and_then(Value::as_object)
+        .and_then(|by_player| by_player.get(player_id))
+        .cloned()
+        .and_then(|value| serde_json::from_value::<RuntimeRoleImpact>(value).ok())
+}
+
+fn team_tactics_for_runtime(team_tactics: Option<&Value>, team: &str) -> RuntimeTeamTactics {
+    team_tactics
+        .and_then(Value::as_object)
+        .and_then(|obj| obj.get(normalized_team(team)))
+        .cloned()
+        .and_then(|value| serde_json::from_value::<RuntimeTeamTactics>(value).ok())
+        .unwrap_or_default()
+}
+
+fn team_buffs_for_runtime(team_buffs: Option<&Value>, team: &str) -> RuntimeTeamBuffState {
+    team_buffs
+        .and_then(Value::as_object)
+        .and_then(|obj| obj.get(normalized_team(team)))
+        .cloned()
+        .and_then(|value| serde_json::from_value::<RuntimeTeamBuffState>(value).ok())
+        .unwrap_or_default()
+}
+
+fn runtime_buffs_from_extra(team_buffs: Option<&Value>) -> RuntimeBuffState {
+    team_buffs
+        .cloned()
+        .and_then(|value| serde_json::from_value::<RuntimeBuffState>(value).ok())
+        .unwrap_or_default()
+}
+
+fn set_runtime_buffs(runtime: &mut RuntimeState, buffs: &RuntimeBuffState) {
+    if let Ok(value) = serde_json::to_value(buffs) {
+        runtime.extra.insert("teamBuffs".to_string(), value);
+    }
+}
+
+fn team_buffs_mut<'a>(buffs: &'a mut RuntimeBuffState, team: &str) -> &'a mut RuntimeTeamBuffState {
+    if normalized_team(team) == "red" {
+        &mut buffs.red
+    } else {
+        &mut buffs.blue
+    }
+}
+
+fn team_buffs_ref<'a>(buffs: &'a RuntimeBuffState, team: &str) -> &'a RuntimeTeamBuffState {
+    if normalized_team(team) == "red" {
+        &buffs.red
+    } else {
+        &buffs.blue
+    }
+}
+
+fn current_dragon_kind(neutral_timers: &NeutralTimersRuntime) -> String {
+    neutral_timers
+        .extra
+        .get("dragonCurrentKind")
+        .and_then(Value::as_str)
+        .map(|kind| kind.to_string())
+        .unwrap_or_else(|| "infernal".to_string())
+}
+
+fn set_current_dragon_kind(neutral_timers: &mut NeutralTimersRuntime, kind: &str) {
+    neutral_timers
+        .extra
+        .insert("dragonCurrentKind".to_string(), Value::from(kind));
+}
+
+fn choose_different_dragon_kind(base_kind: &str, seed: i64) -> &'static str {
+    const KINDS: [&str; 6] = ["infernal", "ocean", "mountain", "cloud", "hextech", "chemtech"];
+    let mut options: Vec<&str> = KINDS.into_iter().filter(|kind| *kind != base_kind).collect();
+    if options.is_empty() {
+        return "infernal";
+    }
+    let idx = (seed.unsigned_abs() as usize) % options.len();
+    options.swap_remove(idx)
+}
+
+fn ensure_dragon_cycle_defaults(runtime: &RuntimeState, neutral_timers: &mut NeutralTimersRuntime) {
+    if neutral_timers.extra.get("dragonCurrentKind").is_some() {
+        return;
+    }
+    let seed = runtime
+        .champions
+        .iter()
+        .fold(0_i64, |acc, champion| acc + champion.id.bytes().fold(0_i64, |s, b| s + b as i64));
+    let first = choose_different_dragon_kind("", seed);
+    set_current_dragon_kind(neutral_timers, first);
+    neutral_timers
+        .extra
+        .insert("dragonFirstKind".to_string(), Value::from(""));
+    neutral_timers
+        .extra
+        .insert("dragonSecondKind".to_string(), Value::from(""));
+    neutral_timers
+        .extra
+        .insert("dragonSoulRiftKind".to_string(), Value::from(""));
 }
 
 fn normalize_attack_type(raw: &str) -> &'static str {
@@ -2296,23 +2892,54 @@ fn set_champion_direct_path_hysteresis(champion: &mut ChampionRuntime, target: V
     set_champion_direct_path(champion, target);
 }
 
-fn jungle_disengage_fallback_order_for_team(team: &str) -> &'static [&'static str] {
-    if normalized_team(team) == "red" {
-        &JUNGLE_DISENGAGE_FALLBACK_ORDER_RED
+fn jungle_disengage_fallback_order_for_team(team: &str, jungle_pathing: &str) -> Vec<&'static str> {
+    let (own_top, own_bot) = if normalized_team(team) == "red" {
+        (
+            ["gromp-red", "blue-buff-red", "wolves-red"],
+            ["raptors-red", "red-buff-red", "krugs-red"],
+        )
     } else {
-        &JUNGLE_DISENGAGE_FALLBACK_ORDER_BLUE
+        (
+            ["gromp-blue", "blue-buff-blue", "wolves-blue"],
+            ["raptors-blue", "red-buff-blue", "krugs-blue"],
+        )
+    };
+
+    if jungle_pathing == "BotToTop" {
+        vec![
+            own_bot[0],
+            own_bot[1],
+            own_bot[2],
+            "scuttle-bot",
+            own_top[0],
+            own_top[1],
+            own_top[2],
+            "scuttle-top",
+        ]
+    } else {
+        vec![
+            own_top[0],
+            own_top[1],
+            own_top[2],
+            "scuttle-top",
+            own_bot[0],
+            own_bot[1],
+            own_bot[2],
+            "scuttle-bot",
+        ]
     }
 }
 
 fn pick_jungle_farm_fallback_pos(
     champion: &ChampionRuntime,
     neutral_timers: &NeutralTimersRuntime,
+    jungle_pathing: &str,
     threat_pos: Option<Vec2>,
 ) -> Option<Vec2> {
     let mut first_alive_fallback: Option<Vec2> = None;
 
-    for key in jungle_disengage_fallback_order_for_team(&champion.team) {
-        let Some(timer) = neutral_timers.entities.get(*key) else {
+    for key in jungle_disengage_fallback_order_for_team(&champion.team, jungle_pathing) {
+        let Some(timer) = neutral_timers.entities.get(key) else {
             continue;
         };
         if !(timer.alive && timer.unlocked && is_jungle_camp_key(&timer.key)) {
@@ -2337,7 +2964,10 @@ fn pick_jungle_farm_fallback_pos(
 fn jgl_disengage_fallback_pos(runtime: &RuntimeState, champion: &ChampionRuntime, threat_pos: Vec2) -> Vec2 {
     let neutral_timers = decode_neutral_timers_state(&runtime.neutral_timers)
         .unwrap_or_else(|| neutral_timers_default_runtime_state());
-    if let Some(camp_pos) = pick_jungle_farm_fallback_pos(champion, &neutral_timers, Some(threat_pos)) {
+    let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &champion.team);
+    if let Some(camp_pos) =
+        pick_jungle_farm_fallback_pos(champion, &neutral_timers, &team_tactics.jungle_pathing, Some(threat_pos))
+    {
         return camp_pos;
     }
     recall_fallback_toward_base(champion, None)
@@ -3942,6 +4572,7 @@ fn tick_recall(
     if champion.recall_channel_until > 0.0 && now >= champion.recall_channel_until {
         champion.pos = base_position_for(&champion.team);
         champion.hp = champion.max_hp;
+        maybe_upgrade_trinket_to_oracle(champion, now);
         champion.state = "lane".to_string();
         champion.recall_anchor = None;
         champion.recall_channel_until = 0.0;
@@ -3990,6 +4621,8 @@ fn decide_champion_state(
     structures: &[StructureRuntime],
     champions: &[ChampionRuntime],
     neutral_timers: Option<&NeutralTimersRuntime>,
+    team_tactics: &RuntimeTeamTactics,
+    team_buffs: &RuntimeTeamBuffState,
 ) {
     if champion.state == "recall" {
         return;
@@ -4014,6 +4647,16 @@ fn decide_champion_state(
             set_champion_direct_path_hysteresis(champion, defense_pos, OBJECTIVE_PATH_MIN_TARGET_DELTA);
         }
         return;
+    }
+
+    if team_buffs.baron_until > now {
+        if let Some(lane) = weakest_enemy_lane_for_team(structures, &champion.team) {
+            if let Some(push_target) = baron_push_target_for_lane(structures, &champion.team, lane) {
+                champion.state = "objective".to_string();
+                set_champion_direct_path_hysteresis(champion, push_target, OBJECTIVE_PATH_MIN_TARGET_DELTA);
+                return;
+            }
+        }
     }
 
     if let Some(timers) = neutral_timers {
@@ -4043,7 +4686,7 @@ fn decide_champion_state(
         }
 
         if champion.role == "JGL" {
-            if let Some(objective_pos) = pick_macro_objective_pos(champion, timers, now) {
+            if let Some(objective_pos) = pick_macro_objective_pos(champion, timers, now, team_tactics) {
                 champion.state = "objective".to_string();
                 set_champion_direct_path_hysteresis(
                     champion,
@@ -4051,6 +4694,86 @@ fn decide_champion_state(
                     OBJECTIVE_PATH_MIN_TARGET_DELTA,
                 );
                 return;
+            }
+        }
+
+        if champion.role == "SUP" && now >= SUPPORT_ROAM_UNLOCK_AT_SEC {
+            if now < SUPPORT_OPEN_ROAM_AT_SEC {
+                let roam_target_role = match team_tactics.support_roaming.as_str() {
+                    "RoamMid" => Some("MID"),
+                    "RoamTop" => Some("TOP"),
+                    _ => None,
+                };
+                if let Some(target_role) = roam_target_role {
+                    if champion.support_roam_uses < 2 && now >= champion.support_roam_cd_until {
+                        let ally_target = champions.iter().find(|ally| {
+                            ally.alive
+                                && ally.id != champion.id
+                                && normalized_team(&ally.team) == normalized_team(&champion.team)
+                                && ally.role == target_role
+                        });
+                        if let Some(ally_target) = ally_target {
+                            champion.state = "objective".to_string();
+                            champion.support_roam_uses += 1;
+                            champion.support_roam_cd_until = now + 85.0;
+                            champion.support_last_roam_role = target_role.to_string();
+                            set_champion_direct_path_hysteresis(
+                                champion,
+                                ally_target.pos,
+                                OBJECTIVE_PATH_MIN_TARGET_DELTA,
+                            );
+                            return;
+                        }
+                    }
+                }
+            } else if now >= champion.support_roam_cd_until {
+                let ally_target = champions
+                    .iter()
+                    .filter(|ally| {
+                        ally.alive
+                            && ally.id != champion.id
+                            && normalized_team(&ally.team) == normalized_team(&champion.team)
+                            && (ally.role == "TOP" || ally.role == "MID" || ally.role == "ADC")
+                    })
+                    .min_by(|a, b| {
+                        let a_ratio = if a.max_hp <= 0.0 { 1.0 } else { a.hp / a.max_hp };
+                        let b_ratio = if b.max_hp <= 0.0 { 1.0 } else { b.hp / b.max_hp };
+                        let a_repeat_penalty = if !champion.support_last_roam_role.is_empty()
+                            && a.role.eq_ignore_ascii_case(&champion.support_last_roam_role)
+                        {
+                            1
+                        } else {
+                            0
+                        };
+                        let b_repeat_penalty = if !champion.support_last_roam_role.is_empty()
+                            && b.role.eq_ignore_ascii_case(&champion.support_last_roam_role)
+                        {
+                            1
+                        } else {
+                            0
+                        };
+
+                        a_repeat_penalty
+                            .cmp(&b_repeat_penalty)
+                            .then_with(|| a_ratio.partial_cmp(&b_ratio).unwrap_or(Ordering::Equal))
+                            .then_with(|| {
+                                dist(champion.pos, a.pos)
+                                    .partial_cmp(&dist(champion.pos, b.pos))
+                                    .unwrap_or(Ordering::Equal)
+                            })
+                    });
+
+                if let Some(ally_target) = ally_target {
+                    champion.state = "objective".to_string();
+                    champion.support_roam_cd_until = now + 55.0;
+                    champion.support_last_roam_role = ally_target.role.clone();
+                    set_champion_direct_path_hysteresis(
+                        champion,
+                        ally_target.pos,
+                        OBJECTIVE_PATH_MIN_TARGET_DELTA,
+                    );
+                    return;
+                }
             }
         }
     }
@@ -4094,6 +4817,18 @@ fn is_jungle_camp_key(key: &str) -> bool {
             | "scuttle-top"
             | "scuttle-bot"
     )
+}
+
+fn is_enemy_jungle_camp_key_for_team(key: &str, team: &str) -> bool {
+    if !is_jungle_camp_key(key) {
+        return false;
+    }
+    let own_suffix = if normalized_team(team) == "blue" {
+        "-blue"
+    } else {
+        "-red"
+    };
+    (key.ends_with("-blue") || key.ends_with("-red")) && !key.ends_with(own_suffix)
 }
 
 fn contested_dragon_attempt_for_team<'a>(
@@ -4221,6 +4956,10 @@ fn should_assist_objective_attempt(
         return false;
     };
 
+    let iq_delta = stat_delta(champion.iq_score);
+    let discipline_delta = stat_delta(champion.competitive_score);
+    let proactive_rotation = iq_delta > -0.2;
+
     if is_major_teamfight_objective(attempt, neutral_timers) {
         return dist(champion.pos, attempt.pos) <= MAJOR_OBJECTIVE_TEAM_ASSIST_RADIUS
             && can_rotate_without_suicide(champion, attempt.pos, champions);
@@ -4233,7 +4972,7 @@ fn should_assist_objective_attempt(
         "dragon" | "elder" => role == "ADC" || role == "SUP" || role == "MID",
         _ => role == "MID",
     };
-    if role_priority && can_rotate_without_suicide(champion, attempt.pos, champions) {
+    if role_priority && proactive_rotation && can_rotate_without_suicide(champion, attempt.pos, champions) {
         return true;
     }
 
@@ -4255,7 +4994,8 @@ fn should_assist_objective_attempt(
         })
         .count();
 
-    if nearby_contestants == 0 && attempt.hp > attempt.max_hp * 0.82 {
+    let patience_gate = (0.82 - iq_delta * 0.06 - discipline_delta * 0.03).clamp(0.70, 0.90);
+    if nearby_contestants == 0 && attempt.hp > attempt.max_hp * patience_gate {
         return false;
     }
 
@@ -4281,7 +5021,9 @@ fn is_major_teamfight_objective(attempt: &NeutralTimerRuntime, neutral_timers: &
 
 fn can_rotate_without_suicide(champion: &ChampionRuntime, objective_pos: Vec2, champions: &[ChampionRuntime]) -> bool {
     let hp_ratio = ratio_or_zero(champion.hp, champion.max_hp);
-    if hp_ratio < 0.38 {
+    let iq_delta = stat_delta(champion.iq_score);
+    let hp_floor = (0.38 - iq_delta * 0.06).clamp(0.28, 0.46);
+    if hp_ratio < hp_floor {
         return false;
     }
 
@@ -4302,7 +5044,8 @@ fn can_rotate_without_suicide(champion: &ChampionRuntime, objective_pos: Vec2, c
         })
         .count();
 
-    ally_nearby + 1 >= enemy_nearby
+    let sync_bonus = if champion.iq_score >= 74.0 { 1 } else { 0 };
+    ally_nearby + 1 + sync_bonus >= enemy_nearby
 }
 
 fn allied_nexus_under_threat_pos(
@@ -4348,21 +5091,19 @@ fn pick_macro_objective_pos(
     champion: &ChampionRuntime,
     neutral_timers: &NeutralTimersRuntime,
     now: f64,
+    team_tactics: &RuntimeTeamTactics,
 ) -> Option<Vec2> {
     if champion.role != "JGL" {
         return None;
     }
 
-    let objective_lead_time = 35.0;
-    for key in [
-        "elder",
-        "baron",
-        "herald",
-        "voidgrubs",
-        "dragon",
-        "scuttle-top",
-        "scuttle-bot",
-    ] {
+    let objective_lead_time = match team_tactics.game_timing.as_str() {
+        "Early" => 50.0,
+        "Late" => 22.0,
+        _ => 35.0,
+    };
+
+    for key in ["elder", "baron"] {
         let Some(timer) = neutral_timers.entities.get(key) else {
             continue;
         };
@@ -4379,8 +5120,59 @@ fn pick_macro_objective_pos(
         }
     }
 
-    for key in jungler_macro_jungle_priority_for_team(&champion.team) {
-        let Some(timer) = neutral_timers.entities.get(*key) else {
+    let side_objective_order: [&str; 5] = match team_tactics.strong_side.as_str() {
+        "Top" => ["herald", "voidgrubs", "dragon", "scuttle-top", "scuttle-bot"],
+        "Mid" => ["dragon", "herald", "voidgrubs", "scuttle-bot", "scuttle-top"],
+        _ => ["dragon", "scuttle-bot", "herald", "voidgrubs", "scuttle-top"],
+    };
+
+    let can_hard_invade = team_tactics.jungle_style == "Invader"
+        || (now >= 14.0 * 60.0 && champion.kills >= champion.deaths + 2);
+
+    if team_tactics.jungle_style == "Farmer" {
+        for key in jungler_macro_jungle_priority_for_team(&champion.team, &team_tactics.jungle_pathing) {
+            if is_enemy_jungle_camp_key_for_team(key, &champion.team) && !can_hard_invade {
+                continue;
+            }
+            let Some(timer) = neutral_timers.entities.get(key) else {
+                continue;
+            };
+            if !timer.unlocked {
+                continue;
+            }
+            if timer.alive {
+                return Some(timer.pos);
+            }
+            if let Some(next_spawn_at) = timer.next_spawn_at {
+                if next_spawn_at >= now && next_spawn_at - now <= objective_lead_time {
+                    return Some(timer.pos);
+                }
+            }
+        }
+    }
+
+    for key in side_objective_order {
+        let Some(timer) = neutral_timers.entities.get(key) else {
+            continue;
+        };
+        if !timer.unlocked {
+            continue;
+        }
+        if timer.alive {
+            return Some(timer.pos);
+        }
+        if let Some(next_spawn_at) = timer.next_spawn_at {
+            if next_spawn_at >= now && next_spawn_at - now <= objective_lead_time {
+                return Some(timer.pos);
+            }
+        }
+    }
+
+    for key in jungler_macro_jungle_priority_for_team(&champion.team, &team_tactics.jungle_pathing) {
+        if is_enemy_jungle_camp_key_for_team(key, &champion.team) && !can_hard_invade {
+            continue;
+        }
+        let Some(timer) = neutral_timers.entities.get(key) else {
             continue;
         };
         if !timer.unlocked {
@@ -4399,36 +5191,33 @@ fn pick_macro_objective_pos(
     None
 }
 
-fn jungler_macro_jungle_priority_for_team(team: &str) -> &'static [&'static str; 12] {
-    if normalized_team(team) == "red" {
-        &[
-            "blue-buff-red",
-            "red-buff-red",
-            "wolves-red",
-            "raptors-red",
-            "gromp-red",
-            "krugs-red",
-            "blue-buff-blue",
-            "red-buff-blue",
-            "wolves-blue",
-            "raptors-blue",
-            "gromp-blue",
-            "krugs-blue",
+fn jungler_macro_jungle_priority_for_team(team: &str, jungle_pathing: &str) -> Vec<&'static str> {
+    let (own_top, own_bot, enemy_top, enemy_bot): ([&str; 3], [&str; 3], [&str; 3], [&str; 3]) =
+        if normalized_team(team) == "red" {
+            (
+                ["blue-buff-red", "wolves-red", "gromp-red"],
+                ["red-buff-red", "raptors-red", "krugs-red"],
+                ["blue-buff-blue", "wolves-blue", "gromp-blue"],
+                ["red-buff-blue", "raptors-blue", "krugs-blue"],
+            )
+        } else {
+            (
+                ["blue-buff-blue", "wolves-blue", "gromp-blue"],
+                ["red-buff-blue", "raptors-blue", "krugs-blue"],
+                ["blue-buff-red", "wolves-red", "gromp-red"],
+                ["red-buff-red", "raptors-red", "krugs-red"],
+            )
+        };
+
+    if jungle_pathing == "BotToTop" {
+        vec![
+            own_bot[0], own_bot[1], own_bot[2], "scuttle-bot", own_top[0], own_top[1], own_top[2], "scuttle-top",
+            enemy_top[0], enemy_top[1], enemy_top[2], enemy_bot[0], enemy_bot[1], enemy_bot[2],
         ]
     } else {
-        &[
-            "blue-buff-blue",
-            "red-buff-blue",
-            "wolves-blue",
-            "raptors-blue",
-            "gromp-blue",
-            "krugs-blue",
-            "blue-buff-red",
-            "red-buff-red",
-            "wolves-red",
-            "raptors-red",
-            "gromp-red",
-            "krugs-red",
+        vec![
+            own_top[0], own_top[1], own_top[2], "scuttle-top", own_bot[0], own_bot[1], own_bot[2], "scuttle-bot",
+            enemy_bot[0], enemy_bot[1], enemy_bot[2], enemy_top[0], enemy_top[1], enemy_top[2],
         ]
     }
 }
@@ -4509,6 +5298,9 @@ fn build_minion(
         alive: true,
         kind: kind.to_string(),
         last_hit_by_champion_id: None,
+        owner_champion_id: None,
+        summon_kind: None,
+        summon_expires_at: 0.0,
         attack_cd_until: 0.0,
         move_speed,
         attack_range,
@@ -4544,13 +5336,32 @@ fn move_champions(runtime: &mut RuntimeState, dt: f64) {
     let now = runtime.time_sec;
     let champion_snapshot = runtime.champions.clone();
     let neutral_timers_snapshot = decode_neutral_timers_state(&runtime.neutral_timers);
+    let team_tactics_snapshot = runtime.extra.get("teamTactics").cloned();
+    let team_buffs_snapshot = runtime.extra.get("teamBuffs").cloned();
 
     for champion in &mut runtime.champions {
+        if champion.realm_banished_until > 0.0 {
+            if now >= champion.realm_banished_until {
+                champion.realm_banished_until = 0.0;
+                if let Some(return_pos) = champion.realm_return_pos {
+                    champion.pos = return_pos;
+                }
+                champion.realm_return_pos = None;
+                champion.target_path.clear();
+                champion.target_path_index = 0;
+                champion.next_decision_at = now;
+                continue;
+            } else {
+                continue;
+            }
+        }
+
         if !champion.alive {
             if now >= champion.respawn_at {
                 champion.alive = true;
                 champion.hp = champion.max_hp;
                 champion.pos = base_position_for(&champion.team);
+                maybe_upgrade_trinket_to_oracle(champion, now);
                 champion.attack_cd_until = now;
                 champion.state = "lane".to_string();
                 champion.recall_anchor = None;
@@ -4571,6 +5382,8 @@ fn move_champions(runtime: &mut RuntimeState, dt: f64) {
                 &runtime.structures,
                 &champion_snapshot,
                 neutral_timers_snapshot.as_ref(),
+                &team_tactics_for_runtime(team_tactics_snapshot.as_ref(), &champion.team),
+                &team_buffs_for_runtime(team_buffs_snapshot.as_ref(), &champion.team),
             );
             champion.next_decision_at = now + CHAMPION_DECISION_CADENCE_SEC;
         }
@@ -4599,12 +5412,29 @@ fn move_champions(runtime: &mut RuntimeState, dt: f64) {
         }
 
         if let Some(target) = champion.target_path.get(champion.target_path_index).copied() {
-            move_entity(&mut champion.pos, target, champion.move_speed, dt);
+            let buffs = team_buffs_for_runtime(team_buffs_snapshot.as_ref(), &champion.team);
+            let mut speed_multiplier = 1.0 + buffs.cloud_stacks as f64 * 0.015 + buffs.hextech_stacks as f64 * 0.01;
+            if buffs.soul_kind.as_deref() == Some("cloud") {
+                speed_multiplier += 0.08;
+            }
+            if buffs.soul_kind.as_deref() == Some("hextech") {
+                speed_multiplier += 0.04;
+            }
+            move_entity(&mut champion.pos, target, champion.move_speed * speed_multiplier, dt);
             if dist(champion.pos, target) < 0.01
                 && champion.target_path_index < champion.target_path.len().saturating_sub(1)
             {
                 champion.target_path_index += 1;
             }
+        }
+
+        let buffs = team_buffs_for_runtime(team_buffs_snapshot.as_ref(), &champion.team);
+        let mut ocean_regen = buffs.ocean_stacks as f64 * 0.45;
+        if buffs.soul_kind.as_deref() == Some("ocean") {
+            ocean_regen += 1.2;
+        }
+        if ocean_regen > 0.0 && (now - champion.last_damaged_at) >= 5.0 {
+            champion.hp = (champion.hp + ocean_regen * dt).min(champion.max_hp);
         }
 
         champion.pos.x = clamp(champion.pos.x, 0.01, 0.99);
@@ -4659,6 +5489,7 @@ fn minion_has_lane_combat_target(
         champions,
         &minion.team,
         &minion.lane,
+        &minion.kind,
         minion.pos,
         champion_range,
     )
@@ -4668,6 +5499,38 @@ fn minion_has_lane_combat_target(
 fn move_minions(runtime: &mut RuntimeState, dt: f64) {
     for i in 0..runtime.minions.len() {
         if !runtime.minions[i].alive {
+            continue;
+        }
+
+        if runtime.minions[i].kind == "summon" {
+            if runtime.minions[i].summon_expires_at > 0.0 && runtime.time_sec >= runtime.minions[i].summon_expires_at {
+                runtime.minions[i].alive = false;
+                continue;
+            }
+            let owner_id = runtime.minions[i].owner_champion_id.clone();
+            let owner = owner_id
+                .as_ref()
+                .and_then(|id| runtime.champions.iter().find(|champion| champion.id == *id && champion.alive));
+            if let Some(owner) = owner {
+                let seed = runtime.minions[i]
+                    .id
+                    .bytes()
+                    .fold(0u64, |acc, b| acc.wrapping_mul(131).wrapping_add(b as u64));
+                let phase = (seed % 628) as f64 / 100.0;
+                let angle = runtime.time_sec * 1.9 + phase;
+                let orbit = 0.018 + ((seed % 7) as f64) * 0.001;
+                let follow_target = Vec2 {
+                    x: clamp(owner.pos.x + angle.cos() * orbit, 0.01, 0.99),
+                    y: clamp(owner.pos.y + angle.sin() * orbit, 0.01, 0.99),
+                };
+                let speed = runtime.minions[i].move_speed.max(owner.move_speed * 0.85);
+                move_entity(&mut runtime.minions[i].pos, follow_target, speed, dt);
+            } else {
+                runtime.minions[i].alive = false;
+                continue;
+            }
+            runtime.minions[i].pos.x = clamp(runtime.minions[i].pos.x, 0.01, 0.99);
+            runtime.minions[i].pos.y = clamp(runtime.minions[i].pos.y, 0.01, 0.99);
             continue;
         }
 
@@ -4707,11 +5570,26 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
             continue;
         }
 
+        let attacker_empowered = minion_is_baron_empowered(runtime, &runtime.minions[i]);
+
         let cadence = minion_stats(&runtime.minions[i].kind).3;
         let enemy_minion = nearest_enemy_minion_index(&runtime.minions, i, runtime.minions[i].attack_range.max(0.05));
 
         if let Some(enemy_idx) = enemy_minion {
-            let damage = runtime.minions[i].attack_damage * MINION_DAMAGE_TO_MINION_MULTIPLIER;
+            let attacker_damage = runtime.minions[i].attack_damage
+                * if attacker_empowered {
+                    BARON_MINION_DAMAGE_MULTIPLIER
+                } else {
+                    1.0
+                };
+            let defender_empowered = minion_is_baron_empowered(runtime, &runtime.minions[enemy_idx]);
+            let damage = attacker_damage
+                * MINION_DAMAGE_TO_MINION_MULTIPLIER
+                * if defender_empowered {
+                    1.0 - BARON_MINION_DAMAGE_REDUCTION
+                } else {
+                    1.0
+                };
             if i < enemy_idx {
                 let (left, right) = runtime.minions.split_at_mut(enemy_idx);
                 let attacker = &mut left[i];
@@ -4749,7 +5627,12 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
             }
 
             let attacker_team = runtime.minions[i].team.clone();
-            let damage = runtime.minions[i].attack_damage;
+            let damage = runtime.minions[i].attack_damage
+                * if attacker_empowered {
+                    BARON_MINION_DAMAGE_MULTIPLIER
+                } else {
+                    1.0
+                };
             apply_damage_to_structure(runtime, structure_idx, damage, &attacker_team);
             runtime.minions[i].attack_cd_until = now + cadence;
             continue;
@@ -4758,19 +5641,26 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
         let attacker_team = runtime.minions[i].team.clone();
         let attacker_lane = runtime.minions[i].lane.clone();
         let attacker_pos = runtime.minions[i].pos;
-        let attacker_damage = runtime.minions[i].attack_damage;
+        let attacker_damage = runtime.minions[i].attack_damage
+            * if attacker_empowered {
+                BARON_MINION_DAMAGE_MULTIPLIER
+            } else {
+                1.0
+            };
         let attacker_range = runtime.minions[i].attack_range.max(MINION_CHAMPION_AGGRO_MIN_RANGE);
 
         let enemy_champion = nearest_enemy_champion_for_minion(
             &runtime.champions,
             &attacker_team,
             &attacker_lane,
+            &runtime.minions[i].kind,
             attacker_pos,
             attacker_range,
         );
 
         if let Some(champion_idx) = enemy_champion {
-            runtime.champions[champion_idx].hp -= attacker_damage * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER;
+            let defender_mult = team_damage_reduction_multiplier(runtime, &runtime.champions[champion_idx].team);
+            runtime.champions[champion_idx].hp -= attacker_damage * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER * defender_mult;
             runtime.champions[champion_idx].last_damaged_by_champion_id = None;
             runtime.champions[champion_idx].last_damaged_at = now;
             cancel_recall(&mut runtime.champions[champion_idx], now, &mut runtime.events);
@@ -4779,7 +5669,8 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
             if runtime.champions[champion_idx].hp <= 0.0 && runtime.champions[champion_idx].alive {
                 runtime.champions[champion_idx].alive = false;
                 runtime.champions[champion_idx].deaths += 1;
-                runtime.champions[champion_idx].respawn_at = now + 12.0;
+                let respawn = champion_respawn_seconds(runtime.champions[champion_idx].level, now);
+                runtime.champions[champion_idx].respawn_at = now + respawn;
             }
             continue;
         }
@@ -4885,7 +5776,7 @@ fn has_credible_kill_chance(
     }
 
     let range_gate = if champion.role == "JGL" {
-        0.14
+        0.11
     } else {
         LANE_CHAMPION_TRADE_RADIUS
     };
@@ -4945,6 +5836,31 @@ fn has_credible_kill_chance(
     (ttk_enemy <= ttk_self * 0.95 || low_enemy) && ally_pressure + 0.5 >= enemy_pressure
 }
 
+fn is_backline_champion(champion: &ChampionRuntime) -> bool {
+    champion.attack_range >= 0.05
+}
+
+fn target_priority_rank_for_fight_plan(fight_plan: &str, enemy: &ChampionRuntime) -> u8 {
+    let enemy_is_backline = is_backline_champion(enemy);
+    match fight_plan {
+        "FrontToBack" => {
+            if enemy_is_backline {
+                1
+            } else {
+                0
+            }
+        }
+        "Dive" | "Pick" => {
+            if enemy_is_backline {
+                0
+            } else {
+                1
+            }
+        }
+        _ => 0,
+    }
+}
+
 fn pick_combat_target(
     runtime: &RuntimeState,
     champion_idx: usize,
@@ -4955,6 +5871,8 @@ fn pick_combat_target(
         return None;
     }
     let champion = &runtime.champions[champion_idx];
+    let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &champion.team);
+    let fight_plan = team_tactics.fight_plan.as_str();
     let enemy_team = if normalized_team(&champion.team) == "blue" {
         "red"
     } else {
@@ -4969,11 +5887,13 @@ fn pick_combat_target(
             *idx != champion_idx
                 && enemy.alive
                 && normalized_team(&enemy.team) == enemy_team
+                && team_has_vision_at(runtime, &champion.team, enemy.pos)
                 && has_credible_kill_chance(runtime, champion_idx, *idx, now)
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
-            a.hp.partial_cmp(&b.hp)
-                .unwrap_or(Ordering::Equal)
+            target_priority_rank_for_fight_plan(fight_plan, a)
+                .cmp(&target_priority_rank_for_fight_plan(fight_plan, b))
+                .then_with(|| a.hp.partial_cmp(&b.hp).unwrap_or(Ordering::Equal))
                 .then_with(|| {
                     dist(champion.pos, a.pos)
                         .partial_cmp(&dist(champion.pos, b.pos))
@@ -4994,12 +5914,17 @@ fn pick_combat_target(
             .filter(|(_, enemy)| {
                 enemy.alive
                     && normalized_team(&enemy.team) == enemy_team
+                    && team_has_vision_at(runtime, &champion.team, enemy.pos)
                     && dist(champion.pos, enemy.pos) <= 0.13
             })
             .min_by(|(idx_a, a), (idx_b, b)| {
-                dist(champion.pos, a.pos)
-                    .partial_cmp(&dist(champion.pos, b.pos))
-                    .unwrap_or(Ordering::Equal)
+                target_priority_rank_for_fight_plan(fight_plan, a)
+                    .cmp(&target_priority_rank_for_fight_plan(fight_plan, b))
+                    .then_with(|| {
+                        dist(champion.pos, a.pos)
+                            .partial_cmp(&dist(champion.pos, b.pos))
+                            .unwrap_or(Ordering::Equal)
+                    })
                     .then_with(|| idx_a.cmp(idx_b))
             })
             .map(|(idx, _)| idx);
@@ -5024,11 +5949,12 @@ fn pick_combat_target(
             .iter()
             .enumerate()
             .filter(|(_, m)| {
-                m.alive
-                    && normalized_team(&m.team) == enemy_team
-                    && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
-                    && dist(champion.pos, m.pos) <= 0.12
-            })
+            m.alive
+                && normalized_team(&m.team) == enemy_team
+                && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
+                && team_has_vision_at(runtime, &champion.team, m.pos)
+                && dist(champion.pos, m.pos) <= 0.12
+        })
             .min_by(|(idx_a, a), (idx_b, b)| {
                 a.hp.partial_cmp(&b.hp)
                     .unwrap_or(Ordering::Equal)
@@ -5050,6 +5976,7 @@ fn pick_combat_target(
         .filter(|(_, enemy)| {
             enemy.alive
                 && normalized_team(&enemy.team) == enemy_team
+                && team_has_vision_at(runtime, &champion.team, enemy.pos)
                 && enemy.state == "recall"
                 && dist(champion.pos, enemy.pos) <= LOCAL_COMBAT_ENGAGE_RADIUS
                 && in_lane_trade_context(
@@ -5062,9 +5989,13 @@ fn pick_combat_target(
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
-            dist(champion.pos, a.pos)
-                .partial_cmp(&dist(champion.pos, b.pos))
-                .unwrap_or(Ordering::Equal)
+            target_priority_rank_for_fight_plan(fight_plan, a)
+                .cmp(&target_priority_rank_for_fight_plan(fight_plan, b))
+                .then_with(|| {
+                    dist(champion.pos, a.pos)
+                        .partial_cmp(&dist(champion.pos, b.pos))
+                        .unwrap_or(Ordering::Equal)
+                })
                 .then_with(|| idx_a.cmp(idx_b))
         })
         .map(|(idx, _)| idx);
@@ -5079,6 +6010,7 @@ fn pick_combat_target(
         .filter(|(_, enemy)| {
             enemy.alive
                 && normalized_team(&enemy.team) == enemy_team
+                && team_has_vision_at(runtime, &champion.team, enemy.pos)
                 && dist(champion.pos, enemy.pos) <= 0.12
                 && runtime.champions.iter().any(|ally| {
                     ally.alive
@@ -5105,9 +6037,13 @@ fn pick_combat_target(
                 ) || has_local_numbers_advantage(champion, enemy.pos, &runtime.champions, 0.12))
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
-            dist(champion.pos, a.pos)
-                .partial_cmp(&dist(champion.pos, b.pos))
-                .unwrap_or(Ordering::Equal)
+            target_priority_rank_for_fight_plan(fight_plan, a)
+                .cmp(&target_priority_rank_for_fight_plan(fight_plan, b))
+                .then_with(|| {
+                    dist(champion.pos, a.pos)
+                        .partial_cmp(&dist(champion.pos, b.pos))
+                        .unwrap_or(Ordering::Equal)
+                })
                 .then_with(|| idx_a.cmp(idx_b))
         })
         .map(|(idx, _)| idx);
@@ -5127,6 +6063,7 @@ fn pick_combat_target(
             enemy.alive
                 && normalized_team(&enemy.team) == enemy_team
                 && normalized_lane(&enemy.lane) == normalized_lane(&champion.lane)
+                && team_has_vision_at(runtime, &champion.team, enemy.pos)
                 && dist(champion.pos, enemy.pos) <= LANE_CHAMPION_TRADE_RADIUS
                 && has_local_numbers_advantage(champion, enemy.pos, &runtime.champions, 0.11)
                 && can_open_trade_window(
@@ -5142,8 +6079,9 @@ fn pick_combat_target(
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
-            a.hp.partial_cmp(&b.hp)
-                .unwrap_or(Ordering::Equal)
+            target_priority_rank_for_fight_plan(fight_plan, a)
+                .cmp(&target_priority_rank_for_fight_plan(fight_plan, b))
+                .then_with(|| a.hp.partial_cmp(&b.hp).unwrap_or(Ordering::Equal))
                 .then_with(|| {
                     dist(champion.pos, a.pos)
                         .partial_cmp(&dist(champion.pos, b.pos))
@@ -5174,6 +6112,7 @@ fn pick_combat_target(
             m.alive
                 && normalized_team(&m.team) == enemy_team
                 && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
+                && team_has_vision_at(runtime, &champion.team, m.pos)
                 && dist(champion.pos, m.pos) <= laner_farm_search_radius(champion)
                 && m.hp
                     <= champion.attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * 1.4
@@ -5201,6 +6140,7 @@ fn pick_combat_target(
             enemy.alive
                 && normalized_team(&enemy.team) == enemy_team
                 && normalized_lane(&enemy.lane) == normalized_lane(&champion.lane)
+                && team_has_vision_at(runtime, &champion.team, enemy.pos)
                 && dist(champion.pos, enemy.pos) <= LANE_CHAMPION_TRADE_RADIUS
                 && can_open_trade_window(
                     champion,
@@ -5215,9 +6155,13 @@ fn pick_combat_target(
                 )
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
-            dist(champion.pos, a.pos)
-                .partial_cmp(&dist(champion.pos, b.pos))
-                .unwrap_or(Ordering::Equal)
+            target_priority_rank_for_fight_plan(fight_plan, a)
+                .cmp(&target_priority_rank_for_fight_plan(fight_plan, b))
+                .then_with(|| {
+                    dist(champion.pos, a.pos)
+                        .partial_cmp(&dist(champion.pos, b.pos))
+                        .unwrap_or(Ordering::Equal)
+                })
                 .then_with(|| idx_a.cmp(idx_b))
         })
         .map(|(idx, _)| idx);
@@ -5237,6 +6181,7 @@ fn pick_combat_target(
             m.alive
                 && normalized_team(&m.team) == enemy_team
                 && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
+                && team_has_vision_at(runtime, &champion.team, m.pos)
                 && dist(champion.pos, m.pos) <= laner_farm_search_radius(champion)
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -5536,8 +6481,11 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
     let mut neutral_timers = decode_neutral_timers_state(&runtime.neutral_timers)
         .unwrap_or_else(|| neutral_timers_default_runtime_state());
 
+    tick_ignite_dot_effects(runtime, now);
+
     for idx in 0..runtime.champions.len() {
         if !runtime.champions[idx].alive
+            || champion_is_banished(&runtime.champions[idx])
             || runtime.champions[idx].state == "recall"
             || now < runtime.champions[idx].attack_cd_until
         {
@@ -5546,6 +6494,15 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
 
         let team = normalized_team(&runtime.champions[idx].team).to_string();
         let attack_range = runtime.champions[idx].attack_range.max(0.04);
+
+        if try_cast_ultimate(runtime, idx, now) {
+            continue;
+        }
+
+        if try_cast_summoner_spells(runtime, &mut neutral_timers, idx, now) {
+            continue;
+        }
+
         let is_hard_assist = {
             let contested = contested_dragon_attempt_for_team(&team, &runtime.champions, &neutral_timers);
             should_hard_assist_contested_dragon(&runtime.champions[idx], contested)
@@ -5766,7 +6723,8 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                 if minion_idx >= runtime.minions.len() || !runtime.minions[minion_idx].alive {
                     continue;
                 }
-                let damage = runtime.champions[idx].attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER;
+                let lane_mult = champion_lane_damage_multiplier(&runtime.champions[idx]);
+                let damage = runtime.champions[idx].attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * lane_mult;
                 runtime.minions[minion_idx].hp -= damage;
                 runtime.minions[minion_idx].last_hit_by_champion_id = Some(runtime.champions[idx].id.clone());
                 runtime.champions[idx].attack_cd_until = now + 0.75;
@@ -5782,7 +6740,13 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                 {
                     continue;
                 }
-                apply_damage_to_structure(runtime, structure_idx, runtime.champions[idx].attack_damage, &team);
+                let structure_mult = champion_structure_focus_multiplier(&runtime.champions[idx]);
+                apply_damage_to_structure(
+                    runtime,
+                    structure_idx,
+                    runtime.champions[idx].attack_damage * structure_mult,
+                    &team,
+                );
                 runtime.champions[idx].attack_cd_until = now + 0.9;
             }
             CombatTarget::Neutral(neutral_key) => {
@@ -5797,6 +6761,877 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
         runtime.neutral_timers = value;
     }
     sync_objectives_from_neutral_timers(runtime, &neutral_timers);
+}
+
+fn champion_has_spell(champion: &ChampionRuntime, key: &str) -> bool {
+    champion
+        .summoner_spells
+        .iter()
+        .any(|spell| spell.key.eq_ignore_ascii_case(key))
+}
+
+fn spell_ready(champion: &ChampionRuntime, key: &str, now: f64) -> bool {
+    champion
+        .summoner_spells
+        .iter()
+        .find(|spell| spell.key.eq_ignore_ascii_case(key))
+        .map(|spell| now >= spell.cd_until)
+        .unwrap_or(false)
+}
+
+fn set_spell_cd(champion: &mut ChampionRuntime, key: &str, now: f64, cooldown_sec: f64) -> bool {
+    let Some(spell) = champion
+        .summoner_spells
+        .iter_mut()
+        .find(|spell| spell.key.eq_ignore_ascii_case(key)) else {
+        return false;
+    };
+    spell.cd_until = now + cooldown_sec;
+    true
+}
+
+fn champion_is_banished(champion: &ChampionRuntime) -> bool {
+    champion.realm_banished_until > 0.0
+}
+
+fn team_has_vision_at(runtime: &RuntimeState, team: &str, pos: Vec2) -> bool {
+    if runtime
+        .champions
+        .iter()
+        .any(|champion| {
+            champion.alive
+                && !champion_is_banished(champion)
+                && normalized_team(&champion.team) == normalized_team(team)
+                && dist(champion.pos, pos) <= CHAMPION_VISION_RADIUS
+        })
+    {
+        return true;
+    }
+
+    if runtime.minions.iter().any(|minion| {
+        minion.alive
+            && normalized_team(&minion.team) == normalized_team(team)
+            && dist(minion.pos, pos) <= MINION_VISION_RADIUS
+    }) {
+        return true;
+    }
+
+    if runtime.structures.iter().any(|structure| {
+        structure.alive
+            && normalized_team(&structure.team) == normalized_team(team)
+            && dist(structure.pos, pos) <= STRUCTURE_VISION_RADIUS
+    }) {
+        return true;
+    }
+
+    runtime.wards.iter().any(|ward| {
+        normalized_team(&ward.team) == normalized_team(team)
+            && ward.expires_at > runtime.time_sec
+            && dist(ward.pos, pos) <= WARD_VISION_RADIUS
+    })
+}
+
+fn strategic_ward_points_for_team(team: &str) -> &'static [Vec2] {
+    if normalized_team(team) == "blue" {
+        &[
+            Vec2 { x: 0.615, y: 0.61 },  // river bot bush
+            Vec2 { x: 0.565, y: 0.455 }, // river mid bot side
+            Vec2 { x: 0.49, y: 0.525 },  // mid river center
+            Vec2 { x: 0.412, y: 0.39 },  // river top side
+            Vec2 { x: 0.675, y: 0.705 }, // dragon pit edge
+            Vec2 { x: 0.328, y: 0.302 }, // baron pit edge
+            Vec2 { x: 0.725, y: 0.548 }, // enemy raptor entrance
+            Vec2 { x: 0.73, y: 0.37 },   // enemy blue-side entrance
+        ]
+    } else {
+        &[
+            Vec2 { x: 0.385, y: 0.39 },  // river bot bush (red perspective)
+            Vec2 { x: 0.435, y: 0.545 }, // river mid bot side
+            Vec2 { x: 0.51, y: 0.475 },  // mid river center
+            Vec2 { x: 0.588, y: 0.61 },  // river top side
+            Vec2 { x: 0.675, y: 0.705 }, // dragon pit edge
+            Vec2 { x: 0.328, y: 0.302 }, // baron pit edge
+            Vec2 { x: 0.272, y: 0.46 },  // enemy raptor entrance
+            Vec2 { x: 0.272, y: 0.63 },  // enemy blue-side entrance
+        ]
+    }
+}
+
+fn pick_ward_placement_pos(runtime: &RuntimeState, champion: &ChampionRuntime, now: f64) -> Option<Vec2> {
+    let points = strategic_ward_points_for_team(&champion.team);
+    let max_place_dist = if champion.role == "JGL" || champion.role == "SUP" { 0.24 } else { 0.18 };
+
+    points
+        .iter()
+        .copied()
+        .filter(|point| dist(champion.pos, *point) <= max_place_dist)
+        .filter(|point| {
+            !runtime.wards.iter().any(|ward| {
+                normalized_team(&ward.team) == normalized_team(&champion.team)
+                    && ward.expires_at > now
+                    && dist(ward.pos, *point) <= 0.095
+            })
+        })
+        .min_by(|a, b| {
+            let da = dist(champion.pos, *a);
+            let db = dist(champion.pos, *b);
+            da.partial_cmp(&db).unwrap_or(Ordering::Equal)
+        })
+}
+
+fn place_wards(runtime: &mut RuntimeState) {
+    let now = runtime.time_sec;
+    if now < WARD_UNLOCK_AT_SEC {
+        return;
+    }
+
+    let mut placements: Vec<WardRuntime> = Vec::new();
+
+    for idx in 0..runtime.champions.len() {
+        let champion = runtime.champions[idx].clone();
+        if !champion.alive
+            || champion_is_banished(&champion)
+            || champion.state == "recall"
+            || now < champion.ward_cd_until
+            || !champion.trinket_key.eq_ignore_ascii_case(TRINKET_WARDING_TOTEM)
+        {
+            continue;
+        }
+
+        let Some(place_pos) = pick_ward_placement_pos(runtime, &champion, now) else {
+            continue;
+        };
+
+        runtime.champions[idx].ward_cd_until = now + WARD_COOLDOWN_SEC;
+        placements.push(WardRuntime {
+            id: format!("ward-{}-{:.0}", champion.id, now * 10.0),
+            team: champion.team.clone(),
+            owner_champion_id: champion.id.clone(),
+            pos: place_pos,
+            expires_at: now + WARD_DURATION_SEC,
+        });
+    }
+
+    if placements.is_empty() {
+        return;
+    }
+
+    for ward in placements {
+        let owner_id = ward.owner_champion_id.clone();
+        let mut owner_wards: Vec<usize> = runtime
+            .wards
+            .iter()
+            .enumerate()
+            .filter(|(_, w)| w.owner_champion_id == owner_id && w.expires_at > now)
+            .map(|(idx, _)| idx)
+            .collect();
+        if owner_wards.len() >= 2 {
+            owner_wards.sort_by(|a, b| {
+                runtime.wards[*a]
+                    .expires_at
+                    .partial_cmp(&runtime.wards[*b].expires_at)
+                    .unwrap_or(Ordering::Equal)
+            });
+            if let Some(drop_idx) = owner_wards.first().copied() {
+                runtime.wards.remove(drop_idx);
+            }
+        }
+        runtime.wards.push(ward);
+    }
+}
+
+fn maybe_upgrade_trinket_to_oracle(champion: &mut ChampionRuntime, now: f64) {
+    if champion.trinket_swapped || now < TRINKET_SWAP_UNLOCK_AT_SEC {
+        return;
+    }
+    if champion.role != "JGL" && champion.role != "SUP" {
+        return;
+    }
+    champion.trinket_key = TRINKET_ORACLE_LENS.to_string();
+    champion.trinket_swapped = true;
+}
+
+fn process_sweepers(runtime: &mut RuntimeState) {
+    let now = runtime.time_sec;
+    let mut activated_by: Vec<String> = Vec::new();
+
+    for champion in &mut runtime.champions {
+        if !champion.alive || champion_is_banished(champion) {
+            continue;
+        }
+        if champion.role != "JGL" && champion.role != "SUP" {
+            continue;
+        }
+        if !champion.trinket_key.eq_ignore_ascii_case(TRINKET_ORACLE_LENS) {
+            continue;
+        }
+
+        if now >= champion.sweeper_active_until
+            && now >= champion.sweeper_cd_until
+            && runtime.wards.iter().any(|ward| {
+                normalized_team(&ward.team) != normalized_team(&champion.team)
+                    && ward.expires_at > now
+                    && dist(ward.pos, champion.pos) <= SWEEPER_CLEAR_RADIUS
+            })
+        {
+            champion.sweeper_active_until = now + SWEEPER_DURATION_SEC;
+            champion.sweeper_cd_until = now + SWEEPER_COOLDOWN_SEC;
+            activated_by.push(champion.name.clone());
+        }
+    }
+
+    for name in activated_by {
+        log_event(runtime, &format!("{} activated Sweeper", name), "info");
+    }
+
+    let mut should_clear = Vec::new();
+    for (idx, ward) in runtime.wards.iter().enumerate() {
+        let cleared = runtime.champions.iter().any(|champion| {
+            champion.alive
+                && !champion_is_banished(champion)
+                && (champion.role == "JGL" || champion.role == "SUP")
+                && champion.sweeper_active_until > now
+                && normalized_team(&champion.team) != normalized_team(&ward.team)
+                && dist(champion.pos, ward.pos) <= SWEEPER_CLEAR_RADIUS
+        });
+        if cleared {
+            should_clear.push(idx);
+        }
+    }
+
+    for idx in should_clear.into_iter().rev() {
+        runtime.wards.remove(idx);
+    }
+}
+
+fn ultimate_ready(champion: &ChampionRuntime, now: f64) -> bool {
+    champion
+        .ultimate
+        .as_ref()
+        .map(|ultimate| now >= ultimate.cd_until)
+        .unwrap_or(false)
+}
+
+fn set_ultimate_cd(champion: &mut ChampionRuntime, now: f64, cooldown_sec: f64) -> bool {
+    let Some(ultimate) = champion.ultimate.as_mut() else {
+        return false;
+    };
+    ultimate.cd_until = now + cooldown_sec;
+    true
+}
+
+fn nearest_enemy_in_range(runtime: &RuntimeState, champion_idx: usize, range: f64) -> Option<usize> {
+    if champion_idx >= runtime.champions.len() {
+        return None;
+    }
+    let champion = &runtime.champions[champion_idx];
+    runtime
+        .champions
+        .iter()
+        .enumerate()
+        .filter(|(idx, enemy)| {
+            *idx != champion_idx
+                && enemy.alive
+                && !champion_is_banished(enemy)
+                && normalized_team(&enemy.team) != normalized_team(&champion.team)
+                && team_has_vision_at(runtime, &champion.team, enemy.pos)
+                && dist(enemy.pos, champion.pos) <= range
+        })
+        .min_by(|(_, a), (_, b)| {
+            dist(a.pos, champion.pos)
+                .partial_cmp(&dist(b.pos, champion.pos))
+                .unwrap_or(Ordering::Equal)
+        })
+        .map(|(idx, _)| idx)
+}
+
+fn next_summon_id(runtime: &mut RuntimeState) -> String {
+    let next = runtime
+        .extra
+        .get("nextSummonId")
+        .and_then(Value::as_i64)
+        .unwrap_or(1)
+        .max(1);
+    runtime
+        .extra
+        .insert("nextSummonId".to_string(), Value::from(next + 1));
+    format!("summon-{next}")
+}
+
+fn try_cast_special_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> Option<bool> {
+    let champion = runtime.champions.get(champion_idx)?.clone();
+    let key = champion.champion_id.to_lowercase();
+
+    if ["yorick", "annie", "ivern", "shaco"].contains(&key.as_str()) {
+        let (summon_kind, hp_ratio, damage_ratio, duration_sec) = summon_profile(&key);
+
+        let already_alive = runtime.minions.iter().any(|minion| {
+            minion.alive
+                && minion.kind == "summon"
+                && minion.owner_champion_id.as_deref() == Some(champion.id.as_str())
+        });
+        if already_alive {
+            return Some(false);
+        }
+
+        let summon = MinionRuntime {
+            id: format!("{}-{}", summon_kind, next_summon_id(runtime)),
+            team: champion.team.clone(),
+            lane: champion.lane.clone(),
+            pos: Vec2 {
+                x: clamp(champion.pos.x + 0.014, 0.01, 0.99),
+                y: clamp(champion.pos.y + 0.01, 0.01, 0.99),
+            },
+            hp: (champion.max_hp * hp_ratio).max(35.0),
+            max_hp: (champion.max_hp * hp_ratio).max(35.0),
+            alive: true,
+            kind: "summon".to_string(),
+            last_hit_by_champion_id: None,
+            owner_champion_id: Some(champion.id.clone()),
+            summon_kind: Some(summon_kind.to_string()),
+            summon_expires_at: now + duration_sec,
+            attack_cd_until: now,
+            move_speed: (champion.move_speed * 0.95).max(0.038),
+            attack_range: champion.attack_range.max(0.045),
+            attack_damage: (champion.attack_damage * damage_ratio).max(4.0),
+            path: vec![champion.pos],
+            path_index: 0,
+        };
+
+        runtime.minions.push(summon);
+        log_event(
+            runtime,
+            &format!("{} summoned {}", champion.name, summon_kind),
+            "info",
+        );
+        return Some(true);
+    }
+
+    if key == "shen" {
+        let ally_idx = runtime
+            .champions
+            .iter()
+            .enumerate()
+            .filter(|(idx, ally)| {
+                *idx != champion_idx
+                    && ally.alive
+                    && !champion_is_banished(ally)
+                    && normalized_team(&ally.team) == normalized_team(&champion.team)
+            })
+            .min_by(|(idx_a, a), (idx_b, b)| {
+                let ratio_a = if a.max_hp <= 0.0 { 1.0 } else { a.hp / a.max_hp };
+                let ratio_b = if b.max_hp <= 0.0 { 1.0 } else { b.hp / b.max_hp };
+                ratio_a
+                    .partial_cmp(&ratio_b)
+                    .unwrap_or(Ordering::Equal)
+                    .then_with(|| idx_a.cmp(idx_b))
+            })
+            .map(|(idx, _)| idx);
+
+        let Some(ally_idx) = ally_idx else {
+            return Some(false);
+        };
+
+        let shield = runtime.champions[ally_idx].max_hp * 0.30;
+        let ally_pos = runtime.champions[ally_idx].pos;
+        runtime.champions[ally_idx].hp = (runtime.champions[ally_idx].hp + shield).min(runtime.champions[ally_idx].max_hp);
+        runtime.champions[champion_idx].pos = ally_pos;
+        runtime.champions[champion_idx].target_path.clear();
+        runtime.champions[champion_idx].target_path_index = 0;
+        runtime.champions[champion_idx].next_decision_at = now;
+        log_event(runtime, &format!("{} cast Stand United", champion.name), "info");
+        return Some(true);
+    }
+
+    if key == "mordekaiser" {
+        let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE + 0.03) else {
+            return Some(false);
+        };
+        let caster_pos = runtime.champions[champion_idx].pos;
+        let target_pos = runtime.champions[target_idx].pos;
+
+        runtime.champions[champion_idx].realm_banished_until = now + ULTIMATE_MORDE_REALM_DURATION_SEC;
+        runtime.champions[champion_idx].realm_return_pos = Some(caster_pos);
+        runtime.champions[target_idx].realm_banished_until = now + ULTIMATE_MORDE_REALM_DURATION_SEC;
+        runtime.champions[target_idx].realm_return_pos = Some(target_pos);
+
+        runtime.champions[champion_idx].pos = Vec2 { x: -5.0, y: -5.0 };
+        runtime.champions[target_idx].pos = Vec2 { x: -6.0, y: -6.0 };
+        runtime.champions[champion_idx].target_path.clear();
+        runtime.champions[target_idx].target_path.clear();
+        runtime.champions[champion_idx].target_path_index = 0;
+        runtime.champions[target_idx].target_path_index = 0;
+
+        log_event(runtime, &format!("{} cast Realm of Death", champion.name), "info");
+        return Some(true);
+    }
+
+    None
+}
+
+fn try_cast_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
+    if champion_idx >= runtime.champions.len() || !runtime.champions[champion_idx].alive {
+        return false;
+    }
+
+    let champion_snapshot = runtime.champions[champion_idx].clone();
+    if champion_snapshot.level < ULTIMATE_UNLOCK_LEVEL || !ultimate_ready(&champion_snapshot, now) {
+        return false;
+    }
+
+    if let Some(casted_special) = try_cast_special_ultimate(runtime, champion_idx, now) {
+        if casted_special {
+            if set_ultimate_cd(&mut runtime.champions[champion_idx], now, ULTIMATE_BASE_CD_SEC) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    let archetype = champion_snapshot
+        .ultimate
+        .as_ref()
+        .map(|ultimate| ultimate.archetype.to_lowercase())
+        .unwrap_or_else(|| default_ultimate_archetype_for_role(&champion_snapshot.role).to_string());
+
+    let casted = match archetype.as_str() {
+        "execute" => {
+            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE) else {
+                return false;
+            };
+            let hp_ratio = if runtime.champions[target_idx].max_hp <= 0.0 {
+                1.0
+            } else {
+                runtime.champions[target_idx].hp / runtime.champions[target_idx].max_hp
+            };
+            if hp_ratio > 0.38 {
+                return false;
+            }
+            attack_enemy_champion(runtime, champion_idx, target_idx);
+            attack_enemy_champion(runtime, champion_idx, target_idx);
+            true
+        }
+        "engage" => {
+            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_GLOBAL_RANGE) else {
+                return false;
+            };
+            let target = runtime.champions[target_idx].pos;
+            runtime.champions[champion_idx].pos = target;
+            runtime.champions[champion_idx].target_path.clear();
+            runtime.champions[champion_idx].target_path_index = 0;
+            attack_enemy_champion(runtime, champion_idx, target_idx);
+            true
+        }
+        "utility" | "sustain" | "defensive" => {
+            if champion_snapshot.max_hp <= 0.0 {
+                return false;
+            }
+            let hp_ratio = champion_snapshot.hp / champion_snapshot.max_hp;
+            if hp_ratio > 0.55 {
+                return false;
+            }
+            let heal_amount = champion_snapshot.max_hp * 0.26;
+            runtime.champions[champion_idx].hp =
+                (runtime.champions[champion_idx].hp + heal_amount).min(runtime.champions[champion_idx].max_hp);
+            true
+        }
+        "global" | "zone" => {
+            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_GLOBAL_RANGE) else {
+                return false;
+            };
+            attack_enemy_champion(runtime, champion_idx, target_idx);
+            true
+        }
+        _ => {
+            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE) else {
+                return false;
+            };
+            attack_enemy_champion(runtime, champion_idx, target_idx);
+            true
+        }
+    };
+
+    if !casted {
+        return false;
+    }
+
+    if set_ultimate_cd(&mut runtime.champions[champion_idx], now, ULTIMATE_BASE_CD_SEC) {
+        log_event(
+            runtime,
+            &format!("{} cast Ultimate ({})", champion_snapshot.name, archetype),
+            "info",
+        );
+        return true;
+    }
+    false
+}
+
+fn tick_ignite_dot_effects(runtime: &mut RuntimeState, now: f64) {
+    for idx in 0..runtime.champions.len() {
+        if !runtime.champions[idx].alive {
+            runtime.champions[idx].ignite_dot_until = 0.0;
+            runtime.champions[idx].ignite_source_id = None;
+            continue;
+        }
+        if runtime.champions[idx].ignite_dot_until <= now {
+            runtime.champions[idx].ignite_source_id = None;
+            continue;
+        }
+
+        runtime.champions[idx].hp -= SUMMONER_IGNITE_DPS * 0.2;
+        runtime.champions[idx].last_damaged_at = now;
+
+        if runtime.champions[idx].hp > 0.0 {
+            continue;
+        }
+
+        runtime.champions[idx].hp = 0.0;
+        runtime.champions[idx].alive = false;
+        runtime.champions[idx].deaths += 1;
+        runtime.champions[idx].respawn_at = now + champion_respawn_seconds(runtime.champions[idx].level, now);
+
+        let victim_name = runtime.champions[idx].name.clone();
+        let killer_id = runtime.champions[idx].ignite_source_id.clone();
+        runtime.champions[idx].ignite_dot_until = 0.0;
+        runtime.champions[idx].ignite_source_id = None;
+
+        if let Some(killer_id) = killer_id {
+            if let Some(killer_idx) = runtime.champions.iter().position(|champion| champion.id == killer_id) {
+                if runtime.champions[killer_idx].alive {
+                    runtime.champions[killer_idx].kills += 1;
+                    let killer_team = runtime.champions[killer_idx].team.clone();
+                    team_stats_mut(&mut runtime.stats, &killer_team).kills += 1;
+                    add_gold_xp_to_champion(runtime, &killer_id, CHAMPION_KILL_GOLD, CHAMPION_KILL_XP);
+                    log_event(
+                        runtime,
+                        &format!("{} ignited {}", runtime.champions[killer_idx].name, victim_name),
+                        "kill",
+                    );
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+fn best_lane_tp_target(
+    champion: &ChampionRuntime,
+    structures: &[StructureRuntime],
+    minions: &[MinionRuntime],
+) -> Option<Vec2> {
+    let lane_path = lane_path_for(&champion.team, &champion.lane);
+    let max_idx = lane_path.len().saturating_sub(1).max(1);
+
+    let tower_target = structures
+        .iter()
+        .filter(|structure| {
+            structure.alive
+                && normalized_team(&structure.team) == normalized_team(&champion.team)
+                && structure.kind == "tower"
+                && normalized_lane(&structure.lane) == normalized_lane(&champion.lane)
+        })
+        .max_by(|a, b| {
+            let a_idx = closest_lane_path_index(a.pos, &lane_path) as f64 / max_idx as f64;
+            let b_idx = closest_lane_path_index(b.pos, &lane_path) as f64 / max_idx as f64;
+            a_idx
+                .partial_cmp(&b_idx)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| a.id.cmp(&b.id))
+        })
+        .map(|structure| {
+            let progress = closest_lane_path_index(structure.pos, &lane_path) as f64 / max_idx as f64;
+            (structure.pos, progress)
+        });
+
+    let minion_target = minions
+        .iter()
+        .filter(|minion| {
+            minion.alive
+                && normalized_team(&minion.team) == normalized_team(&champion.team)
+                && normalized_lane(&minion.lane) == normalized_lane(&champion.lane)
+        })
+        .max_by(|a, b| {
+            let a_idx = closest_lane_path_index(a.pos, &lane_path) as f64 / max_idx as f64;
+            let b_idx = closest_lane_path_index(b.pos, &lane_path) as f64 / max_idx as f64;
+            a_idx
+                .partial_cmp(&b_idx)
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| a.id.cmp(&b.id))
+        })
+        .map(|minion| {
+            let progress = closest_lane_path_index(minion.pos, &lane_path) as f64 / max_idx as f64;
+            (minion.pos, progress)
+        });
+
+    match (tower_target, minion_target) {
+        (Some((tower_pos, tower_progress)), Some((minion_pos, minion_progress))) => {
+            if minion_progress > tower_progress {
+                Some(minion_pos)
+            } else {
+                Some(tower_pos)
+            }
+        }
+        (Some((tower_pos, _)), None) => Some(tower_pos),
+        (None, Some((minion_pos, _))) => Some(minion_pos),
+        (None, None) => None,
+    }
+}
+
+fn try_cast_summoner_spells(
+    runtime: &mut RuntimeState,
+    neutral_timers: &mut NeutralTimersRuntime,
+    champion_idx: usize,
+    now: f64,
+) -> bool {
+    if champion_idx >= runtime.champions.len() || !runtime.champions[champion_idx].alive {
+        return false;
+    }
+
+    if try_cast_heal(runtime, champion_idx, now) {
+        return true;
+    }
+    if try_cast_flash(runtime, champion_idx, now) {
+        return true;
+    }
+    if try_cast_ignite(runtime, champion_idx, now) {
+        return true;
+    }
+    if try_cast_smite(runtime, neutral_timers, champion_idx, now) {
+        return true;
+    }
+    if try_cast_teleport(runtime, champion_idx, now) {
+        return true;
+    }
+
+    false
+}
+
+fn try_cast_heal(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
+    let champion_snapshot = runtime.champions[champion_idx].clone();
+    if !champion_has_spell(&champion_snapshot, "Heal") || !spell_ready(&champion_snapshot, "Heal", now) {
+        return false;
+    }
+
+    let self_ratio = if champion_snapshot.max_hp <= 0.0 {
+        1.0
+    } else {
+        champion_snapshot.hp / champion_snapshot.max_hp
+    };
+
+    let low_ally_exists = runtime.champions.iter().any(|ally| {
+        ally.alive
+            && ally.id != champion_snapshot.id
+            && normalized_team(&ally.team) == normalized_team(&champion_snapshot.team)
+            && dist(ally.pos, champion_snapshot.pos) <= SUMMONER_HEAL_RADIUS
+            && ally.max_hp > 0.0
+            && (ally.hp / ally.max_hp) <= 0.35
+    });
+
+    if self_ratio > 0.34 && !low_ally_exists {
+        return false;
+    }
+
+    for ally in runtime.champions.iter_mut() {
+        if !ally.alive || normalized_team(&ally.team) != normalized_team(&champion_snapshot.team) {
+            continue;
+        }
+        if ally.id != champion_snapshot.id && dist(ally.pos, champion_snapshot.pos) > SUMMONER_HEAL_RADIUS {
+            continue;
+        }
+        let ratio = if ally.id == champion_snapshot.id {
+            SUMMONER_HEAL_SELF_RATIO
+        } else {
+            SUMMONER_HEAL_ALLY_RATIO
+        };
+        ally.hp = (ally.hp + ally.max_hp * ratio).min(ally.max_hp);
+    }
+
+    if set_spell_cd(&mut runtime.champions[champion_idx], "Heal", now, SUMMONER_HEAL_CD_SEC) {
+        log_event(runtime, &format!("{} cast Heal", champion_snapshot.name), "info");
+        return true;
+    }
+    false
+}
+
+fn try_cast_flash(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
+    let champion_snapshot = runtime.champions[champion_idx].clone();
+    if !champion_has_spell(&champion_snapshot, "Flash") || !spell_ready(&champion_snapshot, "Flash", now) {
+        return false;
+    }
+
+    let self_ratio = if champion_snapshot.max_hp <= 0.0 {
+        1.0
+    } else {
+        champion_snapshot.hp / champion_snapshot.max_hp
+    };
+    let nearest_enemy = runtime
+        .champions
+        .iter()
+        .filter(|enemy| {
+            enemy.alive
+                && normalized_team(&enemy.team) != normalized_team(&champion_snapshot.team)
+                && dist(enemy.pos, champion_snapshot.pos) <= 0.10
+        })
+        .min_by(|a, b| {
+            dist(a.pos, champion_snapshot.pos)
+                .partial_cmp(&dist(b.pos, champion_snapshot.pos))
+                .unwrap_or(Ordering::Equal)
+        });
+
+    if self_ratio > 0.28 || nearest_enemy.is_none() {
+        return false;
+    }
+
+    let base = base_position_for(&champion_snapshot.team);
+    let to_base = Vec2 {
+        x: base.x - champion_snapshot.pos.x,
+        y: base.y - champion_snapshot.pos.y,
+    };
+    let len = (to_base.x * to_base.x + to_base.y * to_base.y).sqrt().max(1e-6);
+    let target = Vec2 {
+        x: clamp(champion_snapshot.pos.x + (to_base.x / len) * SUMMONER_FLASH_RANGE, 0.01, 0.99),
+        y: clamp(champion_snapshot.pos.y + (to_base.y / len) * SUMMONER_FLASH_RANGE, 0.01, 0.99),
+    };
+
+    runtime.champions[champion_idx].pos = target;
+    runtime.champions[champion_idx].target_path.clear();
+    runtime.champions[champion_idx].target_path_index = 0;
+
+    if set_spell_cd(&mut runtime.champions[champion_idx], "Flash", now, SUMMONER_FLASH_CD_SEC) {
+        log_event(runtime, &format!("{} flashed", champion_snapshot.name), "info");
+        return true;
+    }
+    false
+}
+
+fn try_cast_ignite(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
+    let champion_snapshot = runtime.champions[champion_idx].clone();
+    if !champion_has_spell(&champion_snapshot, "Ignite") || !spell_ready(&champion_snapshot, "Ignite", now) {
+        return false;
+    }
+
+    let target_idx = runtime
+        .champions
+        .iter()
+        .enumerate()
+        .filter(|(_, enemy)| {
+            enemy.alive
+                && normalized_team(&enemy.team) != normalized_team(&champion_snapshot.team)
+                && dist(enemy.pos, champion_snapshot.pos) <= SUMMONER_IGNITE_RANGE
+                && enemy.ignite_dot_until <= now
+                && enemy.max_hp > 0.0
+                && (enemy.hp / enemy.max_hp) <= 0.42
+        })
+        .min_by(|(idx_a, a), (idx_b, b)| {
+            (a.hp / a.max_hp)
+                .partial_cmp(&(b.hp / b.max_hp))
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| idx_a.cmp(idx_b))
+        })
+        .map(|(idx, _)| idx);
+
+    let Some(target_idx) = target_idx else {
+        return false;
+    };
+
+    let target_name = runtime.champions[target_idx].name.clone();
+    runtime.champions[target_idx].ignite_dot_until = now + SUMMONER_IGNITE_DURATION_SEC;
+    runtime.champions[target_idx].ignite_source_id = Some(champion_snapshot.id.clone());
+    runtime.champions[target_idx].last_damaged_by_champion_id = Some(champion_snapshot.id.clone());
+    runtime.champions[target_idx].last_damaged_at = now;
+
+    if set_spell_cd(&mut runtime.champions[champion_idx], "Ignite", now, SUMMONER_IGNITE_CD_SEC) {
+        log_event(
+            runtime,
+            &format!("{} ignited {}", champion_snapshot.name, target_name),
+            "info",
+        );
+        return true;
+    }
+    false
+}
+
+fn try_cast_smite(
+    runtime: &mut RuntimeState,
+    neutral_timers: &mut NeutralTimersRuntime,
+    champion_idx: usize,
+    now: f64,
+) -> bool {
+    let champion_snapshot = runtime.champions[champion_idx].clone();
+    if !champion_has_spell(&champion_snapshot, "Smite") || !spell_ready(&champion_snapshot, "Smite", now) {
+        return false;
+    }
+    if champion_snapshot.role != "JGL" {
+        return false;
+    }
+
+    let neutral_key = nearest_attackable_neutral_key(
+        &champion_snapshot,
+        neutral_timers,
+        SUMMONER_SMITE_RANGE,
+        SUMMONER_SMITE_RANGE,
+    );
+    let Some(neutral_key) = neutral_key else {
+        return false;
+    };
+
+    let Some(timer) = neutral_timers.entities.get(&neutral_key) else {
+        return false;
+    };
+    if !timer.alive || timer.hp > SUMMONER_SMITE_DAMAGE {
+        return false;
+    }
+
+    if let Some(timer_mut) = neutral_timers.entities.get_mut(&neutral_key) {
+        timer_mut.hp = 0.0;
+    }
+    mark_neutral_taken(runtime, neutral_timers, &neutral_key, Some(champion_idx));
+
+    if set_spell_cd(&mut runtime.champions[champion_idx], "Smite", now, SUMMONER_SMITE_CD_SEC) {
+        log_event(runtime, &format!("{} cast Smite", champion_snapshot.name), "info");
+        return true;
+    }
+    false
+}
+
+fn try_cast_teleport(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
+    let champion_snapshot = runtime.champions[champion_idx].clone();
+    if !champion_has_spell(&champion_snapshot, "Teleport") || !spell_ready(&champion_snapshot, "Teleport", now) {
+        return false;
+    }
+    if now < SUMMONER_TP_UNLOCK_AT_SEC {
+        return false;
+    }
+
+    let base = base_position_for(&champion_snapshot.team);
+    let at_base = dist(champion_snapshot.pos, base) <= 0.22;
+    if !at_base {
+        return false;
+    }
+
+    let nearby_enemy = runtime.champions.iter().any(|enemy| {
+        enemy.alive
+            && normalized_team(&enemy.team) != normalized_team(&champion_snapshot.team)
+            && dist(enemy.pos, champion_snapshot.pos) <= 0.14
+    });
+    if nearby_enemy {
+        return false;
+    }
+
+    let Some(target) = best_lane_tp_target(&champion_snapshot, &runtime.structures, &runtime.minions) else {
+        return false;
+    };
+
+    runtime.champions[champion_idx].pos = target;
+    runtime.champions[champion_idx].target_path.clear();
+    runtime.champions[champion_idx].target_path_index = 0;
+    runtime.champions[champion_idx].next_decision_at = now;
+
+    if set_spell_cd(&mut runtime.champions[champion_idx], "Teleport", now, SUMMONER_TP_CD_SEC) {
+        log_event(runtime, &format!("{} cast Teleport", champion_snapshot.name), "recall");
+        return true;
+    }
+    false
 }
 
 fn resolve_structure_combat(runtime: &mut RuntimeState) {
@@ -5824,6 +7659,7 @@ fn resolve_structure_combat(runtime: &mut RuntimeState) {
                     .enumerate()
                     .find(|(_, champion)| {
                         champion.alive
+                            && !champion_is_banished(champion)
                             && champion.id == target_id
                             && normalized_team(&champion.team) != normalized_team(&structure_team)
                             && dist(champion.pos, structure_pos) <= TOWER_ATTACK_RANGE
@@ -5846,7 +7682,12 @@ fn resolve_structure_combat(runtime: &mut RuntimeState) {
             structure_pos,
             TOWER_ATTACK_RANGE,
         ) {
-            runtime.minions[minion_idx].hp -= TOWER_SHOT_DAMAGE_TO_MINION;
+            let incoming = if minion_is_baron_empowered(runtime, &runtime.minions[minion_idx]) {
+                TOWER_SHOT_DAMAGE_TO_MINION * (1.0 - BARON_MINION_DAMAGE_REDUCTION)
+            } else {
+                TOWER_SHOT_DAMAGE_TO_MINION
+            };
+            runtime.minions[minion_idx].hp -= incoming;
             runtime.structures[idx].attack_cd_until = now + TOWER_ATTACK_CADENCE_SEC;
             if runtime.minions[minion_idx].hp <= 0.0 {
                 register_minion_death(runtime, minion_idx);
@@ -6000,7 +7841,10 @@ fn mark_neutral_taken(
     if is_jungle_camp_key(key) {
         if let Some((gold, xp)) = jungle_camp_reward(key) {
             let (award_gold, award_xp) = if killer_role == "JGL" {
-                (gold, xp)
+                (
+                    ((gold as f64) * JGL_JUNGLE_GOLD_MULTIPLIER).round() as i64,
+                    ((xp as f64) * JGL_JUNGLE_XP_MULTIPLIER).round() as i64,
+                )
             } else {
                 (
                     ((gold as f64) * OFFROLE_JUNGLE_REWARD_MULTIPLIER).round() as i64,
@@ -6025,9 +7869,14 @@ fn mark_neutral_taken(
     if key == "dragon" {
         team_stats_mut(&mut runtime.stats, &killer_team).dragons += 1;
         add_gold_xp_to_champion(runtime, &killer_id, DRAGON_SECURE_GOLD, DRAGON_SECURE_XP);
+        let dragon_kind = process_dragon_capture(runtime, neutral_timers, &killer_team);
         log_event(
             runtime,
-            &format!("{} secured dragon", normalized_team(&killer_team).to_uppercase()),
+            &format!(
+                "{} secured {} dragon",
+                normalized_team(&killer_team).to_uppercase(),
+                dragon_kind.to_uppercase()
+            ),
             "dragon",
         );
         return;
@@ -6036,10 +7885,26 @@ fn mark_neutral_taken(
     if key == "baron" {
         team_stats_mut(&mut runtime.stats, &killer_team).barons += 1;
         add_gold_xp_to_champion(runtime, &killer_id, BARON_SECURE_GOLD, BARON_SECURE_XP);
+        let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+        team_buffs_mut(&mut buffs, &killer_team).baron_until = runtime.time_sec + BARON_BUFF_DURATION_SEC;
+        set_runtime_buffs(runtime, &buffs);
         log_event(
             runtime,
             &format!("{} secured baron", normalized_team(&killer_team).to_uppercase()),
             "baron",
+        );
+        return;
+    }
+
+    if key == "elder" {
+        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD + 35, OBJECTIVE_SECURE_XP + 55);
+        let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+        team_buffs_mut(&mut buffs, &killer_team).elder_until = runtime.time_sec + ELDER_BUFF_DURATION_SEC;
+        set_runtime_buffs(runtime, &buffs);
+        log_event(
+            runtime,
+            &format!("{} secured elder", normalized_team(&killer_team).to_uppercase()),
+            "dragon",
         );
         return;
     }
@@ -6100,12 +7965,54 @@ fn sync_objectives_from_neutral_timers(runtime: &mut RuntimeState, neutral_timer
         return;
     };
 
+    let buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+
     if let Some(dragon_timer) = neutral_timers.entities.get("dragon") {
         if let Some(dragon_obj) = objectives.get_mut("dragon").and_then(Value::as_object_mut) {
             dragon_obj.insert("alive".to_string(), Value::from(dragon_timer.alive));
             dragon_obj.insert(
                 "nextSpawnAt".to_string(),
                 Value::from(dragon_timer.next_spawn_at.unwrap_or(OBJECTIVE_NEXT_SPAWN_FALLBACK)),
+            );
+            dragon_obj.insert(
+                "currentKind".to_string(),
+                Value::from(current_dragon_kind(neutral_timers)),
+            );
+            dragon_obj.insert(
+                "firstKind".to_string(),
+                neutral_timers
+                    .extra
+                    .get("dragonFirstKind")
+                    .cloned()
+                    .unwrap_or(Value::from("")),
+            );
+            dragon_obj.insert(
+                "secondKind".to_string(),
+                neutral_timers
+                    .extra
+                    .get("dragonSecondKind")
+                    .cloned()
+                    .unwrap_or(Value::from("")),
+            );
+            dragon_obj.insert(
+                "soulRiftKind".to_string(),
+                neutral_timers
+                    .extra
+                    .get("dragonSoulRiftKind")
+                    .cloned()
+                    .unwrap_or(Value::from("")),
+            );
+            dragon_obj.insert("homeStacks".to_string(), Value::from(buffs.blue.dragon_stacks));
+            dragon_obj.insert("awayStacks".to_string(), Value::from(buffs.red.dragon_stacks));
+            dragon_obj.insert(
+                "soulClaimedBy".to_string(),
+                if buffs.blue.soul_kind.is_some() {
+                    Value::from("Home")
+                } else if buffs.red.soul_kind.is_some() {
+                    Value::from("Away")
+                } else {
+                    Value::Null
+                },
             );
         }
     }
@@ -6125,6 +8032,15 @@ fn tick_neutral_timers(runtime: &mut RuntimeState) {
     let mut neutral_timers = decode_neutral_timers_state(&runtime.neutral_timers)
         .unwrap_or_else(|| neutral_timers_default_runtime_state());
     let now = runtime.time_sec;
+
+    ensure_dragon_cycle_defaults(runtime, &mut neutral_timers);
+
+    let dragon_kind = current_dragon_kind(&neutral_timers);
+    if let Some(dragon_timer) = neutral_timers.entities.get_mut("dragon") {
+        dragon_timer
+            .extra
+            .insert("dragonCurrentKind".to_string(), Value::from(dragon_kind));
+    }
 
     if neutral_timers.elder_unlocked {
         if let Some(elder) = neutral_timers.entities.get_mut("elder") {
@@ -6197,12 +8113,84 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
     } else {
         attacker.hp / attacker.max_hp
     };
+    let enemy_hp_ratio = if target.max_hp <= 0.0 {
+        1.0
+    } else {
+        target.hp / target.max_hp
+    };
 
-    if attacker.role != "JGL" && hp_ratio <= runtime.policy.trade_retreat_hp_ratio {
+    let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &attacker.team);
+    let fight_plan = team_tactics.fight_plan.as_str();
+    let risk_tolerance = stat_delta(attacker.competitive_score).clamp(-1.0, 1.0);
+    let dynamic_retreat_hp_ratio = (runtime.policy.trade_retreat_hp_ratio - risk_tolerance * 0.05).clamp(0.24, 0.60);
+
+    let ally_nearby = runtime
+        .champions
+        .iter()
+        .filter(|champion| {
+            champion.alive
+                && normalized_team(&champion.team) == normalized_team(&attacker.team)
+                && dist(champion.pos, target.pos) <= 0.12
+        })
+        .count();
+    let enemy_nearby = runtime
+        .champions
+        .iter()
+        .filter(|champion| {
+            champion.alive
+                && normalized_team(&champion.team) == normalized_team(&target.team)
+                && dist(champion.pos, target.pos) <= 0.12
+        })
+        .count();
+
+    if attacker.role == "JGL" {
+        if hp_ratio <= 0.35 {
+            return false;
+        }
+        if enemy_nearby > ally_nearby && hp_ratio < 0.75 {
+            return false;
+        }
+    }
+
+    let attacker_is_backline = attacker.attack_range >= 0.05;
+    let attacker_is_frontline = !attacker_is_backline;
+
+    if fight_plan == "FrontToBack" && attacker_is_backline && ally_nearby < enemy_nearby {
+        return false;
+    }
+
+    if fight_plan == "Siege"
+        && attacker.role != "JGL"
+        && (enemy_hp_ratio > 0.45 || enemy_nearby > ally_nearby)
+    {
+        return false;
+    }
+
+    let target_under_defending_tower = runtime.structures.iter().any(|structure| {
+        structure.alive
+            && structure.kind == "tower"
+            && normalized_team(&structure.team) == normalized_team(&target.team)
+            && dist(structure.pos, target.pos) <= TOWER_AGGRO_VICTIM_RADIUS
+            && dist(structure.pos, attacker.pos) <= TOWER_AGGRO_ATTACKER_RADIUS
+    });
+
+    let pick_force_open = fight_plan == "Pick"
+        && (attacker.role == "MID" || attacker.role == "JGL" || attacker.role == "SUP")
+        && enemy_nearby <= 1
+        && hp_ratio + 0.06 >= dynamic_retreat_hp_ratio;
+    let dive_force_open = fight_plan == "Dive"
+        && attacker_is_frontline
+        && target_under_defending_tower
+        && enemy_hp_ratio <= 0.55
+        && hp_ratio + 0.05 >= dynamic_retreat_hp_ratio;
+
+    if attacker.role != "JGL" && hp_ratio <= dynamic_retreat_hp_ratio {
         return false;
     }
 
     if attacker.role != "JGL"
+        && !pick_force_open
+        && !dive_force_open
         && !can_open_trade_window(
             attacker,
             target,
@@ -6218,7 +8206,9 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
         return false;
     }
 
-    if should_disengage_champion_trade(
+    if !pick_force_open
+        && !dive_force_open
+        && should_disengage_champion_trade(
         attacker,
         target,
         runtime.time_sec,
@@ -6227,7 +8217,8 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
         &runtime.structures,
         runtime.ai_mode,
         &runtime.policy,
-    ) {
+    )
+    {
         return false;
     }
 
@@ -6255,7 +8246,26 @@ fn can_champion_tower_dive(runtime: &RuntimeState, attacker: &ChampionRuntime, t
     } else {
         attacker.hp / attacker.max_hp
     };
-    if attacker_hp_ratio < runtime.policy.no_dive_hp_min {
+    let attacker_is_backline = attacker.attack_range >= 0.05;
+    let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &attacker.team);
+    let dive_plan = team_tactics.fight_plan == "Dive";
+    let front_to_back_plan = team_tactics.fight_plan == "FrontToBack";
+    let no_dive_hp_min = (runtime.policy.no_dive_hp_min
+        + if dive_plan {
+            -0.08
+        } else if front_to_back_plan {
+            0.04
+        } else {
+            0.0
+        })
+        .clamp(0.2, 0.95);
+    let no_dive_hp_min = if attacker_is_backline {
+        (no_dive_hp_min + 0.05).clamp(0.2, 0.95)
+    } else {
+        no_dive_hp_min
+    };
+
+    if attacker_hp_ratio < no_dive_hp_min {
         return false;
     }
 
@@ -6278,6 +8288,17 @@ fn can_champion_tower_dive(runtime: &RuntimeState, attacker: &ChampionRuntime, t
                 && dist(champion.pos, target.pos) <= 0.12
         })
         .count();
+    let frontline_ally_nearby = runtime
+        .champions
+        .iter()
+        .filter(|champion| {
+            champion.alive
+                && champion.id != attacker.id
+                && normalized_team(&champion.team) == normalized_team(&attacker.team)
+                && champion.attack_range < 0.05
+                && dist(champion.pos, target.pos) <= 0.12
+        })
+        .count();
     let enemy_nearby = runtime
         .champions
         .iter()
@@ -6288,11 +8309,26 @@ fn can_champion_tower_dive(runtime: &RuntimeState, attacker: &ChampionRuntime, t
         })
         .count();
 
-    if allied_minions_near_tower == 0 && attacker_hp_ratio < 0.65 {
+    if front_to_back_plan && attacker_is_backline && frontline_ally_nearby == 0 {
         return false;
     }
 
-    ally_nearby >= enemy_nearby
+    let min_hp_without_wave = if dive_plan { 0.58 } else { 0.65 };
+    if allied_minions_near_tower == 0 && attacker_hp_ratio < min_hp_without_wave {
+        return false;
+    }
+
+    let mut required_allies = if dive_plan {
+        enemy_nearby.saturating_sub(1)
+    } else {
+        enemy_nearby
+    };
+
+    if attacker_is_backline {
+        required_allies = required_allies.saturating_add(1);
+    }
+
+    ally_nearby >= required_allies
 }
 
 fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target_idx: usize) {
@@ -6308,6 +8344,17 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
     let target_snapshot = runtime.champions[target_idx].clone();
     mark_tower_aggro_on_champion_attack(runtime, &attacker_snapshot, &target_snapshot, now);
 
+    let attacker_has_elder = team_has_active_elder_buff(runtime, &attacker_snapshot.team);
+    let attacker_micro_mult = champion_micro_damage_multiplier(&attacker_snapshot);
+    let defender_hp_ratio = if target_snapshot.max_hp <= 0.0 {
+        1.0
+    } else {
+        target_snapshot.hp / target_snapshot.max_hp
+    };
+    let attack_damage_multiplier =
+        team_damage_multiplier(runtime, &attacker_snapshot.team, defender_hp_ratio)
+            * team_damage_reduction_multiplier(runtime, &target_snapshot.team);
+
     let mut kill_happened = false;
     let mut victim_pos = Vec2 { x: 0.5, y: 0.5 };
     let mut victim_name = String::new();
@@ -6320,17 +8367,26 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
         let attacker = &mut left[attacker_idx];
         let defender = &mut right[0];
 
-        defender.hp -= attacker.attack_damage;
+        let outgoing = attacker.attack_damage * attack_damage_multiplier * attacker_micro_mult;
+        defender.hp -= outgoing;
         defender.last_damaged_by_champion_id = Some(attacker.id.clone());
         defender.last_damaged_at = now;
         cancel_recall(defender, now, &mut runtime.events);
         attacker.attack_cd_until = now + CHAMPION_ATTACK_CADENCE_SEC;
 
+        if attacker_has_elder
+            && defender.max_hp > 0.0
+            && defender.hp > 0.0
+            && (defender.hp / defender.max_hp) <= ELDER_EXECUTE_HP_RATIO
+        {
+            defender.hp = 0.0;
+        }
+
         if defender.hp <= 0.0 && defender.alive {
             defender.alive = false;
             defender.hp = 0.0;
             defender.deaths += 1;
-            defender.respawn_at = now + 12.0;
+            defender.respawn_at = now + champion_respawn_seconds(defender.level, now);
             attacker.kills += 1;
             kill_happened = true;
             victim_pos = defender.pos;
@@ -6344,17 +8400,26 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
         let defender = &mut left[target_idx];
         let attacker = &mut right[0];
 
-        defender.hp -= attacker.attack_damage;
+        let outgoing = attacker.attack_damage * attack_damage_multiplier * attacker_micro_mult;
+        defender.hp -= outgoing;
         defender.last_damaged_by_champion_id = Some(attacker.id.clone());
         defender.last_damaged_at = now;
         cancel_recall(defender, now, &mut runtime.events);
         attacker.attack_cd_until = now + CHAMPION_ATTACK_CADENCE_SEC;
 
+        if attacker_has_elder
+            && defender.max_hp > 0.0
+            && defender.hp > 0.0
+            && (defender.hp / defender.max_hp) <= ELDER_EXECUTE_HP_RATIO
+        {
+            defender.hp = 0.0;
+        }
+
         if defender.hp <= 0.0 && defender.alive {
             defender.alive = false;
             defender.hp = 0.0;
             defender.deaths += 1;
-            defender.respawn_at = now + 12.0;
+            defender.respawn_at = now + champion_respawn_seconds(defender.level, now);
             attacker.kills += 1;
             kill_happened = true;
             victim_pos = defender.pos;
@@ -6378,9 +8443,11 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
         return;
     }
 
+    let (kill_gold, kill_xp) = champion_kill_rewards(&attacker_snapshot, &target_snapshot);
+
     let killer_team_stats = team_stats_mut(&mut runtime.stats, &killer_team);
     killer_team_stats.kills += 1;
-    add_gold_xp_to_champion(runtime, &killer_id, CHAMPION_KILL_GOLD, CHAMPION_KILL_XP);
+    add_gold_xp_to_champion(runtime, &killer_id, kill_gold, kill_xp);
 
     let assisters: Vec<String> = runtime
         .champions
@@ -6396,7 +8463,7 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
 
     if !assisters.is_empty() {
         let shared_gold = CHAMPION_ASSIST_GOLD_TOTAL / assisters.len() as i64;
-        let shared_xp = (CHAMPION_KILL_XP / 2) / assisters.len() as i64;
+        let shared_xp = (kill_xp / 2) / assisters.len() as i64;
         for assist_id in assisters {
             if let Some(champion) = runtime.champions.iter_mut().find(|champion| champion.id == assist_id) {
                 champion.assists += 1;
@@ -6441,7 +8508,8 @@ fn apply_tower_shot_to_champion(runtime: &mut RuntimeState, structure_idx: usize
         runtime.champions[champion_idx].alive = false;
         runtime.champions[champion_idx].hp = 0.0;
         runtime.champions[champion_idx].deaths += 1;
-        runtime.champions[champion_idx].respawn_at = now + 12.0;
+        let respawn = champion_respawn_seconds(runtime.champions[champion_idx].level, now);
+        runtime.champions[champion_idx].respawn_at = now + respawn;
     }
 }
 
@@ -6470,6 +8538,39 @@ fn apply_level_scaling(champion: &mut ChampionRuntime) {
     champion.level = target_level;
 }
 
+fn champion_respawn_seconds(level: i64, now_sec: f64) -> f64 {
+    let time_factor = if now_sec >= 30.0 * 60.0 {
+        1.15
+    } else if now_sec >= 20.0 * 60.0 {
+        1.08
+    } else {
+        1.0
+    };
+    ((CHAMPION_RESPAWN_BASE_SEC + (level.max(1) - 1) as f64 * CHAMPION_RESPAWN_PER_LEVEL_SEC) * time_factor)
+        .clamp(10.0, 42.0)
+}
+
+fn champion_kill_rewards(killer: &ChampionRuntime, victim: &ChampionRuntime) -> (i64, i64) {
+    let level_gap = victim.level - killer.level;
+    let victim_streak = (victim.kills as i64 - victim.deaths as i64).max(0);
+    let killer_ahead = (killer.kills as i64 - killer.deaths as i64).max(0);
+
+    let mut gold = CHAMPION_KILL_GOLD + level_gap * 18 + victim_streak * 35;
+    if killer_ahead >= 4 {
+        gold -= ((killer_ahead - 3) * 24).min(150);
+    }
+
+    let mut xp = CHAMPION_KILL_XP + level_gap * 12 + victim_streak * 10;
+    if killer_ahead >= 4 {
+        xp -= ((killer_ahead - 3) * 10).min(60);
+    }
+
+    (
+        gold.clamp(CHAMPION_KILL_GOLD_MIN, CHAMPION_KILL_GOLD_MAX),
+        xp.clamp(CHAMPION_KILL_XP_MIN, CHAMPION_KILL_XP_MAX),
+    )
+}
+
 fn team_has_alive_nexus_towers(structures: &[StructureRuntime], team: &str) -> bool {
     structures.iter().any(|structure| {
         structure.alive
@@ -6479,6 +8580,173 @@ fn team_has_alive_nexus_towers(structures: &[StructureRuntime], team: &str) -> b
     })
 }
 
+fn lane_tag_from_structure_id(id: &str) -> Option<&'static str> {
+    if id.contains("-top") {
+        Some("top")
+    } else if id.contains("-mid") {
+        Some("mid")
+    } else if id.contains("-bot") {
+        Some("bot")
+    } else {
+        None
+    }
+}
+
+fn inhib_tower_alive_for_lane(structures: &[StructureRuntime], defending_team: &str, lane: &str) -> bool {
+    structures.iter().any(|candidate| {
+        candidate.alive
+            && candidate.kind == "tower"
+            && normalized_team(&candidate.team) == normalized_team(defending_team)
+            && candidate.id.contains("inhib-tower")
+            && candidate.id.contains(lane)
+    })
+}
+
+fn weakest_enemy_lane_for_team(structures: &[StructureRuntime], team: &str) -> Option<&'static str> {
+    let enemy = if normalized_team(team) == "blue" { "red" } else { "blue" };
+    let lane_count = |lane: &str| -> usize {
+        structures
+            .iter()
+            .filter(|structure| {
+                structure.alive
+                    && structure.kind == "tower"
+                    && normalized_team(&structure.team) == enemy
+                    && normalized_lane(&structure.lane) == lane
+            })
+            .count()
+    };
+
+    let top = lane_count("top");
+    let mid = lane_count("mid");
+    let bot = lane_count("bot");
+
+    if top <= mid && top <= bot {
+        Some("top")
+    } else if mid <= top && mid <= bot {
+        Some("mid")
+    } else {
+        Some("bot")
+    }
+}
+
+fn add_dragon_stack_for_kind(team_buffs: &mut RuntimeTeamBuffState, kind: &str) {
+    match kind {
+        "infernal" => team_buffs.infernal_stacks += 1,
+        "mountain" => team_buffs.mountain_stacks += 1,
+        "ocean" => team_buffs.ocean_stacks += 1,
+        "cloud" => team_buffs.cloud_stacks += 1,
+        "hextech" => team_buffs.hextech_stacks += 1,
+        "chemtech" => team_buffs.chemtech_stacks += 1,
+        _ => {}
+    }
+    team_buffs.dragon_stacks += 1;
+}
+
+fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut NeutralTimersRuntime, killer_team: &str) -> String {
+    ensure_dragon_cycle_defaults(runtime, neutral_timers);
+    let dragon_kind = current_dragon_kind(neutral_timers);
+
+    let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+    {
+        let team_buffs = team_buffs_mut(&mut buffs, killer_team);
+        add_dragon_stack_for_kind(team_buffs, &dragon_kind);
+    }
+
+    let total_dragons = buffs.blue.dragon_stacks + buffs.red.dragon_stacks;
+
+    if total_dragons == 1 {
+        neutral_timers
+            .extra
+            .insert("dragonFirstKind".to_string(), Value::from(dragon_kind.as_str()));
+        let second_kind = choose_different_dragon_kind(&dragon_kind, runtime.time_sec as i64 + runtime.events.len() as i64);
+        set_current_dragon_kind(neutral_timers, second_kind);
+    } else if total_dragons == 2 {
+        neutral_timers
+            .extra
+            .insert("dragonSecondKind".to_string(), Value::from(dragon_kind.as_str()));
+        neutral_timers
+            .extra
+            .insert("dragonSoulRiftKind".to_string(), Value::from(dragon_kind.as_str()));
+        set_current_dragon_kind(neutral_timers, &dragon_kind);
+    }
+
+    let soul_rift_kind = neutral_timers
+        .extra
+        .get("dragonSoulRiftKind")
+        .and_then(Value::as_str)
+        .unwrap_or(dragon_kind.as_str())
+        .to_string();
+
+    let team_dragons = team_buffs_ref(&buffs, killer_team).dragon_stacks;
+    let soul_missing = team_buffs_ref(&buffs, killer_team).soul_kind.is_none();
+
+    if team_dragons >= 4 && soul_missing {
+        team_buffs_mut(&mut buffs, killer_team).soul_kind = Some(soul_rift_kind.clone());
+        neutral_timers.dragon_soul_unlocked = true;
+        neutral_timers.elder_unlocked = true;
+
+        if let Some(dragon) = neutral_timers.entities.get_mut("dragon") {
+            dragon.alive = false;
+            dragon.hp = 0.0;
+            dragon.unlocked = false;
+            dragon.next_spawn_at = None;
+        }
+        if let Some(elder) = neutral_timers.entities.get_mut("elder") {
+            elder.unlocked = true;
+            elder.next_spawn_at = Some(runtime.time_sec + 6.0 * 60.0);
+        }
+    } else {
+        set_current_dragon_kind(neutral_timers, &soul_rift_kind);
+    }
+
+    set_runtime_buffs(runtime, &buffs);
+    dragon_kind
+}
+
+fn baron_push_target_for_lane(structures: &[StructureRuntime], team: &str, lane: &str) -> Option<Vec2> {
+    let enemy = if normalized_team(team) == "blue" { "red" } else { "blue" };
+    let lane_tower = structures
+        .iter()
+        .filter(|structure| {
+            structure.alive
+                && structure.kind == "tower"
+                && normalized_team(&structure.team) == enemy
+                && normalized_lane(&structure.lane) == lane
+        })
+        .min_by(|a, b| a.id.cmp(&b.id));
+
+    if let Some(tower) = lane_tower {
+        return Some(tower.pos);
+    }
+
+    structures
+        .iter()
+        .find(|structure| {
+            structure.alive
+                && normalized_team(&structure.team) == enemy
+                && structure.kind == "nexus"
+        })
+        .map(|nexus| nexus.pos)
+}
+
+fn structure_alive_by_id(structures: &[StructureRuntime], id: &str) -> bool {
+    structures
+        .iter()
+        .any(|structure| structure.alive && structure.id == id)
+}
+
+fn prerequisite_tower_alive(structures: &[StructureRuntime], structure_id: &str) -> Option<bool> {
+    if structure_id.contains("-inner") {
+        let prerequisite = structure_id.replace("-inner", "-outer");
+        return Some(structure_alive_by_id(structures, &prerequisite));
+    }
+    if structure_id.contains("-inhib-tower") {
+        let prerequisite = structure_id.replace("-inhib-tower", "-inner");
+        return Some(structure_alive_by_id(structures, &prerequisite));
+    }
+    None
+}
+
 fn is_structure_targetable(structures: &[StructureRuntime], attacker_team: &str, structure: &StructureRuntime) -> bool {
     if !structure.alive || normalized_team(&structure.team) == normalized_team(attacker_team) {
         return false;
@@ -6486,6 +8754,20 @@ fn is_structure_targetable(structures: &[StructureRuntime], attacker_team: &str,
 
     if structure.kind == "nexus" {
         return !team_has_alive_nexus_towers(structures, &structure.team);
+    }
+
+    if structure.kind == "tower" {
+        if let Some(prereq_alive) = prerequisite_tower_alive(structures, &structure.id) {
+            if prereq_alive {
+                return false;
+            }
+        }
+    }
+
+    if structure.kind == "inhib" {
+        if let Some(lane) = lane_tag_from_structure_id(&structure.id) {
+            return !inhib_tower_alive_for_lane(structures, &structure.team, lane);
+        }
     }
 
     true
@@ -6552,6 +8834,9 @@ fn register_minion_death(runtime: &mut RuntimeState, minion_idx: usize) {
     }
 
     runtime.minions[minion_idx].alive = false;
+    if runtime.minions[minion_idx].kind == "summon" {
+        return;
+    }
     let last_hit = runtime.minions[minion_idx].last_hit_by_champion_id.clone();
     let gold = if runtime.minions[minion_idx].kind == "ranged" {
         16
@@ -6654,6 +8939,7 @@ fn nearest_enemy_champion_for_champion(
         .enumerate()
         .filter(|(_, enemy)| {
             enemy.alive
+                && !champion_is_banished(enemy)
                 && enemy.id != attacker.id
                 && normalized_team(&enemy.team) != normalized_team(&attacker.team)
                 && dist(enemy.pos, attacker.pos) <= range
@@ -6687,6 +8973,7 @@ fn nearest_enemy_champion_for_minion(
     champions: &[ChampionRuntime],
     attacker_team: &str,
     attacker_lane: &str,
+    attacker_kind: &str,
     from: Vec2,
     range: f64,
 ) -> Option<usize> {
@@ -6695,8 +8982,9 @@ fn nearest_enemy_champion_for_minion(
         .enumerate()
         .filter(|(_, enemy)| {
             enemy.alive
+                && !champion_is_banished(enemy)
                 && normalized_team(&enemy.team) != normalized_team(attacker_team)
-                && normalized_lane(&enemy.lane) == normalized_lane(attacker_lane)
+                && (attacker_kind == "summon" || normalized_lane(&enemy.lane) == normalized_lane(attacker_lane))
                 && dist(enemy.pos, from) <= range
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -6793,6 +9081,7 @@ fn nearest_enemy_champion_for_structure(
         .enumerate()
         .filter(|(_, champion)| {
             champion.alive
+                && !champion_is_banished(champion)
                 && normalized_team(&champion.team) != normalized_team(structure_team)
                 && dist(champion.pos, from) <= range
         })
@@ -7125,10 +9414,59 @@ fn team_stats_mut<'a>(stats: &'a mut RuntimeStats, team: &str) -> &'a mut Runtim
     }
 }
 
+fn team_has_active_baron_buff(runtime: &RuntimeState, team: &str) -> bool {
+    let buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), team);
+    buffs.baron_until > runtime.time_sec
+}
+
+fn team_has_active_elder_buff(runtime: &RuntimeState, team: &str) -> bool {
+    let buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), team);
+    buffs.elder_until > runtime.time_sec
+}
+
+fn team_damage_multiplier(runtime: &RuntimeState, team: &str, target_hp_ratio: f64) -> f64 {
+    let buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), team);
+    let mut mult = 1.0 + buffs.infernal_stacks as f64 * 0.02;
+    mult += buffs.hextech_stacks as f64 * 0.01;
+    if target_hp_ratio <= 0.5 {
+        mult += buffs.chemtech_stacks as f64 * 0.012;
+    }
+    if let Some(soul) = buffs.soul_kind.as_deref() {
+        match soul {
+            "infernal" => mult += 0.08,
+            "hextech" => mult += 0.05,
+            "chemtech" if target_hp_ratio <= 0.5 => mult += 0.06,
+            _ => {}
+        }
+    }
+    mult
+}
+
+fn team_damage_reduction_multiplier(runtime: &RuntimeState, team: &str) -> f64 {
+    let buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), team);
+    let mut reduction = (buffs.mountain_stacks as f64 * 0.02).min(0.12);
+    if buffs.soul_kind.as_deref() == Some("mountain") {
+        reduction += 0.08;
+    }
+    (1.0 - reduction).clamp(0.72, 1.0)
+}
+
+fn minion_is_baron_empowered(runtime: &RuntimeState, minion: &MinionRuntime) -> bool {
+    if !team_has_active_baron_buff(runtime, &minion.team) {
+        return false;
+    }
+    runtime.champions.iter().any(|champion| {
+        champion.alive
+            && normalized_team(&champion.team) == normalized_team(&minion.team)
+            && dist(champion.pos, minion.pos) <= BARON_MINION_AURA_RADIUS
+    })
+}
+
 fn cleanup_tick(runtime: &mut RuntimeState) {
     runtime
         .minions
         .retain(|minion| minion.alive && minion.path_index < minion.path.len());
+    runtime.wards.retain(|ward| ward.expires_at > runtime.time_sec);
 
     try_auto_buy_items(runtime);
 
@@ -7212,11 +9550,41 @@ mod tests {
             has_left_base_once: false,
             last_support_cs_at: -999.0,
             items: Vec::new(),
+            gameplay_score: 70.0,
+            iq_score: 70.0,
+            competitive_score: 70.0,
+            summoner_spells: vec![
+                RuntimeSummonerSpellSlot {
+                    key: "Flash".to_string(),
+                    cd_until: 0.0,
+                },
+                RuntimeSummonerSpellSlot {
+                    key: "Ignite".to_string(),
+                    cd_until: 0.0,
+                },
+            ],
+            ultimate: Some(RuntimeUltimateSlot {
+                archetype: "burst".to_string(),
+                icon: String::new(),
+                cd_until: 0.0,
+            }),
+            ignite_dot_until: 0.0,
+            ignite_source_id: None,
             last_damaged_by_champion_id: None,
             last_damaged_at: -999.0,
             state: "lane".to_string(),
             recall_anchor: None,
             recall_channel_until: 0.0,
+            realm_banished_until: 0.0,
+            realm_return_pos: None,
+            ward_cd_until: 0.0,
+            sweeper_cd_until: 0.0,
+            sweeper_active_until: 0.0,
+            trinket_key: TRINKET_WARDING_TOTEM.to_string(),
+            trinket_swapped: false,
+            support_roam_uses: 0,
+            support_roam_cd_until: 0.0,
+            support_last_roam_role: String::new(),
         }
     }
 
@@ -7231,6 +9599,9 @@ mod tests {
             alive: true,
             kind: "melee".to_string(),
             last_hit_by_champion_id: None,
+            owner_champion_id: None,
+            summon_kind: None,
+            summon_expires_at: 0.0,
             attack_cd_until: 0.0,
             move_speed: 0.06,
             attack_range: 0.04,
@@ -7273,6 +9644,7 @@ mod tests {
             champions,
             minions,
             structures,
+            wards: Vec::new(),
             objectives: json!({}),
             neutral_timers: serde_json::to_value(neutral_timers).unwrap_or(json!({})),
             stats: RuntimeStats {
@@ -7395,7 +9767,38 @@ mod tests {
     }
 
     #[test]
-    fn minion_can_target_base_structure_when_in_front() {
+    fn minion_cannot_target_inhib_while_inhib_tower_alive() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut blue = test_minion("m-blue-1", "blue", "mid", Vec2 { x: 0.79, y: 0.22 });
+        blue.attack_damage = 10.0;
+        blue.attack_range = 0.06;
+
+        let mut red_inhib = test_structure("red-inhib-mid", "red", "base", Vec2 { x: 0.7832, y: 0.2240 });
+        red_inhib.kind = "inhib".to_string();
+        red_inhib.hp = 200.0;
+        let red_inhib_tower = test_structure(
+            "red-mid-inhib-tower",
+            "red",
+            "mid",
+            Vec2 { x: 0.740234375, y: 0.26171875 },
+        );
+
+        let mut runtime = test_runtime(vec![], vec![blue], vec![red_inhib, red_inhib_tower], neutral);
+        let hp_before = runtime.structures[0].hp;
+
+        resolve_minion_combat(&mut runtime);
+
+        assert_eq!(runtime.structures[0].hp, hp_before);
+    }
+
+    #[test]
+    fn minion_can_target_inhib_after_inhib_tower_is_down() {
         let neutral = NeutralTimersRuntime {
             dragon_soul_unlocked: false,
             elder_unlocked: false,
@@ -7519,11 +9922,682 @@ mod tests {
             extra: HashMap::new(),
         };
 
-        let red_pick = pick_macro_objective_pos(&red_jgl, &neutral, 120.0);
-        let blue_pick = pick_macro_objective_pos(&blue_jgl, &neutral, 120.0);
+        let default_tactics = RuntimeTeamTactics::default();
+        let red_pick = pick_macro_objective_pos(&red_jgl, &neutral, 120.0, &default_tactics);
+        let blue_pick = pick_macro_objective_pos(&blue_jgl, &neutral, 120.0, &default_tactics);
 
         assert_eq!(red_pick.map(|p| (p.x, p.y)), Some((0.48, 0.26)));
         assert_eq!(blue_pick.map(|p| (p.x, p.y)), Some((0.25, 0.46)));
+    }
+
+    #[test]
+    fn jungle_pathing_bot_to_top_invades_enemy_top_side_first_for_both_teams() {
+        let blue_order = jungler_macro_jungle_priority_for_team("blue", "BotToTop");
+        let red_order = jungler_macro_jungle_priority_for_team("red", "BotToTop");
+
+        assert_eq!(blue_order[8], "blue-buff-red");
+        assert_eq!(red_order[8], "blue-buff-blue");
+    }
+
+    #[test]
+    fn jungle_pathing_top_to_bot_invades_enemy_bot_side_first_for_both_teams() {
+        let blue_order = jungler_macro_jungle_priority_for_team("blue", "TopToBot");
+        let red_order = jungler_macro_jungle_priority_for_team("red", "TopToBot");
+
+        assert_eq!(blue_order[8], "red-buff-red");
+        assert_eq!(red_order[8], "red-buff-blue");
+    }
+
+    #[test]
+    fn jungle_disengage_fallback_honors_pathing_start_side_for_blue_and_red() {
+        let blue_bot_to_top = jungle_disengage_fallback_order_for_team("blue", "BotToTop");
+        let blue_top_to_bot = jungle_disengage_fallback_order_for_team("blue", "TopToBot");
+        let red_bot_to_top = jungle_disengage_fallback_order_for_team("red", "BotToTop");
+        let red_top_to_bot = jungle_disengage_fallback_order_for_team("red", "TopToBot");
+
+        assert_eq!(blue_bot_to_top[0], "raptors-blue");
+        assert_eq!(blue_top_to_bot[0], "gromp-blue");
+        assert_eq!(red_bot_to_top[0], "raptors-red");
+        assert_eq!(red_top_to_bot[0], "gromp-red");
+    }
+
+    #[test]
+    fn kill_rewards_reduce_when_ahead_killer_farms_behind_target() {
+        let mut killer = test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.5, y: 0.5 });
+        killer.kills = 10;
+        killer.deaths = 1;
+        killer.level = 13;
+
+        let mut victim = test_champion("jgl-red", "red", "JGL", "bot", Vec2 { x: 0.52, y: 0.5 });
+        victim.kills = 1;
+        victim.deaths = 8;
+        victim.level = 10;
+
+        let (gold, xp) = champion_kill_rewards(&killer, &victim);
+        assert!(gold < CHAMPION_KILL_GOLD);
+        assert!(xp < CHAMPION_KILL_XP);
+    }
+
+    #[test]
+    fn kill_rewards_increase_for_shutdown() {
+        let mut killer = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.5, y: 0.5 });
+        killer.kills = 1;
+        killer.deaths = 4;
+        killer.level = 9;
+
+        let mut victim = test_champion("mid-red", "red", "MID", "mid", Vec2 { x: 0.52, y: 0.5 });
+        victim.kills = 9;
+        victim.deaths = 1;
+        victim.level = 13;
+
+        let (gold, xp) = champion_kill_rewards(&killer, &victim);
+        assert!(gold > CHAMPION_KILL_GOLD);
+        assert!(xp > CHAMPION_KILL_XP);
+    }
+
+    #[test]
+    fn respawn_scales_with_level_and_time() {
+        let early_low = champion_respawn_seconds(3, 12.0 * 60.0);
+        let late_high = champion_respawn_seconds(15, 33.0 * 60.0);
+        assert!(late_high > early_low);
+        assert!(late_high <= 42.0);
+    }
+
+    #[test]
+    fn heal_spell_casts_when_self_is_low_hp() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut champion = test_champion("adc-blue", "blue", "ADC", "bot", Vec2 { x: 0.50, y: 0.50 });
+        champion.hp = 20.0;
+        champion.summoner_spells = vec![RuntimeSummonerSpellSlot {
+            key: "Heal".to_string(),
+            cd_until: 0.0,
+        }];
+
+        let mut runtime = test_runtime(vec![champion], vec![], vec![], neutral);
+        let hp_before = runtime.champions[0].hp;
+
+        resolve_champion_combat(&mut runtime);
+
+        assert!(runtime.champions[0].hp > hp_before);
+        let heal_cd = runtime.champions[0]
+            .summoner_spells
+            .iter()
+            .find(|spell| spell.key == "Heal")
+            .map(|spell| spell.cd_until)
+            .unwrap_or(0.0);
+        assert!(heal_cd > runtime.time_sec);
+    }
+
+    #[test]
+    fn smite_executes_low_hp_dragon_for_jungler() {
+        let mut entities = HashMap::new();
+        let mut dragon = test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true);
+        dragon.hp = 520.0;
+        dragon.max_hp = 3600.0;
+        entities.insert("dragon".to_string(), dragon);
+
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities,
+            extra: HashMap::new(),
+        };
+
+        let mut jgl = test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
+        jgl.summoner_spells = vec![RuntimeSummonerSpellSlot {
+            key: "Smite".to_string(),
+            cd_until: 0.0,
+        }];
+
+        let mut runtime = test_runtime(vec![jgl], vec![], vec![], neutral);
+
+        resolve_champion_combat(&mut runtime);
+
+        assert_eq!(runtime.stats.blue.dragons, 1);
+        let decoded = decode_neutral_timers_state(&runtime.neutral_timers)
+            .unwrap_or_else(|| panic!("failed to decode timers"));
+        let dragon_after = decoded
+            .entities
+            .get("dragon")
+            .unwrap_or_else(|| panic!("dragon missing"));
+        assert!(!dragon_after.alive);
+    }
+
+    #[test]
+    fn ultimate_burst_casts_when_level_six_enemy_nearby() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut caster = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.50, y: 0.50 });
+        caster.level = 6;
+        caster.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "burst".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let target = test_champion("mid-red", "red", "MID", "mid", Vec2 { x: 0.55, y: 0.50 });
+        let mut runtime = test_runtime(vec![caster, target], vec![], vec![], neutral);
+        let hp_before = runtime.champions[1].hp;
+
+        resolve_champion_combat(&mut runtime);
+
+        assert!(runtime.champions[1].hp < hp_before);
+        let cd = runtime.champions[0]
+            .ultimate
+            .as_ref()
+            .map(|ultimate| ultimate.cd_until)
+            .unwrap_or(0.0);
+        assert!(cd > runtime.time_sec);
+    }
+
+    #[test]
+    fn execute_ultimate_requires_low_hp_target() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut adc = test_champion("adc-blue", "blue", "ADC", "bot", Vec2 { x: 0.50, y: 0.50 });
+        adc.level = 7;
+        adc.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "execute".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let mut target = test_champion("adc-red", "red", "ADC", "bot", Vec2 { x: 0.55, y: 0.50 });
+        target.hp = 90.0;
+        let mut runtime = test_runtime(vec![adc, target], vec![], vec![], neutral);
+
+        resolve_champion_combat(&mut runtime);
+
+        let cd = runtime.champions[0]
+            .ultimate
+            .as_ref()
+            .map(|ultimate| ultimate.cd_until)
+            .unwrap_or(0.0);
+        assert_eq!(cd, 0.0);
+    }
+
+    #[test]
+    fn annie_ultimate_summons_tibbers_with_scaled_stats() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut annie = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.50, y: 0.50 });
+        annie.champion_id = "Annie".to_string();
+        annie.level = 6;
+        annie.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "burst".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let mut runtime = test_runtime(vec![annie], vec![], vec![], neutral);
+        resolve_champion_combat(&mut runtime);
+
+        let summon = runtime
+            .minions
+            .iter()
+            .find(|minion| minion.id.contains("tibbers") && minion.owner_champion_id.as_deref() == Some("mid-blue"));
+        assert!(summon.is_some());
+    }
+
+    #[test]
+    fn shen_ultimate_shields_ally_and_teleports() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut shen = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.30, y: 0.30 });
+        shen.champion_id = "Shen".to_string();
+        shen.level = 6;
+        shen.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "defensive".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let mut ally = test_champion("adc-blue", "blue", "ADC", "bot", Vec2 { x: 0.72, y: 0.78 });
+        ally.hp = 25.0;
+
+        let mut runtime = test_runtime(vec![shen, ally], vec![], vec![], neutral);
+        let hp_before = runtime.champions[1].hp;
+        let ally_pos = runtime.champions[1].pos;
+
+        resolve_champion_combat(&mut runtime);
+
+        assert!(runtime.champions[1].hp > hp_before);
+        assert!(dist(runtime.champions[0].pos, ally_pos) < 0.0001);
+    }
+
+    #[test]
+    fn mordekaiser_ultimate_banishes_both_champions_temporarily() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut morde = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.50, y: 0.50 });
+        morde.champion_id = "Mordekaiser".to_string();
+        morde.level = 6;
+        morde.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "burst".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let enemy = test_champion("top-red", "red", "TOP", "top", Vec2 { x: 0.54, y: 0.50 });
+        let mut runtime = test_runtime(vec![morde, enemy], vec![], vec![], neutral);
+
+        resolve_champion_combat(&mut runtime);
+
+        assert!(runtime.champions[0].realm_banished_until > runtime.time_sec);
+        assert!(runtime.champions[1].realm_banished_until > runtime.time_sec);
+    }
+
+    #[test]
+    fn summon_expires_after_configured_duration() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut annie = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.50, y: 0.50 });
+        annie.champion_id = "Annie".to_string();
+        annie.level = 6;
+        annie.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "burst".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let mut runtime = test_runtime(vec![annie], vec![], vec![], neutral);
+        resolve_champion_combat(&mut runtime);
+        assert!(runtime.minions.iter().any(|minion| minion.alive && minion.kind == "summon"));
+
+        runtime.time_sec += 46.0;
+        move_minions(&mut runtime, 0.1);
+
+        assert!(!runtime.minions.iter().any(|minion| minion.alive && minion.kind == "summon"));
+    }
+
+    #[test]
+    fn mordekaiser_realm_returns_positions_after_duration() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut morde = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.50, y: 0.50 });
+        morde.champion_id = "Mordekaiser".to_string();
+        morde.level = 6;
+        morde.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "burst".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+
+        let enemy = test_champion("top-red", "red", "TOP", "top", Vec2 { x: 0.54, y: 0.50 });
+        let mut runtime = test_runtime(vec![morde, enemy], vec![], vec![], neutral);
+        let morde_pos = runtime.champions[0].pos;
+        let enemy_pos = runtime.champions[1].pos;
+
+        resolve_champion_combat(&mut runtime);
+        runtime.time_sec += ULTIMATE_MORDE_REALM_DURATION_SEC + 0.5;
+        move_champions(&mut runtime, 0.1);
+
+        assert!(dist(runtime.champions[0].pos, morde_pos) < 0.0001);
+        assert!(dist(runtime.champions[1].pos, enemy_pos) < 0.0001);
+    }
+
+    #[test]
+    fn global_ultimate_requires_team_vision() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut caster = test_champion("jgl-blue", "blue", "JGL", "mid", Vec2 { x: 0.40, y: 0.40 });
+        caster.level = 8;
+        caster.ultimate = Some(RuntimeUltimateSlot {
+            archetype: "global".to_string(),
+            icon: String::new(),
+            cd_until: 0.0,
+        });
+        let target = test_champion("mid-red", "red", "MID", "mid", Vec2 { x: 0.56, y: 0.40 });
+
+        let mut runtime = test_runtime(vec![caster.clone(), target.clone()], vec![], vec![], neutral.clone());
+        resolve_champion_combat(&mut runtime);
+        let cd_without_vision = runtime.champions[0].ultimate.as_ref().map(|u| u.cd_until).unwrap_or(0.0);
+        assert_eq!(cd_without_vision, 0.0);
+
+        let mut runtime_with_ward = test_runtime(vec![caster, target], vec![], vec![], neutral);
+        runtime_with_ward.wards.push(WardRuntime {
+            id: "w1".to_string(),
+            team: "blue".to_string(),
+            owner_champion_id: "jgl-blue".to_string(),
+            pos: Vec2 { x: 0.56, y: 0.40 },
+            expires_at: runtime_with_ward.time_sec + 30.0,
+        });
+        resolve_champion_combat(&mut runtime_with_ward);
+        let cd_with_vision = runtime_with_ward.champions[0].ultimate.as_ref().map(|u| u.cd_until).unwrap_or(0.0);
+        assert!(cd_with_vision > runtime_with_ward.time_sec);
+    }
+
+    #[test]
+    fn sweeper_is_jgl_sup_only_and_clears_enemy_wards() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut jgl = test_champion("jgl-blue", "blue", "JGL", "mid", Vec2 { x: 0.50, y: 0.50 });
+        jgl.sweeper_cd_until = 0.0;
+        jgl.trinket_key = TRINKET_ORACLE_LENS.to_string();
+        let mut top = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.50, y: 0.50 });
+        top.sweeper_cd_until = 0.0;
+
+        let mut runtime = test_runtime(vec![jgl, top], vec![], vec![], neutral);
+        runtime.wards.push(WardRuntime {
+            id: "w-red".to_string(),
+            team: "red".to_string(),
+            owner_champion_id: "mid-red".to_string(),
+            pos: Vec2 { x: 0.51, y: 0.50 },
+            expires_at: runtime.time_sec + 60.0,
+        });
+
+        process_sweepers(&mut runtime);
+
+        assert!(runtime.wards.is_empty());
+        assert!(runtime.champions[0].sweeper_active_until > runtime.time_sec);
+        assert_eq!(runtime.champions[1].sweeper_active_until, 0.0);
+    }
+
+    #[test]
+    fn jgl_swaps_to_oracle_on_first_recall_after_minute_six() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut jgl = test_champion("jgl-blue", "blue", "JGL", "mid", Vec2 { x: 0.50, y: 0.50 });
+        jgl.state = "recall".to_string();
+        jgl.recall_channel_until = TRINKET_SWAP_UNLOCK_AT_SEC + 1.0;
+
+        let mut runtime = test_runtime(vec![jgl], vec![], vec![], neutral);
+        runtime.time_sec = TRINKET_SWAP_UNLOCK_AT_SEC + 1.0;
+
+        move_champions(&mut runtime, 0.1);
+
+        assert_eq!(runtime.champions[0].trinket_key, TRINKET_ORACLE_LENS);
+        assert!(runtime.champions[0].trinket_swapped);
+    }
+
+    #[test]
+    fn jgl_no_longer_places_wards_after_oracle_swap() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut jgl = test_champion("jgl-blue", "blue", "JGL", "mid", Vec2 { x: 0.52, y: 0.52 });
+        jgl.trinket_key = TRINKET_ORACLE_LENS.to_string();
+        jgl.trinket_swapped = true;
+        jgl.ward_cd_until = 0.0;
+
+        let mut runtime = test_runtime(vec![jgl], vec![], vec![], neutral);
+        runtime.time_sec = TRINKET_SWAP_UNLOCK_AT_SEC + 60.0;
+
+        place_wards(&mut runtime);
+
+        assert!(runtime.wards.is_empty());
+    }
+
+    #[test]
+    fn wards_use_strategic_points_not_raw_champion_position() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut sup = test_champion("sup-blue", "blue", "SUP", "bot", Vec2 { x: 0.60, y: 0.61 });
+        sup.ward_cd_until = 0.0;
+        sup.trinket_key = TRINKET_WARDING_TOTEM.to_string();
+
+        let mut runtime = test_runtime(vec![sup], vec![], vec![], neutral);
+        runtime.time_sec = WARD_UNLOCK_AT_SEC + 30.0;
+
+        place_wards(&mut runtime);
+        assert_eq!(runtime.wards.len(), 1);
+        let ward_pos = runtime.wards[0].pos;
+        assert!(dist(ward_pos, Vec2 { x: 0.615, y: 0.61 }) < 0.03 || dist(ward_pos, Vec2 { x: 0.565, y: 0.455 }) < 0.03);
+    }
+
+    #[test]
+    fn support_roam_after_minute_ten_rotates_not_same_lane_forever() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut sup = test_champion("sup-blue", "blue", "SUP", "bot", Vec2 { x: 0.52, y: 0.70 });
+        sup.support_last_roam_role = "MID".to_string();
+        sup.support_roam_cd_until = 0.0;
+
+        let mut top = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.20, y: 0.32 });
+        top.hp = 40.0;
+        let mut mid = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.52, y: 0.52 });
+        mid.hp = 35.0;
+        let mut adc = test_champion("adc-blue", "blue", "ADC", "bot", Vec2 { x: 0.72, y: 0.80 });
+        adc.hp = 85.0;
+
+        let mut runtime = test_runtime(vec![sup.clone(), top, mid, adc], vec![], vec![], neutral);
+        runtime.time_sec = SUPPORT_OPEN_ROAM_AT_SEC + 20.0;
+        let timers = decode_neutral_timers_state(&runtime.neutral_timers)
+            .unwrap_or_else(|| neutral_timers_default_runtime_state());
+
+        let champions_snapshot = runtime.champions.clone();
+        decide_champion_state(
+            &mut runtime.champions[0],
+            runtime.time_sec,
+            &runtime.minions,
+            &runtime.structures,
+            &champions_snapshot,
+            Some(&timers),
+            &RuntimeTeamTactics::default(),
+            &RuntimeTeamBuffState::default(),
+        );
+
+        assert_eq!(runtime.champions[0].state, "objective");
+        assert_ne!(runtime.champions[0].support_last_roam_role, "MID");
+    }
+
+    #[test]
+    fn teleport_uses_allied_lane_tower_from_base() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut top = test_champion("top-blue", "blue", "TOP", "top", base_position_for("blue"));
+        top.summoner_spells = vec![RuntimeSummonerSpellSlot {
+            key: "Teleport".to_string(),
+            cd_until: 0.0,
+        }];
+
+        let target_tower = test_structure("blue-top-outer", "blue", "top", Vec2 { x: 0.11, y: 0.56 });
+        let mut runtime = test_runtime(vec![top], vec![], vec![target_tower.clone()], neutral);
+        runtime.time_sec = SUMMONER_TP_UNLOCK_AT_SEC + 10.0;
+
+        resolve_champion_combat(&mut runtime);
+
+        assert!(dist(runtime.champions[0].pos, target_tower.pos) < 0.0001);
+        let tp_cd = runtime.champions[0]
+            .summoner_spells
+            .iter()
+            .find(|spell| spell.key == "Teleport")
+            .map(|spell| spell.cd_until)
+            .unwrap_or(0.0);
+        assert!(tp_cd > runtime.time_sec);
+    }
+
+    #[test]
+    fn teleport_uses_allied_lane_minion_when_no_tower_available() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut top = test_champion("top-blue", "blue", "TOP", "top", base_position_for("blue"));
+        top.summoner_spells = vec![RuntimeSummonerSpellSlot {
+            key: "Teleport".to_string(),
+            cd_until: 0.0,
+        }];
+
+        let lane_minion = test_minion("blue-top-m1", "blue", "top", Vec2 { x: 0.19, y: 0.35 });
+        let mut runtime = test_runtime(vec![top], vec![lane_minion.clone()], vec![], neutral);
+        runtime.time_sec = SUMMONER_TP_UNLOCK_AT_SEC + 10.0;
+
+        resolve_champion_combat(&mut runtime);
+
+        assert!(dist(runtime.champions[0].pos, lane_minion.pos) < 0.0001);
+    }
+
+    #[test]
+    fn dragon_kind_is_mirrored_into_timer_entity_on_tick() {
+        let mut entities = HashMap::new();
+        entities.insert(
+            "dragon".to_string(),
+            test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true),
+        );
+
+        let mut neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities,
+            extra: HashMap::new(),
+        };
+        neutral
+            .extra
+            .insert("dragonCurrentKind".to_string(), Value::from("ocean"));
+
+        let mut runtime = test_runtime(vec![], vec![], vec![], neutral);
+        tick_neutral_timers(&mut runtime);
+
+        let decoded = decode_neutral_timers_state(&runtime.neutral_timers)
+            .unwrap_or_else(|| panic!("failed to decode neutral timers"));
+        let dragon_timer = decoded
+            .entities
+            .get("dragon")
+            .unwrap_or_else(|| panic!("dragon timer missing"));
+
+        assert_eq!(
+            dragon_timer
+                .extra
+                .get("dragonCurrentKind")
+                .and_then(Value::as_str),
+            Some("ocean")
+        );
+    }
+
+    #[test]
+    fn dragon_soul_unlocks_elder_after_fourth_stack() {
+        let mut entities = HashMap::new();
+        let mut dragon = test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true);
+        dragon.next_spawn_at = Some(0.0);
+        entities.insert("dragon".to_string(), dragon);
+
+        let mut elder = test_neutral_timer("elder", Vec2 { x: 0.6738, y: 0.7031 }, false);
+        elder.unlocked = false;
+        elder.next_spawn_at = None;
+        entities.insert("elder".to_string(), elder);
+
+        let mut neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities,
+            extra: HashMap::new(),
+        };
+        neutral
+            .extra
+            .insert("dragonCurrentKind".to_string(), Value::from("infernal"));
+        neutral
+            .extra
+            .insert("dragonSoulRiftKind".to_string(), Value::from("infernal"));
+
+        let killer = test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
+        let mut runtime = test_runtime(vec![killer], vec![], vec![], neutral);
+
+        let buffs = RuntimeBuffState {
+            blue: RuntimeTeamBuffState {
+                dragon_stacks: 3,
+                ..RuntimeTeamBuffState::default()
+            },
+            red: RuntimeTeamBuffState::default(),
+        };
+        set_runtime_buffs(&mut runtime, &buffs);
+
+        let mut timers = decode_neutral_timers_state(&runtime.neutral_timers)
+            .unwrap_or_else(|| panic!("failed to decode neutral timers"));
+        let dragon_kind = process_dragon_capture(&mut runtime, &mut timers, "blue");
+
+        assert_eq!(dragon_kind, "infernal");
+        assert!(timers.dragon_soul_unlocked);
+        assert!(timers.elder_unlocked);
+
+        let elder_timer = timers
+            .entities
+            .get("elder")
+            .unwrap_or_else(|| panic!("elder timer missing"));
+        assert!(elder_timer.unlocked);
+        assert!(elder_timer.next_spawn_at.is_some());
+
+        let blue_buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), "blue");
+        assert_eq!(blue_buffs.dragon_stacks, 4);
+        assert_eq!(blue_buffs.soul_kind.as_deref(), Some("infernal"));
     }
 
     #[test]

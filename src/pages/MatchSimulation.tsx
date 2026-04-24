@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
-import { useGameStore, GameStateData } from "../store/gameStore";
+import { useGameStore, GameStateData, LolTacticsData } from "../store/gameStore";
 import { useSettingsStore } from "../store/settingsStore";
 import {
   MatchSnapshot,
@@ -22,7 +22,12 @@ import {
   lolSimV2ClearTelemetryFiles,
   lolSimV2RunToCompletion,
 } from "../components/match/lol-prototype/backend/tauri-client";
-import type { LolSimV1PolicyConfig, LolSimV1RuntimeState } from "../components/match/lol-prototype/backend/contract-v1";
+import type {
+  LolSimV1MatchReportInput,
+  LolSimV1PolicyConfig,
+  LolSimV1RuntimeState,
+} from "../components/match/lol-prototype/backend/contract-v1";
+import { computeRoleModifiers, ROLE_ORDER, type DraftRole } from "../lib/lolTactics";
 
 // ---------------------------------------------------------------------------
 // Multi-stage Match Day Orchestrator
@@ -37,6 +42,117 @@ interface MatchRouteState {
 interface FinishLiveMatchResponse {
   game: GameStateData;
   round_summary?: unknown;
+}
+
+const DEFAULT_LOL_TACTICS: LolTacticsData = {
+  strong_side: "Bot",
+  game_timing: "Mid",
+  jungle_style: "Enabler",
+  jungle_pathing: "TopToBot",
+  fight_plan: "FrontToBack",
+  support_roaming: "Lane",
+};
+
+function attachLolTacticsToSnapshot(snapshot: MatchSnapshot, gameState: GameStateData): MatchSnapshot {
+  const homeTeam = gameState.teams.find((team) => team.id === snapshot.home_team.id);
+  const awayTeam = gameState.teams.find((team) => team.id === snapshot.away_team.id);
+
+  const normalizePosition = (position: string) => position.toLowerCase().replace(/[^a-z]/g, "");
+  const positionToRole = (position: string): DraftRole | null => {
+    const normalized = normalizePosition(position);
+    if (normalized === "defender") return "TOP";
+    if (normalized === "midfielder") return "JUNGLE";
+    if (normalized === "attackingmidfielder") return "MID";
+    if (normalized === "forward") return "ADC";
+    if (normalized === "defensivemidfielder" || normalized === "goalkeeper") return "SUPPORT";
+    return null;
+  };
+
+  const buildImpactByPlayer = (
+    players: MatchSnapshot["home_team"]["players"],
+    tactics: LolTacticsData,
+  ): Record<string, { modifier: number; variance: number }> => {
+    const roleModifiers = computeRoleModifiers(tactics);
+    const byRole = new Map<DraftRole, MatchSnapshot["home_team"]["players"][number]>();
+
+    players.forEach((player) => {
+      const role = positionToRole(player.position);
+      if (!role || byRole.has(role)) return;
+      byRole.set(role, player);
+    });
+
+    const impact: Record<string, { modifier: number; variance: number }> = {};
+    ROLE_ORDER.forEach((role) => {
+      const player = byRole.get(role);
+      if (!player) return;
+      const modifier = roleModifiers[role] ?? 0;
+      const variance = Math.max(0.5, Math.abs(modifier) * 0.6 + 0.6);
+      impact[player.id] = { modifier, variance };
+    });
+
+    return impact;
+  };
+
+  const homeTactics = homeTeam?.lol_tactics ?? DEFAULT_LOL_TACTICS;
+  const awayTactics = awayTeam?.lol_tactics ?? DEFAULT_LOL_TACTICS;
+  const roleImpactByPlayer = {
+    home: buildImpactByPlayer(snapshot.home_team.players, homeTactics),
+    away: buildImpactByPlayer(snapshot.away_team.players, awayTactics),
+  };
+
+  return {
+    ...snapshot,
+    // extra payload consumed by Rust sim v2
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lol_tactics: {
+      home: homeTactics,
+      away: awayTactics,
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lol_role_impact_by_player: roleImpactByPlayer,
+  } as MatchSnapshot;
+}
+
+function buildLolMatchReport(runtime: LolSimV1RuntimeState): LolSimV1MatchReportInput {
+  return {
+    winner: runtime.winner,
+    timeSec: runtime.timeSec,
+    events: (runtime.events ?? []).map((event) => ({
+      t: event.t,
+      text: event.text,
+      type: event.type,
+    })),
+    stats: {
+      blue: {
+        kills: runtime.stats.blue.kills,
+        deaths: runtime.stats.red.kills,
+        gold: runtime.stats.blue.gold,
+        towers: runtime.stats.blue.towers,
+        dragons: runtime.stats.blue.dragons,
+        barons: runtime.stats.blue.barons,
+      },
+      red: {
+        kills: runtime.stats.red.kills,
+        deaths: runtime.stats.blue.kills,
+        gold: runtime.stats.red.gold,
+        towers: runtime.stats.red.towers,
+        dragons: runtime.stats.red.dragons,
+        barons: runtime.stats.red.barons,
+      },
+    },
+    champions: (runtime.champions ?? []).map((champion) => ({
+      id: champion.id,
+      name: champion.name,
+      team: champion.team,
+      role: champion.role,
+      kills: champion.kills,
+      deaths: champion.deaths,
+      assists: champion.assists,
+      cs: champion.cs,
+      gold: champion.gold,
+      spentGold: champion.spentGold,
+    })),
+  };
 }
 
 const PARALLEL_SIMULATION_COUNT = 8;
@@ -93,6 +209,7 @@ export default function MatchSimulation() {
   );
   const [stage, setStage] = useState<MatchDayStage>("prematch");
   const [importantEvents, setImportantEvents] = useState<MatchEvent[]>([]);
+  const [finalRuntimeState, setFinalRuntimeState] = useState<LolSimV1RuntimeState | null>(null);
   const [championSelections, setChampionSelections] = useState<ChampionSelectionByPlayer | null>(null);
   const [userSide, setUserSide] = useState<"Home" | "Away" | null>(null);
   const [isSpectator, setIsSpectator] = useState(matchMode === "spectator");
@@ -308,6 +425,10 @@ export default function MatchSimulation() {
   }, [managerTeamId, snapshot, swapSnapshotSides, userSelectedSide]);
 
   const renderSnapshot = activeSnapshot ?? snapshot;
+  const renderSnapshotWithTactics = useMemo(() => {
+    if (!renderSnapshot || !gameState) return renderSnapshot;
+    return attachLolTacticsToSnapshot(renderSnapshot, gameState);
+  }, [gameState, renderSnapshot]);
 
   // Callbacks for stage transitions
   const handleStartMatch = useCallback(() => {
@@ -407,7 +528,7 @@ export default function MatchSimulation() {
   }, [simPolicy]);
 
   const handleRunParallelSims = useCallback(async () => {
-    if (!renderSnapshot) {
+    if (!renderSnapshotWithTactics) {
       return;
     }
 
@@ -455,7 +576,7 @@ export default function MatchSimulation() {
           Array.from({ length: PARALLEL_SIMULATION_COUNT }, (_, index) =>
             runSingleParallelSimulation(
               index + batch * 1000,
-              renderSnapshot,
+              renderSnapshotWithTactics,
               championMapByPlayerId,
               runSeedBase,
             ),
@@ -517,12 +638,12 @@ export default function MatchSimulation() {
     championSelections?.away,
     championSelections?.home,
     isRunningParallelSims,
-    renderSnapshot,
+    renderSnapshotWithTactics,
     runSingleParallelSimulation,
     t,
   ]);
 
-  const finalizeMatch = useCallback(async (): Promise<boolean> => {
+  const finalizeMatch = useCallback(async (lolReport?: LolSimV1MatchReportInput): Promise<boolean> => {
     if (hasFinalizedMatch) {
       return true;
     }
@@ -530,7 +651,7 @@ export default function MatchSimulation() {
     try {
       console.info("[MatchSimulation] finalizeMatch:start");
       const response =
-        await invoke<FinishLiveMatchResponse>("finish_live_match");
+        await invoke<FinishLiveMatchResponse>("finish_live_match", { lolReport });
       console.info("[MatchSimulation] finalizeMatch:success", {
         hasRoundSummary: !!response.round_summary,
         hasUpdatedGame: !!response.game,
@@ -544,10 +665,20 @@ export default function MatchSimulation() {
     }
   }, [hasFinalizedMatch, setGameState]);
 
-  const handleFullTime = useCallback(() => {
+  const handleFullTime = useCallback((finalRuntimeState: LolSimV1RuntimeState) => {
     console.info("[MatchSimulation] handleFullTime");
+    setFinalRuntimeState(finalRuntimeState);
+    const mappedEvents: MatchEvent[] = (finalRuntimeState.events ?? []).map((event) => ({
+      minute: Math.max(0, Math.floor((event.t ?? 0) / 60)),
+      event_type: event.type,
+      side: event.text?.toUpperCase().includes("RED") ? "Away" : "Home",
+      zone: "mid",
+      player_id: null,
+      secondary_player_id: null,
+    }));
+    setImportantEvents(mappedEvents);
     void (async () => {
-      const finalized = await finalizeMatch();
+      const finalized = await finalizeMatch(buildLolMatchReport(finalRuntimeState));
       if (finalized) {
         setStage("draft_result");
       }
@@ -617,7 +748,7 @@ export default function MatchSimulation() {
     case "draft":
       return (
         <ChampionDraft
-          snapshot={renderSnapshot ?? snapshot}
+          snapshot={renderSnapshotWithTactics ?? renderSnapshot ?? snapshot}
           onComplete={handleDraftComplete}
           controlledSide={userSelectedSide}
           seriesLength={seriesLength}
@@ -648,6 +779,7 @@ export default function MatchSimulation() {
           currentFixture={currentFixture}
           userSide={userSide}
           importantEvents={importantEvents}
+          finalRuntimeState={finalRuntimeState}
           onPressConference={handlePressConference}
           onFinish={handleFinishMatch}
         />
@@ -657,7 +789,7 @@ export default function MatchSimulation() {
       return (
         <LolMatchLive
           key={stage}
-          snapshot={snapshot}
+          snapshot={renderSnapshotWithTactics ?? snapshot}
           championSelections={championSelections}
           onSnapshotUpdate={handleSnapshotUpdate}
           onImportantEvent={handleImportantEvent}

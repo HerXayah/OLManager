@@ -5,7 +5,18 @@ export const LOL_MAP_JUNGLE_ICON_SIZE = 36;
 
 export type JungleCampIcon = "blue" | "red" | "camp";
 export type StructureIcon = "tower_blue" | "tower_red" | "inhibitor_blue" | "inhibitor_red" | "nexus_blue" | "nexus_red";
-export type NeutralObjectiveIcon = "dragon" | "baron" | "grub" | "riftherald";
+export type NeutralObjectiveIcon =
+  | "dragon"
+  | "dragon_infernal"
+  | "dragon_ocean"
+  | "dragon_mountain"
+  | "dragon_cloud"
+  | "dragon_hextech"
+  | "dragon_chemtech"
+  | "dragon_elder"
+  | "baron"
+  | "grub"
+  | "riftherald";
 
 export interface JungleCampPoint {
   id: string;
@@ -97,8 +108,8 @@ export const STRUCTURES_LAYOUT: StructurePoint[] = [
   { id: "red-top-outer", side: "red", lane: "top", label: "Red Top Outer", icon: "tower_red", x: 0.275390625, y: 0.07161458333333333 },
   { id: "red-top-inner", side: "red", lane: "top", label: "Red Top Inner", icon: "tower_red", x: 0.533203125, y: 0.08203125 },
   { id: "red-top-inhib-tower", side: "red", lane: "top", label: "Red Top Inhib Tower", icon: "tower_red", x: 0.912109375, y: 0.3125 },
-  { id: "red-mid-outer", side: "red", lane: "mid", label: "Red Mid Outer", icon: "tower_red", x: 0.6569010416666666, y: 0.33203125 },
-  { id: "red-mid-inner", side: "red", lane: "mid", label: "Red Mid Inner", icon: "tower_red", x: 0.595703125, y: 0.44140625 },
+  { id: "red-mid-outer", side: "red", lane: "mid", label: "Red Mid Outer", icon: "tower_red", x: 0.595703125, y: 0.44140625 },
+  { id: "red-mid-inner", side: "red", lane: "mid", label: "Red Mid Inner", icon: "tower_red", x: 0.6569010416666666, y: 0.33203125 },
   { id: "red-mid-inhib-tower", side: "red", lane: "mid", label: "Red Mid Inhib Tower", icon: "tower_red", x: 0.740234375, y: 0.26171875 },
   { id: "red-bot-inner", side: "red", lane: "bot", label: "Red Bot Inner", icon: "tower_red", x: 0.9016927083333334, y: 0.44921875 },
   { id: "red-bot-outer", side: "red", lane: "bot", label: "Red Bot Outer", icon: "tower_red", x: 0.9303385416666666, y: 0.7057291666666666 },
@@ -129,6 +140,13 @@ export const STRUCTURE_ICON_PATH: Record<StructureIcon, string> = {
 
 export const NEUTRAL_OBJECTIVE_ICON_PATH: Record<NeutralObjectiveIcon, string> = {
   dragon: "/lol-map-icons/dragon.png",
+  dragon_infernal: "/lol-map-icons/dragon_infernal.png",
+  dragon_ocean: "/lol-map-icons/dragon_ocean.png",
+  dragon_mountain: "/lol-map-icons/dragon_mountain.png",
+  dragon_cloud: "/lol-map-icons/dragon_cloud.png",
+  dragon_hextech: "/lol-map-icons/dragon_hextech.png",
+  dragon_chemtech: "/lol-map-icons/dragon_chemtech.png",
+  dragon_elder: "/lol-map-icons/dragon_elder.png",
   baron: "/lol-map-icons/baron.png",
   grub: "/lol-map-icons/grub.png",
   riftherald: "/lol-map-icons/riftherald.png",

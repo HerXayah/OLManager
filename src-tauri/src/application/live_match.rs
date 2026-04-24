@@ -1,6 +1,10 @@
 use log::info;
+use std::collections::HashMap;
 
 use crate::commands::round_summary::{build_round_summary_dto, RoundSummaryDto};
+use engine::event::{EventType, MatchEvent};
+use engine::report::{MatchReport, MatchReportEndReason, PlayerMatchStats, TeamStats};
+use engine::types::{Side, Zone};
 use ofm_core::game::Game;
 use ofm_core::live_match_manager::{self, MatchMode};
 use ofm_core::state::StateManager;
@@ -12,7 +16,249 @@ pub struct FinishLiveMatchResponse {
     pub round_summary: Option<RoundSummaryDto>,
 }
 
-pub fn finish_live_match(state: &StateManager) -> Result<FinishLiveMatchResponse, String> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimMatchReportInput {
+    pub winner: Option<String>,
+    pub time_sec: f64,
+    pub events: Vec<LolSimMatchReportEventInput>,
+    pub stats: LolSimMatchReportStatsInput,
+    pub champions: Vec<LolSimMatchReportChampionInput>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimMatchReportEventInput {
+    pub t: f64,
+    pub text: String,
+    #[serde(rename = "type")]
+    pub kind: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimMatchReportStatsInput {
+    pub blue: LolSimMatchReportTeamStatsInput,
+    pub red: LolSimMatchReportTeamStatsInput,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimMatchReportTeamStatsInput {
+    pub kills: u16,
+    pub deaths: u16,
+    pub gold: u32,
+    pub towers: u16,
+    pub dragons: u16,
+    pub barons: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LolSimMatchReportChampionInput {
+    pub id: String,
+    pub name: String,
+    pub team: String,
+    pub role: String,
+    pub kills: u16,
+    pub deaths: u16,
+    pub assists: u16,
+    pub cs: u16,
+    pub gold: u32,
+    pub spent_gold: u32,
+}
+
+fn map_sim_team_to_side(team: &str) -> Side {
+    if team.eq_ignore_ascii_case("red") {
+        Side::Away
+    } else {
+        Side::Home
+    }
+}
+
+fn map_sim_role_to_engine(role: &str) -> Option<engine::live_match::LolRole> {
+    match role {
+        "TOP" => Some(engine::live_match::LolRole::Top),
+        "JGL" => Some(engine::live_match::LolRole::Jungle),
+        "MID" => Some(engine::live_match::LolRole::Mid),
+        "ADC" => Some(engine::live_match::LolRole::Adc),
+        "SUP" => Some(engine::live_match::LolRole::Support),
+        _ => None,
+    }
+}
+
+fn map_sim_event_kind_to_engine(kind: &str) -> Option<EventType> {
+    match kind {
+        "kill" => Some(EventType::Kill),
+        "tower" => Some(EventType::TowerDestroyed),
+        "dragon" | "baron" => Some(EventType::ObjectiveTaken),
+        "nexus" => Some(EventType::NexusDestroyed),
+        "spawn" => Some(EventType::ObjectiveSpawned),
+        _ => None,
+    }
+}
+
+fn parse_kill_text(text: &str) -> Option<(String, String)> {
+    let (killer, victim) = text.split_once(" killed ")?;
+    let killer = killer.trim();
+    let victim = victim.trim();
+    if killer.is_empty() || victim.is_empty() {
+        return None;
+    }
+    Some((killer.to_string(), victim.to_string()))
+}
+
+fn infer_event_side(
+    text: &str,
+    killer_name: Option<&str>,
+    champion_name_to_side: &HashMap<String, Side>,
+) -> Side {
+    let lower_text = text.to_lowercase();
+    if lower_text.contains("blue") {
+        return Side::Home;
+    }
+    if lower_text.contains("red") {
+        return Side::Away;
+    }
+    if let Some(killer) = killer_name {
+        let key = killer.to_lowercase();
+        if let Some(side) = champion_name_to_side.get(&key) {
+            return *side;
+        }
+    }
+    Side::Home
+}
+
+fn build_match_report_from_lol_sim(input: LolSimMatchReportInput) -> MatchReport {
+    let mut champion_name_to_side: HashMap<String, Side> = HashMap::new();
+    let mut champion_name_to_id: HashMap<String, String> = HashMap::new();
+    for champion in &input.champions {
+        let key = champion.name.to_lowercase();
+        champion_name_to_side.insert(key.clone(), map_sim_team_to_side(&champion.team));
+        champion_name_to_id.insert(key, champion.id.clone());
+    }
+
+    let events = input
+        .events
+        .into_iter()
+        .filter_map(|event| {
+            let mut event_type = map_sim_event_kind_to_engine(&event.kind)?;
+            if matches!(event_type, EventType::TowerDestroyed) && event.text.to_lowercase().contains("inhib") {
+                event_type = EventType::InhibitorDestroyed;
+            }
+
+            let kill_data = if matches!(event_type, EventType::Kill) {
+                parse_kill_text(&event.text)
+            } else {
+                None
+            };
+
+            let side = infer_event_side(
+                &event.text,
+                kill_data.as_ref().map(|(killer, _)| killer.as_str()),
+                &champion_name_to_side,
+            );
+
+            let player_id = kill_data
+                .as_ref()
+                .and_then(|(killer, _)| champion_name_to_id.get(&killer.to_lowercase()).cloned());
+            let secondary_player_id = kill_data
+                .as_ref()
+                .and_then(|(_, victim)| champion_name_to_id.get(&victim.to_lowercase()).cloned());
+
+            Some(MatchEvent {
+                minute: (event.t / 60.0).round().clamp(0.0, 255.0) as u8,
+                event_type,
+                side,
+                zone: Zone::Midfield,
+                player_id,
+                secondary_player_id,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let mut player_stats: HashMap<String, PlayerMatchStats> = HashMap::new();
+    for champion in input.champions {
+        player_stats.insert(
+            champion.id,
+            PlayerMatchStats {
+                role: map_sim_role_to_engine(&champion.role),
+                duration_seconds: input.time_sec.round().max(0.0) as u32,
+                kills: champion.kills,
+                deaths: champion.deaths,
+                assists: champion.assists,
+                creep_score: champion.cs,
+                gold_earned: champion.gold.saturating_add(champion.spent_gold),
+                damage_dealt: 0,
+                vision_score: 0,
+                wards_placed: 0,
+            },
+        );
+    }
+
+    let winner_side = input
+        .winner
+        .as_deref()
+        .map(map_sim_team_to_side)
+        .unwrap_or_else(|| {
+            if input.stats.blue.kills >= input.stats.red.kills {
+                Side::Home
+            } else {
+                Side::Away
+            }
+        });
+
+    let (home_wins, away_wins) = match winner_side {
+        Side::Home => (1, 0),
+        Side::Away => (0, 1),
+    };
+
+    MatchReport {
+        home_wins,
+        away_wins,
+        home_stats: TeamStats {
+            kills: input.stats.blue.kills,
+            deaths: input.stats.blue.deaths,
+            gold_earned: input.stats.blue.gold,
+            damage_dealt: 0,
+            objectives: input
+                .stats
+                .blue
+                .towers
+                .saturating_add(input.stats.blue.dragons)
+                .saturating_add(input.stats.blue.barons),
+            possession_ticks: 0,
+        },
+        away_stats: TeamStats {
+            kills: input.stats.red.kills,
+            deaths: input.stats.red.deaths,
+            gold_earned: input.stats.red.gold,
+            damage_dealt: 0,
+            objectives: input
+                .stats
+                .red
+                .towers
+                .saturating_add(input.stats.red.dragons)
+                .saturating_add(input.stats.red.barons),
+            possession_ticks: 0,
+        },
+        events,
+        kill_feed: Vec::new(),
+        player_stats,
+        home_possession: 50.0,
+        game_duration_seconds: input.time_sec.round().max(0.0) as u32,
+        ended_by: if input.winner.is_some() {
+            MatchReportEndReason::NexusDestroyed
+        } else {
+            MatchReportEndReason::TimeLimit
+        },
+    }
+}
+
+pub fn finish_live_match(
+    state: &StateManager,
+    lol_report: Option<LolSimMatchReportInput>,
+) -> Result<FinishLiveMatchResponse, String> {
     info!("[cmd] finish_live_match");
     let session = state.take_live_match().ok_or("No active live match")?;
 
@@ -22,7 +268,11 @@ pub fn finish_live_match(state: &StateManager) -> Result<FinishLiveMatchResponse
     let home_team_id = session.home_team_id.clone();
     let away_team_id = session.away_team_id.clone();
 
-    let report = session.match_state.into_report();
+    let report = if let Some(input) = lol_report {
+        build_match_report_from_lol_sim(input)
+    } else {
+        session.match_state.into_report()
+    };
     info!(
         "[cmd] finish_live_match: fixture_index={}, home_team_id={}, away_team_id={}, events= {}",
         fixture_index,

@@ -1,5 +1,5 @@
 import { MAP_IMAGE_PATH } from "../assets/map";
-import type { MatchState, NeutralTimerKey } from "../engine/types";
+import type { MatchState, NeutralTimerKey, NeutralTimerState } from "../engine/types";
 import {
   JUNGLE_CAMP_ICON_PATH,
   JUNGLE_CAMPS_LAYOUT,
@@ -15,6 +15,8 @@ let cachedImage: HTMLImageElement | null = null;
 const iconCache = new Map<string, HTMLImageElement>();
 const structureMetaById = new Map(STRUCTURES_LAYOUT.map((s) => [s.id, s]));
 const CHAMPION_DRAW_RADIUS = 11.8;
+const SUMMON_DRAW_RADIUS = CHAMPION_DRAW_RADIUS;
+const SUMMON_ICON_SIZE = SUMMON_DRAW_RADIUS * 2;
 const CHAMPION_HP_BAR_WIDTH = 26;
 const CHAMPION_HP_BAR_Y_OFFSET = 15;
 const ENTITY_HP_BAR_HEIGHT = 3;
@@ -39,11 +41,73 @@ const CAMP_LAYOUT_TO_TIMER_KEY: Partial<Record<string, NeutralTimerKey>> = {
 
 const NEUTRAL_TIMER_ICON: Partial<Record<NeutralTimerKey, keyof typeof NEUTRAL_OBJECTIVE_ICON_PATH>> = {
   dragon: "dragon",
-  elder: "dragon",
+  elder: "dragon_elder",
   baron: "baron",
   herald: "riftherald",
   voidgrubs: "grub",
 };
+
+const SUMMON_ICON_PATH = {
+  maiden: "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/spell/YorickR.png",
+  daisy: "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/spell/IvernR.png",
+  clone: "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/spell/HallucinateFull.png",
+} as const;
+
+function summonIconCandidates(kindRaw: unknown): string[] {
+  const kind = typeof kindRaw === "string" ? kindRaw.toLowerCase() : "";
+  if (kind === "tibbers") {
+    // Prefer custom Annie recast icon, fallback to Annie R when missing.
+    return [
+      "/lol-summon-icons/annie-r-recast.png",
+      "https://ddragon.leagueoflegends.com/cdn/14.24.1/img/spell/AnnieR.png",
+    ];
+  }
+  if (kind === "maiden") return [SUMMON_ICON_PATH.maiden];
+  if (kind === "daisy") return [SUMMON_ICON_PATH.daisy];
+  if (kind === "clone") return [SUMMON_ICON_PATH.clone];
+  return [];
+}
+
+function dragonIconForKind(kindRaw: unknown): keyof typeof NEUTRAL_OBJECTIVE_ICON_PATH {
+  const kind = typeof kindRaw === "string" ? kindRaw.toLowerCase() : "";
+  switch (kind) {
+    case "infernal":
+      return "dragon_infernal";
+    case "ocean":
+      return "dragon_ocean";
+    case "mountain":
+      return "dragon_mountain";
+    case "cloud":
+      return "dragon_cloud";
+    case "hextech":
+      return "dragon_hextech";
+    case "chemtech":
+      return "dragon_chemtech";
+    default:
+      return "dragon";
+  }
+}
+
+function resolveCurrentDragonKind(state: MatchState, timer: NeutralTimerState): unknown {
+  if (timer.dragonCurrentKind) {
+    return timer.dragonCurrentKind;
+  }
+
+  if (state.neutralTimers.dragonCurrentKind) {
+    return state.neutralTimers.dragonCurrentKind;
+  }
+
+  const objectivesUnknown = state.objectives as unknown;
+  if (Array.isArray(objectivesUnknown)) {
+    const dragonObjective = objectivesUnknown.find(
+      (objective) => (objective as { key?: string }).key === "dragon",
+    ) as { currentKind?: unknown } | undefined;
+    return dragonObjective?.currentKind;
+  }
+
+  const objectivesRecord = objectivesUnknown as { dragon?: { currentKind?: unknown } };
+  return objectivesRecord.dragon?.currentKind;
+}
 
 function getMapImage() {
   if (cachedImage) return cachedImage;
@@ -144,7 +208,9 @@ export function renderSimulation(
   Object.values(state.neutralTimers.entities)
     .filter((timer) => timer.alive && NEUTRAL_TIMER_ICON[timer.key])
     .forEach((timer) => {
-      const iconType = NEUTRAL_TIMER_ICON[timer.key];
+      const iconType = timer.key === "dragon"
+        ? dragonIconForKind(resolveCurrentDragonKind(state, timer))
+        : NEUTRAL_TIMER_ICON[timer.key];
       if (!iconType) return;
       const px = timer.pos.x * width;
       const py = timer.pos.y * height;
@@ -173,7 +239,19 @@ export function renderSimulation(
     drawHpBar(ctx, px, py - LOL_MAP_STRUCTURE_ICON_SIZE / 2 - 5, 30, s.hp / s.maxHp, s.team === "blue" ? "#22d3ee" : "#fb7185");
   });
 
-  state.minions.forEach((m) => {
+  (state.wards ?? []).forEach((ward) => {
+    const px = ward.pos.x * width;
+    const py = ward.pos.y * height;
+    ctx.beginPath();
+    ctx.fillStyle = ward.team === "blue" ? "#67e8f9" : "#fda4af";
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 1.2;
+    ctx.arc(px, py, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  state.minions.filter((m) => m.kind !== "summon").forEach((m) => {
     ctx.beginPath();
     ctx.fillStyle = m.team === "blue" ? "#67e8f9" : "#fda4af";
     ctx.arc(m.pos.x * width, m.pos.y * height, 2.1, 0, Math.PI * 2);
@@ -237,5 +315,52 @@ export function renderSimulation(
       ctx.fillText(initials(c.name), px, py + 2.4);
     }
     ctx.restore();
+  });
+
+  state.minions.filter((m) => m.kind === "summon").forEach((m) => {
+    const px = m.pos.x * width;
+    const py = m.pos.y * height;
+    const iconCandidates = summonIconCandidates(m.summonKind);
+    let drewIcon = false;
+    for (const icon of iconCandidates) {
+      const image = getIcon(icon);
+      if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) continue;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, py, SUMMON_DRAW_RADIUS - 1.4, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(
+        image,
+        px - (SUMMON_DRAW_RADIUS - 1.4),
+        py - (SUMMON_DRAW_RADIUS - 1.4),
+        (SUMMON_DRAW_RADIUS - 1.4) * 2,
+        (SUMMON_DRAW_RADIUS - 1.4) * 2,
+      );
+      ctx.restore();
+      drewIcon = true;
+      break;
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 2;
+    ctx.arc(px, py, SUMMON_DRAW_RADIUS, 0, Math.PI * 2);
+    if (!drewIcon) {
+      ctx.fillStyle = m.team === "blue" ? "#a5f3fc" : "#fecdd3";
+      ctx.fill();
+    }
+    ctx.stroke();
+
+    if (!drewIcon) {
+      ctx.beginPath();
+      ctx.fillStyle = m.team === "blue" ? "#a5f3fc" : "#fecdd3";
+      ctx.arc(px, py, SUMMON_DRAW_RADIUS * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(px - 6, py - 9, 12, 2);
+    ctx.fillStyle = "#22c55e";
+    ctx.fillRect(px - 6, py - 9, 12 * (m.hp / m.maxHp), 2);
   });
 }

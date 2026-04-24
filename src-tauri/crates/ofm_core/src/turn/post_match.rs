@@ -168,6 +168,7 @@ pub fn apply_match_report_with_capture<F>(
 
     // Update player season stats from the engine report
     apply_player_stats(game, report, home_team_id, away_team_id);
+    apply_lol_profile_progression(game, report, home_team_id, away_team_id);
     resolve_post_match_promises(game, report, home_team_id, away_team_id);
 
     // Deplete stamina for players who played, scaled by minutes on pitch
@@ -420,6 +421,169 @@ fn apply_player_stats(
                 }
             }
         }
+    }
+}
+
+fn clamp_attr_range(value: i16) -> u8 {
+    value.clamp(1, 99) as u8
+}
+
+fn scale_delta(delta: i16, num: i16, den: i16) -> i16 {
+    (delta * num) / den.max(1)
+}
+
+fn apply_lol_profile_progression(
+    game: &mut Game,
+    report: &engine::MatchReport,
+    home_team_id: &str,
+    away_team_id: &str,
+) {
+    for player in game.players.iter_mut() {
+        let tid = match player.team_id.as_deref() {
+            Some(team_id) if team_id == home_team_id || team_id == away_team_id => team_id,
+            _ => continue,
+        };
+
+        let Some(ps) = report.player_stats.get(&player.id) else {
+            continue;
+        };
+
+        let minutes = (ps.duration_seconds as f64 / 60.0).max(1.0);
+        let team_kills = if tid == home_team_id {
+            report.home_stats.kills.max(1) as f64
+        } else {
+            report.away_stats.kills.max(1) as f64
+        };
+
+        let role = ps.role;
+        let kda = (ps.kills + ps.assists) as f64 / ps.deaths.max(1) as f64;
+        let cs_per_min = ps.creep_score as f64 / minutes;
+        let dmg_per_min = ps.damage_dealt as f64 / minutes;
+        let vision_per_min = ps.vision_score as f64 / minutes;
+        let kp = (ps.kills + ps.assists) as f64 / team_kills;
+
+        let (exp_cs, exp_dmg, exp_vision, exp_kp, assist_good, deaths_bad) = match role {
+            Some(engine::live_match::LolRole::Top) => (6.1, 560.0, 0.45, 0.42, 4_u16, 7_u16),
+            Some(engine::live_match::LolRole::Jungle) => (5.2, 520.0, 0.65, 0.52, 5_u16, 8_u16),
+            Some(engine::live_match::LolRole::Mid) => (6.8, 660.0, 0.55, 0.50, 5_u16, 7_u16),
+            Some(engine::live_match::LolRole::Adc) => (7.8, 740.0, 0.45, 0.50, 4_u16, 7_u16),
+            Some(engine::live_match::LolRole::Support) => (2.2, 340.0, 1.20, 0.56, 8_u16, 9_u16),
+            None => (6.0, 560.0, 0.55, 0.48, 5_u16, 8_u16),
+        };
+
+        let mechanics_delta: i16 = if dmg_per_min >= exp_dmg + 120.0 {
+            1
+        } else if dmg_per_min < exp_dmg - 150.0 && ps.deaths >= deaths_bad {
+            -1
+        } else {
+            0
+        };
+        let laning_delta: i16 = if cs_per_min >= exp_cs + 0.9 {
+            1
+        } else if cs_per_min < exp_cs - 1.4 {
+            -1
+        } else {
+            0
+        };
+        let teamfighting_delta: i16 = if kp >= exp_kp + 0.08 && kda >= 2.0 {
+            1
+        } else if kp < exp_kp - 0.2 && ps.deaths >= deaths_bad.saturating_sub(1) {
+            -1
+        } else {
+            0
+        };
+        let macro_delta: i16 = if vision_per_min >= exp_vision + 0.25 {
+            1
+        } else if vision_per_min < exp_vision - 0.30 {
+            -1
+        } else {
+            0
+        };
+        let consistency_delta: i16 = if ps.deaths <= 2 && kda >= 2.0 {
+            1
+        } else if ps.deaths >= deaths_bad {
+            -1
+        } else {
+            0
+        };
+        let shotcalling_delta: i16 = if ps.assists >= assist_good && kp >= exp_kp + 0.1 {
+            1
+        } else if ps.assists <= assist_good.saturating_sub(4) && kp < exp_kp - 0.25 {
+            -1
+        } else {
+            0
+        };
+        let champion_pool_delta: i16 = if kda >= 3.0 && cs_per_min >= (exp_cs - 0.2) {
+            1
+        } else if kda < 1.0 && ps.deaths >= deaths_bad.saturating_sub(1) {
+            -1
+        } else {
+            0
+        };
+        let discipline_delta: i16 = if ps.deaths <= 2 && ps.kills + ps.assists >= 4 {
+            1
+        } else if ps.deaths >= deaths_bad.saturating_add(1) {
+            -1
+        } else {
+            0
+        };
+        let mental_resilience_delta: i16 = if ps.deaths >= 4 && ps.kills + ps.assists >= 8 {
+            1
+        } else if ps.deaths >= deaths_bad.saturating_add(2) {
+            -1
+        } else {
+            0
+        };
+
+        let (mech_num, lane_num, macro_num, shot_num) = match role {
+            Some(engine::live_match::LolRole::Support) => (1_i16, 0_i16, 2_i16, 2_i16),
+            Some(engine::live_match::LolRole::Adc) => (2_i16, 2_i16, 1_i16, 1_i16),
+            Some(engine::live_match::LolRole::Mid) => (2_i16, 2_i16, 1_i16, 1_i16),
+            Some(engine::live_match::LolRole::Jungle) => (1_i16, 1_i16, 2_i16, 2_i16),
+            Some(engine::live_match::LolRole::Top) => (1_i16, 1_i16, 1_i16, 1_i16),
+            None => (1_i16, 1_i16, 1_i16, 1_i16),
+        };
+
+        let mut d_dribbling = scale_delta(mechanics_delta, mech_num, 2) + champion_pool_delta;
+        let mut d_agility = scale_delta(mechanics_delta, mech_num, 2) + champion_pool_delta;
+        let mut d_shooting = scale_delta(laning_delta, lane_num, 2);
+        let mut d_positioning = scale_delta(laning_delta, lane_num, 2) + scale_delta(macro_delta, macro_num, 2);
+        let mut d_teamwork = teamfighting_delta + mental_resilience_delta;
+        let mut d_stamina = teamfighting_delta;
+        let mut d_vision = scale_delta(macro_delta, macro_num, 2) + scale_delta(shotcalling_delta, shot_num, 2);
+        let mut d_decisions =
+            scale_delta(macro_delta, macro_num, 2) + consistency_delta + discipline_delta;
+        let mut d_composure = consistency_delta + discipline_delta + mental_resilience_delta;
+        let mut d_leadership = scale_delta(shotcalling_delta, shot_num, 2) + discipline_delta;
+        let mut d_passing = champion_pool_delta + scale_delta(macro_delta, macro_num, 3);
+
+        for delta in [
+            &mut d_dribbling,
+            &mut d_agility,
+            &mut d_shooting,
+            &mut d_positioning,
+            &mut d_teamwork,
+            &mut d_stamina,
+            &mut d_vision,
+            &mut d_decisions,
+            &mut d_composure,
+            &mut d_leadership,
+            &mut d_passing,
+        ] {
+            *delta = (*delta).clamp(-2, 2);
+        }
+
+        player.attributes.dribbling = clamp_attr_range(i16::from(player.attributes.dribbling) + d_dribbling);
+        player.attributes.agility = clamp_attr_range(i16::from(player.attributes.agility) + d_agility);
+        player.attributes.shooting = clamp_attr_range(i16::from(player.attributes.shooting) + d_shooting);
+        player.attributes.positioning = clamp_attr_range(i16::from(player.attributes.positioning) + d_positioning);
+        player.attributes.teamwork = clamp_attr_range(i16::from(player.attributes.teamwork) + d_teamwork);
+        player.attributes.stamina = clamp_attr_range(i16::from(player.attributes.stamina) + d_stamina);
+        player.attributes.vision = clamp_attr_range(i16::from(player.attributes.vision) + d_vision);
+        player.attributes.decisions = clamp_attr_range(i16::from(player.attributes.decisions) + d_decisions);
+        player.attributes.composure = clamp_attr_range(i16::from(player.attributes.composure) + d_composure);
+        player.attributes.leadership = clamp_attr_range(i16::from(player.attributes.leadership) + d_leadership);
+        player.attributes.passing = clamp_attr_range(i16::from(player.attributes.passing) + d_passing);
     }
 }
 

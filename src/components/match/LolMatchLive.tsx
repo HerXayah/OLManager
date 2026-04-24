@@ -5,7 +5,12 @@ import { NavGrid } from "./lol-prototype/engine/navigation";
 import { PrototypeSimulation } from "./lol-prototype/engine/simulation";
 import type { ChampionCombatProfile } from "./lol-prototype/engine/simulation";
 import type { MatchState } from "./lol-prototype/engine/types";
-import type { LolSimV1AiMode, LolSimV1PolicyConfig, LolSimV1RuntimeState } from "./lol-prototype/backend/contract-v1";
+import type {
+  LolChampionUltimateProfile,
+  LolSimV1AiMode,
+  LolSimV1PolicyConfig,
+  LolSimV1RuntimeState,
+} from "./lol-prototype/backend/contract-v1";
 import { LolSimV2Client } from "./lol-prototype/backend/tauri-client";
 import { renderSimulation } from "./lol-prototype/ui/render";
 import { LecLowerThirdPanel } from "./lol-prototype/ui/panels";
@@ -23,7 +28,7 @@ interface Props {
   championSelections?: ChampionSelectionByPlayer | null;
   onSnapshotUpdate: (snap: MatchSnapshot) => void;
   onImportantEvent: (evt: MatchEvent) => void;
-  onFullTime: () => void;
+  onFullTime: (finalState: LolSimV1RuntimeState) => void;
 }
 
 const SPEEDS = [
@@ -54,6 +59,30 @@ function randomSeed10Digits() {
   return `${firstDigit}${rest}`;
 }
 
+function classifyUltimateArchetype(name: string, description: string) {
+  const text = `${name} ${description}`.toLowerCase();
+  if (text.includes("execute") || text.includes("missing health") || text.includes("below")) return "execute";
+  if (text.includes("global") || text.includes("map") || text.includes("long range") || text.includes("anywhere")) return "global";
+  if (text.includes("dash") || text.includes("leap") || text.includes("charge") || text.includes("knockup") || text.includes("pull")) return "engage";
+  if (text.includes("heal") || text.includes("shield") || text.includes("invulner") || text.includes("stasis") || text.includes("untarget")) return "defensive";
+  if (text.includes("zone") || text.includes("field") || text.includes("storm") || text.includes("area") || text.includes("aoe")) return "zone";
+  if (text.includes("transform") || text.includes("form")) return "sustain";
+  return "burst";
+}
+
+function toTitle(raw: string | null | undefined) {
+  if (!raw) return "—";
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+function objectiveStatus(alive: boolean | undefined, nextSpawnAt: number | null | undefined) {
+  if (alive) return "Alive";
+  if (typeof nextSpawnAt === "number") {
+    return `${Math.max(0, Math.floor(nextSpawnAt / 60))}m`;
+  }
+  return "—";
+}
+
 export default function LolMatchLive({ snapshot, championSelections, onSnapshotUpdate, onImportantEvent, onFullTime }: Props) {
   const walls = useMemo(() => getWalls(), []);
   const nav = useMemo(() => new NavGrid(walls), [walls]);
@@ -76,6 +105,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     };
   }, [championSelections]);
   const [championProfilesById, setChampionProfilesById] = useState<Record<string, ChampionCombatProfile>>({});
+  const [championUltimatesById, setChampionUltimatesById] = useState<Record<string, LolChampionUltimateProfile>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +114,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       const pickedChampionIds = Array.from(new Set(Object.values(championByPlayerId).filter(Boolean)));
       if (pickedChampionIds.length === 0) {
         if (!cancelled) setChampionProfilesById({});
+        if (!cancelled) setChampionUltimatesById({});
         return;
       }
 
@@ -108,8 +139,45 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
         });
 
         if (!cancelled) setChampionProfilesById(nextProfiles);
+
+        const uniqueChampionIds = Array.from(new Set(Object.values(championByPlayerId).filter(Boolean)));
+        const ultimateEntries = await Promise.all(uniqueChampionIds.map(async (championId) => {
+          try {
+            const detailResponse = await fetch(`https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/data/en_US/champion/${championId}.json`);
+            if (!detailResponse.ok) return [championId, null] as const;
+            const detailPayload = await detailResponse.json() as {
+              data?: Record<string, {
+                id: string;
+                spells?: Array<{ name?: string; description?: string; tooltip?: string; image?: { full?: string } }>;
+              }>;
+            };
+            const detail = detailPayload.data?.[championId];
+            const ultimate = detail?.spells?.[3];
+            const image = ultimate?.image?.full;
+            if (!ultimate || !image) return [championId, null] as const;
+            const description = ultimate.tooltip ?? ultimate.description ?? "";
+            const archetype = classifyUltimateArchetype(ultimate.name ?? "", description);
+            return [championId, {
+              archetype,
+              icon: `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/spell/${image}`,
+            }] as const;
+          } catch {
+            return [championId, null] as const;
+          }
+        }));
+
+        if (!cancelled) {
+          const mapped = ultimateEntries.reduce<Record<string, LolChampionUltimateProfile>>((acc, [championId, value]) => {
+            if (value) acc[championId] = value;
+            return acc;
+          }, {});
+          setChampionUltimatesById(mapped);
+        }
       } catch {
-        if (!cancelled) setChampionProfilesById({});
+        if (!cancelled) {
+          setChampionProfilesById({});
+          setChampionUltimatesById({});
+        }
       }
     };
 
@@ -150,15 +218,16 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     let disposed = false;
 
     void client
-      .init({
+        .init({
         seed,
         aiMode,
         policy: simPolicy,
         snapshot,
-        championByPlayerId,
-        championProfilesById,
-        initialState: { ...tsSim.state, speed },
-      })
+          championByPlayerId,
+          championProfilesById,
+          championUltimatesById,
+          initialState: { ...tsSim.state, speed },
+        })
       .then((response) => {
         if (disposed || backendClientRef.current !== client) return;
         backendStateRef.current = response.state;
@@ -180,7 +249,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       }
       void client.dispose().catch(() => undefined);
     };
-  }, [aiMode, nav, seed, simPolicy, snapshot, championByPlayerId, championProfilesById]);
+  }, [aiMode, nav, seed, simPolicy, snapshot, championByPlayerId, championProfilesById, championUltimatesById]);
 
   useEffect(() => {
     const loop = (ts: number) => {
@@ -253,7 +322,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
           home_score: state.winner === "blue" ? 1 : 0,
           away_score: state.winner === "red" ? 1 : 0,
         });
-        setTimeout(onFullTime, 400);
+        setTimeout(() => onFullTime(state), 400);
       }
 
       setTick((v) => v + 1);
@@ -287,6 +356,12 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     : running
       ? "Running"
       : "Paused";
+  const dragon = state?.objectives?.dragon;
+  const baron = state?.objectives?.baron;
+  const elder = state?.neutralTimers?.entities?.elder;
+  const soulOwner = dragon?.soulClaimedBy;
+  const soulLabel = soulOwner ? `${soulOwner} (${toTitle(dragon?.soulRiftKind)})` : "—";
+  const dragonKind = toTitle(dragon?.currentKind);
 
   const handleReset = () => {
     const sim = simRef.current;
@@ -345,6 +420,21 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
           <div className="mx-auto mt-1 flex w-full max-w-[1400px] items-center justify-between px-[20px] text-[10px] text-white/55">
             <span>{snapshot.home_team.name} vs {snapshot.away_team.name}</span>
             <span>{Math.floor((state?.timeSec ?? 0) / 60)}:{Math.floor((state?.timeSec ?? 0) % 60).toString().padStart(2, "0")} · {status}</span>
+          </div>
+
+          <div className="mx-auto mt-1 grid w-full max-w-[1400px] grid-cols-2 gap-1 px-[20px] text-[10px] text-white/75 md:grid-cols-4">
+            <div className="rounded border border-white/10 bg-black/35 px-2 py-1">
+              Dragon: {dragonKind} · {objectiveStatus(dragon?.alive, dragon?.nextSpawnAt)}
+            </div>
+            <div className="rounded border border-white/10 bg-black/35 px-2 py-1">
+              Stacks H/A: {dragon?.homeStacks ?? 0}/{dragon?.awayStacks ?? 0} · Soul: {soulLabel}
+            </div>
+            <div className="rounded border border-white/10 bg-black/35 px-2 py-1">
+              Baron: {objectiveStatus(baron?.alive, baron?.nextSpawnAt)}
+            </div>
+            <div className="rounded border border-white/10 bg-black/35 px-2 py-1">
+              Elder: {objectiveStatus(elder?.alive, elder?.nextSpawnAt)}
+            </div>
           </div>
 
           <div className="mx-auto mt-1 flex w-full max-w-[1400px] flex-wrap items-center justify-center gap-1 px-[20px] pb-2 text-[10px] text-white/75">

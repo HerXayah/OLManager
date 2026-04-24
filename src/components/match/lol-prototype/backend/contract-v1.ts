@@ -20,6 +20,11 @@ export interface LolSimV1TelemetryConfig {
   outputPath?: string;
 }
 
+export interface LolChampionUltimateProfile {
+  archetype: string;
+  icon: string;
+}
+
 export interface LolSimV1PolicyConfig {
   noDiveHpMin?: number;
   tradeRetreatHpRatio?: number;
@@ -63,6 +68,7 @@ export interface LolSimV1InitRequest {
   snapshot: MatchSnapshot;
   championByPlayerId: Record<string, string>;
   championProfilesById: Record<string, ChampionCombatProfile>;
+  championUltimatesById?: Record<string, LolChampionUltimateProfile>;
   /**
    * Legacy bootstrap field kept for backwards compatibility.
    * Rust v2 now creates state natively and ignores this payload.
@@ -108,6 +114,7 @@ export interface LolSimV1RunToCompletionRequest {
   snapshot: MatchSnapshot;
   championByPlayerId: Record<string, string>;
   championProfilesById: Record<string, ChampionCombatProfile>;
+  championUltimatesById?: Record<string, LolChampionUltimateProfile>;
   dtSec: number;
   speed: number;
   maxTicks: number;
@@ -117,6 +124,45 @@ export interface LolSimV1RunToCompletionResponse {
   winner: TeamId | null;
   ticks: number;
   elapsedSimulatedSec: number;
+}
+
+export interface LolSimV1MatchReportEventInput {
+  t: number;
+  text: string;
+  type: LolSimV1EventType;
+}
+
+export interface LolSimV1MatchReportTeamStatsInput {
+  kills: number;
+  deaths: number;
+  gold: number;
+  towers: number;
+  dragons: number;
+  barons: number;
+}
+
+export interface LolSimV1MatchReportChampionInput {
+  id: string;
+  name: string;
+  team: TeamId;
+  role: "TOP" | "JGL" | "MID" | "ADC" | "SUP";
+  kills: number;
+  deaths: number;
+  assists: number;
+  cs: number;
+  gold: number;
+  spentGold: number;
+}
+
+export interface LolSimV1MatchReportInput {
+  winner: TeamId | null;
+  timeSec: number;
+  events: LolSimV1MatchReportEventInput[];
+  stats: {
+    blue: LolSimV1MatchReportTeamStatsInput;
+    red: LolSimV1MatchReportTeamStatsInput;
+  };
+  champions: LolSimV1MatchReportChampionInput[];
 }
 
 export interface LolSimV1ControlSnapshot {

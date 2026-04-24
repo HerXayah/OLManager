@@ -7,7 +7,7 @@ use crate::application::live_match::{
     apply_match_command as apply_match_command_service,
     finish_live_match as finish_live_match_service,
     get_match_snapshot as get_match_snapshot_service, start_live_match as start_live_match_service,
-    step_live_match as step_live_match_service,
+    step_live_match as step_live_match_service, LolSimMatchReportInput,
 };
 use crate::application::team_talk::apply_team_talk as apply_team_talk_service;
 use domain::stats::MatchOutcome;
@@ -25,8 +25,11 @@ pub struct FixtureChampionPickInput {
 // Live Match Commands
 // ---------------------------------------------------------------------------
 
-fn finish_live_match_internal(state: &StateManager) -> Result<FinishLiveMatchResponse, String> {
-    finish_live_match_service(state)
+fn finish_live_match_internal(
+    state: &StateManager,
+    lol_report: Option<LolSimMatchReportInput>,
+) -> Result<FinishLiveMatchResponse, String> {
+    finish_live_match_service(state, lol_report)
 }
 
 fn apply_team_talk_internal(
@@ -78,8 +81,9 @@ pub fn get_match_snapshot(state: State<'_, StateManager>) -> Result<engine::Matc
 #[tauri::command]
 pub fn finish_live_match(
     state: State<'_, StateManager>,
+    lol_report: Option<LolSimMatchReportInput>,
 ) -> Result<FinishLiveMatchResponse, String> {
-    finish_live_match_internal(&state)
+    finish_live_match_internal(&state, lol_report)
 }
 
 #[tauri::command]
@@ -499,7 +503,8 @@ mod tests {
         state.set_game(game);
         state.set_live_match(session);
 
-        let response = finish_live_match_internal(&state).expect("finish live match response");
+        let response =
+            finish_live_match_internal(&state, None).expect("finish live match response");
 
         let round_summary = response.round_summary.expect("round summary response");
         assert!(round_summary.is_complete);
