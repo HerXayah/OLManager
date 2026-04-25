@@ -46,7 +46,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useSettingsStore } from "../store/settingsStore";
 
-const CLUB_TABS = new Set(["Squad", "Tactics", "Training", "Staff", "Scouting", "Youth", "Finances", "Transfers"]);
+const CLUB_TABS = new Set(["Squad", "Tactics", "Training", "Champions", "Staff", "Scouting", "Youth", "Finances", "Transfers"]);
 
 const TAB_TRANSLATION_KEYS: Record<string, string> = {
   Home: "dashboard.home",
@@ -55,6 +55,7 @@ const TAB_TRANSLATION_KEYS: Record<string, string> = {
   Squad: "dashboard.squad",
   Tactics: "dashboard.tactics",
   Training: "dashboard.training",
+  Champions: "dashboard.champions",
   Staff: "dashboard.staff",
   Finances: "dashboard.finances",
   Transfers: "dashboard.transfers",

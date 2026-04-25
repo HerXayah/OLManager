@@ -198,19 +198,11 @@ pub fn apply_match_report_with_capture<F>(
         } else {
             report.home_wins
         };
-        let sat_delta: i8 = if user_wins > opp_wins {
-            2
-        } else {
-            -3
-        };
+        let sat_delta: i8 = if user_wins > opp_wins { 2 } else { -3 };
         let new_sat = (game.manager.satisfaction as i16 + sat_delta as i16).clamp(0, 100) as u8;
         game.manager.satisfaction = new_sat;
 
-        let fan_delta: i8 = if user_wins > opp_wins {
-            5
-        } else {
-            -8
-        };
+        let fan_delta: i8 = if user_wins > opp_wins { 5 } else { -8 };
         let goal_diff = (user_wins as i8) - (opp_wins as i8);
         let fan_bonus: i8 = if goal_diff >= 3 {
             3
@@ -547,10 +539,12 @@ fn apply_lol_profile_progression(
         let mut d_dribbling = scale_delta(mechanics_delta, mech_num, 2) + champion_pool_delta;
         let mut d_agility = scale_delta(mechanics_delta, mech_num, 2) + champion_pool_delta;
         let mut d_shooting = scale_delta(laning_delta, lane_num, 2);
-        let mut d_positioning = scale_delta(laning_delta, lane_num, 2) + scale_delta(macro_delta, macro_num, 2);
+        let mut d_positioning =
+            scale_delta(laning_delta, lane_num, 2) + scale_delta(macro_delta, macro_num, 2);
         let mut d_teamwork = teamfighting_delta + mental_resilience_delta;
         let mut d_stamina = teamfighting_delta;
-        let mut d_vision = scale_delta(macro_delta, macro_num, 2) + scale_delta(shotcalling_delta, shot_num, 2);
+        let mut d_vision =
+            scale_delta(macro_delta, macro_num, 2) + scale_delta(shotcalling_delta, shot_num, 2);
         let mut d_decisions =
             scale_delta(macro_delta, macro_num, 2) + consistency_delta + discipline_delta;
         let mut d_composure = consistency_delta + discipline_delta + mental_resilience_delta;
@@ -573,17 +567,27 @@ fn apply_lol_profile_progression(
             *delta = (*delta).clamp(-2, 2);
         }
 
-        player.attributes.dribbling = clamp_attr_range(i16::from(player.attributes.dribbling) + d_dribbling);
-        player.attributes.agility = clamp_attr_range(i16::from(player.attributes.agility) + d_agility);
-        player.attributes.shooting = clamp_attr_range(i16::from(player.attributes.shooting) + d_shooting);
-        player.attributes.positioning = clamp_attr_range(i16::from(player.attributes.positioning) + d_positioning);
-        player.attributes.teamwork = clamp_attr_range(i16::from(player.attributes.teamwork) + d_teamwork);
-        player.attributes.stamina = clamp_attr_range(i16::from(player.attributes.stamina) + d_stamina);
+        player.attributes.dribbling =
+            clamp_attr_range(i16::from(player.attributes.dribbling) + d_dribbling);
+        player.attributes.agility =
+            clamp_attr_range(i16::from(player.attributes.agility) + d_agility);
+        player.attributes.shooting =
+            clamp_attr_range(i16::from(player.attributes.shooting) + d_shooting);
+        player.attributes.positioning =
+            clamp_attr_range(i16::from(player.attributes.positioning) + d_positioning);
+        player.attributes.teamwork =
+            clamp_attr_range(i16::from(player.attributes.teamwork) + d_teamwork);
+        player.attributes.stamina =
+            clamp_attr_range(i16::from(player.attributes.stamina) + d_stamina);
         player.attributes.vision = clamp_attr_range(i16::from(player.attributes.vision) + d_vision);
-        player.attributes.decisions = clamp_attr_range(i16::from(player.attributes.decisions) + d_decisions);
-        player.attributes.composure = clamp_attr_range(i16::from(player.attributes.composure) + d_composure);
-        player.attributes.leadership = clamp_attr_range(i16::from(player.attributes.leadership) + d_leadership);
-        player.attributes.passing = clamp_attr_range(i16::from(player.attributes.passing) + d_passing);
+        player.attributes.decisions =
+            clamp_attr_range(i16::from(player.attributes.decisions) + d_decisions);
+        player.attributes.composure =
+            clamp_attr_range(i16::from(player.attributes.composure) + d_composure);
+        player.attributes.leadership =
+            clamp_attr_range(i16::from(player.attributes.leadership) + d_leadership);
+        player.attributes.passing =
+            clamp_attr_range(i16::from(player.attributes.passing) + d_passing);
     }
 }
 

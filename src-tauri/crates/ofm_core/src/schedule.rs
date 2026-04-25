@@ -135,7 +135,10 @@ pub fn generate_single_round_league_with_offsets(
 ) -> League {
     let n = team_ids.len();
     assert!(n >= 2, "Need at least 2 teams for a league");
-    assert!(n % 2 == 0, "Single round-robin currently requires even team count");
+    assert!(
+        n % 2 == 0,
+        "Single round-robin currently requires even team count"
+    );
 
     let league_id = Uuid::new_v4().to_string();
     let mut league = League::new(league_id, name.to_string(), season, team_ids);

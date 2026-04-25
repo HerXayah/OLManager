@@ -1,7 +1,10 @@
-use log::info;
-use serde::Serialize;
-use tauri::State;
 use chrono::{Datelike, TimeZone};
+use domain::player::Player;
+use log::info;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::OnceLock;
+use tauri::State;
 
 use db::save_index::SaveEntry;
 use domain::manager::Manager;
@@ -22,7 +25,9 @@ pub struct TeamSelectionData {
 fn resolve_default_world_path() -> Result<std::path::PathBuf, String> {
     let cwd = std::env::current_dir().map_err(|e| format!("Failed to read current dir: {}", e))?;
     let candidates = [
-        cwd.join("src-tauri").join("databases").join("lec_world.json"),
+        cwd.join("src-tauri")
+            .join("databases")
+            .join("lec_world.json"),
         cwd.join("databases").join("lec_world.json"),
     ];
 
@@ -33,6 +38,662 @@ fn resolve_default_world_path() -> Result<std::path::PathBuf, String> {
     }
 
     Err("Default LEC world database not found (lec_world.json).".to_string())
+}
+
+#[derive(Clone, Copy)]
+struct LolSeedRatings {
+    mechanics: u8,
+    laning: u8,
+    teamfighting: u8,
+    macro_play: u8,
+    consistency: u8,
+    shotcalling: u8,
+    champion_pool: u8,
+    discipline: u8,
+    mental_resilience: u8,
+}
+
+#[derive(Debug, Deserialize)]
+struct DraftSeedRoot {
+    data: DraftSeedData,
+}
+
+#[derive(Debug, Deserialize)]
+struct DraftSeedData {
+    rostered_seeds: Vec<DraftPlayerSeed>,
+}
+
+#[derive(Debug, Deserialize)]
+struct DraftPlayerSeed {
+    ign: String,
+    potential: u8,
+}
+
+fn draft_potential_map() -> &'static HashMap<String, u8> {
+    static POTENTIALS: OnceLock<HashMap<String, u8>> = OnceLock::new();
+    POTENTIALS.get_or_init(|| {
+        let content = include_str!("../../../data/lec/draft/players.json");
+        let parsed: DraftSeedRoot = serde_json::from_str(content).unwrap_or(DraftSeedRoot {
+            data: DraftSeedData {
+                rostered_seeds: vec![],
+            },
+        });
+
+        parsed
+            .data
+            .rostered_seeds
+            .into_iter()
+            .map(|seed| (normalize_seed_name(&seed.ign), seed.potential))
+            .collect()
+    })
+}
+
+fn potential_seed_for_player(match_name: &str) -> Option<u8> {
+    let key = normalize_seed_name(match_name);
+    draft_potential_map().get(&key).copied().or_else(
+        || {
+            if key == "kyeahoo" {
+                Some(89)
+            } else {
+                None
+            }
+        },
+    )
+}
+
+fn normalize_seed_name(value: &str) -> String {
+    value
+        .trim()
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect()
+}
+
+fn lol_ratings_seed_for_player(match_name: &str) -> Option<LolSeedRatings> {
+    let key = normalize_seed_name(match_name);
+    let ratings = match key.as_str() {
+        "myrwn" => LolSeedRatings {
+            mechanics: 86,
+            laning: 85,
+            teamfighting: 85,
+            macro_play: 80,
+            consistency: 75,
+            shotcalling: 75,
+            champion_pool: 90,
+            discipline: 78,
+            mental_resilience: 85,
+        },
+        "elyoya" => LolSeedRatings {
+            mechanics: 87,
+            laning: 90,
+            teamfighting: 85,
+            macro_play: 87,
+            consistency: 85,
+            shotcalling: 90,
+            champion_pool: 84,
+            discipline: 88,
+            mental_resilience: 90,
+        },
+        "jojopyun" => LolSeedRatings {
+            mechanics: 91,
+            laning: 93,
+            teamfighting: 88,
+            macro_play: 87,
+            consistency: 82,
+            shotcalling: 86,
+            champion_pool: 82,
+            discipline: 80,
+            mental_resilience: 82,
+        },
+        "supa" => LolSeedRatings {
+            mechanics: 84,
+            laning: 82,
+            teamfighting: 82,
+            macro_play: 80,
+            consistency: 82,
+            shotcalling: 74,
+            champion_pool: 79,
+            discipline: 82,
+            mental_resilience: 83,
+        },
+        "alvaro" => LolSeedRatings {
+            mechanics: 85,
+            laning: 84,
+            teamfighting: 88,
+            macro_play: 85,
+            consistency: 80,
+            shotcalling: 84,
+            champion_pool: 80,
+            discipline: 84,
+            mental_resilience: 83,
+        },
+        "brokenblade" => LolSeedRatings {
+            mechanics: 84,
+            laning: 86,
+            teamfighting: 84,
+            macro_play: 86,
+            consistency: 80,
+            shotcalling: 84,
+            champion_pool: 88,
+            discipline: 83,
+            mental_resilience: 85,
+        },
+        "skewmond" => LolSeedRatings {
+            mechanics: 87,
+            laning: 88,
+            teamfighting: 86,
+            macro_play: 84,
+            consistency: 86,
+            shotcalling: 82,
+            champion_pool: 83,
+            discipline: 86,
+            mental_resilience: 88,
+        },
+        "caps" => LolSeedRatings {
+            mechanics: 85,
+            laning: 85,
+            teamfighting: 88,
+            macro_play: 93,
+            consistency: 90,
+            shotcalling: 93,
+            champion_pool: 86,
+            discipline: 90,
+            mental_resilience: 90,
+        },
+        "hanssama" => LolSeedRatings {
+            mechanics: 84,
+            laning: 83,
+            teamfighting: 84,
+            macro_play: 84,
+            consistency: 83,
+            shotcalling: 82,
+            champion_pool: 78,
+            discipline: 82,
+            mental_resilience: 82,
+        },
+        "labrov" => LolSeedRatings {
+            mechanics: 83,
+            laning: 84,
+            teamfighting: 83,
+            macro_play: 78,
+            consistency: 78,
+            shotcalling: 75,
+            champion_pool: 80,
+            discipline: 82,
+            mental_resilience: 82,
+        },
+        "canna" => LolSeedRatings {
+            mechanics: 84,
+            laning: 88,
+            teamfighting: 86,
+            macro_play: 88,
+            consistency: 88,
+            shotcalling: 82,
+            champion_pool: 85,
+            discipline: 88,
+            mental_resilience: 86,
+        },
+        "yike" => LolSeedRatings {
+            mechanics: 89,
+            laning: 86,
+            teamfighting: 87,
+            macro_play: 83,
+            consistency: 84,
+            shotcalling: 84,
+            champion_pool: 85,
+            discipline: 84,
+            mental_resilience: 86,
+        },
+        "kyeahoo" => LolSeedRatings {
+            mechanics: 84,
+            laning: 83,
+            teamfighting: 82,
+            macro_play: 80,
+            consistency: 81,
+            shotcalling: 79,
+            champion_pool: 84,
+            discipline: 80,
+            mental_resilience: 81,
+        },
+        "caliste" => LolSeedRatings {
+            mechanics: 87,
+            laning: 85,
+            teamfighting: 84,
+            macro_play: 80,
+            consistency: 84,
+            shotcalling: 76,
+            champion_pool: 80,
+            discipline: 84,
+            mental_resilience: 86,
+        },
+        "busio" => LolSeedRatings {
+            mechanics: 88,
+            laning: 89,
+            teamfighting: 85,
+            macro_play: 84,
+            consistency: 84,
+            shotcalling: 85,
+            champion_pool: 84,
+            discipline: 83,
+            mental_resilience: 84,
+        },
+        "naaknako" => LolSeedRatings {
+            mechanics: 90,
+            laning: 88,
+            teamfighting: 86,
+            macro_play: 85,
+            consistency: 84,
+            shotcalling: 82,
+            champion_pool: 86,
+            discipline: 84,
+            mental_resilience: 85,
+        },
+        "lyncas" => LolSeedRatings {
+            mechanics: 84,
+            laning: 82,
+            teamfighting: 84,
+            macro_play: 82,
+            consistency: 80,
+            shotcalling: 84,
+            champion_pool: 78,
+            discipline: 82,
+            mental_resilience: 83,
+        },
+        "humanoid" => LolSeedRatings {
+            mechanics: 88,
+            laning: 86,
+            teamfighting: 86,
+            macro_play: 85,
+            consistency: 75,
+            shotcalling: 85,
+            champion_pool: 85,
+            discipline: 80,
+            mental_resilience: 79,
+        },
+        "carzzy" => LolSeedRatings {
+            mechanics: 83,
+            laning: 84,
+            teamfighting: 83,
+            macro_play: 81,
+            consistency: 76,
+            shotcalling: 80,
+            champion_pool: 81,
+            discipline: 77,
+            mental_resilience: 76,
+        },
+        "fleshy" => LolSeedRatings {
+            mechanics: 84,
+            laning: 83,
+            teamfighting: 82,
+            macro_play: 78,
+            consistency: 78,
+            shotcalling: 80,
+            champion_pool: 80,
+            discipline: 80,
+            mental_resilience: 77,
+        },
+        "lot" => LolSeedRatings {
+            mechanics: 82,
+            laning: 80,
+            teamfighting: 79,
+            macro_play: 76,
+            consistency: 75,
+            shotcalling: 78,
+            champion_pool: 76,
+            discipline: 78,
+            mental_resilience: 75,
+        },
+        "isma" => LolSeedRatings {
+            mechanics: 79,
+            laning: 77,
+            teamfighting: 78,
+            macro_play: 79,
+            consistency: 78,
+            shotcalling: 80,
+            champion_pool: 76,
+            discipline: 82,
+            mental_resilience: 80,
+        },
+        "jackies" => LolSeedRatings {
+            mechanics: 84,
+            laning: 82,
+            teamfighting: 83,
+            macro_play: 76,
+            consistency: 75,
+            shotcalling: 79,
+            champion_pool: 77,
+            discipline: 78,
+            mental_resilience: 80,
+        },
+        "noah" => LolSeedRatings {
+            mechanics: 85,
+            laning: 85,
+            teamfighting: 83,
+            macro_play: 81,
+            consistency: 80,
+            shotcalling: 77,
+            champion_pool: 80,
+            discipline: 83,
+            mental_resilience: 76,
+        },
+        "jun" => LolSeedRatings {
+            mechanics: 85,
+            laning: 86,
+            teamfighting: 85,
+            macro_play: 84,
+            consistency: 82,
+            shotcalling: 80,
+            champion_pool: 80,
+            discipline: 82,
+            mental_resilience: 82,
+        },
+        "maynter" => LolSeedRatings {
+            mechanics: 76,
+            laning: 81,
+            teamfighting: 78,
+            macro_play: 77,
+            consistency: 82,
+            shotcalling: 76,
+            champion_pool: 75,
+            discipline: 82,
+            mental_resilience: 78,
+        },
+        "rhilech" => LolSeedRatings {
+            mechanics: 85,
+            laning: 81,
+            teamfighting: 84,
+            macro_play: 80,
+            consistency: 80,
+            shotcalling: 82,
+            champion_pool: 79,
+            discipline: 80,
+            mental_resilience: 84,
+        },
+        "poby" => LolSeedRatings {
+            mechanics: 80,
+            laning: 81,
+            teamfighting: 80,
+            macro_play: 82,
+            consistency: 84,
+            shotcalling: 78,
+            champion_pool: 80,
+            discipline: 80,
+            mental_resilience: 77,
+        },
+        "samd" => LolSeedRatings {
+            mechanics: 81,
+            laning: 78,
+            teamfighting: 82,
+            macro_play: 76,
+            consistency: 80,
+            shotcalling: 78,
+            champion_pool: 80,
+            discipline: 81,
+            mental_resilience: 76,
+        },
+        "parus" => LolSeedRatings {
+            mechanics: 82,
+            laning: 84,
+            teamfighting: 82,
+            macro_play: 85,
+            consistency: 81,
+            shotcalling: 84,
+            champion_pool: 82,
+            discipline: 81,
+            mental_resilience: 82,
+        },
+        "empyros" => LolSeedRatings {
+            mechanics: 74,
+            laning: 73,
+            teamfighting: 77,
+            macro_play: 75,
+            consistency: 78,
+            shotcalling: 74,
+            champion_pool: 78,
+            discipline: 79,
+            mental_resilience: 76,
+        },
+        "razork" => LolSeedRatings {
+            mechanics: 88,
+            laning: 83,
+            teamfighting: 82,
+            macro_play: 80,
+            consistency: 78,
+            shotcalling: 82,
+            champion_pool: 83,
+            discipline: 82,
+            mental_resilience: 84,
+        },
+        "vladi" => LolSeedRatings {
+            mechanics: 82,
+            laning: 79,
+            teamfighting: 80,
+            macro_play: 79,
+            consistency: 76,
+            shotcalling: 80,
+            champion_pool: 77,
+            discipline: 75,
+            mental_resilience: 76,
+        },
+        "upset" => LolSeedRatings {
+            mechanics: 85,
+            laning: 84,
+            teamfighting: 80,
+            macro_play: 81,
+            consistency: 82,
+            shotcalling: 79,
+            champion_pool: 76,
+            discipline: 82,
+            mental_resilience: 80,
+        },
+        "lospa" => LolSeedRatings {
+            mechanics: 83,
+            laning: 84,
+            teamfighting: 80,
+            macro_play: 82,
+            consistency: 78,
+            shotcalling: 75,
+            champion_pool: 77,
+            discipline: 78,
+            mental_resilience: 80,
+        },
+        "wunder" => LolSeedRatings {
+            mechanics: 75,
+            laning: 76,
+            teamfighting: 78,
+            macro_play: 76,
+            consistency: 74,
+            shotcalling: 80,
+            champion_pool: 83,
+            discipline: 72,
+            mental_resilience: 73,
+        },
+        "skeanz" => LolSeedRatings {
+            mechanics: 74,
+            laning: 72,
+            teamfighting: 72,
+            macro_play: 73,
+            consistency: 76,
+            shotcalling: 75,
+            champion_pool: 76,
+            discipline: 78,
+            mental_resilience: 75,
+        },
+        "lider" => LolSeedRatings {
+            mechanics: 80,
+            laning: 78,
+            teamfighting: 78,
+            macro_play: 72,
+            consistency: 69,
+            shotcalling: 74,
+            champion_pool: 68,
+            discipline: 70,
+            mental_resilience: 72,
+        },
+        "jopa" => LolSeedRatings {
+            mechanics: 82,
+            laning: 80,
+            teamfighting: 82,
+            macro_play: 76,
+            consistency: 80,
+            shotcalling: 77,
+            champion_pool: 78,
+            discipline: 80,
+            mental_resilience: 82,
+        },
+        "mikyx" => LolSeedRatings {
+            mechanics: 78,
+            laning: 79,
+            teamfighting: 78,
+            macro_play: 83,
+            consistency: 77,
+            shotcalling: 84,
+            champion_pool: 82,
+            discipline: 78,
+            mental_resilience: 77,
+        },
+        "rooster" => LolSeedRatings {
+            mechanics: 80,
+            laning: 82,
+            teamfighting: 76,
+            macro_play: 72,
+            consistency: 75,
+            shotcalling: 67,
+            champion_pool: 72,
+            discipline: 78,
+            mental_resilience: 78,
+        },
+        "boukada" => LolSeedRatings {
+            mechanics: 72,
+            laning: 69,
+            teamfighting: 72,
+            macro_play: 67,
+            consistency: 71,
+            shotcalling: 70,
+            champion_pool: 68,
+            discipline: 70,
+            mental_resilience: 71,
+        },
+        "nuc" => LolSeedRatings {
+            mechanics: 79,
+            laning: 80,
+            teamfighting: 80,
+            macro_play: 81,
+            consistency: 80,
+            shotcalling: 80,
+            champion_pool: 76,
+            discipline: 78,
+            mental_resilience: 77,
+        },
+        "paduck" => LolSeedRatings {
+            mechanics: 80,
+            laning: 78,
+            teamfighting: 78,
+            macro_play: 73,
+            consistency: 76,
+            shotcalling: 68,
+            champion_pool: 70,
+            discipline: 78,
+            mental_resilience: 77,
+        },
+        "trymbi" => LolSeedRatings {
+            mechanics: 72,
+            laning: 72,
+            teamfighting: 76,
+            macro_play: 74,
+            consistency: 75,
+            shotcalling: 77,
+            champion_pool: 78,
+            discipline: 75,
+            mental_resilience: 73,
+        },
+        "tracyn" => LolSeedRatings {
+            mechanics: 80,
+            laning: 76,
+            teamfighting: 74,
+            macro_play: 74,
+            consistency: 76,
+            shotcalling: 77,
+            champion_pool: 72,
+            discipline: 80,
+            mental_resilience: 80,
+        },
+        "daglas" => LolSeedRatings {
+            mechanics: 76,
+            laning: 71,
+            teamfighting: 73,
+            macro_play: 70,
+            consistency: 73,
+            shotcalling: 72,
+            champion_pool: 73,
+            discipline: 78,
+            mental_resilience: 76,
+        },
+        "serin" => LolSeedRatings {
+            mechanics: 77,
+            laning: 80,
+            teamfighting: 76,
+            macro_play: 75,
+            consistency: 78,
+            shotcalling: 75,
+            champion_pool: 75,
+            discipline: 78,
+            mental_resilience: 75,
+        },
+        "ice" => LolSeedRatings {
+            mechanics: 84,
+            laning: 80,
+            teamfighting: 80,
+            macro_play: 80,
+            consistency: 82,
+            shotcalling: 72,
+            champion_pool: 78,
+            discipline: 80,
+            mental_resilience: 80,
+        },
+        "way" => LolSeedRatings {
+            mechanics: 70,
+            laning: 72,
+            teamfighting: 73,
+            macro_play: 78,
+            consistency: 74,
+            shotcalling: 68,
+            champion_pool: 74,
+            discipline: 75,
+            mental_resilience: 78,
+        },
+        _ => return None,
+    };
+
+    Some(ratings)
+}
+
+fn apply_lol_seed_ratings(players: &mut [Player]) {
+    for player in players.iter_mut() {
+        let Some(seed) = lol_ratings_seed_for_player(&player.match_name) else {
+            continue;
+        };
+
+        // Keep legacy schema compatibility but use a strict 1:1 mapping to LoL stats.
+        // These are now treated as the source for LoL profile/training progression.
+        player.attributes.dribbling = seed.mechanics;
+        player.attributes.shooting = seed.laning;
+        player.attributes.teamwork = seed.teamfighting;
+        player.attributes.vision = seed.macro_play;
+        player.attributes.decisions = seed.consistency;
+        player.attributes.leadership = seed.shotcalling;
+        player.attributes.agility = seed.champion_pool;
+        player.attributes.composure = seed.discipline;
+        player.attributes.stamina = seed.mental_resilience;
+
+        if let Some(potential_base) = potential_seed_for_player(&player.match_name) {
+            player.potential_base = potential_base.min(99);
+        }
+        player.potential_revealed = None;
+        player.potential_research_started_on = None;
+        player.potential_research_eta_days = None;
+    }
 }
 
 /// Step 1: Create manager + generate world. No team assigned yet.
@@ -94,7 +755,7 @@ pub async fn start_new_game(
 
     // Load world based on source
     let world_source = world_source.unwrap_or_else(|| "lec-default".to_string());
-    let (teams, players, staff) = if world_source == "random" {
+    let (teams, mut players, staff) = if world_source == "random" {
         ofm_core::generator::generate_world(None)
     } else if world_source == "lec-default" {
         let path = resolve_default_world_path()?;
@@ -110,6 +771,8 @@ pub async fn start_new_game(
         let world = ofm_core::generator::load_world_from_json(&json)?;
         (world.teams, world.players, world.staff)
     };
+
+    apply_lol_seed_ratings(&mut players);
 
     let new_game = Game::new(clock, manager, teams, players, staff, vec![]);
 
@@ -190,6 +853,7 @@ pub async fn select_team(
     friendlies.retain(|fixture| fixture.date >= today);
     ofm_core::schedule::append_fixtures(&mut league, friendlies);
     game.league = Some(league);
+    ofm_core::champions::bootstrap_champion_state(&mut game);
     ofm_core::season_context::refresh_game_context(&mut game);
 
     // Rich templated messages
@@ -266,6 +930,8 @@ pub async fn load_game(
         .lock()
         .map_err(|e| format!("Lock error: {}", e))?;
     let mut game = sm.load_game(&save_id)?;
+    apply_lol_seed_ratings(&mut game.players);
+    ofm_core::champions::bootstrap_champion_state(&mut game);
     let stats_state = sm.load_stats_state(&save_id)?;
     ofm_core::season_context::refresh_game_context(&mut game);
 
@@ -280,9 +946,12 @@ pub async fn load_game(
 #[tauri::command]
 pub async fn get_active_game(state: State<'_, StateManager>) -> Result<Game, String> {
     log::debug!("[cmd] get_active_game");
-    state
+    let mut game = state
         .get_game(|g: &Game| g.clone())
-        .ok_or("No active game session".to_string())
+        .ok_or("No active game session".to_string())?;
+    ofm_core::champions::bootstrap_champion_state(&mut game);
+    state.set_game(game.clone());
+    Ok(game)
 }
 
 #[tauri::command]

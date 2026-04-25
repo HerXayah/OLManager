@@ -59,6 +59,7 @@
     "squad": "Squad",
     "tactics": "Tactics",
     "training": "Training",
+    "champions": "Champions",
     "staff": "Staff",
     "finances": "Finances",
     "transfers": "Transfers",
@@ -105,6 +106,18 @@
     "skipToMatchDayDesc": "Fast-forward to your next fixture",
     "matchDayTitle": "Match Day",
     "delegateWarning": "Your assistant will manage the match. You won't be able to intervene."
+  },
+  "champions": {
+    "metaTitle": "Champion Meta",
+    "patchNumber": "Patch {{n}}",
+    "patchLastDate": "Last patch: {{date}}",
+    "patchPending": "No patch has been applied yet.",
+    "metaHiddenHint": "Your staff is still discovering this patch's meta. Better scouts reveal it faster.",
+    "tierScore": "Tier score: {{value}}",
+    "masteryTrainingTitle": "Champion Mastery Training",
+    "noTarget": "No target",
+    "currentMastery": "Mastery: {{value}}",
+    "selectChampion": "Select a champion"
   },
   "exitConfirm": {
     "title": "Exit to Main Menu?",

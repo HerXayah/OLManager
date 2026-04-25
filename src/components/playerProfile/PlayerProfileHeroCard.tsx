@@ -32,6 +32,9 @@ interface PlayerProfileHeroCardProps {
   rerollingRole?: boolean;
   insigniaChampionId?: string | null;
   onSelectTeam?: (id: string) => void;
+  onStartPotentialResearch?: () => void;
+  potentialResearchSubmitting?: boolean;
+  isPotentialResearchBlockedByOther?: boolean;
   t: TranslateFn;
 }
 
@@ -51,6 +54,9 @@ export default function PlayerProfileHeroCard({
   rerollingRole = false,
   insigniaChampionId = null,
   onSelectTeam,
+  onStartPotentialResearch,
+  potentialResearchSubmitting = false,
+  isPotentialResearchBlockedByOther = false,
   t,
 }: PlayerProfileHeroCardProps) {
   const role = getLolRoleLabel(primaryPosition);
@@ -58,6 +64,19 @@ export default function PlayerProfileHeroCard({
   const playerPhoto = getPlayerPhotoPath(player.id);
   const [insigniaBackground, setInsigniaBackground] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState(false);
+  const potentialRevealed = player.potential_revealed ?? null;
+  const potentialEta = player.potential_research_eta_days ?? null;
+  const potentialActive = potentialEta !== null && potentialEta > 0;
+  const potentialProgress = potentialActive ? 7 - potentialEta : 0;
+  const canStartPotentialResearch =
+    isOwnClub &&
+    !potentialActive &&
+    potentialRevealed === null &&
+    !isPotentialResearchBlockedByOther &&
+    Boolean(onStartPotentialResearch) &&
+    !potentialResearchSubmitting;
+  const potentialValueLabel =
+    potentialRevealed !== null ? String(potentialRevealed) : "??";
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +261,7 @@ export default function PlayerProfileHeroCard({
                 <TraitList traits={player.traits} size="sm" />
               </div>
             ) : null}
+
           </div>
 
           {!isOwnClub ? (
@@ -256,12 +276,55 @@ export default function PlayerProfileHeroCard({
           ) : null}
 
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center">
-              <QuickStat
-                label={t("common.potential", { defaultValue: "Potencial" })}
-                value="??"
-                color="text-gray-200"
-              />
+            <div className={isOwnClub && potentialRevealed === null ? "min-w-[170px]" : ""}>
+              {isOwnClub && potentialRevealed === null ? (
+                <div className="bg-black/42 border border-white/20 rounded-xl px-4 py-3 text-center backdrop-blur-xs">
+                  <p className="text-xs text-gray-400 font-heading uppercase tracking-wider">
+                    {t("common.potential", { defaultValue: "Potencial" })}
+                  </p>
+                  <p className="font-heading font-bold text-xl mt-0.5 text-gray-200">{potentialValueLabel}</p>
+
+                  {potentialActive ? (
+                    <p className="text-xs text-primary-300 font-semibold mt-1">
+                      {t("playerProfile.potentialResearchProgress", {
+                        defaultValue: "Investigando… {{progress}}/7",
+                        progress: potentialProgress,
+                      })}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onStartPotentialResearch}
+                      disabled={!canStartPotentialResearch}
+                      className={`mt-1 w-full px-2.5 py-1.5 rounded-md text-[11px] font-heading font-bold uppercase tracking-wide border transition-colors ${
+                        canStartPotentialResearch
+                          ? "bg-primary-500/20 border-primary-400 text-primary-200 hover:bg-primary-500/30"
+                          : "bg-gray-700/40 border-gray-600 text-gray-400 cursor-not-allowed"
+                      }`}
+                    >
+                      {potentialResearchSubmitting
+                        ? t("common.loading", { defaultValue: "Cargando…" })
+                        : t("playerProfile.startPotentialResearch", {
+                            defaultValue: "Investigar potencial",
+                          })}
+                    </button>
+                  )}
+
+                  {isPotentialResearchBlockedByOther ? (
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      {t("playerProfile.potentialResearchBusy", {
+                        defaultValue: "Ya hay otra investigación de potencial activa.",
+                      })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <QuickStat
+                  label={t("common.potential", { defaultValue: "Potencial" })}
+                  value={potentialValueLabel}
+                  color="text-gray-200"
+                />
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <QuickStat

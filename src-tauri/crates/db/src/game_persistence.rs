@@ -145,6 +145,8 @@ impl GamePersistenceReader {
             board_objectives,
             season_context: domain::season::SeasonContext::default(),
             days_since_last_job_offer: None,
+            champion_masteries: vec![],
+            champion_patch: ofm_core::champions::ChampionPatchState::default(),
         };
         ofm_core::season_context::refresh_game_context(&mut game);
 

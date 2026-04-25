@@ -84,7 +84,10 @@ fn build_team_overview(aggregate: &TeamAggregate) -> TeamStatsOverviewDto {
     }
 }
 
-fn to_team_history_dto(state: &StateManager, record: &TeamMatchStatsRecord) -> TeamMatchHistoryEntryDto {
+fn to_team_history_dto(
+    state: &StateManager,
+    record: &TeamMatchStatsRecord,
+) -> TeamMatchHistoryEntryDto {
     TeamMatchHistoryEntryDto {
         fixture_id: record.fixture_id.clone(),
         date: record.date.clone(),

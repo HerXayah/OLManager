@@ -91,7 +91,6 @@ impl LiveMatchSession {
     pub fn is_finished(&self) -> bool {
         self.match_state.is_finished()
     }
-
 }
 
 // ---------------------------------------------------------------------------

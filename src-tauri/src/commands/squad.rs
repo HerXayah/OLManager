@@ -1,7 +1,9 @@
 use log::info;
 use tauri::State;
 
+use ofm_core::champions;
 use ofm_core::game::Game;
+use ofm_core::potential;
 use ofm_core::state::StateManager;
 
 #[tauri::command]
@@ -273,6 +275,47 @@ pub fn set_training_groups(
 }
 
 #[tauri::command]
+pub fn set_weekly_scrims(
+    state: State<'_, StateManager>,
+    opponent_team_ids: Vec<String>,
+) -> Result<Game, String> {
+    info!(
+        "[cmd] set_weekly_scrims: {} opponents",
+        opponent_team_ids.len()
+    );
+    let mut game = state
+        .get_game(|g| g.clone())
+        .ok_or("No active game session".to_string())?;
+
+    let manager_team_id = game
+        .manager
+        .team_id
+        .clone()
+        .ok_or("No team assigned".to_string())?;
+
+    let mut cleaned: Vec<String> = Vec::new();
+    for candidate in opponent_team_ids {
+        if candidate == manager_team_id {
+            continue;
+        }
+        if !game.teams.iter().any(|team| team.id == candidate) {
+            continue;
+        }
+        if !cleaned.iter().any(|existing| existing == &candidate) {
+            cleaned.push(candidate);
+        }
+    }
+    cleaned.truncate(6);
+
+    if let Some(team) = game.teams.iter_mut().find(|t| t.id == manager_team_id) {
+        team.weekly_scrim_opponent_ids = cleaned;
+    }
+
+    state.set_game(game.clone());
+    Ok(game)
+}
+
+#[tauri::command]
 pub fn set_player_training_focus(
     state: State<'_, StateManager>,
     player_id: String,
@@ -293,6 +336,48 @@ pub fn set_player_training_focus(
     } else {
         return Err(format!("Player not found: {}", player_id));
     }
+
+    state.set_game(game.clone());
+    Ok(game)
+}
+
+#[tauri::command]
+pub fn set_player_champion_training_target(
+    state: State<'_, StateManager>,
+    player_id: String,
+    priority_index: u8,
+    champion_id: Option<String>,
+) -> Result<Game, String> {
+    info!(
+        "[cmd] set_player_champion_training_target: player={}, priority={}, champion={:?}",
+        player_id, priority_index, champion_id
+    );
+    let mut game = state
+        .get_game(|g| g.clone())
+        .ok_or("No active game session".to_string())?;
+
+    champions::set_player_training_target(
+        &mut game,
+        &player_id,
+        usize::from(priority_index),
+        champion_id,
+    )?;
+
+    state.set_game(game.clone());
+    Ok(game)
+}
+
+#[tauri::command]
+pub fn start_potential_research(
+    state: State<'_, StateManager>,
+    player_id: String,
+) -> Result<Game, String> {
+    info!("[cmd] start_potential_research: player={}", player_id);
+    let mut game = state
+        .get_game(|g| g.clone())
+        .ok_or("No active game session".to_string())?;
+
+    potential::start_potential_research(&mut game, &player_id)?;
 
     state.set_game(game.clone());
     Ok(game)
@@ -393,4 +478,174 @@ pub fn auto_select_set_pieces(
         "free_kick_taker": free_kick,
         "corner_taker": corner,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{TimeZone, Utc};
+    use domain::manager::Manager;
+    use domain::player::{Player, PlayerAttributes, Position};
+    use domain::staff::{Staff, StaffAttributes, StaffRole};
+    use domain::team::{Team, TrainingFocus, TrainingIntensity, TrainingSchedule};
+    use ofm_core::clock::GameClock;
+    use ofm_core::game::Game;
+
+    fn attrs(stat: u8) -> PlayerAttributes {
+        PlayerAttributes {
+            pace: stat,
+            stamina: stat,
+            strength: stat,
+            agility: stat,
+            passing: stat,
+            shooting: stat,
+            tackling: stat,
+            dribbling: stat,
+            defending: stat,
+            positioning: stat,
+            vision: stat,
+            decisions: stat,
+            composure: stat,
+            aggression: stat,
+            teamwork: stat,
+            leadership: stat,
+            handling: stat,
+            reflexes: stat,
+            aerial: stat,
+        }
+    }
+
+    fn make_player(id: &str, team_id: &str, stat: u8, potential_base: u8) -> Player {
+        let mut player = Player::new(
+            id.to_string(),
+            format!("{}-name", id),
+            format!("{} Full", id),
+            "2005-01-01".to_string(),
+            "GB".to_string(),
+            Position::Midfielder,
+            attrs(stat),
+        );
+        player.team_id = Some(team_id.to_string());
+        player.morale = 80;
+        player.potential_base = potential_base;
+        player
+    }
+
+    fn make_game() -> Game {
+        let clock = GameClock::new(Utc.with_ymd_and_hms(2025, 1, 1, 12, 0, 0).unwrap());
+        let mut manager = Manager::new(
+            "mgr-1".to_string(),
+            "Alex".to_string(),
+            "Coach".to_string(),
+            "1980-01-01".to_string(),
+            "GB".to_string(),
+        );
+        manager.hire("team-1".to_string());
+
+        let mut team = Team::new(
+            "team-1".to_string(),
+            "Team One".to_string(),
+            "ONE".to_string(),
+            "England".to_string(),
+            "London".to_string(),
+            "Arena".to_string(),
+            30_000,
+        );
+        team.training_focus = TrainingFocus::IndividualCoaching;
+        team.training_intensity = TrainingIntensity::High;
+        team.training_schedule = TrainingSchedule::Intense;
+
+        let mut coach = Staff::new(
+            "coach-1".to_string(),
+            "Pat".to_string(),
+            "Coach".to_string(),
+            "1988-01-01".to_string(),
+            StaffRole::Coach,
+            StaffAttributes {
+                coaching: 99,
+                judging_ability: 50,
+                judging_potential: 50,
+                physiotherapy: 0,
+            },
+        );
+        coach.nationality = "GB".to_string();
+        coach.team_id = Some("team-1".to_string());
+        coach.specialization = Some(domain::staff::CoachingSpecialization::Technique);
+
+        Game::new(
+            clock,
+            manager,
+            vec![team],
+            vec![
+                make_player("p1", "team-1", 82, 84),
+                make_player("p2", "team-1", 78, 82),
+            ],
+            vec![coach],
+            vec![],
+        )
+    }
+
+    #[test]
+    fn only_one_active_potential_research_at_a_time() {
+        let mut game = make_game();
+        ofm_core::potential::start_potential_research(&mut game, "p1").unwrap();
+
+        let second = ofm_core::potential::start_potential_research(&mut game, "p2");
+        assert!(second.is_err());
+    }
+
+    #[test]
+    fn potential_research_completes_after_seven_days_and_clears_state() {
+        let mut game = make_game();
+        ofm_core::potential::start_potential_research(&mut game, "p1").unwrap();
+
+        for _ in 0..7 {
+            ofm_core::turn::process_day(&mut game);
+        }
+
+        let player = game
+            .players
+            .iter()
+            .find(|player| player.id == "p1")
+            .unwrap();
+        assert!(player.potential_revealed.is_some());
+        assert_eq!(player.potential_research_eta_days, None);
+        assert_eq!(player.potential_research_started_on, None);
+    }
+
+    #[test]
+    fn training_does_not_increase_lol_stats_when_player_hits_potential_cap() {
+        let mut game = make_game();
+        if let Some(player) = game.players.iter_mut().find(|player| player.id == "p1") {
+            player.attributes.dribbling = 90;
+            player.attributes.shooting = 90;
+            player.attributes.teamwork = 90;
+            player.attributes.vision = 90;
+            player.attributes.decisions = 90;
+            player.potential_base = 90;
+        }
+
+        let before = game
+            .players
+            .iter()
+            .find(|player| player.id == "p1")
+            .unwrap()
+            .attributes
+            .clone();
+
+        for _ in 0..120 {
+            ofm_core::training::process_training(&mut game, 1);
+        }
+
+        let after = &game
+            .players
+            .iter()
+            .find(|player| player.id == "p1")
+            .unwrap()
+            .attributes;
+        assert_eq!(after.dribbling, before.dribbling);
+        assert_eq!(after.shooting, before.shooting);
+        assert_eq!(after.teamwork, before.teamwork);
+        assert_eq!(after.vision, before.vision);
+        assert_eq!(after.decisions, before.decisions);
+    }
 }

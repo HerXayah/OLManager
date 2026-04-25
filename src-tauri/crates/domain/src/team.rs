@@ -51,6 +51,13 @@ pub struct Team {
     #[serde(default)]
     pub training_groups: Vec<TrainingGroup>,
 
+    // Weekly scrim plan: ordered opponent team IDs.
+    // Number of effective scrims depends on training_schedule.
+    #[serde(default)]
+    pub weekly_scrim_opponent_ids: Vec<String>,
+    #[serde(default)]
+    pub scrim_loss_streak: u8,
+
     // Persistent starting XI (player IDs). If empty, auto-select by OVR.
     #[serde(default)]
     pub starting_xi_ids: Vec<String>,
@@ -415,6 +422,8 @@ impl Team {
             training_intensity: TrainingIntensity::default(),
             training_schedule: TrainingSchedule::default(),
             training_groups: Vec::new(),
+            weekly_scrim_opponent_ids: Vec::new(),
+            scrim_loss_streak: 0,
             founded_year: 1900,
             colors: TeamColors {
                 primary: "#10b981".to_string(),

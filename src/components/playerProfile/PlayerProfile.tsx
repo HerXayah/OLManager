@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { calcOvr, getContractRiskLevel } from "../../lib/helpers";
+import { getContractRiskLevel } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { PlayerData, GameStateData, PlayerMatchHistoryEntryData } from "../../store/gameStore";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -33,6 +34,7 @@ import {
 import PlayerProfileChampionsCard from "./PlayerProfileChampionsCard";
 import playersSeed from "../../../data/lec/draft/players.json";
 import championsSeed from "../../../data/lec/draft/champions.json";
+import { startPotentialResearch } from "../../services/playerService";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
@@ -215,6 +217,7 @@ export default function PlayerProfile({
   );
   const [playerHistory, setPlayerHistory] = useState<PlayerMatchHistoryEntryData[]>([]);
   const [rerollingRole, setRerollingRole] = useState(false);
+  const [potentialResearchSubmitting, setPotentialResearchSubmitting] = useState(false);
   const [scoutError, setScoutError] = useState<string | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
   const [renewalWage, setRenewalWage] = useState("");
@@ -238,7 +241,7 @@ export default function PlayerProfile({
     useState<RenewalProjectionData["projection"] | null>(null);
   const [hasConsumedInitialRenewalIntent, setHasConsumedInitialRenewalIntent] =
     useState(false);
-  const ovr = calcOvr(player, primaryPosition);
+  const ovr = calculateLolOvr(player);
   const age = getPlayerAge(player.date_of_birth, gameState.clock.current_date);
   const teamName = getPlayerTeamName(
     gameState.teams,
@@ -296,6 +299,12 @@ export default function PlayerProfile({
   const attrGroups = buildPlayerAttributeGroups(player, t);
   const championPerformance = buildChampionPerformanceMap(playerHistory);
   const topChampions = buildTopChampionMasteries(player.match_name, championPerformance);
+  const activePotentialResearchPlayer = gameState.players.find(
+    (candidate) => (candidate.potential_research_eta_days ?? 0) > 0,
+  );
+  const isPotentialResearchActiveForPlayer = activePotentialResearchPlayer?.id === player.id;
+  const isPotentialResearchBlockedByOther =
+    Boolean(activePotentialResearchPlayer) && !isPotentialResearchActiveForPlayer;
 
   useEffect(() => {
     let cancelled = false;
@@ -604,6 +613,29 @@ export default function PlayerProfile({
         rerollingRole={rerollingRole}
         insigniaChampionId={topChampions[0]?.championId ?? null}
         onSelectTeam={onSelectTeam}
+        onStartPotentialResearch={
+          onGameUpdate
+            ? () => {
+                if (potentialResearchSubmitting) {
+                  return;
+                }
+
+                void (async () => {
+                  setPotentialResearchSubmitting(true);
+                  try {
+                    const updated = await startPotentialResearch(player.id);
+                    onGameUpdate(updated);
+                  } catch {
+                    return;
+                  } finally {
+                    setPotentialResearchSubmitting(false);
+                  }
+                })();
+              }
+            : undefined
+        }
+        potentialResearchSubmitting={potentialResearchSubmitting}
+        isPotentialResearchBlockedByOther={isPotentialResearchBlockedByOther}
         t={t}
       />
 

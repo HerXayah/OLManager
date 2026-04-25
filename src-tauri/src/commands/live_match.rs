@@ -134,6 +134,37 @@ pub fn record_fixture_champion_picks(
         }
     });
 
+    let mastery_picks: Vec<(String, String)> = picks
+        .iter()
+        .map(|pick| (pick.player_id.clone(), pick.champion_id.clone()))
+        .collect();
+    ofm_core::champions::apply_match_mastery_progress(&mut game, &winner_team_id, &mastery_picks);
+
+    state.set_game(game.clone());
+    Ok(game)
+}
+
+#[tauri::command]
+pub fn apply_champion_mastery_from_draft(
+    state: State<'_, StateManager>,
+    winner_team_id: String,
+    picks: Vec<FixtureChampionPickInput>,
+) -> Result<Game, String> {
+    info!(
+        "[cmd] apply_champion_mastery_from_draft: picks={}",
+        picks.len()
+    );
+
+    let mut game = state
+        .get_game(|g| g.clone())
+        .ok_or("No active game session".to_string())?;
+
+    let mastery_picks: Vec<(String, String)> = picks
+        .iter()
+        .map(|pick| (pick.player_id.clone(), pick.champion_id.clone()))
+        .collect();
+    ofm_core::champions::apply_match_mastery_progress(&mut game, &winner_team_id, &mastery_picks);
+
     state.set_game(game.clone());
     Ok(game)
 }

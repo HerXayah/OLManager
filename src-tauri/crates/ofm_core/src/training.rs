@@ -2,8 +2,11 @@ mod fitness_warnings;
 pub use fitness_warnings::check_squad_fitness_warnings;
 
 use crate::game::Game;
+use crate::potential::{calculate_lol_ovr, effective_potential_cap};
+use chrono::Datelike;
 use domain::staff::{CoachingSpecialization, StaffRole};
 use domain::team::{TrainingFocus, TrainingIntensity, TrainingSchedule};
+use std::collections::HashMap;
 
 /// Computed coaching quality for a team's staff.
 pub struct TeamCoachingBonus {
@@ -52,11 +55,7 @@ fn compute_coaching_bonus(game: &Game, team_id: &str, focus: &TrainingFocus) -> 
         let has_specialist = coaching_staff
             .iter()
             .any(|s| s.specialization.as_ref() == Some(&target_spec));
-        if has_specialist {
-            1.25
-        } else {
-            1.0
-        }
+        if has_specialist { 1.25 } else { 1.0 }
     } else {
         1.0
     };
@@ -94,8 +93,57 @@ struct TeamTrainingPlan {
     schedule: TrainingSchedule,
     bonus: TeamCoachingBonus,
     medical_facility_mult: f64,
-    /// player_id → group focus override (players not in any group use default_focus)
-    group_overrides: std::collections::HashMap<String, TrainingFocus>,
+    weekly_scrim_opponent_ids: Vec<String>,
+}
+
+#[derive(Clone)]
+struct TeamScrimDayOutcome {
+    gain_mult: f64,
+    morale_penalty: u8,
+    next_loss_streak: u8,
+}
+
+fn scrims_per_week_for_schedule(schedule: &TrainingSchedule) -> usize {
+    match schedule {
+        TrainingSchedule::Intense => 3,
+        TrainingSchedule::Balanced => 2,
+        TrainingSchedule::Light => 1,
+    }
+}
+
+fn training_days_for_schedule(schedule: &TrainingSchedule) -> &'static [u32] {
+    match schedule {
+        TrainingSchedule::Intense => &[0, 1, 2, 3, 4, 5],
+        TrainingSchedule::Balanced => &[0, 1, 3, 4],
+        TrainingSchedule::Light => &[1, 3],
+    }
+}
+
+fn is_scrim_day(schedule: &TrainingSchedule, weekday_num: u32) -> Option<usize> {
+    let training_days = training_days_for_schedule(schedule);
+    let max_scrims = scrims_per_week_for_schedule(schedule).min(training_days.len());
+    let scrim_days = &training_days[..max_scrims];
+    scrim_days.iter().position(|day| *day == weekday_num)
+}
+
+fn team_lol_strength(game: &Game, team_id: &str) -> f64 {
+    let mut values: Vec<f64> = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some(team_id))
+        .map(|player| f64::from(calculate_lol_ovr(player)))
+        .collect();
+    if values.is_empty() {
+        return 74.0;
+    }
+    values.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    let sample = values.iter().take(5).copied().collect::<Vec<_>>();
+    sample.iter().sum::<f64>() / sample.len() as f64
+}
+
+fn compute_scrim_gain_multiplier(own_strength: f64, opponent_strength: f64) -> f64 {
+    let diff = (opponent_strength - own_strength).clamp(-12.0, 12.0);
+    (1.0 + diff * 0.016).clamp(0.85, 1.25)
 }
 
 /// Process daily training for all teams.
@@ -131,6 +179,8 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             }
         })
         .collect();
+
+    let mut mastery_training_ticks: Vec<(String, String, f64, u8)> = Vec::new();
 
     for plan in &team_plans {
         let is_training_day = plan.schedule.is_training_day(weekday_num);
@@ -232,8 +282,39 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
                 * plan.bonus.coaching_mult
                 * plan.bonus.specialization_mult;
 
-            // Apply attribute gains based on player's effective focus
-            apply_focus_gains(&mut player.attributes, player_focus, gain);
+            // Apply LoL stat gains only when the player's current LoL OVR is below potential cap.
+            let capped = is_lol_training_capped(player);
+            apply_focus_gains(&mut player.attributes, player_focus, gain, capped);
+
+            if is_training_day && !player_focus.is_recovery_plan() {
+                let targets = crate::champions::training_targets_for_player(player);
+                let (focus_mult, attempts): (f64, u8) = match player_focus {
+                    TrainingFocus::ChampionPoolPractice => (1.4, 4),
+                    TrainingFocus::IndividualCoaching => (1.15, 3),
+                    TrainingFocus::Scrims => (1.0, 3),
+                    TrainingFocus::MacroSystems => (0.9, 2),
+                    TrainingFocus::VODReview => (0.85, 2),
+                    TrainingFocus::MentalResetRecovery => (0.0, 0),
+                };
+
+                if attempts > 0 && !targets.is_empty() {
+                    let priority_weights: [f64; 3] = [1.0, 0.65, 0.4];
+                    for (index, champion_id) in targets.iter().enumerate() {
+                        let weight = priority_weights.get(index).copied().unwrap_or(0.3);
+                        let weighted_attempts = ((attempts as f64) * weight).round() as u8;
+                        if weighted_attempts == 0 {
+                            continue;
+                        }
+                        let mastery_gain_factor = gain * focus_mult * (0.85 + weight * 0.35);
+                        mastery_training_ticks.push((
+                            player.id.clone(),
+                            champion_id.clone(),
+                            mastery_gain_factor,
+                            weighted_attempts.max(1),
+                        ));
+                    }
+                }
+            }
 
             // Apply fitness changes based on training focus.
             // Scrims best preserve fitness; recovery plans give a tiny boost.
@@ -249,6 +330,19 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
                 * condition_rec
                 * fitness_rec) as u8;
             player.condition = (player.condition + recovery).min(100);
+        }
+    }
+
+    for (player_id, champion_id, gain, attempts) in mastery_training_ticks {
+        let soloq_mult = crate::champions::mastery_gain_multiplier_for_player(game, &player_id);
+        let effective_gain = gain * soloq_mult;
+        for _ in 0..attempts {
+            crate::champions::apply_training_mastery_progress(
+                game,
+                &player_id,
+                &champion_id,
+                effective_gain,
+            );
         }
     }
 }
@@ -308,19 +402,33 @@ fn apply_focus_gains(
     attrs: &mut domain::player::PlayerAttributes,
     focus: &TrainingFocus,
     gain: f64,
+    capped: bool,
 ) {
+    if capped {
+        return;
+    }
+
+    // LoL-native stat mapping (1:1 over legacy fields):
+    // mechanics -> dribbling
+    // laning -> shooting
+    // teamfighting -> teamwork
+    // macro -> vision
+    // consistency -> decisions
+    // shotcalling -> leadership
+    // champion pool -> agility
+    // discipline -> composure
+    // mental resilience -> stamina
     match focus {
         TrainingFocus::Scrims => {
             try_gain(&mut attrs.decisions, gain);
-            try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.teamwork, gain);
             try_gain(&mut attrs.composure, gain * 0.85);
             try_gain(&mut attrs.stamina, gain * 0.65);
+            try_gain(&mut attrs.vision, gain * 0.55);
         }
         TrainingFocus::VODReview => {
             try_gain(&mut attrs.vision, gain);
             try_gain(&mut attrs.decisions, gain);
-            try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.composure, gain * 0.75);
             try_gain(&mut attrs.leadership, gain * 0.6);
         }
@@ -329,17 +437,16 @@ fn apply_focus_gains(
             try_gain(&mut attrs.dribbling, gain);
             try_gain(&mut attrs.agility, gain);
             try_gain(&mut attrs.composure, gain * 0.8);
-            try_gain(&mut attrs.positioning, gain * 0.65);
+            try_gain(&mut attrs.teamwork, gain * 0.4);
         }
         TrainingFocus::ChampionPoolPractice => {
             try_gain(&mut attrs.dribbling, gain);
             try_gain(&mut attrs.agility, gain);
             try_gain(&mut attrs.vision, gain * 0.8);
-            try_gain(&mut attrs.passing, gain * 0.7);
+            try_gain(&mut attrs.shooting, gain * 0.7);
             try_gain(&mut attrs.decisions, gain * 0.65);
         }
         TrainingFocus::MacroSystems => {
-            try_gain(&mut attrs.positioning, gain);
             try_gain(&mut attrs.vision, gain);
             try_gain(&mut attrs.decisions, gain);
             try_gain(&mut attrs.teamwork, gain * 0.8);
@@ -348,6 +455,68 @@ fn apply_focus_gains(
         TrainingFocus::MentalResetRecovery => {
             // No attribute gains on recovery days
         }
+    }
+}
+
+fn is_lol_training_capped(player: &domain::player::Player) -> bool {
+    calculate_lol_ovr(player) >= effective_potential_cap(player)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{apply_focus_gains, is_lol_training_capped};
+    use domain::player::{Player, PlayerAttributes, Position};
+    use domain::team::TrainingFocus;
+
+    fn attrs(stat: u8) -> PlayerAttributes {
+        PlayerAttributes {
+            pace: stat,
+            stamina: stat,
+            strength: stat,
+            agility: stat,
+            passing: stat,
+            shooting: stat,
+            tackling: stat,
+            dribbling: stat,
+            defending: stat,
+            positioning: stat,
+            vision: stat,
+            decisions: stat,
+            composure: stat,
+            aggression: stat,
+            teamwork: stat,
+            leadership: stat,
+            handling: stat,
+            reflexes: stat,
+            aerial: stat,
+        }
+    }
+
+    #[test]
+    fn potential_cap_blocks_lol_stat_gains_when_ovr_reaches_cap() {
+        let mut player = Player::new(
+            "p-1".to_string(),
+            "Cap".to_string(),
+            "Cap".to_string(),
+            "2002-01-01".to_string(),
+            "GB".to_string(),
+            Position::Midfielder,
+            attrs(90),
+        );
+        player.potential_base = 90;
+
+        assert!(is_lol_training_capped(&player));
+
+        let before = player.attributes.clone();
+        apply_focus_gains(
+            &mut player.attributes,
+            &TrainingFocus::IndividualCoaching,
+            1.0,
+            true,
+        );
+        assert_eq!(player.attributes.dribbling, before.dribbling);
+        assert_eq!(player.attributes.shooting, before.shooting);
+        assert_eq!(player.attributes.agility, before.agility);
     }
 }
 

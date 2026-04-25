@@ -238,6 +238,43 @@ export interface PlayerData {
   loan_listed: boolean;
   transfer_offers: TransferOfferData[];
   traits: string[];
+  potential_base?: number;
+  potential_revealed?: number | null;
+  potential_research_started_on?: string | null;
+  potential_research_eta_days?: number | null;
+  champion_training_target?: string | null;
+  champion_training_targets?: string[];
+}
+
+export interface ChampionMasteryEntryData {
+  player_id: string;
+  champion_id: string;
+  mastery: number;
+  last_active_on: string;
+}
+
+export interface ChampionMetaEntryData {
+  champion_id: string;
+  role: string;
+  tier: "S" | "A" | "B" | "C" | "D" | string;
+}
+
+export interface ChampionPatchNoteData {
+  champion_id: string;
+  role: string;
+  change: "Buff" | "Nerf";
+}
+
+export interface ChampionPatchStateData {
+  current_patch: number;
+  current_patch_label?: string;
+  patch_year?: number;
+  patch_index_in_year?: number;
+  last_patch_date: string | null;
+  hidden_meta: ChampionMetaEntryData[];
+  patch_notes: ChampionPatchNoteData[];
+  discovered_champion_ids: string[];
+  rng_seed?: number;
 }
 
 export interface TransferOfferData {
@@ -537,4 +574,6 @@ export interface GameStateData {
   scouting_assignments: ScoutingAssignment[];
   board_objectives: BoardObjective[];
   season_context?: SeasonContextData;
+  champion_masteries?: ChampionMasteryEntryData[];
+  champion_patch?: ChampionPatchStateData;
 }

@@ -283,8 +283,11 @@ fn pick_winner(home_stats: &TeamStats, away_stats: &TeamStats) -> Side {
         .then(home_stats.kills.cmp(&away_stats.kills))
         .then(home_stats.gold_earned.cmp(&away_stats.gold_earned))
         .then(home_stats.damage_dealt.cmp(&away_stats.damage_dealt))
-        .then(home_stats.possession_ticks.cmp(&away_stats.possession_ticks))
-    {
+        .then(
+            home_stats
+                .possession_ticks
+                .cmp(&away_stats.possession_ticks),
+        ) {
         Ordering::Greater => Side::Home,
         Ordering::Less => Side::Away,
         // LoL no permite empate; usamos desempate determinista final.

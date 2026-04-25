@@ -143,7 +143,9 @@ fn build_match_report_from_lol_sim(input: LolSimMatchReportInput) -> MatchReport
         .into_iter()
         .filter_map(|event| {
             let mut event_type = map_sim_event_kind_to_engine(&event.kind)?;
-            if matches!(event_type, EventType::TowerDestroyed) && event.text.to_lowercase().contains("inhib") {
+            if matches!(event_type, EventType::TowerDestroyed)
+                && event.text.to_lowercase().contains("inhib")
+            {
                 event_type = EventType::InhibitorDestroyed;
             }
 

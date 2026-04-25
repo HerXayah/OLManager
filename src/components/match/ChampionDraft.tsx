@@ -277,10 +277,6 @@ function inferRoleHints(tags: string[]): Role[] {
   return [...set];
 }
 
-function masteryForChampion(_playerId: string, _championId: string): number {
-  return 25;
-}
-
 function splashUrl(championId: string): string {
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championId}_0.jpg`;
 }
@@ -353,6 +349,16 @@ function mapSeedRoleToDraftRole(role: string): Role | null {
   if (key === "bot" || key === "bottom" || key === "adc") return "ADC";
   if (key === "support" || key === "sup") return "SUPPORT";
   return null;
+}
+
+function tierToMetaScore(tier: string): number {
+  const normalized = tier.toUpperCase();
+  if (normalized === "S") return 20;
+  if (normalized === "A") return 17;
+  if (normalized === "B") return 14;
+  if (normalized === "C") return 10;
+  if (normalized === "D") return 7;
+  return 12;
 }
 
 const CHAMPION_ROLE_HINTS = new Map<string, Role[]>();
@@ -575,32 +581,6 @@ export default function ChampionDraft({
       .filter((champion): champion is ChampionData => champion !== null);
   }, [championById, lockedChampionIds]);
 
-  const visibleChampions = useMemo(() => {
-    return champions.filter((champion) => {
-      if (roleFilter !== "ALL" && !champion.roleHints.includes(roleFilter)) return false;
-      if (searchTerm.trim().length > 0) {
-        const query = searchTerm.trim().toLowerCase();
-        if (!champion.name.toLowerCase().includes(query)) return false;
-      }
-
-      const samplePlayerId =
-        currentStep?.side === "blue" ? bluePlayerIds[0] ?? "" : redPlayerIds[0] ?? "";
-      const mastery = masteryForChampion(samplePlayerId, champion.id);
-      if (mastery < masteryFilter) return false;
-
-      return true;
-    });
-  }, [
-    bluePlayerIds,
-    champions,
-    currentStep,
-    masteryFilter,
-    redPlayerIds,
-    roleFilter,
-    searchTerm,
-    usedChampionIds,
-  ]);
-
   const finished = stepIndex >= DRAFT_SEQUENCE.length;
 
   const handleSelectChampion = (champion: ChampionData, actor: "user" | "ai" = "user") => {
@@ -774,11 +754,40 @@ export default function ChampionDraft({
     return map;
   }, []);
 
+  const runtimeMasteryByPlayerId = useMemo(() => {
+    const map = new Map<string, Map<string, number>>();
+    (gameState?.champion_masteries ?? []).forEach((entry) => {
+      let championMap = map.get(entry.player_id);
+      if (!championMap) {
+        championMap = new Map<string, number>();
+        map.set(entry.player_id, championMap);
+      }
+      championMap.set(normalizeKey(entry.champion_id), Number(entry.mastery ?? 25));
+    });
+    return map;
+  }, [gameState?.champion_masteries]);
+
+  const runtimeMetaScoreByChampion = useMemo(() => {
+    const map = new Map<string, number>();
+    (gameState?.champion_patch?.hidden_meta ?? []).forEach((entry) => {
+      map.set(normalizeKey(entry.champion_id), tierToMetaScore(String(entry.tier ?? "B")));
+    });
+    return map;
+  }, [gameState?.champion_patch?.hidden_meta]);
+
   const resolvePlayerMastery = (
     side: Side,
     pickIndex: number,
     championId: string,
   ): number => {
+    const playerId = side === "blue" ? bluePlayerIds[pickIndex] : redPlayerIds[pickIndex];
+    if (playerId) {
+      const runtimeMap = runtimeMasteryByPlayerId.get(playerId);
+      if (runtimeMap) {
+        return runtimeMap.get(normalizeKey(championId)) ?? 25;
+      }
+    }
+
     const teamId = side === "blue" ? homeTeamSeed?.id : awayTeamSeed?.id;
     const playerName = side === "blue" ? bluePlayers[pickIndex]?.name : redPlayers[pickIndex]?.name;
     if (!teamId || !playerName) return 25;
@@ -806,11 +815,40 @@ export default function ChampionDraft({
   const redOrderedPicks = buildOrderedPicks("red", redPicks, finished ? redRoleOrder : null);
 
   const metaScoreForChampion = (champion: ChampionData): number => {
+    const runtime = runtimeMetaScoreByChampion.get(normalizeKey(champion.id));
+    if (typeof runtime === "number") return runtime;
     const direct = META_CHAMPION_SCORES[normalizeKey(champion.id)] ?? META_CHAMPION_SCORES[normalizeKey(champion.name)];
     return direct ?? 0;
   };
 
   const enemySideFor = (side: Side): Side => (side === "blue" ? "red" : "blue");
+
+  const visibleChampions = useMemo(() => {
+    return champions.filter((champion) => {
+      if (roleFilter !== "ALL" && !champion.roleHints.includes(roleFilter)) return false;
+      if (searchTerm.trim().length > 0) {
+        const query = searchTerm.trim().toLowerCase();
+        if (!champion.name.toLowerCase().includes(query)) return false;
+      }
+
+      const sampleSide = currentStep?.side ?? controlledSide;
+      const samplePickIndex = sampleSide === "blue" ? bluePicks.length : redPicks.length;
+      const mastery = resolvePlayerMastery(sampleSide, samplePickIndex, champion.id);
+      if (mastery < masteryFilter) return false;
+
+      return true;
+    });
+  }, [
+    bluePicks.length,
+    champions,
+    controlledSide,
+    currentStep,
+    masteryFilter,
+    redPicks.length,
+    roleFilter,
+    resolvePlayerMastery,
+    searchTerm,
+  ]);
 
   const getAvailableChampions = (): ChampionData[] =>
     champions.filter((champion) => !usedChampionIds.has(champion.id));

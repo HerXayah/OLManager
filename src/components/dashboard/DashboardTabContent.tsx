@@ -14,6 +14,7 @@ import StaffTab from "../staff/StaffTab";
 import InboxTab from "../inbox/InboxTab";
 import ManagerTab from "../manager/ManagerTab";
 import NewsTab from "../news/NewsTab";
+import ChampionsTab from "../champions/ChampionsTab";
 import EndOfSeasonScreen from "../EndOfSeasonScreen";
 import type { DashboardTabContentModel } from "./dashboardTabContentModel";
 
@@ -74,6 +75,10 @@ export default function DashboardTabContent({
 
       {activeTab === "Training" && (
         <TrainingTab gameState={gameState} onGameUpdate={onGameUpdate} />
+      )}
+
+      {activeTab === "Champions" && (
+        <ChampionsTab gameState={gameState} onGameUpdate={onGameUpdate} />
       )}
 
       {activeTab === "Schedule" && (

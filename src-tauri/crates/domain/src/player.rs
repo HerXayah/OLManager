@@ -70,6 +70,18 @@ pub struct Player {
     pub transfer_offers: Vec<TransferOffer>,
     #[serde(default)]
     pub morale_core: PlayerMoraleCore,
+    #[serde(default = "default_potential_base")]
+    pub potential_base: u8,
+    #[serde(default)]
+    pub potential_revealed: Option<u8>,
+    #[serde(default)]
+    pub potential_research_started_on: Option<String>,
+    #[serde(default)]
+    pub potential_research_eta_days: Option<u8>,
+    #[serde(default)]
+    pub champion_training_target: Option<String>,
+    #[serde(default)]
+    pub champion_training_targets: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
@@ -181,6 +193,10 @@ fn default_weak_foot() -> u8 {
 
 fn default_fitness() -> u8 {
     75
+}
+
+fn default_potential_base() -> u8 {
+    99
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -525,6 +541,12 @@ impl Player {
             loan_listed: false,
             transfer_offers: Vec::new(),
             morale_core: PlayerMoraleCore::default(),
+            potential_base: default_potential_base(),
+            potential_revealed: None,
+            potential_research_started_on: None,
+            potential_research_eta_days: None,
+            champion_training_target: None,
+            champion_training_targets: Vec::new(),
         }
     }
 }
@@ -615,5 +637,7 @@ mod tests {
         assert_eq!(player.footedness, Footedness::Right);
         assert_eq!(player.weak_foot, 2);
         assert_eq!(player.natural_position, Position::Midfielder);
+        assert_eq!(player.potential_base, 99);
+        assert_eq!(player.potential_revealed, None);
     }
 }

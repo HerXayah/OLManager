@@ -84,7 +84,14 @@ fn make_game(players: Vec<Player>) -> Game {
         18_000,
     );
 
-    Game::new(clock, manager, vec![team, opponent], players, vec![], vec![])
+    Game::new(
+        clock,
+        manager,
+        vec![team, opponent],
+        players,
+        vec![],
+        vec![],
+    )
 }
 
 fn player_record(
@@ -151,7 +158,11 @@ fn team_record(
 #[test]
 fn get_player_match_history_returns_lol_first_fields() {
     let state = StateManager::new();
-    state.set_game(make_game(vec![make_player("player-1", "team-1", Position::Striker)]));
+    state.set_game(make_game(vec![make_player(
+        "player-1",
+        "team-1",
+        Position::Striker,
+    )]));
     state.set_stats_state(StatsState {
         player_matches: vec![
             player_record(
@@ -308,7 +319,11 @@ fn get_player_stats_overview_aggregates_lol_metrics_by_position() {
 #[test]
 fn get_team_stats_overview_aggregates_lol_team_metrics() {
     let state = StateManager::new();
-    state.set_game(make_game(vec![make_player("player-1", "team-1", Position::Striker)]));
+    state.set_game(make_game(vec![make_player(
+        "player-1",
+        "team-1",
+        Position::Striker,
+    )]));
     state.set_stats_state(StatsState {
         player_matches: vec![],
         team_matches: vec![
@@ -332,7 +347,11 @@ fn get_team_stats_overview_aggregates_lol_team_metrics() {
 #[test]
 fn get_team_match_history_returns_lol_first_fields() {
     let state = StateManager::new();
-    state.set_game(make_game(vec![make_player("player-1", "team-1", Position::Striker)]));
+    state.set_game(make_game(vec![make_player(
+        "player-1",
+        "team-1",
+        Position::Striker,
+    )]));
     state.set_stats_state(StatsState {
         player_matches: vec![],
         team_matches: vec![

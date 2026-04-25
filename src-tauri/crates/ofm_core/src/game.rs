@@ -7,6 +7,7 @@ use domain::player::Player;
 use domain::season::SeasonContext;
 use domain::staff::Staff;
 use domain::team::Team;
+use crate::champions::{ChampionMasteryEntry, ChampionPatchState};
 
 use serde::{Deserialize, Serialize};
 
@@ -53,6 +54,10 @@ pub struct Game {
     pub season_context: SeasonContext,
     #[serde(default)]
     pub days_since_last_job_offer: Option<u32>,
+    #[serde(default)]
+    pub champion_masteries: Vec<ChampionMasteryEntry>,
+    #[serde(default)]
+    pub champion_patch: ChampionPatchState,
 }
 
 impl Game {
@@ -77,6 +82,8 @@ impl Game {
             board_objectives: vec![],
             season_context: SeasonContext::default(),
             days_since_last_job_offer: None,
+            champion_masteries: vec![],
+            champion_patch: ChampionPatchState::default(),
         };
         crate::football_identity::upgrade_game_football_identities(&mut game);
         crate::season_context::refresh_game_context(&mut game);

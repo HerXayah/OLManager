@@ -66,10 +66,10 @@ describe("lolPlayerStats", () => {
   it("derives the visible LoL stats used in profile and training UI", () => {
     const player = createPlayer();
 
-    expect(getLolVisibleStatValue(player, "mechanics")).toBe(71);
-    expect(getLolVisibleStatValue(player, "macro")).toBe(73);
+    expect(getLolVisibleStatValue(player, "mechanics")).toBe(78);
+    expect(getLolVisibleStatValue(player, "macro")).toBe(75);
     expect(getLolVisibleStatValue(player, "championPool")).toBe(74);
-    expect(getLolVisibleStatValue(player, "mentalResilience")).toBe(68);
+    expect(getLolVisibleStatValue(player, "mentalResilience")).toBe(66);
   });
 
   it("computes roster OVR from the LoL-facing visible stats", () => {

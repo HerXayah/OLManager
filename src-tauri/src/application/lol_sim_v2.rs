@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
+use serde_json::{json, Map, Value};
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
-use std::fs::{OpenOptions, create_dir_all, read_dir, remove_file};
+use std::fs::{create_dir_all, read_dir, remove_file, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
@@ -62,12 +62,24 @@ impl Default for SimulatorPolicyConfig {
     }
 }
 
-fn default_no_dive_hp_min() -> f64 { 0.45 }
-fn default_trade_retreat_hp_ratio() -> f64 { 0.36 }
-fn default_trade_hp_disadvantage_allowance() -> f64 { 0.2 }
-fn default_lane_chase_leash_radius() -> f64 { 0.11 }
-fn default_hybrid_open_trade_confidence_high() -> f64 { 0.60 }
-fn default_hybrid_disengage_confidence_low() -> f64 { 0.32 }
+fn default_no_dive_hp_min() -> f64 {
+    0.45
+}
+fn default_trade_retreat_hp_ratio() -> f64 {
+    0.36
+}
+fn default_trade_hp_disadvantage_allowance() -> f64 {
+    0.2
+}
+fn default_lane_chase_leash_radius() -> f64 {
+    0.11
+}
+fn default_hybrid_open_trade_confidence_high() -> f64 {
+    0.60
+}
+fn default_hybrid_disengage_confidence_low() -> f64 {
+    0.32
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -305,7 +317,10 @@ pub struct ClearTelemetryFilesResponse {
     pub existed: bool,
 }
 
-pub fn init(store: &LolSimV2StoreState, request: LolSimV2InitRequest) -> Result<LolSimV2StateResponse, String> {
+pub fn init(
+    store: &LolSimV2StoreState,
+    request: LolSimV2InitRequest,
+) -> Result<LolSimV2StateResponse, String> {
     if request.session_id.trim().is_empty() {
         return Err("sessionId is required".to_string());
     }
@@ -354,7 +369,10 @@ pub fn init(store: &LolSimV2StoreState, request: LolSimV2InitRequest) -> Result<
     })
 }
 
-pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<LolSimV2StateResponse, String> {
+pub fn tick(
+    store: &LolSimV2StoreState,
+    request: LolSimV2TickRequest,
+) -> Result<LolSimV2StateResponse, String> {
     let mut sessions = store
         .sessions
         .lock()
@@ -432,7 +450,10 @@ pub fn tick(store: &LolSimV2StoreState, request: LolSimV2TickRequest) -> Result<
     })
 }
 
-pub fn reset(store: &LolSimV2StoreState, request: LolSimV2ResetRequest) -> Result<LolSimV2StateResponse, String> {
+pub fn reset(
+    store: &LolSimV2StoreState,
+    request: LolSimV2ResetRequest,
+) -> Result<LolSimV2StateResponse, String> {
     let mut sessions = store
         .sessions
         .lock()
@@ -459,7 +480,8 @@ pub fn reset(store: &LolSimV2StoreState, request: LolSimV2ResetRequest) -> Resul
     if let Some(config) = request.telemetry {
         session.telemetry.config = config;
     }
-    session.telemetry.output_path = resolve_telemetry_output_path(&session.telemetry.config, &session.seed);
+    session.telemetry.output_path =
+        resolve_telemetry_output_path(&session.telemetry.config, &session.seed);
     session.telemetry.pending.clear();
     session.telemetry.last_tick_by_key.clear();
     session.telemetry.last_decision_by_key.clear();
@@ -777,7 +799,12 @@ fn resolve_telemetry_output_path(config: &SimulatorTelemetryConfig, seed: &str) 
         return None;
     }
 
-    if let Some(custom) = config.output_path.as_ref().map(|value| value.trim()).filter(|value| !value.is_empty()) {
+    if let Some(custom) = config
+        .output_path
+        .as_ref()
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+    {
         return Some(PathBuf::from(custom));
     }
 
@@ -818,11 +845,18 @@ fn process_telemetry(runtime: &mut RuntimeState, session: &mut LolSimV2Session) 
             continue;
         }
 
-        let Some(champion_now) = runtime.champions.iter().find(|champion| champion.id == pending.champion_id) else {
+        let Some(champion_now) = runtime
+            .champions
+            .iter()
+            .find(|champion| champion.id == pending.champion_id)
+        else {
             continue;
         };
 
-        let enemy_now = runtime.champions.iter().find(|champion| champion.id == pending.enemy_id);
+        let enemy_now = runtime
+            .champions
+            .iter()
+            .find(|champion| champion.id == pending.enemy_id);
         let hp_ratio_now = ratio_or_zero(champion_now.hp, champion_now.max_hp);
         let deaths_now = champion_now.deaths;
         let kills_assists_now = champion_now.kills + champion_now.assists;
@@ -890,11 +924,21 @@ fn process_telemetry(runtime: &mut RuntimeState, session: &mut LolSimV2Session) 
         );
 
         let sample_every = session.telemetry.config.sample_every_ticks.max(1);
-        let last_tick = *session.telemetry.last_tick_by_key.get(&telemetry_key).unwrap_or(&0);
+        let last_tick = *session
+            .telemetry
+            .last_tick_by_key
+            .get(&telemetry_key)
+            .unwrap_or(&0);
         let enough_gap = now_tick == 0 || now_tick.saturating_sub(last_tick) >= sample_every;
 
-        let last_decision = session.telemetry.last_decision_by_key.get(&telemetry_key).copied();
-        let changed = last_decision.map(|prev| prev != candidate.decision).unwrap_or(true);
+        let last_decision = session
+            .telemetry
+            .last_decision_by_key
+            .get(&telemetry_key)
+            .copied();
+        let changed = last_decision
+            .map(|prev| prev != candidate.decision)
+            .unwrap_or(true);
         let should_record = if session.telemetry.config.decision_change_only {
             changed || enough_gap
         } else {
@@ -905,12 +949,22 @@ fn process_telemetry(runtime: &mut RuntimeState, session: &mut LolSimV2Session) 
             continue;
         }
 
-        let Some(champion_now) = runtime.champions.iter().find(|champion| champion.id == candidate.champion_id) else {
+        let Some(champion_now) = runtime
+            .champions
+            .iter()
+            .find(|champion| champion.id == candidate.champion_id)
+        else {
             continue;
         };
 
-        session.telemetry.last_tick_by_key.insert(telemetry_key.clone(), now_tick);
-        session.telemetry.last_decision_by_key.insert(telemetry_key, candidate.decision);
+        session
+            .telemetry
+            .last_tick_by_key
+            .insert(telemetry_key.clone(), now_tick);
+        session
+            .telemetry
+            .last_decision_by_key
+            .insert(telemetry_key, candidate.decision);
 
         let pending = PendingTelemetryOutcome {
             due_tick: now_tick.saturating_add(session.telemetry.config.outcome_window_ticks.max(1)),
@@ -963,7 +1017,11 @@ fn process_telemetry(runtime: &mut RuntimeState, session: &mut LolSimV2Session) 
         let _ = create_dir_all(parent);
     }
 
-    let mut file = match OpenOptions::new().create(true).append(true).open(output_path) {
+    let mut file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(output_path)
+    {
         Ok(file) => file,
         Err(err) => {
             log_event(
@@ -981,7 +1039,11 @@ fn process_telemetry(runtime: &mut RuntimeState, session: &mut LolSimV2Session) 
             Err(_) => continue,
         };
         if writeln!(file, "{}", serialized).is_err() {
-            log_event(runtime, "[telemetry] failed to append telemetry line", "info");
+            log_event(
+                runtime,
+                "[telemetry] failed to append telemetry line",
+                "info",
+            );
             return;
         }
     }
@@ -1100,7 +1162,9 @@ fn ensure_runtime_state_defaults(state: &mut Value) {
     if !root.contains_key("events") {
         root.insert(
             "events".to_string(),
-            Value::Array(vec![json!({ "t": 0.0, "text": "Match started", "type": "info" })]),
+            Value::Array(vec![
+                json!({ "t": 0.0, "text": "Match started", "type": "info" }),
+            ]),
         );
     }
     if !root.contains_key("teamTactics") {
@@ -1610,10 +1674,7 @@ struct GridCell {
     cy: usize,
 }
 
-const BASE_POSITION_BLUE: Vec2 = Vec2 {
-    x: 0.115,
-    y: 0.882,
-};
+const BASE_POSITION_BLUE: Vec2 = Vec2 { x: 0.115, y: 0.882 };
 const BASE_POSITION_RED: Vec2 = Vec2 { x: 0.891, y: 0.117 };
 
 const ROLE_SEEDS: [RoleSeed; 5] = [
@@ -1652,36 +1713,306 @@ const ROLE_SEEDS: [RoleSeed; 5] = [
 
 // TODO(parity-chunk-b): source these from a shared Rust map/layout module instead of duplicated static data.
 const STRUCTURE_LAYOUT: [StructureSeed; 30] = [
-    StructureSeed { id: "blue-top-outer", team: "blue", lane: "top", kind: "tower", pos: Vec2 { x: 0.072265625, y: 0.2838541666666667 } },
-    StructureSeed { id: "blue-top-inner", team: "blue", lane: "top", kind: "tower", pos: Vec2 { x: 0.099609375, y: 0.5533854166666666 } },
-    StructureSeed { id: "blue-top-inhib-tower", team: "blue", lane: "top", kind: "tower", pos: Vec2 { x: 0.09049479166666667, y: 0.69921875 } },
-    StructureSeed { id: "blue-mid-outer", team: "blue", lane: "mid", kind: "tower", pos: Vec2 { x: 0.4016927083333333, y: 0.5755208333333334 } },
-    StructureSeed { id: "blue-mid-inner", team: "blue", lane: "mid", kind: "tower", pos: Vec2 { x: 0.3470052083333333, y: 0.6705729166666666 } },
-    StructureSeed { id: "blue-mid-inhib-tower", team: "blue", lane: "mid", kind: "tower", pos: Vec2 { x: 0.2623697916666667, y: 0.7408854166666666 } },
-    StructureSeed { id: "blue-bot-inner", team: "blue", lane: "bot", kind: "tower", pos: Vec2 { x: 0.4720052083333333, y: 0.8958333333333334 } },
-    StructureSeed { id: "blue-bot-outer", team: "blue", lane: "bot", kind: "tower", pos: Vec2 { x: 0.720703125, y: 0.9231770833333334 } },
-    StructureSeed { id: "blue-bot-inhib-tower", team: "blue", lane: "bot", kind: "tower", pos: Vec2 { x: 0.298828125, y: 0.9127604166666666 } },
-    StructureSeed { id: "blue-inhib-top", team: "blue", lane: "base", kind: "inhib", pos: Vec2 { x: 0.08658854166666667, y: 0.7591145833333334 } },
-    StructureSeed { id: "blue-inhib-mid", team: "blue", lane: "base", kind: "inhib", pos: Vec2 { x: 0.224609375, y: 0.7864583333333334 } },
-    StructureSeed { id: "blue-inhib-bot", team: "blue", lane: "base", kind: "inhib", pos: Vec2 { x: 0.24544270833333334, y: 0.9114583333333334 } },
-    StructureSeed { id: "blue-nexus-top-tower", team: "blue", lane: "base", kind: "tower", pos: Vec2 { x: 0.126953125, y: 0.8372395833333334 } },
-    StructureSeed { id: "blue-nexus-bot-tower", team: "blue", lane: "base", kind: "tower", pos: Vec2 { x: 0.15950520833333334, y: 0.875 } },
-    StructureSeed { id: "blue-nexus", team: "blue", lane: "base", kind: "nexus", pos: Vec2 { x: 0.115234375, y: 0.8815104166666666 } },
-    StructureSeed { id: "red-top-outer", team: "red", lane: "top", kind: "tower", pos: Vec2 { x: 0.275390625, y: 0.07161458333333333 } },
-    StructureSeed { id: "red-top-inner", team: "red", lane: "top", kind: "tower", pos: Vec2 { x: 0.533203125, y: 0.08203125 } },
-    StructureSeed { id: "red-top-inhib-tower", team: "red", lane: "top", kind: "tower", pos: Vec2 { x: 0.912109375, y: 0.3125 } },
-    StructureSeed { id: "red-mid-outer", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.595703125, y: 0.44140625 } },
-    StructureSeed { id: "red-mid-inner", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.6569010416666666, y: 0.33203125 } },
-    StructureSeed { id: "red-mid-inhib-tower", team: "red", lane: "mid", kind: "tower", pos: Vec2 { x: 0.740234375, y: 0.26171875 } },
-    StructureSeed { id: "red-bot-inner", team: "red", lane: "bot", kind: "tower", pos: Vec2 { x: 0.9016927083333334, y: 0.44921875 } },
-    StructureSeed { id: "red-bot-outer", team: "red", lane: "bot", kind: "tower", pos: Vec2 { x: 0.9303385416666666, y: 0.7057291666666666 } },
-    StructureSeed { id: "red-bot-inhib-tower", team: "red", lane: "bot", kind: "tower", pos: Vec2 { x: 0.7024739583333334, y: 0.09375 } },
-    StructureSeed { id: "red-inhib-top", team: "red", lane: "base", kind: "inhib", pos: Vec2 { x: 0.7545572916666666, y: 0.09114583333333333 } },
-    StructureSeed { id: "red-inhib-mid", team: "red", lane: "base", kind: "inhib", pos: Vec2 { x: 0.783203125, y: 0.22395833333333334 } },
-    StructureSeed { id: "red-inhib-bot", team: "red", lane: "base", kind: "inhib", pos: Vec2 { x: 0.9108072916666666, y: 0.24869791666666666 } },
-    StructureSeed { id: "red-nexus-top-tower", team: "red", lane: "base", kind: "tower", pos: Vec2 { x: 0.845703125, y: 0.1328125 } },
-    StructureSeed { id: "red-nexus-bot-tower", team: "red", lane: "base", kind: "tower", pos: Vec2 { x: 0.8717447916666666, y: 0.1640625 } },
-    StructureSeed { id: "red-nexus", team: "red", lane: "base", kind: "nexus", pos: Vec2 { x: 0.8912760416666666, y: 0.1171875 } },
+    StructureSeed {
+        id: "blue-top-outer",
+        team: "blue",
+        lane: "top",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.072265625,
+            y: 0.2838541666666667,
+        },
+    },
+    StructureSeed {
+        id: "blue-top-inner",
+        team: "blue",
+        lane: "top",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.099609375,
+            y: 0.5533854166666666,
+        },
+    },
+    StructureSeed {
+        id: "blue-top-inhib-tower",
+        team: "blue",
+        lane: "top",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.09049479166666667,
+            y: 0.69921875,
+        },
+    },
+    StructureSeed {
+        id: "blue-mid-outer",
+        team: "blue",
+        lane: "mid",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.4016927083333333,
+            y: 0.5755208333333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-mid-inner",
+        team: "blue",
+        lane: "mid",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.3470052083333333,
+            y: 0.6705729166666666,
+        },
+    },
+    StructureSeed {
+        id: "blue-mid-inhib-tower",
+        team: "blue",
+        lane: "mid",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.2623697916666667,
+            y: 0.7408854166666666,
+        },
+    },
+    StructureSeed {
+        id: "blue-bot-inner",
+        team: "blue",
+        lane: "bot",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.4720052083333333,
+            y: 0.8958333333333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-bot-outer",
+        team: "blue",
+        lane: "bot",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.720703125,
+            y: 0.9231770833333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-bot-inhib-tower",
+        team: "blue",
+        lane: "bot",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.298828125,
+            y: 0.9127604166666666,
+        },
+    },
+    StructureSeed {
+        id: "blue-inhib-top",
+        team: "blue",
+        lane: "base",
+        kind: "inhib",
+        pos: Vec2 {
+            x: 0.08658854166666667,
+            y: 0.7591145833333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-inhib-mid",
+        team: "blue",
+        lane: "base",
+        kind: "inhib",
+        pos: Vec2 {
+            x: 0.224609375,
+            y: 0.7864583333333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-inhib-bot",
+        team: "blue",
+        lane: "base",
+        kind: "inhib",
+        pos: Vec2 {
+            x: 0.24544270833333334,
+            y: 0.9114583333333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-nexus-top-tower",
+        team: "blue",
+        lane: "base",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.126953125,
+            y: 0.8372395833333334,
+        },
+    },
+    StructureSeed {
+        id: "blue-nexus-bot-tower",
+        team: "blue",
+        lane: "base",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.15950520833333334,
+            y: 0.875,
+        },
+    },
+    StructureSeed {
+        id: "blue-nexus",
+        team: "blue",
+        lane: "base",
+        kind: "nexus",
+        pos: Vec2 {
+            x: 0.115234375,
+            y: 0.8815104166666666,
+        },
+    },
+    StructureSeed {
+        id: "red-top-outer",
+        team: "red",
+        lane: "top",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.275390625,
+            y: 0.07161458333333333,
+        },
+    },
+    StructureSeed {
+        id: "red-top-inner",
+        team: "red",
+        lane: "top",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.533203125,
+            y: 0.08203125,
+        },
+    },
+    StructureSeed {
+        id: "red-top-inhib-tower",
+        team: "red",
+        lane: "top",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.912109375,
+            y: 0.3125,
+        },
+    },
+    StructureSeed {
+        id: "red-mid-outer",
+        team: "red",
+        lane: "mid",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.595703125,
+            y: 0.44140625,
+        },
+    },
+    StructureSeed {
+        id: "red-mid-inner",
+        team: "red",
+        lane: "mid",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.6569010416666666,
+            y: 0.33203125,
+        },
+    },
+    StructureSeed {
+        id: "red-mid-inhib-tower",
+        team: "red",
+        lane: "mid",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.740234375,
+            y: 0.26171875,
+        },
+    },
+    StructureSeed {
+        id: "red-bot-inner",
+        team: "red",
+        lane: "bot",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.9016927083333334,
+            y: 0.44921875,
+        },
+    },
+    StructureSeed {
+        id: "red-bot-outer",
+        team: "red",
+        lane: "bot",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.9303385416666666,
+            y: 0.7057291666666666,
+        },
+    },
+    StructureSeed {
+        id: "red-bot-inhib-tower",
+        team: "red",
+        lane: "bot",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.7024739583333334,
+            y: 0.09375,
+        },
+    },
+    StructureSeed {
+        id: "red-inhib-top",
+        team: "red",
+        lane: "base",
+        kind: "inhib",
+        pos: Vec2 {
+            x: 0.7545572916666666,
+            y: 0.09114583333333333,
+        },
+    },
+    StructureSeed {
+        id: "red-inhib-mid",
+        team: "red",
+        lane: "base",
+        kind: "inhib",
+        pos: Vec2 {
+            x: 0.783203125,
+            y: 0.22395833333333334,
+        },
+    },
+    StructureSeed {
+        id: "red-inhib-bot",
+        team: "red",
+        lane: "base",
+        kind: "inhib",
+        pos: Vec2 {
+            x: 0.9108072916666666,
+            y: 0.24869791666666666,
+        },
+    },
+    StructureSeed {
+        id: "red-nexus-top-tower",
+        team: "red",
+        lane: "base",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.845703125,
+            y: 0.1328125,
+        },
+    },
+    StructureSeed {
+        id: "red-nexus-bot-tower",
+        team: "red",
+        lane: "base",
+        kind: "tower",
+        pos: Vec2 {
+            x: 0.8717447916666666,
+            y: 0.1640625,
+        },
+    },
+    StructureSeed {
+        id: "red-nexus",
+        team: "red",
+        lane: "base",
+        kind: "nexus",
+        pos: Vec2 {
+            x: 0.8912760416666666,
+            y: 0.1171875,
+        },
+    },
 ];
 
 const MINION_FIRST_WAVE_AT: f64 = 30.0;
@@ -1844,7 +2175,12 @@ fn summon_profile(champion_key: &str) -> (&'static str, f64, f64, f64) {
         "annie" => ("tibbers", 0.50, 0.52, 45.0),
         "ivern" => ("daisy", 0.58, 0.44, 60.0),
         "shaco" => ("clone", 0.45, 0.48, 20.0),
-        _ => ("summon", ULTIMATE_SUMMON_HP_RATIO, ULTIMATE_SUMMON_DAMAGE_RATIO, 35.0),
+        _ => (
+            "summon",
+            ULTIMATE_SUMMON_HP_RATIO,
+            ULTIMATE_SUMMON_DAMAGE_RATIO,
+            35.0,
+        ),
     }
 }
 
@@ -1854,120 +2190,510 @@ const LEVEL_XP_THRESHOLDS: [i64; 18] = [
 ];
 
 const TANK_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "sunfire_aegis", cost: 2700, attack_damage: 10.0, max_hp: 350.0 },
-    ItemTemplate { key: "warmogs_armor", cost: 3100, attack_damage: 0.0, max_hp: 1000.0 },
-    ItemTemplate { key: "iceborn_gauntlet", cost: 2900, attack_damage: 18.0, max_hp: 300.0 },
-    ItemTemplate { key: "randuins_omen", cost: 3000, attack_damage: 0.0, max_hp: 350.0 },
-    ItemTemplate { key: "spirit_visage", cost: 2900, attack_damage: 0.0, max_hp: 450.0 },
-    ItemTemplate { key: "plated_steelcaps", cost: 1200, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "sunfire_aegis",
+        cost: 2700,
+        attack_damage: 10.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "warmogs_armor",
+        cost: 3100,
+        attack_damage: 0.0,
+        max_hp: 1000.0,
+    },
+    ItemTemplate {
+        key: "iceborn_gauntlet",
+        cost: 2900,
+        attack_damage: 18.0,
+        max_hp: 300.0,
+    },
+    ItemTemplate {
+        key: "randuins_omen",
+        cost: 3000,
+        attack_damage: 0.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "spirit_visage",
+        cost: 2900,
+        attack_damage: 0.0,
+        max_hp: 450.0,
+    },
+    ItemTemplate {
+        key: "plated_steelcaps",
+        cost: 1200,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const BRUISER_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "sundered_sky", cost: 3100, attack_damage: 40.0, max_hp: 300.0 },
-    ItemTemplate { key: "deaths_dance", cost: 3300, attack_damage: 55.0, max_hp: 0.0 },
-    ItemTemplate { key: "steraks_gage", cost: 3200, attack_damage: 32.0, max_hp: 450.0 },
-    ItemTemplate { key: "titanic_hydra", cost: 3300, attack_damage: 42.0, max_hp: 550.0 },
-    ItemTemplate { key: "maw_of_malmortius", cost: 3100, attack_damage: 50.0, max_hp: 0.0 },
-    ItemTemplate { key: "mercurys_treads", cost: 1250, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "sundered_sky",
+        cost: 3100,
+        attack_damage: 40.0,
+        max_hp: 300.0,
+    },
+    ItemTemplate {
+        key: "deaths_dance",
+        cost: 3300,
+        attack_damage: 55.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "steraks_gage",
+        cost: 3200,
+        attack_damage: 32.0,
+        max_hp: 450.0,
+    },
+    ItemTemplate {
+        key: "titanic_hydra",
+        cost: 3300,
+        attack_damage: 42.0,
+        max_hp: 550.0,
+    },
+    ItemTemplate {
+        key: "maw_of_malmortius",
+        cost: 3100,
+        attack_damage: 50.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "mercurys_treads",
+        cost: 1250,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const COLOSSUS_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "black_cleaver", cost: 3000, attack_damage: 40.0, max_hp: 400.0 },
-    ItemTemplate { key: "steraks_gage", cost: 3200, attack_damage: 32.0, max_hp: 450.0 },
-    ItemTemplate { key: "hullbreaker", cost: 3000, attack_damage: 40.0, max_hp: 500.0 },
-    ItemTemplate { key: "titanic_hydra", cost: 3300, attack_damage: 42.0, max_hp: 550.0 },
-    ItemTemplate { key: "dead_mans_plate", cost: 2900, attack_damage: 10.0, max_hp: 350.0 },
-    ItemTemplate { key: "plated_steelcaps", cost: 1200, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "black_cleaver",
+        cost: 3000,
+        attack_damage: 40.0,
+        max_hp: 400.0,
+    },
+    ItemTemplate {
+        key: "steraks_gage",
+        cost: 3200,
+        attack_damage: 32.0,
+        max_hp: 450.0,
+    },
+    ItemTemplate {
+        key: "hullbreaker",
+        cost: 3000,
+        attack_damage: 40.0,
+        max_hp: 500.0,
+    },
+    ItemTemplate {
+        key: "titanic_hydra",
+        cost: 3300,
+        attack_damage: 42.0,
+        max_hp: 550.0,
+    },
+    ItemTemplate {
+        key: "dead_mans_plate",
+        cost: 2900,
+        attack_damage: 10.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "plated_steelcaps",
+        cost: 1200,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const ASSASSIN_AD_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "voltaic_cyclosword", cost: 2900, attack_damage: 55.0, max_hp: 0.0 },
-    ItemTemplate { key: "opportunity", cost: 2700, attack_damage: 55.0, max_hp: 0.0 },
-    ItemTemplate { key: "immortal_shieldbow", cost: 3000, attack_damage: 50.0, max_hp: 0.0 },
-    ItemTemplate { key: "seryldas_grudge", cost: 3200, attack_damage: 45.0, max_hp: 0.0 },
-    ItemTemplate { key: "profane_hydra", cost: 3300, attack_damage: 60.0, max_hp: 0.0 },
-    ItemTemplate { key: "boots_of_swiftness", cost: 1000, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "voltaic_cyclosword",
+        cost: 2900,
+        attack_damage: 55.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "opportunity",
+        cost: 2700,
+        attack_damage: 55.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "immortal_shieldbow",
+        cost: 3000,
+        attack_damage: 50.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "seryldas_grudge",
+        cost: 3200,
+        attack_damage: 45.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "profane_hydra",
+        cost: 3300,
+        attack_damage: 60.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "boots_of_swiftness",
+        cost: 1000,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const ASSASSIN_AP_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "stormsurge", cost: 2900, attack_damage: 36.0, max_hp: 0.0 },
-    ItemTemplate { key: "lich_bane", cost: 3200, attack_damage: 32.0, max_hp: 0.0 },
-    ItemTemplate { key: "shadowflame", cost: 3200, attack_damage: 35.0, max_hp: 0.0 },
-    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
-    ItemTemplate { key: "rabadons_deathcap", cost: 3600, attack_damage: 45.0, max_hp: 0.0 },
-    ItemTemplate { key: "sorcerers_shoes", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "stormsurge",
+        cost: 2900,
+        attack_damage: 36.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "lich_bane",
+        cost: 3200,
+        attack_damage: 32.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "shadowflame",
+        cost: 3200,
+        attack_damage: 35.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "zhonyas_hourglass",
+        cost: 3250,
+        attack_damage: 25.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "rabadons_deathcap",
+        cost: 3600,
+        attack_damage: 45.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "sorcerers_shoes",
+        cost: 1100,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const CONTROL_MAGE_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "ludens_companion", cost: 2900, attack_damage: 35.0, max_hp: 0.0 },
-    ItemTemplate { key: "void_staff", cost: 3000, attack_damage: 30.0, max_hp: 0.0 },
-    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
-    ItemTemplate { key: "seraphs_embrace", cost: 3000, attack_damage: 28.0, max_hp: 0.0 },
-    ItemTemplate { key: "rabadons_deathcap", cost: 3600, attack_damage: 45.0, max_hp: 0.0 },
-    ItemTemplate { key: "sorcerers_shoes", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "ludens_companion",
+        cost: 2900,
+        attack_damage: 35.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "void_staff",
+        cost: 3000,
+        attack_damage: 30.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "zhonyas_hourglass",
+        cost: 3250,
+        attack_damage: 25.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "seraphs_embrace",
+        cost: 3000,
+        attack_damage: 28.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "rabadons_deathcap",
+        cost: 3600,
+        attack_damage: 45.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "sorcerers_shoes",
+        cost: 1100,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const BATTLE_MAGE_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "liandrys_torment", cost: 3000, attack_damage: 33.0, max_hp: 300.0 },
-    ItemTemplate { key: "rylais_crystal_scepter", cost: 2600, attack_damage: 25.0, max_hp: 400.0 },
-    ItemTemplate { key: "seraphs_embrace", cost: 3000, attack_damage: 28.0, max_hp: 0.0 },
-    ItemTemplate { key: "cosmic_drive", cost: 3000, attack_damage: 30.0, max_hp: 350.0 },
-    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
-    ItemTemplate { key: "mercurys_treads", cost: 1250, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "liandrys_torment",
+        cost: 3000,
+        attack_damage: 33.0,
+        max_hp: 300.0,
+    },
+    ItemTemplate {
+        key: "rylais_crystal_scepter",
+        cost: 2600,
+        attack_damage: 25.0,
+        max_hp: 400.0,
+    },
+    ItemTemplate {
+        key: "seraphs_embrace",
+        cost: 3000,
+        attack_damage: 28.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "cosmic_drive",
+        cost: 3000,
+        attack_damage: 30.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "zhonyas_hourglass",
+        cost: 3250,
+        attack_damage: 25.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "mercurys_treads",
+        cost: 1250,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const ADC_CRIT_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "bloodthirster", cost: 3400, attack_damage: 70.0, max_hp: 0.0 },
-    ItemTemplate { key: "infinity_edge", cost: 3400, attack_damage: 65.0, max_hp: 0.0 },
-    ItemTemplate { key: "mortal_reminder", cost: 3200, attack_damage: 40.0, max_hp: 0.0 },
-    ItemTemplate { key: "rapid_firecannon", cost: 2600, attack_damage: 24.0, max_hp: 0.0 },
-    ItemTemplate { key: "phantom_dancer", cost: 2600, attack_damage: 24.0, max_hp: 0.0 },
-    ItemTemplate { key: "berserkers_greaves", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "bloodthirster",
+        cost: 3400,
+        attack_damage: 70.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "infinity_edge",
+        cost: 3400,
+        attack_damage: 65.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "mortal_reminder",
+        cost: 3200,
+        attack_damage: 40.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "rapid_firecannon",
+        cost: 2600,
+        attack_damage: 24.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "phantom_dancer",
+        cost: 2600,
+        attack_damage: 24.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "berserkers_greaves",
+        cost: 1100,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const ADC_ATTACK_SPEED_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "blade_of_the_ruined_king", cost: 3200, attack_damage: 42.0, max_hp: 0.0 },
-    ItemTemplate { key: "wits_end", cost: 2900, attack_damage: 34.0, max_hp: 0.0 },
-    ItemTemplate { key: "runaans_hurricane", cost: 2650, attack_damage: 24.0, max_hp: 0.0 },
-    ItemTemplate { key: "guinsoos_rageblade", cost: 3000, attack_damage: 36.0, max_hp: 0.0 },
-    ItemTemplate { key: "terminus", cost: 3000, attack_damage: 35.0, max_hp: 0.0 },
-    ItemTemplate { key: "berserkers_greaves", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "blade_of_the_ruined_king",
+        cost: 3200,
+        attack_damage: 42.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "wits_end",
+        cost: 2900,
+        attack_damage: 34.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "runaans_hurricane",
+        cost: 2650,
+        attack_damage: 24.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "guinsoos_rageblade",
+        cost: 3000,
+        attack_damage: 36.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "terminus",
+        cost: 3000,
+        attack_damage: 35.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "berserkers_greaves",
+        cost: 1100,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const LETHALITY_MARKSMAN_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "the_collector", cost: 3100, attack_damage: 55.0, max_hp: 0.0 },
-    ItemTemplate { key: "opportunity", cost: 2700, attack_damage: 55.0, max_hp: 0.0 },
-    ItemTemplate { key: "seryldas_grudge", cost: 3200, attack_damage: 45.0, max_hp: 0.0 },
-    ItemTemplate { key: "edge_of_night", cost: 3000, attack_damage: 50.0, max_hp: 0.0 },
-    ItemTemplate { key: "profane_hydra", cost: 3300, attack_damage: 60.0, max_hp: 0.0 },
-    ItemTemplate { key: "ionian_boots_of_lucidity", cost: 900, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "the_collector",
+        cost: 3100,
+        attack_damage: 55.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "opportunity",
+        cost: 2700,
+        attack_damage: 55.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "seryldas_grudge",
+        cost: 3200,
+        attack_damage: 45.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "edge_of_night",
+        cost: 3000,
+        attack_damage: 50.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "profane_hydra",
+        cost: 3300,
+        attack_damage: 60.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "ionian_boots_of_lucidity",
+        cost: 900,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const SUPPORT_ENGAGE_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "trailblazer", cost: 2400, attack_damage: 8.0, max_hp: 350.0 },
-    ItemTemplate { key: "zekes_convergence", cost: 2200, attack_damage: 8.0, max_hp: 250.0 },
-    ItemTemplate { key: "knights_vow", cost: 2300, attack_damage: 0.0, max_hp: 350.0 },
-    ItemTemplate { key: "locket_of_the_iron_solari", cost: 2200, attack_damage: 0.0, max_hp: 250.0 },
-    ItemTemplate { key: "thornmail", cost: 2450, attack_damage: 0.0, max_hp: 350.0 },
-    ItemTemplate { key: "mobility_boots", cost: 1000, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "trailblazer",
+        cost: 2400,
+        attack_damage: 8.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "zekes_convergence",
+        cost: 2200,
+        attack_damage: 8.0,
+        max_hp: 250.0,
+    },
+    ItemTemplate {
+        key: "knights_vow",
+        cost: 2300,
+        attack_damage: 0.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "locket_of_the_iron_solari",
+        cost: 2200,
+        attack_damage: 0.0,
+        max_hp: 250.0,
+    },
+    ItemTemplate {
+        key: "thornmail",
+        cost: 2450,
+        attack_damage: 0.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "mobility_boots",
+        cost: 1000,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const SUPPORT_ENCHANTER_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "shurelyas_battlesong", cost: 2200, attack_damage: 10.0, max_hp: 300.0 },
-    ItemTemplate { key: "ardent_censer", cost: 2300, attack_damage: 18.0, max_hp: 0.0 },
-    ItemTemplate { key: "moonstone_renewer", cost: 2200, attack_damage: 14.0, max_hp: 250.0 },
-    ItemTemplate { key: "redemption", cost: 2300, attack_damage: 12.0, max_hp: 250.0 },
-    ItemTemplate { key: "staff_of_flowing_water", cost: 2250, attack_damage: 18.0, max_hp: 0.0 },
-    ItemTemplate { key: "ionian_boots_of_lucidity", cost: 900, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "shurelyas_battlesong",
+        cost: 2200,
+        attack_damage: 10.0,
+        max_hp: 300.0,
+    },
+    ItemTemplate {
+        key: "ardent_censer",
+        cost: 2300,
+        attack_damage: 18.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "moonstone_renewer",
+        cost: 2200,
+        attack_damage: 14.0,
+        max_hp: 250.0,
+    },
+    ItemTemplate {
+        key: "redemption",
+        cost: 2300,
+        attack_damage: 12.0,
+        max_hp: 250.0,
+    },
+    ItemTemplate {
+        key: "staff_of_flowing_water",
+        cost: 2250,
+        attack_damage: 18.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "ionian_boots_of_lucidity",
+        cost: 900,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const SUPPORT_DAMAGE_ITEM_PLAN: [ItemTemplate; 6] = [
-    ItemTemplate { key: "rylais_crystal_scepter", cost: 2600, attack_damage: 25.0, max_hp: 400.0 },
-    ItemTemplate { key: "liandrys_torment", cost: 3000, attack_damage: 33.0, max_hp: 300.0 },
-    ItemTemplate { key: "morellonomicon", cost: 2950, attack_damage: 28.0, max_hp: 350.0 },
-    ItemTemplate { key: "zhonyas_hourglass", cost: 3250, attack_damage: 25.0, max_hp: 0.0 },
-    ItemTemplate { key: "cryptbloom", cost: 2850, attack_damage: 27.0, max_hp: 0.0 },
-    ItemTemplate { key: "sorcerers_shoes", cost: 1100, attack_damage: 0.0, max_hp: 0.0 },
+    ItemTemplate {
+        key: "rylais_crystal_scepter",
+        cost: 2600,
+        attack_damage: 25.0,
+        max_hp: 400.0,
+    },
+    ItemTemplate {
+        key: "liandrys_torment",
+        cost: 3000,
+        attack_damage: 33.0,
+        max_hp: 300.0,
+    },
+    ItemTemplate {
+        key: "morellonomicon",
+        cost: 2950,
+        attack_damage: 28.0,
+        max_hp: 350.0,
+    },
+    ItemTemplate {
+        key: "zhonyas_hourglass",
+        cost: 3250,
+        attack_damage: 25.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "cryptbloom",
+        cost: 2850,
+        attack_damage: 27.0,
+        max_hp: 0.0,
+    },
+    ItemTemplate {
+        key: "sorcerers_shoes",
+        cost: 1100,
+        attack_damage: 0.0,
+        max_hp: 0.0,
+    },
 ];
 
 const LANE_PATH_TOP_BLUE: [Vec2; 11] = [
@@ -2125,7 +2851,11 @@ fn seed_team(
         let max_hp = champion_max_hp_from_base(profile.map(|p| p.base_hp).unwrap_or(560.0));
         let attack_range = profile
             .map(|p| p.attack_range)
-            .unwrap_or(if attack_type == "ranged" { 0.056 } else { 0.049 });
+            .unwrap_or(if attack_type == "ranged" {
+                0.056
+            } else {
+                0.049
+            });
         let role_impact = extract_runtime_role_impact(snapshot, side_key, &player.id);
         let role_modifier = role_impact
             .as_ref()
@@ -2162,11 +2892,16 @@ fn seed_team(
         let discipline_delta = stat_delta(discipline);
         let champion_pool_delta = stat_delta(champion_pool);
 
-        let max_hp = (max_hp * (1.0 + role_modifier * 0.012 + competitive_delta * 0.04 + teamfighting_delta * 0.02))
+        let max_hp = (max_hp
+            * (1.0 + role_modifier * 0.012 + competitive_delta * 0.04 + teamfighting_delta * 0.02))
             .clamp(120.0, 340.0);
         let attack_damage = (14.0 + rng.next_f64() * 5.0)
             * (1.0 + role_modifier * 0.016 + gameplay_delta * 0.06 + mechanics_delta * 0.03);
-        let move_speed = (0.043 + rng.next_f64() * 0.008 + (role_modifier * 0.00035) + iq_delta * 0.001 + laning_delta * 0.0006)
+        let move_speed = (0.043
+            + rng.next_f64() * 0.008
+            + (role_modifier * 0.00035)
+            + iq_delta * 0.001
+            + laning_delta * 0.0006)
             .clamp(0.036, 0.062);
 
         let spawn_pos = Vec2 {
@@ -2177,14 +2912,26 @@ fn seed_team(
         let jgl_start = if role_seed.role == "JGL" {
             if normalized_team(team) == "blue" {
                 if team_tactics.jungle_pathing == "BotToTop" {
-                    Vec2 { x: 0.5266927083333334, y: 0.7421875 }
+                    Vec2 {
+                        x: 0.5266927083333334,
+                        y: 0.7421875,
+                    }
                 } else {
-                    Vec2 { x: 0.24934895833333334, y: 0.4622395833333333 }
+                    Vec2 {
+                        x: 0.24934895833333334,
+                        y: 0.4622395833333333,
+                    }
                 }
             } else if team_tactics.jungle_pathing == "BotToTop" {
-                Vec2 { x: 0.7545572916666666, y: 0.5403645833333334 }
+                Vec2 {
+                    x: 0.7545572916666666,
+                    y: 0.5403645833333334,
+                }
             } else {
-                Vec2 { x: 0.478515625, y: 0.26171875 }
+                Vec2 {
+                    x: 0.478515625,
+                    y: 0.26171875,
+                }
             }
         } else {
             spawn_pos
@@ -2195,10 +2942,16 @@ fn seed_team(
         } else {
             Vec::new()
         };
-        let initial_state = if role_seed.role == "JGL" { "objective" } else { "lane" };
-        let consistency_factor = (1.0 - consistency_delta * 0.26 - discipline_delta * 0.12 - champion_pool_delta * 0.08)
-            .clamp(0.65, 1.35);
-        let decision_jitter = (((role_variance - 1.0).max(0.0) * 0.35) + rng.next_f64() * 0.08) * consistency_factor;
+        let initial_state = if role_seed.role == "JGL" {
+            "objective"
+        } else {
+            "lane"
+        };
+        let consistency_factor =
+            (1.0 - consistency_delta * 0.26 - discipline_delta * 0.12 - champion_pool_delta * 0.08)
+                .clamp(0.65, 1.35);
+        let decision_jitter =
+            (((role_variance - 1.0).max(0.0) * 0.35) + rng.next_f64() * 0.08) * consistency_factor;
         let initial_next_decision_at = if role_seed.role == "JGL" {
             6.0 + decision_jitter
         } else {
@@ -2295,8 +3048,7 @@ fn default_summoner_spells_for_role(role: &str) -> Vec<Value> {
         "ADC" => ["Heal", "Flash"],
         _ => ["Ignite", "Flash"],
     };
-    keys
-        .iter()
+    keys.iter()
         .map(|key| json!({ "key": key, "cdUntil": 0.0 }))
         .collect()
 }
@@ -2398,25 +3150,291 @@ fn build_neutral_timers_state() -> Value {
 
 fn neutral_timer_templates() -> Vec<NeutralTimerTemplate> {
     vec![
-        NeutralTimerTemplate { key: "blue-buff-blue", label: "Blue Blue Buff", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 470.0, respawn_delay_sec: Some(300.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.24934895833333334, y: 0.4622395833333333 } },
-        NeutralTimerTemplate { key: "blue-buff-red", label: "Red Blue Buff", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 470.0, respawn_delay_sec: Some(300.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.478515625, y: 0.26171875 } },
-        NeutralTimerTemplate { key: "red-buff-blue", label: "Blue Red Buff", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 500.0, respawn_delay_sec: Some(300.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.5266927083333334, y: 0.7421875 } },
-        NeutralTimerTemplate { key: "red-buff-red", label: "Red Red Buff", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 500.0, respawn_delay_sec: Some(300.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.7545572916666666, y: 0.5403645833333334 } },
-        NeutralTimerTemplate { key: "wolves-blue", label: "Blue Wolves", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 380.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.2584635416666667, y: 0.56640625 } },
-        NeutralTimerTemplate { key: "wolves-red", label: "Red Wolves", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 380.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.525390625, y: 0.3528645833333333 } },
-        NeutralTimerTemplate { key: "raptors-blue", label: "Blue Raptors", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 390.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.4759114583333333, y: 0.6432291666666666 } },
-        NeutralTimerTemplate { key: "raptors-red", label: "Red Raptors", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 390.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.748046875, y: 0.4361979166666667 } },
-        NeutralTimerTemplate { key: "gromp-blue", label: "Blue Gromp", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 520.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.14908854166666666, y: 0.43359375 } },
-        NeutralTimerTemplate { key: "gromp-red", label: "Red Gromp", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 520.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.4381510416666667, y: 0.16536458333333334 } },
-        NeutralTimerTemplate { key: "krugs-blue", label: "Blue Krugs", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 560.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.568359375, y: 0.828125 } },
-        NeutralTimerTemplate { key: "krugs-red", label: "Red Krugs", first_spawn_at: JUNGLE_INITIAL_SPAWN_AT, max_hp: 560.0, respawn_delay_sec: Some(135.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.8483072916666666, y: 0.56640625 } },
-        NeutralTimerTemplate { key: "scuttle-top", label: "Scuttle Top", first_spawn_at: SCUTTLE_INITIAL_SPAWN_AT, max_hp: 560.0, respawn_delay_sec: Some(150.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.2845052083333333, y: 0.34765625 } },
-        NeutralTimerTemplate { key: "scuttle-bot", label: "Scuttle Bot", first_spawn_at: SCUTTLE_INITIAL_SPAWN_AT, max_hp: 560.0, respawn_delay_sec: Some(150.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.6998697916666666, y: 0.6419270833333334 } },
-        NeutralTimerTemplate { key: "dragon", label: "Dragon", first_spawn_at: 5.0 * 60.0, max_hp: 3600.0, respawn_delay_sec: Some(5.0 * 60.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.673828125, y: 0.703125 } },
-        NeutralTimerTemplate { key: "voidgrubs", label: "Voidgrubs", first_spawn_at: 8.0 * 60.0, max_hp: 2800.0, respawn_delay_sec: None, one_shot: true, window_close_at: Some(VOIDGRUBS_SOFT_CLOSE_AT), combat_grace_until: Some(VOIDGRUBS_HARD_CLOSE_AT), unlocked: true, pos: Vec2 { x: 0.3274739583333333, y: 0.2981770833333333 } },
-        NeutralTimerTemplate { key: "herald", label: "Rift Herald", first_spawn_at: 15.0 * 60.0, max_hp: 5500.0, respawn_delay_sec: None, one_shot: true, window_close_at: Some(HERALD_SOFT_CLOSE_AT), combat_grace_until: Some(HERALD_HARD_CLOSE_AT), unlocked: true, pos: Vec2 { x: 0.3274739583333333, y: 0.2981770833333333 } },
-        NeutralTimerTemplate { key: "baron", label: "Baron", first_spawn_at: 20.0 * 60.0, max_hp: 9000.0, respawn_delay_sec: Some(6.0 * 60.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: true, pos: Vec2 { x: 0.3274739583333333, y: 0.2981770833333333 } },
-        NeutralTimerTemplate { key: "elder", label: "Elder Dragon", first_spawn_at: 0.0, max_hp: 7200.0, respawn_delay_sec: Some(6.0 * 60.0), one_shot: false, window_close_at: None, combat_grace_until: None, unlocked: false, pos: Vec2 { x: 0.673828125, y: 0.703125 } },
+        NeutralTimerTemplate {
+            key: "blue-buff-blue",
+            label: "Blue Blue Buff",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 470.0,
+            respawn_delay_sec: Some(300.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.24934895833333334,
+                y: 0.4622395833333333,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "blue-buff-red",
+            label: "Red Blue Buff",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 470.0,
+            respawn_delay_sec: Some(300.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.478515625,
+                y: 0.26171875,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "red-buff-blue",
+            label: "Blue Red Buff",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 500.0,
+            respawn_delay_sec: Some(300.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.5266927083333334,
+                y: 0.7421875,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "red-buff-red",
+            label: "Red Red Buff",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 500.0,
+            respawn_delay_sec: Some(300.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.7545572916666666,
+                y: 0.5403645833333334,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "wolves-blue",
+            label: "Blue Wolves",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 380.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.2584635416666667,
+                y: 0.56640625,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "wolves-red",
+            label: "Red Wolves",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 380.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.525390625,
+                y: 0.3528645833333333,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "raptors-blue",
+            label: "Blue Raptors",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 390.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.4759114583333333,
+                y: 0.6432291666666666,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "raptors-red",
+            label: "Red Raptors",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 390.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.748046875,
+                y: 0.4361979166666667,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "gromp-blue",
+            label: "Blue Gromp",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 520.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.14908854166666666,
+                y: 0.43359375,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "gromp-red",
+            label: "Red Gromp",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 520.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.4381510416666667,
+                y: 0.16536458333333334,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "krugs-blue",
+            label: "Blue Krugs",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 560.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.568359375,
+                y: 0.828125,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "krugs-red",
+            label: "Red Krugs",
+            first_spawn_at: JUNGLE_INITIAL_SPAWN_AT,
+            max_hp: 560.0,
+            respawn_delay_sec: Some(135.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.8483072916666666,
+                y: 0.56640625,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "scuttle-top",
+            label: "Scuttle Top",
+            first_spawn_at: SCUTTLE_INITIAL_SPAWN_AT,
+            max_hp: 560.0,
+            respawn_delay_sec: Some(150.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.2845052083333333,
+                y: 0.34765625,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "scuttle-bot",
+            label: "Scuttle Bot",
+            first_spawn_at: SCUTTLE_INITIAL_SPAWN_AT,
+            max_hp: 560.0,
+            respawn_delay_sec: Some(150.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.6998697916666666,
+                y: 0.6419270833333334,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "dragon",
+            label: "Dragon",
+            first_spawn_at: 5.0 * 60.0,
+            max_hp: 3600.0,
+            respawn_delay_sec: Some(5.0 * 60.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.673828125,
+                y: 0.703125,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "voidgrubs",
+            label: "Voidgrubs",
+            first_spawn_at: 8.0 * 60.0,
+            max_hp: 2800.0,
+            respawn_delay_sec: None,
+            one_shot: true,
+            window_close_at: Some(VOIDGRUBS_SOFT_CLOSE_AT),
+            combat_grace_until: Some(VOIDGRUBS_HARD_CLOSE_AT),
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.3274739583333333,
+                y: 0.2981770833333333,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "herald",
+            label: "Rift Herald",
+            first_spawn_at: 15.0 * 60.0,
+            max_hp: 5500.0,
+            respawn_delay_sec: None,
+            one_shot: true,
+            window_close_at: Some(HERALD_SOFT_CLOSE_AT),
+            combat_grace_until: Some(HERALD_HARD_CLOSE_AT),
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.3274739583333333,
+                y: 0.2981770833333333,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "baron",
+            label: "Baron",
+            first_spawn_at: 20.0 * 60.0,
+            max_hp: 9000.0,
+            respawn_delay_sec: Some(6.0 * 60.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: true,
+            pos: Vec2 {
+                x: 0.3274739583333333,
+                y: 0.2981770833333333,
+            },
+        },
+        NeutralTimerTemplate {
+            key: "elder",
+            label: "Elder Dragon",
+            first_spawn_at: 0.0,
+            max_hp: 7200.0,
+            respawn_delay_sec: Some(6.0 * 60.0),
+            one_shot: false,
+            window_close_at: None,
+            combat_grace_until: None,
+            unlocked: false,
+            pos: Vec2 {
+                x: 0.673828125,
+                y: 0.703125,
+            },
+        },
     ]
 }
 
@@ -2470,15 +3488,60 @@ fn avg4(a: f64, b: f64, c: f64, d: f64) -> f64 {
 }
 
 fn player_visible_stats(player: &SnapshotPlayer) -> (f64, f64, f64, f64, f64, f64, f64, f64, f64) {
-    let mechanics = avg4(player.dribbling, player.agility, player.pace, player.composure);
-    let laning = avg4(player.shooting, player.positioning, player.dribbling, player.composure);
-    let teamfighting = avg4(player.teamwork, player.stamina, player.decisions, player.composure);
-    let macro_stat = avg4(player.vision, player.decisions, player.positioning, player.passing);
-    let consistency = avg4(player.decisions, player.vision, player.composure, player.teamwork);
-    let shotcalling = avg4(player.leadership, player.teamwork, player.vision, player.decisions);
-    let champion_pool = avg4(player.dribbling, player.agility, player.vision, player.passing);
-    let discipline = avg4(player.decisions, player.composure, player.teamwork, player.leadership);
-    let mental_resilience = avg4(player.composure, player.teamwork, player.leadership, player.stamina);
+    let mechanics = avg4(
+        player.dribbling,
+        player.agility,
+        player.pace,
+        player.composure,
+    );
+    let laning = avg4(
+        player.shooting,
+        player.positioning,
+        player.dribbling,
+        player.composure,
+    );
+    let teamfighting = avg4(
+        player.teamwork,
+        player.stamina,
+        player.decisions,
+        player.composure,
+    );
+    let macro_stat = avg4(
+        player.vision,
+        player.decisions,
+        player.positioning,
+        player.passing,
+    );
+    let consistency = avg4(
+        player.decisions,
+        player.vision,
+        player.composure,
+        player.teamwork,
+    );
+    let shotcalling = avg4(
+        player.leadership,
+        player.teamwork,
+        player.vision,
+        player.decisions,
+    );
+    let champion_pool = avg4(
+        player.dribbling,
+        player.agility,
+        player.vision,
+        player.passing,
+    );
+    let discipline = avg4(
+        player.decisions,
+        player.composure,
+        player.teamwork,
+        player.leadership,
+    );
+    let mental_resilience = avg4(
+        player.composure,
+        player.teamwork,
+        player.leadership,
+        player.stamina,
+    );
     (
         mechanics,
         laning,
@@ -2511,7 +3574,11 @@ fn champion_structure_focus_multiplier(champion: &ChampionRuntime) -> f64 {
     (1.0 + iq_delta * 0.08).clamp(0.88, 1.14)
 }
 
-fn extract_runtime_team_tactics(snapshot: &Value, side_key: &str, team_key: &str) -> RuntimeTeamTactics {
+fn extract_runtime_team_tactics(
+    snapshot: &Value,
+    side_key: &str,
+    team_key: &str,
+) -> RuntimeTeamTactics {
     let from_root = snapshot
         .get("lol_tactics")
         .and_then(Value::as_object)
@@ -2535,7 +3602,11 @@ fn build_team_tactics_state(snapshot: &Value) -> Value {
     json!({ "blue": blue, "red": red })
 }
 
-fn extract_runtime_role_impact(snapshot: &Value, side_key: &str, player_id: &str) -> Option<RuntimeRoleImpact> {
+fn extract_runtime_role_impact(
+    snapshot: &Value,
+    side_key: &str,
+    player_id: &str,
+) -> Option<RuntimeRoleImpact> {
     snapshot
         .get("lol_role_impact_by_player")
         .and_then(Value::as_object)
@@ -2615,8 +3686,13 @@ fn set_current_dragon_kind(neutral_timers: &mut NeutralTimersRuntime, kind: &str
 }
 
 fn choose_different_dragon_kind(base_kind: &str, seed: i64) -> &'static str {
-    const KINDS: [&str; 6] = ["infernal", "ocean", "mountain", "cloud", "hextech", "chemtech"];
-    let mut options: Vec<&str> = KINDS.into_iter().filter(|kind| *kind != base_kind).collect();
+    const KINDS: [&str; 6] = [
+        "infernal", "ocean", "mountain", "cloud", "hextech", "chemtech",
+    ];
+    let mut options: Vec<&str> = KINDS
+        .into_iter()
+        .filter(|kind| *kind != base_kind)
+        .collect();
     if options.is_empty() {
         return "infernal";
     }
@@ -2625,7 +3701,9 @@ fn choose_different_dragon_kind(base_kind: &str, seed: i64) -> &'static str {
 }
 
 fn choose_dragon_kind_excluding(excluded: &[&str], seed: i64) -> &'static str {
-    const KINDS: [&str; 6] = ["infernal", "ocean", "mountain", "cloud", "hextech", "chemtech"];
+    const KINDS: [&str; 6] = [
+        "infernal", "ocean", "mountain", "cloud", "hextech", "chemtech",
+    ];
     let mut options: Vec<&str> = KINDS
         .into_iter()
         .filter(|kind| !excluded.iter().any(|excluded_kind| excluded_kind == kind))
@@ -2641,10 +3719,9 @@ fn ensure_dragon_cycle_defaults(runtime: &RuntimeState, neutral_timers: &mut Neu
     if neutral_timers.extra.get("dragonCurrentKind").is_some() {
         return;
     }
-    let seed = runtime
-        .champions
-        .iter()
-        .fold(0_i64, |acc, champion| acc + champion.id.bytes().fold(0_i64, |s, b| s + b as i64));
+    let seed = runtime.champions.iter().fold(0_i64, |acc, champion| {
+        acc + champion.id.bytes().fold(0_i64, |s, b| s + b as i64)
+    });
     let first = choose_different_dragon_kind("", seed);
     set_current_dragon_kind(neutral_timers, first);
     neutral_timers
@@ -2717,7 +3794,11 @@ fn normalized_lane(lane: &str) -> &'static str {
 }
 
 fn normalized_team(team: &str) -> &'static str {
-    if team == "red" { "red" } else { "blue" }
+    if team == "red" {
+        "red"
+    } else {
+        "blue"
+    }
 }
 
 fn lane_path_blue(lane: &str) -> &'static [Vec2] {
@@ -2863,7 +3944,8 @@ impl NavGrid {
         let ay = self.to_cell(a.y);
         let bx = self.to_cell(b.x);
         let by = self.to_cell(b.y);
-        let cell_distance = ((bx as f64 - ax as f64).powi(2) + (by as f64 - ay as f64).powi(2)).sqrt();
+        let cell_distance =
+            ((bx as f64 - ax as f64).powi(2) + (by as f64 - ay as f64).powi(2)).sqrt();
         let steps = (cell_distance * 2.0).ceil().max(6.0) as usize;
         for i in 0..=steps {
             let t = i as f64 / steps as f64;
@@ -2942,7 +4024,11 @@ impl NavGrid {
                 let f_b = g_score[*b] + heuristic(*b);
                 f_a.partial_cmp(&f_b)
                     .unwrap_or(Ordering::Equal)
-                    .then_with(|| heuristic(*a).partial_cmp(&heuristic(*b)).unwrap_or(Ordering::Equal))
+                    .then_with(|| {
+                        heuristic(*a)
+                            .partial_cmp(&heuristic(*b))
+                            .unwrap_or(Ordering::Equal)
+                    })
                     .then_with(|| a.cmp(b))
             });
 
@@ -3059,7 +4145,11 @@ fn current_champion_path_target(champion: &ChampionRuntime) -> Option<Vec2> {
         .or_else(|| champion.target_path.last().copied())
 }
 
-fn set_champion_direct_path_hysteresis(champion: &mut ChampionRuntime, target: Vec2, min_target_delta: f64) {
+fn set_champion_direct_path_hysteresis(
+    champion: &mut ChampionRuntime,
+    target: Vec2,
+    min_target_delta: f64,
+) {
     if let Some(current_target) = current_champion_path_target(champion) {
         if dist(current_target, target) <= min_target_delta {
             return;
@@ -3137,13 +4227,20 @@ fn pick_jungle_farm_fallback_pos(
     first_alive_fallback
 }
 
-fn jgl_disengage_fallback_pos(runtime: &RuntimeState, champion: &ChampionRuntime, threat_pos: Vec2) -> Vec2 {
+fn jgl_disengage_fallback_pos(
+    runtime: &RuntimeState,
+    champion: &ChampionRuntime,
+    threat_pos: Vec2,
+) -> Vec2 {
     let neutral_timers = decode_neutral_timers_state(&runtime.neutral_timers)
         .unwrap_or_else(|| neutral_timers_default_runtime_state());
     let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &champion.team);
-    if let Some(camp_pos) =
-        pick_jungle_farm_fallback_pos(champion, &neutral_timers, &team_tactics.jungle_pathing, Some(threat_pos))
-    {
+    if let Some(camp_pos) = pick_jungle_farm_fallback_pos(
+        champion,
+        &neutral_timers,
+        &team_tactics.jungle_pathing,
+        Some(threat_pos),
+    ) {
         return camp_pos;
     }
     recall_fallback_toward_base(champion, None)
@@ -3162,7 +4259,11 @@ fn closest_lane_path_index(pos: Vec2, path: &[Vec2]) -> usize {
         .unwrap_or(0)
 }
 
-fn lane_fallback_pos_from_tower(champion: &ChampionRuntime, tower_pos: Vec2, toward_base: bool) -> Vec2 {
+fn lane_fallback_pos_from_tower(
+    champion: &ChampionRuntime,
+    tower_pos: Vec2,
+    toward_base: bool,
+) -> Vec2 {
     let lane_path = lane_path_for(&champion.team, &champion.lane);
     let tower_idx = closest_lane_path_index(tower_pos, &lane_path);
     let lane_target = if toward_base {
@@ -3479,7 +4580,11 @@ fn lane_pressure_at(
     }
 }
 
-fn lane_minion_context_distance(champion: &ChampionRuntime, pos: Vec2, minions: &[MinionRuntime]) -> f64 {
+fn lane_minion_context_distance(
+    champion: &ChampionRuntime,
+    pos: Vec2,
+    minions: &[MinionRuntime],
+) -> f64 {
     minions
         .iter()
         .filter(|m| m.alive && normalized_lane(&m.lane) == normalized_lane(&champion.lane))
@@ -3505,7 +4610,13 @@ fn in_lane_trade_context(
 
     let lane_anchor = lane_anchor_pos(champion, minions, structures);
     let wave_front = lane_wave_front_pos(champion, minions, structures);
-    let _local_pressure = lane_pressure_at(champion, pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let _local_pressure = lane_pressure_at(
+        champion,
+        pos,
+        champions,
+        minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
 
     let anchor_budget = profile.chase_leash * if for_chase { 1.05 } else { 0.92 };
     let wave_budget = profile.chase_leash * if for_chase { 1.15 } else { 1.0 };
@@ -3602,7 +4713,13 @@ fn should_force_laner_disengage(
         return true;
     }
 
-    let pressure = lane_pressure_at(champion, target_pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let pressure = lane_pressure_at(
+        champion,
+        target_pos,
+        champions,
+        minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
     if pressure.enemy_score > pressure.ally_score + profile.outnumber_tolerance {
         return true;
     }
@@ -3749,7 +4866,11 @@ fn trade_confidence_score(features: TradeConfidenceFeatures) -> f64 {
         (features.ally_minions_local as f64 - features.enemy_minions_local as f64 + 5.0) / 10.0,
     );
     let enemy_tower_distance_norm = clamp_ratio_01(features.nearest_enemy_tower_distance / 0.18);
-    let enemy_overextended = if features.enemy_overextended { 1.0 } else { 0.0 };
+    let enemy_overextended = if features.enemy_overextended {
+        1.0
+    } else {
+        0.0
+    };
     let first_wave_window = if features.first_wave_window { 1.0 } else { 0.0 };
 
     let logit = TRADE_SCORE_WEIGHT_BIAS
@@ -3796,8 +4917,15 @@ fn trade_confidence_features(
         enemy.hp / enemy.max_hp
     };
 
-    let pressure = lane_pressure_at(champion, enemy.pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
-    let nearest_enemy_tower_distance = nearest_enemy_lane_tower_distance(champion, enemy.pos, structures);
+    let pressure = lane_pressure_at(
+        champion,
+        enemy.pos,
+        champions,
+        minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
+    let nearest_enemy_tower_distance =
+        nearest_enemy_lane_tower_distance(champion, enemy.pos, structures);
 
     TradeConfidenceFeatures {
         self_hp_ratio,
@@ -3836,8 +4964,16 @@ fn maybe_log_hybrid_trade_flip(
             "[ai-hybrid] {} {} flip: {} -> {} (score={:.2})",
             champion.name,
             decision_kind,
-            if rule_decision { "rules-open" } else { "rules-close" },
-            if hybrid_decision { "hybrid-open" } else { "hybrid-close" },
+            if rule_decision {
+                "rules-open"
+            } else {
+                "rules-close"
+            },
+            if hybrid_decision {
+                "hybrid-open"
+            } else {
+                "hybrid-close"
+            },
             confidence
         ),
         "info",
@@ -3851,10 +4987,17 @@ fn capture_trade_decision_candidate(
     eval: TradeDecisionEvaluation,
     intent: &str,
 ) {
-    let pressure = lane_pressure_at(champion, enemy.pos, &runtime.champions, &runtime.minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let pressure = lane_pressure_at(
+        champion,
+        enemy.pos,
+        &runtime.champions,
+        &runtime.minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
     let self_hp_ratio = ratio_or_zero(champion.hp, champion.max_hp);
     let enemy_hp_ratio = ratio_or_zero(enemy.hp, enemy.max_hp);
-    let nearest_enemy_tower_distance = nearest_enemy_lane_tower_distance(champion, enemy.pos, &runtime.structures);
+    let nearest_enemy_tower_distance =
+        nearest_enemy_lane_tower_distance(champion, enemy.pos, &runtime.structures);
     let objective_danger = 1.0 - clamp_ratio_01(nearest_enemy_tower_distance / 0.18);
     let force_disengage_guardrail = should_force_laner_disengage(
         champion,
@@ -3880,33 +5023,35 @@ fn capture_trade_decision_candidate(
         &runtime.structures,
     );
 
-    runtime.telemetry_decisions.push(TelemetryDecisionCandidate {
-        champion_id: champion.id.clone(),
-        enemy_id: enemy.id.clone(),
-        team: champion.team.clone(),
-        role: champion.role.clone(),
-        lane: champion.lane.clone(),
-        ai_mode: runtime.ai_mode,
-        intent: intent.to_string(),
-        decision: eval.decision,
-        rule_decision: eval.rule_decision,
-        confidence: eval.confidence,
-        flipped_by_hybrid: eval.flipped_by_hybrid,
-        hp_ratio: self_hp_ratio,
-        enemy_hp_ratio,
-        ally_champions_local: pressure.ally_champions,
-        enemy_champions_local: pressure.enemy_champions,
-        ally_minions_local: pressure.ally_lane_minions,
-        enemy_minions_local: pressure.enemy_lane_minions,
-        nearest_enemy_tower_distance,
-        enemy_overextended: enemy_overextended_in_lane(champion, enemy),
-        objective_danger,
-        gold: champion.gold,
-        xp: champion.xp,
-        level: champion.level,
-        force_disengage_guardrail,
-        lane_context_guardrail,
-    });
+    runtime
+        .telemetry_decisions
+        .push(TelemetryDecisionCandidate {
+            champion_id: champion.id.clone(),
+            enemy_id: enemy.id.clone(),
+            team: champion.team.clone(),
+            role: champion.role.clone(),
+            lane: champion.lane.clone(),
+            ai_mode: runtime.ai_mode,
+            intent: intent.to_string(),
+            decision: eval.decision,
+            rule_decision: eval.rule_decision,
+            confidence: eval.confidence,
+            flipped_by_hybrid: eval.flipped_by_hybrid,
+            hp_ratio: self_hp_ratio,
+            enemy_hp_ratio,
+            ally_champions_local: pressure.ally_champions,
+            enemy_champions_local: pressure.enemy_champions,
+            ally_minions_local: pressure.ally_lane_minions,
+            enemy_minions_local: pressure.enemy_lane_minions,
+            nearest_enemy_tower_distance,
+            enemy_overextended: enemy_overextended_in_lane(champion, enemy),
+            objective_danger,
+            gold: champion.gold,
+            xp: champion.xp,
+            level: champion.level,
+            force_disengage_guardrail,
+            lane_context_guardrail,
+        });
 }
 
 fn should_commit_all_in_trade(
@@ -3934,7 +5079,13 @@ fn should_commit_all_in_trade(
         return true;
     }
 
-    let pressure = lane_pressure_at(champion, enemy.pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let pressure = lane_pressure_at(
+        champion,
+        enemy.pos,
+        champions,
+        minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
     if pressure.ally_champions > pressure.enemy_champions && self_hp >= 0.32 {
         return true;
     }
@@ -3969,7 +5120,14 @@ fn evaluate_open_trade_window(
             flipped_by_hybrid: false,
         };
     }
-    if !in_lane_trade_context(champion, champion.pos, false, champions, minions, structures) {
+    if !in_lane_trade_context(
+        champion,
+        champion.pos,
+        false,
+        champions,
+        minions,
+        structures,
+    ) {
         return TradeDecisionEvaluation {
             decision: false,
             rule_decision: false,
@@ -3985,7 +5143,14 @@ fn evaluate_open_trade_window(
             flipped_by_hybrid: false,
         };
     }
-    if should_force_laner_disengage(champion, enemy.pos, Some(enemy), champions, minions, structures) {
+    if should_force_laner_disengage(
+        champion,
+        enemy.pos,
+        Some(enemy),
+        champions,
+        minions,
+        structures,
+    ) {
         return TradeDecisionEvaluation {
             decision: false,
             rule_decision: false,
@@ -4017,7 +5182,13 @@ fn evaluate_open_trade_window(
         enemy.hp / enemy.max_hp
     };
 
-    let pressure = lane_pressure_at(champion, enemy.pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let pressure = lane_pressure_at(
+        champion,
+        enemy.pos,
+        champions,
+        minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
     let numbers_advantage = pressure.ally_champions > pressure.enemy_champions;
     if numbers_advantage && hp_ratio + 0.02 >= enemy_hp_ratio && hp_ratio >= 0.32 {
         return TradeDecisionEvaluation {
@@ -4099,8 +5270,8 @@ fn evaluate_open_trade_window(
     let wave_gap = pressure.enemy_lane_minions as i64 - pressure.ally_lane_minions as i64;
     let score_gap = pressure.enemy_score - (pressure.ally_score + 0.05);
     let borderline_reject = !rule_decision && hp_gap <= 0.08 && wave_gap <= 2 && score_gap <= 0.35;
-    let hybrid_decision =
-        rule_decision || (borderline_reject && confidence >= policy.hybrid_open_trade_confidence_high);
+    let hybrid_decision = rule_decision
+        || (borderline_reject && confidence >= policy.hybrid_open_trade_confidence_high);
 
     TradeDecisionEvaluation {
         decision: hybrid_decision,
@@ -4154,7 +5325,14 @@ fn evaluate_disengage_champion_trade(
         };
     }
 
-    if should_force_laner_disengage(champion, enemy.pos, Some(enemy), champions, minions, structures) {
+    if should_force_laner_disengage(
+        champion,
+        enemy.pos,
+        Some(enemy),
+        champions,
+        minions,
+        structures,
+    ) {
         return TradeDecisionEvaluation {
             decision: true,
             rule_decision: true,
@@ -4237,8 +5415,8 @@ fn evaluate_disengage_champion_trade(
     }
 
     let lane_anchor = lane_anchor_pos(champion, minions, structures);
-    let rule_decision =
-        dist(enemy.pos, lane_anchor) > policy.lane_chase_leash_radius && enemy_pressure >= allied_pressure;
+    let rule_decision = dist(enemy.pos, lane_anchor) > policy.lane_chase_leash_radius
+        && enemy_pressure >= allied_pressure;
     if ai_mode != SimulatorAiMode::Hybrid {
         return TradeDecisionEvaluation {
             decision: rule_decision,
@@ -4277,8 +5455,10 @@ fn should_disengage_champion_trade(
     ai_mode: SimulatorAiMode,
     policy: &SimulatorPolicyConfig,
 ) -> bool {
-    evaluate_disengage_champion_trade(champion, enemy, now, champions, minions, structures, ai_mode, policy)
-        .decision
+    evaluate_disengage_champion_trade(
+        champion, enemy, now, champions, minions, structures, ai_mode, policy,
+    )
+    .decision
 }
 
 fn lane_farm_anchor_pos_v2(
@@ -4299,7 +5479,10 @@ fn lane_farm_anchor_pos_v2(
         let approach = lane_role_profile(champion)
             .map(|profile| profile.approach_leash)
             .unwrap_or(0.058);
-        let contest_advance = f64::max(0.014, f64::min(approach * 0.95, dist(lane_anchor, wave_front) * 0.6));
+        let contest_advance = f64::max(
+            0.014,
+            f64::min(approach * 0.95, dist(lane_anchor, wave_front) * 0.6),
+        );
         return Vec2 {
             x: clamp(lane_anchor.x + to_wave.x * contest_advance, 0.01, 0.99),
             y: clamp(lane_anchor.y + to_wave.y * contest_advance, 0.01, 0.99),
@@ -4374,8 +5557,16 @@ fn lane_farm_anchor_pos_v2(
             });
             let front_offset = clamp(champion.attack_range * 0.7, 0.02, 0.034);
             return Vec2 {
-                x: clamp(tower.pos.x + to_wave_from_tower.x * front_offset, 0.01, 0.99),
-                y: clamp(tower.pos.y + to_wave_from_tower.y * front_offset, 0.01, 0.99),
+                x: clamp(
+                    tower.pos.x + to_wave_from_tower.x * front_offset,
+                    0.01,
+                    0.99,
+                ),
+                y: clamp(
+                    tower.pos.y + to_wave_from_tower.y * front_offset,
+                    0.01,
+                    0.99,
+                ),
             };
         }
     }
@@ -4457,7 +5648,9 @@ fn lane_retreat_anchor_pos(
 
     let farm_anchor = lane_farm_anchor_pos_v2(champion, now, champions, minions, structures);
     let emergency = should_allow_emergency_retreat(champion, threat_pos, champions, minions);
-    let Some(tower_idx) = pick_allied_lane_fallback_tower(champion, threat_pos, emergency, structures) else {
+    let Some(tower_idx) =
+        pick_allied_lane_fallback_tower(champion, threat_pos, emergency, structures)
+    else {
         return farm_anchor;
     };
     let tower = &structures[tower_idx];
@@ -4500,15 +5693,24 @@ fn should_allow_emergency_retreat(
         return true;
     }
 
-    let pressure = lane_pressure_at(champion, threat_pos, champions, minions, LANE_LOCAL_PRESSURE_RADIUS);
+    let pressure = lane_pressure_at(
+        champion,
+        threat_pos,
+        champions,
+        minions,
+        LANE_LOCAL_PRESSURE_RADIUS,
+    );
     let strongly_unfavorable = pressure.enemy_score
-        >= pressure.ally_score + profile.outnumber_tolerance + LANE_STRONG_UNFAVORABLE_PRESSURE_DELTA
+        >= pressure.ally_score
+            + profile.outnumber_tolerance
+            + LANE_STRONG_UNFAVORABLE_PRESSURE_DELTA
         || pressure.enemy_champions >= pressure.ally_champions + 1;
     if !strongly_unfavorable {
         return false;
     }
 
-    hp_ratio < LANE_HEALTHY_RETREAT_HP_RATIO || pressure.enemy_champions >= pressure.ally_champions + 2
+    hp_ratio < LANE_HEALTHY_RETREAT_HP_RATIO
+        || pressure.enemy_champions >= pressure.ally_champions + 2
 }
 
 fn pick_allied_lane_fallback_tower(
@@ -4530,7 +5732,9 @@ fn pick_allied_lane_fallback_tower(
         .map(|(idx, tower)| (idx, closest_lane_path_index(tower.pos, &lane_path)))
         .collect();
 
-    towers.sort_by(|(idx_a, path_a), (idx_b, path_b)| path_a.cmp(path_b).then_with(|| idx_a.cmp(idx_b)));
+    towers.sort_by(|(idx_a, path_a), (idx_b, path_b)| {
+        path_a.cmp(path_b).then_with(|| idx_a.cmp(idx_b))
+    });
     if towers.is_empty() {
         return None;
     }
@@ -4539,7 +5743,9 @@ fn pick_allied_lane_fallback_tower(
     let mut selected = towers
         .iter()
         .filter(|(_, path_index)| *path_index <= threat_index + 1)
-        .max_by(|(idx_a, path_a), (idx_b, path_b)| path_a.cmp(path_b).then_with(|| idx_a.cmp(idx_b)))
+        .max_by(|(idx_a, path_a), (idx_b, path_b)| {
+            path_a.cmp(path_b).then_with(|| idx_a.cmp(idx_b))
+        })
         .copied();
 
     if selected.is_none() {
@@ -4563,7 +5769,9 @@ fn pick_allied_lane_fallback_tower(
     }
 
     let mut lane_defense_band = towers.clone();
-    lane_defense_band.sort_by(|(idx_a, path_a), (idx_b, path_b)| path_b.cmp(path_a).then_with(|| idx_a.cmp(idx_b)));
+    lane_defense_band.sort_by(|(idx_a, path_a), (idx_b, path_b)| {
+        path_b.cmp(path_a).then_with(|| idx_a.cmp(idx_b))
+    });
     lane_defense_band.truncate(2);
     let min_safe_band_index = lane_defense_band
         .iter()
@@ -4699,19 +5907,15 @@ fn start_recall(
     champion.recall_anchor = if should_recall_in_place(champion, champions) {
         Some(champion.pos)
     } else {
-        let nearest = nearest_enemy_champion_snapshot(champion, champions, RECALL_SAFE_ENEMY_RADIUS)
-            .or_else(|| nearest_enemy_champion_snapshot(champion, champions, f64::INFINITY));
+        let nearest =
+            nearest_enemy_champion_snapshot(champion, champions, RECALL_SAFE_ENEMY_RADIUS)
+                .or_else(|| nearest_enemy_champion_snapshot(champion, champions, f64::INFINITY));
         if let Some(threat) = nearest {
             if champion.role == "JGL" {
                 Some(recall_fallback_toward_base(champion, Some(threat)))
             } else {
                 Some(lane_retreat_anchor_pos(
-                    champion,
-                    threat.pos,
-                    now,
-                    champions,
-                    minions,
-                    structures,
+                    champion, threat.pos, now, champions, minions, structures,
                 ))
             }
         } else {
@@ -4742,7 +5946,12 @@ fn cancel_recall(champion: &mut ChampionRuntime, now: f64, events: &mut Vec<Runt
     champion.recall_channel_until = 0.0;
 
     if was_channeling {
-        push_event(events, now, &format!("{} recall interrupted", champion.name), "recall");
+        push_event(
+            events,
+            now,
+            &format!("{} recall interrupted", champion.name),
+            "recall",
+        );
     }
 }
 
@@ -4768,7 +5977,12 @@ fn tick_recall(
         champion.target_path.clear();
         champion.target_path_index = 0;
         champion.next_decision_at = now;
-        push_event(events, now, &format!("{} recalled", champion.name), "recall");
+        push_event(
+            events,
+            now,
+            &format!("{} recalled", champion.name),
+            "recall",
+        );
         return false;
     }
 
@@ -4799,7 +6013,12 @@ fn tick_recall(
     champion.recall_channel_until = now + RECALL_CHANNEL_SEC;
     champion.target_path.clear();
     champion.target_path_index = 0;
-    push_event(events, now, &format!("{} started recall", champion.name), "recall");
+    push_event(
+        events,
+        now,
+        &format!("{} started recall", champion.name),
+        "recall",
+    );
     true
 }
 
@@ -4828,21 +6047,32 @@ fn decide_champion_state(
         return;
     }
 
-    if let Some(defense_pos) = allied_nexus_under_threat_pos(champion, champions, minions, structures) {
+    if let Some(defense_pos) =
+        allied_nexus_under_threat_pos(champion, champions, minions, structures)
+    {
         if dist(champion.pos, defense_pos) > BASE_DEFENSE_RECALL_DISTANCE {
             start_recall(champion, now, champions, minions, structures);
         } else {
             champion.state = "objective".to_string();
-            set_champion_direct_path_hysteresis(champion, defense_pos, OBJECTIVE_PATH_MIN_TARGET_DELTA);
+            set_champion_direct_path_hysteresis(
+                champion,
+                defense_pos,
+                OBJECTIVE_PATH_MIN_TARGET_DELTA,
+            );
         }
         return;
     }
 
     if team_buffs.baron_until > now {
         if let Some(lane) = weakest_enemy_lane_for_team(structures, &champion.team) {
-            if let Some(push_target) = baron_push_target_for_lane(structures, &champion.team, lane) {
+            if let Some(push_target) = baron_push_target_for_lane(structures, &champion.team, lane)
+            {
                 champion.state = "objective".to_string();
-                set_champion_direct_path_hysteresis(champion, push_target, OBJECTIVE_PATH_MIN_TARGET_DELTA);
+                set_champion_direct_path_hysteresis(
+                    champion,
+                    push_target,
+                    OBJECTIVE_PATH_MIN_TARGET_DELTA,
+                );
                 return;
             }
         }
@@ -4863,7 +6093,9 @@ fn decide_champion_state(
         }
 
         if should_assist_objective_attempt(champion, champions, timers) {
-            if let Some(attempt) = active_objective_attempt_for_team(&champion.team, champions, timers) {
+            if let Some(attempt) =
+                active_objective_attempt_for_team(&champion.team, champions, timers)
+            {
                 champion.state = "objective".to_string();
                 set_champion_direct_path_hysteresis(
                     champion,
@@ -4875,7 +6107,9 @@ fn decide_champion_state(
         }
 
         if champion.role == "JGL" {
-            if let Some(objective_pos) = pick_macro_objective_pos(champion, timers, now, team_tactics) {
+            if let Some(objective_pos) =
+                pick_macro_objective_pos(champion, timers, now, team_tactics)
+            {
                 champion.state = "objective".to_string();
                 set_champion_direct_path_hysteresis(
                     champion,
@@ -4925,17 +6159,27 @@ fn decide_champion_state(
                             && (ally.role == "TOP" || ally.role == "MID" || ally.role == "ADC")
                     })
                     .min_by(|a, b| {
-                        let a_ratio = if a.max_hp <= 0.0 { 1.0 } else { a.hp / a.max_hp };
-                        let b_ratio = if b.max_hp <= 0.0 { 1.0 } else { b.hp / b.max_hp };
+                        let a_ratio = if a.max_hp <= 0.0 {
+                            1.0
+                        } else {
+                            a.hp / a.max_hp
+                        };
+                        let b_ratio = if b.max_hp <= 0.0 {
+                            1.0
+                        } else {
+                            b.hp / b.max_hp
+                        };
                         let a_repeat_penalty = if !champion.support_last_roam_role.is_empty()
-                            && a.role.eq_ignore_ascii_case(&champion.support_last_roam_role)
+                            && a.role
+                                .eq_ignore_ascii_case(&champion.support_last_roam_role)
                         {
                             1
                         } else {
                             0
                         };
                         let b_repeat_penalty = if !champion.support_last_roam_role.is_empty()
-                            && b.role.eq_ignore_ascii_case(&champion.support_last_roam_role)
+                            && b.role
+                                .eq_ignore_ascii_case(&champion.support_last_roam_role)
                         {
                             1
                         } else {
@@ -5141,7 +6385,9 @@ fn should_assist_objective_attempt(
         return false;
     }
 
-    let Some(attempt) = active_objective_attempt_for_team(&champion.team, champions, neutral_timers) else {
+    let Some(attempt) =
+        active_objective_attempt_for_team(&champion.team, champions, neutral_timers)
+    else {
         return false;
     };
 
@@ -5161,11 +6407,17 @@ fn should_assist_objective_attempt(
         "dragon" | "elder" => role == "ADC" || role == "SUP" || role == "MID",
         _ => role == "MID",
     };
-    if role_priority && proactive_rotation && can_rotate_without_suicide(champion, attempt.pos, champions) {
+    if role_priority
+        && proactive_rotation
+        && can_rotate_without_suicide(champion, attempt.pos, champions)
+    {
         return true;
     }
 
-    if !objective_adjacent_lanes(&attempt.key).iter().any(|adj| *adj == lane) {
+    if !objective_adjacent_lanes(&attempt.key)
+        .iter()
+        .any(|adj| *adj == lane)
+    {
         return false;
     }
 
@@ -5204,11 +6456,20 @@ fn should_hard_assist_contested_dragon(
     contested_dragon.is_some()
 }
 
-fn is_major_teamfight_objective(attempt: &NeutralTimerRuntime, neutral_timers: &NeutralTimersRuntime) -> bool {
-    attempt.key == "elder" || attempt.key == "baron" || (attempt.key == "dragon" && neutral_timers.dragon_soul_unlocked)
+fn is_major_teamfight_objective(
+    attempt: &NeutralTimerRuntime,
+    neutral_timers: &NeutralTimersRuntime,
+) -> bool {
+    attempt.key == "elder"
+        || attempt.key == "baron"
+        || (attempt.key == "dragon" && neutral_timers.dragon_soul_unlocked)
 }
 
-fn can_rotate_without_suicide(champion: &ChampionRuntime, objective_pos: Vec2, champions: &[ChampionRuntime]) -> bool {
+fn can_rotate_without_suicide(
+    champion: &ChampionRuntime,
+    objective_pos: Vec2,
+    champions: &[ChampionRuntime],
+) -> bool {
     let hp_ratio = ratio_or_zero(champion.hp, champion.max_hp);
     let iq_delta = stat_delta(champion.iq_score);
     let hp_floor = (0.38 - iq_delta * 0.06).clamp(0.28, 0.46);
@@ -5310,16 +6571,36 @@ fn pick_macro_objective_pos(
     }
 
     let side_objective_order: [&str; 5] = match team_tactics.strong_side.as_str() {
-        "Top" => ["herald", "voidgrubs", "dragon", "scuttle-top", "scuttle-bot"],
-        "Mid" => ["dragon", "herald", "voidgrubs", "scuttle-bot", "scuttle-top"],
-        _ => ["dragon", "scuttle-bot", "herald", "voidgrubs", "scuttle-top"],
+        "Top" => [
+            "herald",
+            "voidgrubs",
+            "dragon",
+            "scuttle-top",
+            "scuttle-bot",
+        ],
+        "Mid" => [
+            "dragon",
+            "herald",
+            "voidgrubs",
+            "scuttle-bot",
+            "scuttle-top",
+        ],
+        _ => [
+            "dragon",
+            "scuttle-bot",
+            "herald",
+            "voidgrubs",
+            "scuttle-top",
+        ],
     };
 
     let can_hard_invade = team_tactics.jungle_style == "Invader"
         || (now >= 14.0 * 60.0 && champion.kills >= champion.deaths + 2);
 
     if team_tactics.jungle_style == "Farmer" {
-        for key in jungler_macro_jungle_priority_for_team(&champion.team, &team_tactics.jungle_pathing) {
+        for key in
+            jungler_macro_jungle_priority_for_team(&champion.team, &team_tactics.jungle_pathing)
+        {
             if is_enemy_jungle_camp_key_for_team(key, &champion.team) && !can_hard_invade {
                 continue;
             }
@@ -5357,7 +6638,8 @@ fn pick_macro_objective_pos(
         }
     }
 
-    for key in jungler_macro_jungle_priority_for_team(&champion.team, &team_tactics.jungle_pathing) {
+    for key in jungler_macro_jungle_priority_for_team(&champion.team, &team_tactics.jungle_pathing)
+    {
         if is_enemy_jungle_camp_key_for_team(key, &champion.team) && !can_hard_invade {
             continue;
         }
@@ -5400,13 +6682,37 @@ fn jungler_macro_jungle_priority_for_team(team: &str, jungle_pathing: &str) -> V
 
     if jungle_pathing == "BotToTop" {
         vec![
-            own_bot[0], own_bot[1], own_bot[2], "scuttle-bot", own_top[0], own_top[1], own_top[2], "scuttle-top",
-            enemy_top[0], enemy_top[1], enemy_top[2], enemy_bot[0], enemy_bot[1], enemy_bot[2],
+            own_bot[0],
+            own_bot[1],
+            own_bot[2],
+            "scuttle-bot",
+            own_top[0],
+            own_top[1],
+            own_top[2],
+            "scuttle-top",
+            enemy_top[0],
+            enemy_top[1],
+            enemy_top[2],
+            enemy_bot[0],
+            enemy_bot[1],
+            enemy_bot[2],
         ]
     } else {
         vec![
-            own_top[0], own_top[1], own_top[2], "scuttle-top", own_bot[0], own_bot[1], own_bot[2], "scuttle-bot",
-            enemy_bot[0], enemy_bot[1], enemy_bot[2], enemy_top[0], enemy_top[1], enemy_top[2],
+            own_top[0],
+            own_top[1],
+            own_top[2],
+            "scuttle-top",
+            own_bot[0],
+            own_bot[1],
+            own_bot[2],
+            "scuttle-bot",
+            enemy_bot[0],
+            enemy_bot[1],
+            enemy_bot[2],
+            enemy_top[0],
+            enemy_top[1],
+            enemy_top[2],
         ]
     }
 }
@@ -5516,8 +6822,16 @@ fn spawn_formation_position(path: &[Vec2], kind: &str, slot: i32) -> Vec2 {
     let lateral = column * 0.0048;
 
     Vec2 {
-        x: clamp(origin.x - direction.x * depth + perpendicular.x * lateral, 0.01, 0.99),
-        y: clamp(origin.y - direction.y * depth + perpendicular.y * lateral, 0.01, 0.99),
+        x: clamp(
+            origin.x - direction.x * depth + perpendicular.x * lateral,
+            0.01,
+            0.99,
+        ),
+        y: clamp(
+            origin.y - direction.y * depth + perpendicular.y * lateral,
+            0.01,
+            0.99,
+        ),
     }
 }
 
@@ -5600,16 +6914,26 @@ fn move_champions(runtime: &mut RuntimeState, dt: f64) {
             champion.target_path_index = champion.target_path.len().saturating_sub(1);
         }
 
-        if let Some(target) = champion.target_path.get(champion.target_path_index).copied() {
+        if let Some(target) = champion
+            .target_path
+            .get(champion.target_path_index)
+            .copied()
+        {
             let buffs = team_buffs_for_runtime(team_buffs_snapshot.as_ref(), &champion.team);
-            let mut speed_multiplier = 1.0 + buffs.cloud_stacks as f64 * 0.015 + buffs.hextech_stacks as f64 * 0.01;
+            let mut speed_multiplier =
+                1.0 + buffs.cloud_stacks as f64 * 0.015 + buffs.hextech_stacks as f64 * 0.01;
             if buffs.soul_kind.as_deref() == Some("cloud") {
                 speed_multiplier += 0.08;
             }
             if buffs.soul_kind.as_deref() == Some("hextech") {
                 speed_multiplier += 0.04;
             }
-            move_entity(&mut champion.pos, target, champion.move_speed * speed_multiplier, dt);
+            move_entity(
+                &mut champion.pos,
+                target,
+                champion.move_speed * speed_multiplier,
+                dt,
+            );
             if dist(champion.pos, target) < 0.01
                 && champion.target_path_index < champion.target_path.len().saturating_sub(1)
             {
@@ -5692,7 +7016,9 @@ fn move_minions(runtime: &mut RuntimeState, dt: f64) {
         }
 
         if runtime.minions[i].kind == "summon" {
-            if runtime.minions[i].summon_expires_at > 0.0 && runtime.time_sec >= runtime.minions[i].summon_expires_at {
+            if runtime.minions[i].summon_expires_at > 0.0
+                && runtime.time_sec >= runtime.minions[i].summon_expires_at
+            {
                 runtime.minions[i].alive = false;
                 continue;
             }
@@ -5700,31 +7026,34 @@ fn move_minions(runtime: &mut RuntimeState, dt: f64) {
             if lane_push_summon {
                 // Herald acts as a lane pusher summon, not an owner-orbit pet.
             } else {
-            let owner_id = runtime.minions[i].owner_champion_id.clone();
-            let owner = owner_id
-                .as_ref()
-                .and_then(|id| runtime.champions.iter().find(|champion| champion.id == *id && champion.alive));
-            if let Some(owner) = owner {
-                let seed = runtime.minions[i]
-                    .id
-                    .bytes()
-                    .fold(0u64, |acc, b| acc.wrapping_mul(131).wrapping_add(b as u64));
-                let phase = (seed % 628) as f64 / 100.0;
-                let angle = runtime.time_sec * 1.9 + phase;
-                let orbit = 0.018 + ((seed % 7) as f64) * 0.001;
-                let follow_target = Vec2 {
-                    x: clamp(owner.pos.x + angle.cos() * orbit, 0.01, 0.99),
-                    y: clamp(owner.pos.y + angle.sin() * orbit, 0.01, 0.99),
-                };
-                let speed = runtime.minions[i].move_speed.max(owner.move_speed * 0.85);
-                move_entity(&mut runtime.minions[i].pos, follow_target, speed, dt);
-            } else {
-                runtime.minions[i].alive = false;
+                let owner_id = runtime.minions[i].owner_champion_id.clone();
+                let owner = owner_id.as_ref().and_then(|id| {
+                    runtime
+                        .champions
+                        .iter()
+                        .find(|champion| champion.id == *id && champion.alive)
+                });
+                if let Some(owner) = owner {
+                    let seed = runtime.minions[i]
+                        .id
+                        .bytes()
+                        .fold(0u64, |acc, b| acc.wrapping_mul(131).wrapping_add(b as u64));
+                    let phase = (seed % 628) as f64 / 100.0;
+                    let angle = runtime.time_sec * 1.9 + phase;
+                    let orbit = 0.018 + ((seed % 7) as f64) * 0.001;
+                    let follow_target = Vec2 {
+                        x: clamp(owner.pos.x + angle.cos() * orbit, 0.01, 0.99),
+                        y: clamp(owner.pos.y + angle.sin() * orbit, 0.01, 0.99),
+                    };
+                    let speed = runtime.minions[i].move_speed.max(owner.move_speed * 0.85);
+                    move_entity(&mut runtime.minions[i].pos, follow_target, speed, dt);
+                } else {
+                    runtime.minions[i].alive = false;
+                    continue;
+                }
+                runtime.minions[i].pos.x = clamp(runtime.minions[i].pos.x, 0.01, 0.99);
+                runtime.minions[i].pos.y = clamp(runtime.minions[i].pos.y, 0.01, 0.99);
                 continue;
-            }
-            runtime.minions[i].pos.x = clamp(runtime.minions[i].pos.x, 0.01, 0.99);
-            runtime.minions[i].pos.y = clamp(runtime.minions[i].pos.y, 0.01, 0.99);
-            continue;
             }
         }
 
@@ -5746,7 +7075,9 @@ fn move_minions(runtime: &mut RuntimeState, dt: f64) {
 
         if let Some(target) = minion.path.get(minion.path_index).copied() {
             move_entity(&mut minion.pos, target, minion.move_speed, dt);
-            if dist(minion.pos, target) < 0.01 && minion.path_index < minion.path.len().saturating_sub(1) {
+            if dist(minion.pos, target) < 0.01
+                && minion.path_index < minion.path.len().saturating_sub(1)
+            {
                 minion.path_index += 1;
             }
         }
@@ -5767,7 +7098,11 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
         let attacker_empowered = minion_is_baron_empowered(runtime, &runtime.minions[i]);
 
         let cadence = minion_stats(&runtime.minions[i].kind).3;
-        let enemy_minion = nearest_enemy_minion_index(&runtime.minions, i, runtime.minions[i].attack_range.max(0.05));
+        let enemy_minion = nearest_enemy_minion_index(
+            &runtime.minions,
+            i,
+            runtime.minions[i].attack_range.max(0.05),
+        );
 
         if let Some(enemy_idx) = enemy_minion {
             let attacker_damage = runtime.minions[i].attack_damage
@@ -5776,7 +7111,8 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
                 } else {
                     1.0
                 };
-            let defender_empowered = minion_is_baron_empowered(runtime, &runtime.minions[enemy_idx]);
+            let defender_empowered =
+                minion_is_baron_empowered(runtime, &runtime.minions[enemy_idx]);
             let damage = attacker_damage
                 * MINION_DAMAGE_TO_MINION_MULTIPLIER
                 * if defender_empowered {
@@ -5804,7 +7140,9 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
             continue;
         }
 
-        let structure_range = runtime.minions[i].attack_range.max(MINION_STRUCTURE_AGGRO_RANGE);
+        let structure_range = runtime.minions[i]
+            .attack_range
+            .max(MINION_STRUCTURE_AGGRO_RANGE);
         let enemy_structure = nearest_enemy_structure_index(
             &runtime.structures,
             &runtime.minions[i].team,
@@ -5815,7 +7153,11 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
 
         if let Some(structure_idx) = enemy_structure {
             if !runtime.structures[structure_idx].alive
-                || !is_structure_targetable(&runtime.structures, &runtime.minions[i].team, &runtime.structures[structure_idx])
+                || !is_structure_targetable(
+                    &runtime.structures,
+                    &runtime.minions[i].team,
+                    &runtime.structures[structure_idx],
+                )
             {
                 continue;
             }
@@ -5841,7 +7183,9 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
             } else {
                 1.0
             };
-        let attacker_range = runtime.minions[i].attack_range.max(MINION_CHAMPION_AGGRO_MIN_RANGE);
+        let attacker_range = runtime.minions[i]
+            .attack_range
+            .max(MINION_CHAMPION_AGGRO_MIN_RANGE);
 
         let enemy_champion = nearest_enemy_champion_for_minion(
             &runtime.champions,
@@ -5853,11 +7197,17 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
         );
 
         if let Some(champion_idx) = enemy_champion {
-            let defender_mult = team_damage_reduction_multiplier(runtime, &runtime.champions[champion_idx].team);
-            runtime.champions[champion_idx].hp -= attacker_damage * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER * defender_mult;
+            let defender_mult =
+                team_damage_reduction_multiplier(runtime, &runtime.champions[champion_idx].team);
+            runtime.champions[champion_idx].hp -=
+                attacker_damage * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER * defender_mult;
             runtime.champions[champion_idx].last_damaged_by_champion_id = None;
             runtime.champions[champion_idx].last_damaged_at = now;
-            cancel_recall(&mut runtime.champions[champion_idx], now, &mut runtime.events);
+            cancel_recall(
+                &mut runtime.champions[champion_idx],
+                now,
+                &mut runtime.events,
+            );
             runtime.minions[i].attack_cd_until = now + cadence;
 
             if runtime.champions[champion_idx].hp <= 0.0 && runtime.champions[champion_idx].alive {
@@ -5923,7 +7273,11 @@ fn enemy_pressuring_allied_tower_idx(
 ) -> Option<usize> {
     let allied_towers: Vec<&StructureRuntime> = structures
         .iter()
-        .filter(|s| s.alive && s.kind == "tower" && normalized_team(&s.team) == normalized_team(&champion.team))
+        .filter(|s| {
+            s.alive
+                && s.kind == "tower"
+                && normalized_team(&s.team) == normalized_team(&champion.team)
+        })
         .collect();
     if allied_towers.is_empty() {
         return None;
@@ -6024,7 +7378,11 @@ fn has_credible_kill_chance(
 
     let ttk_enemy = enemy.hp / champion.attack_damage.max(1.0);
     let ttk_self = champion.hp / enemy.attack_damage.max(1.0);
-    let enemy_hp_ratio = if enemy.max_hp <= 0.0 { 1.0 } else { enemy.hp / enemy.max_hp };
+    let enemy_hp_ratio = if enemy.max_hp <= 0.0 {
+        1.0
+    } else {
+        enemy.hp / enemy.max_hp
+    };
     let low_enemy = enemy_hp_ratio <= 0.48;
 
     (ttk_enemy <= ttk_self * 0.95 || low_enemy) && ally_pressure + 0.5 >= enemy_pressure
@@ -6143,12 +7501,12 @@ fn pick_combat_target(
             .iter()
             .enumerate()
             .filter(|(_, m)| {
-            m.alive
-                && normalized_team(&m.team) == enemy_team
-                && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
-                && team_has_vision_at(runtime, &champion.team, m.pos)
-                && dist(champion.pos, m.pos) <= 0.12
-        })
+                m.alive
+                    && normalized_team(&m.team) == enemy_team
+                    && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
+                    && team_has_vision_at(runtime, &champion.team, m.pos)
+                    && dist(champion.pos, m.pos) <= 0.12
+            })
             .min_by(|(idx_a, a), (idx_b, b)| {
                 a.hp.partial_cmp(&b.hp)
                     .unwrap_or(Ordering::Equal)
@@ -6245,7 +7603,9 @@ fn pick_combat_target(
         return Some(CombatTarget::Champion(enemy_idx));
     }
 
-    if let Some(enemy_idx) = enemy_pressuring_allied_tower_idx(champion, &runtime.champions, &runtime.structures) {
+    if let Some(enemy_idx) =
+        enemy_pressuring_allied_tower_idx(champion, &runtime.champions, &runtime.structures)
+    {
         return Some(CombatTarget::Champion(enemy_idx));
     }
 
@@ -6288,7 +7648,8 @@ fn pick_combat_target(
         return Some(CombatTarget::Champion(enemy_idx));
     }
 
-    let objective_assist_active = should_assist_objective_attempt(champion, &runtime.champions, neutral_timers);
+    let objective_assist_active =
+        should_assist_objective_attempt(champion, &runtime.champions, neutral_timers);
     if objective_assist_active {
         if let Some(neutral_key) = nearby_neutral_objective_key(champion, neutral_timers) {
             return Some(CombatTarget::Neutral(neutral_key));
@@ -6308,8 +7669,7 @@ fn pick_combat_target(
                 && normalized_lane(&m.lane) == normalized_lane(&champion.lane)
                 && team_has_vision_at(runtime, &champion.team, m.pos)
                 && dist(champion.pos, m.pos) <= laner_farm_search_radius(champion)
-                && m.hp
-                    <= champion.attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * 1.4
+                && m.hp <= champion.attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * 1.4
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
             a.hp.partial_cmp(&b.hp)
@@ -6401,7 +7761,8 @@ fn pick_combat_target(
         .filter(|(_, s)| {
             if !(s.alive
                 && normalized_team(&s.team) == enemy_team
-                && (normalized_lane(&s.lane) == normalized_lane(&champion.lane) || s.kind == "nexus")
+                && (normalized_lane(&s.lane) == normalized_lane(&champion.lane)
+                    || s.kind == "nexus")
                 && dist(champion.pos, s.pos) <= LANE_STRUCTURE_PRESSURE_RADIUS
                 && is_structure_targetable(&runtime.structures, &champion.team, s))
             {
@@ -6453,7 +7814,8 @@ fn pick_combat_target(
         .filter(|(_, s)| {
             if !s.alive
                 || normalized_team(&s.team) != enemy_team
-                || !(normalized_lane(&s.lane) == normalized_lane(&champion.lane) || s.kind == "nexus")
+                || !(normalized_lane(&s.lane) == normalized_lane(&champion.lane)
+                    || s.kind == "nexus")
                 || !is_structure_targetable(&runtime.structures, &champion.team, s)
             {
                 return false;
@@ -6541,8 +7903,9 @@ fn pick_combat_target(
         })
         .map(|(idx, _)| idx);
 
-    let nearby_neutral = nearest_attackable_neutral_key(champion, neutral_timers, JUNGLE_CAMP_ENGAGE_RADIUS, 0.0)
-        .filter(|key| is_jungle_camp_key(key));
+    let nearby_neutral =
+        nearest_attackable_neutral_key(champion, neutral_timers, JUNGLE_CAMP_ENGAGE_RADIUS, 0.0)
+            .filter(|key| is_jungle_camp_key(key));
 
     #[derive(Clone)]
     struct FallbackCandidate {
@@ -6626,7 +7989,9 @@ fn pick_combat_target(
             .then_with(|| a.stable_key.cmp(&b.stable_key))
     });
 
-    fallback_candidates.first().map(|candidate| candidate.target.clone())
+    fallback_candidates
+        .first()
+        .map(|candidate| candidate.target.clone())
 }
 
 fn combat_target_pos(runtime: &RuntimeState, target: &CombatTarget) -> Option<Vec2> {
@@ -6640,7 +8005,11 @@ fn combat_target_pos(runtime: &RuntimeState, target: &CombatTarget) -> Option<Ve
     }
 }
 
-fn is_local_combat_target(runtime: &RuntimeState, champion_idx: usize, target: &CombatTarget) -> bool {
+fn is_local_combat_target(
+    runtime: &RuntimeState,
+    champion_idx: usize,
+    target: &CombatTarget,
+) -> bool {
     if champion_idx >= runtime.champions.len() {
         return false;
     }
@@ -6653,7 +8022,9 @@ fn is_local_combat_target(runtime: &RuntimeState, champion_idx: usize, target: &
     if target_distance > LOCAL_COMBAT_ENGAGE_RADIUS {
         return false;
     }
-    if matches!(target, CombatTarget::Structure(_)) && target_distance > LOCAL_STRUCTURE_ENGAGE_RADIUS {
+    if matches!(target, CombatTarget::Structure(_))
+        && target_distance > LOCAL_STRUCTURE_ENGAGE_RADIUS
+    {
         return false;
     }
     if let CombatTarget::Neutral(key) = target {
@@ -6698,12 +8069,15 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
         }
 
         let is_hard_assist = {
-            let contested = contested_dragon_attempt_for_team(&team, &runtime.champions, &neutral_timers);
+            let contested =
+                contested_dragon_attempt_for_team(&team, &runtime.champions, &neutral_timers);
             should_hard_assist_contested_dragon(&runtime.champions[idx], contested)
         };
 
         if is_hard_assist {
-            if let Some(dragon) = contested_dragon_attempt_for_team(&team, &runtime.champions, &neutral_timers) {
+            if let Some(dragon) =
+                contested_dragon_attempt_for_team(&team, &runtime.champions, &neutral_timers)
+            {
                 let dragon_key = dragon.key.clone();
                 let dragon_pos = dragon.pos;
                 if let Some(champion_idx) = nearest_enemy_champion_contesting_objective(
@@ -6727,10 +8101,15 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
             continue;
         }
 
-        let is_objective_assist =
-            should_assist_objective_attempt(&runtime.champions[idx], &runtime.champions, &neutral_timers);
+        let is_objective_assist = should_assist_objective_attempt(
+            &runtime.champions[idx],
+            &runtime.champions,
+            &neutral_timers,
+        );
         if is_objective_assist && runtime.champions[idx].state == "objective" {
-            if let Some(attempt) = active_objective_attempt_for_team(&team, &runtime.champions, &neutral_timers) {
+            if let Some(attempt) =
+                active_objective_attempt_for_team(&team, &runtime.champions, &neutral_timers)
+            {
                 let objective_key = attempt.key.clone();
                 let objective_pos = attempt.pos;
 
@@ -6819,8 +8198,7 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
             CombatTarget::Champion(champion_idx) => {
                 let target_snapshot = runtime.champions[champion_idx].clone();
 
-                if attacker_snapshot.role != "JGL"
-                {
+                if attacker_snapshot.role != "JGL" {
                     let open_eval = evaluate_open_trade_window(
                         &attacker_snapshot,
                         &target_snapshot,
@@ -6882,8 +8260,7 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                         disengage_eval.decision,
                     );
                 }
-                if disengage_eval.decision
-                {
+                if disengage_eval.decision {
                     issue_lane_disengage(runtime, idx, target_snapshot.pos);
                     continue;
                 }
@@ -6918,9 +8295,12 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
                     continue;
                 }
                 let lane_mult = champion_lane_damage_multiplier(&runtime.champions[idx]);
-                let damage = runtime.champions[idx].attack_damage * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER * lane_mult;
+                let damage = runtime.champions[idx].attack_damage
+                    * CHAMPION_DAMAGE_TO_MINION_MULTIPLIER
+                    * lane_mult;
                 runtime.minions[minion_idx].hp -= damage;
-                runtime.minions[minion_idx].last_hit_by_champion_id = Some(runtime.champions[idx].id.clone());
+                runtime.minions[minion_idx].last_hit_by_champion_id =
+                    Some(runtime.champions[idx].id.clone());
                 runtime.champions[idx].attack_cd_until = now + 0.75;
                 if runtime.minions[minion_idx].hp <= 0.0 {
                     register_minion_death(runtime, minion_idx);
@@ -6930,7 +8310,11 @@ fn resolve_champion_combat(runtime: &mut RuntimeState) {
             CombatTarget::Structure(structure_idx) => {
                 if structure_idx >= runtime.structures.len()
                     || !runtime.structures[structure_idx].alive
-                    || !is_structure_targetable(&runtime.structures, &team, &runtime.structures[structure_idx])
+                    || !is_structure_targetable(
+                        &runtime.structures,
+                        &team,
+                        &runtime.structures[structure_idx],
+                    )
                 {
                     continue;
                 }
@@ -6977,7 +8361,8 @@ fn set_spell_cd(champion: &mut ChampionRuntime, key: &str, now: f64, cooldown_se
     let Some(spell) = champion
         .summoner_spells
         .iter_mut()
-        .find(|spell| spell.key.eq_ignore_ascii_case(key)) else {
+        .find(|spell| spell.key.eq_ignore_ascii_case(key))
+    else {
         return false;
     };
     spell.cd_until = now + cooldown_sec;
@@ -6989,16 +8374,12 @@ fn champion_is_banished(champion: &ChampionRuntime) -> bool {
 }
 
 fn team_has_vision_at(runtime: &RuntimeState, team: &str, pos: Vec2) -> bool {
-    if runtime
-        .champions
-        .iter()
-        .any(|champion| {
-            champion.alive
-                && !champion_is_banished(champion)
-                && normalized_team(&champion.team) == normalized_team(team)
-                && dist(champion.pos, pos) <= CHAMPION_VISION_RADIUS
-        })
-    {
+    if runtime.champions.iter().any(|champion| {
+        champion.alive
+            && !champion_is_banished(champion)
+            && normalized_team(&champion.team) == normalized_team(team)
+            && dist(champion.pos, pos) <= CHAMPION_VISION_RADIUS
+    }) {
         return true;
     }
 
@@ -7051,9 +8432,17 @@ fn strategic_ward_points_for_team(team: &str) -> &'static [Vec2] {
     }
 }
 
-fn pick_ward_placement_pos(runtime: &RuntimeState, champion: &ChampionRuntime, now: f64) -> Option<Vec2> {
+fn pick_ward_placement_pos(
+    runtime: &RuntimeState,
+    champion: &ChampionRuntime,
+    now: f64,
+) -> Option<Vec2> {
     let points = strategic_ward_points_for_team(&champion.team);
-    let max_place_dist = if champion.role == "JGL" || champion.role == "SUP" { 0.24 } else { 0.18 };
+    let max_place_dist = if champion.role == "JGL" || champion.role == "SUP" {
+        0.24
+    } else {
+        0.18
+    };
 
     points
         .iter()
@@ -7087,7 +8476,9 @@ fn place_wards(runtime: &mut RuntimeState) {
             || champion_is_banished(&champion)
             || champion.state == "recall"
             || now < champion.ward_cd_until
-            || !champion.trinket_key.eq_ignore_ascii_case(TRINKET_WARDING_TOTEM)
+            || !champion
+                .trinket_key
+                .eq_ignore_ascii_case(TRINKET_WARDING_TOTEM)
         {
             continue;
         }
@@ -7156,7 +8547,10 @@ fn process_sweepers(runtime: &mut RuntimeState) {
         if champion.role != "JGL" && champion.role != "SUP" {
             continue;
         }
-        if !champion.trinket_key.eq_ignore_ascii_case(TRINKET_ORACLE_LENS) {
+        if !champion
+            .trinket_key
+            .eq_ignore_ascii_case(TRINKET_ORACLE_LENS)
+        {
             continue;
         }
 
@@ -7214,7 +8608,11 @@ fn set_ultimate_cd(champion: &mut ChampionRuntime, now: f64, cooldown_sec: f64) 
     true
 }
 
-fn nearest_enemy_in_range(runtime: &RuntimeState, champion_idx: usize, range: f64) -> Option<usize> {
+fn nearest_enemy_in_range(
+    runtime: &RuntimeState,
+    champion_idx: usize,
+    range: f64,
+) -> Option<usize> {
     if champion_idx >= runtime.champions.len() {
         return None;
     }
@@ -7256,9 +8654,10 @@ fn set_rift_herald_charge(runtime: &mut RuntimeState, killer_team: &str, killer_
     runtime
         .extra
         .insert("heraldReady".to_string(), Value::from(true));
-    runtime
-        .extra
-        .insert("heraldTeam".to_string(), Value::from(normalized_team(killer_team)));
+    runtime.extra.insert(
+        "heraldTeam".to_string(),
+        Value::from(normalized_team(killer_team)),
+    );
     runtime
         .extra
         .insert("heraldCarrierId".to_string(), Value::from(killer_id));
@@ -7301,10 +8700,11 @@ fn maybe_deploy_rift_herald_charge(runtime: &mut RuntimeState) {
             .iter()
             .position(|champion| champion.alive && champion.id == carrier_id)
     } else {
-        runtime
-            .champions
-            .iter()
-            .position(|champion| champion.alive && normalized_team(&champion.team) == normalized_team(&herald_team) && champion.role == "JGL")
+        runtime.champions.iter().position(|champion| {
+            champion.alive
+                && normalized_team(&champion.team) == normalized_team(&herald_team)
+                && champion.role == "JGL"
+        })
     };
 
     let Some(carrier_idx) = carrier_idx else {
@@ -7367,13 +8767,20 @@ fn maybe_deploy_rift_herald_charge(runtime: &mut RuntimeState) {
     runtime.minions.push(summon);
     log_event(
         runtime,
-        &format!("{} deployed rift herald", normalized_team(&carrier.team).to_uppercase()),
+        &format!(
+            "{} deployed rift herald",
+            normalized_team(&carrier.team).to_uppercase()
+        ),
         "info",
     );
     clear_rift_herald_charge(runtime);
 }
 
-fn try_cast_special_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> Option<bool> {
+fn try_cast_special_ultimate(
+    runtime: &mut RuntimeState,
+    champion_idx: usize,
+    now: f64,
+) -> Option<bool> {
     let champion = runtime.champions.get(champion_idx)?.clone();
     let key = champion.champion_id.to_lowercase();
 
@@ -7434,8 +8841,16 @@ fn try_cast_special_ultimate(runtime: &mut RuntimeState, champion_idx: usize, no
                     && normalized_team(&ally.team) == normalized_team(&champion.team)
             })
             .min_by(|(idx_a, a), (idx_b, b)| {
-                let ratio_a = if a.max_hp <= 0.0 { 1.0 } else { a.hp / a.max_hp };
-                let ratio_b = if b.max_hp <= 0.0 { 1.0 } else { b.hp / b.max_hp };
+                let ratio_a = if a.max_hp <= 0.0 {
+                    1.0
+                } else {
+                    a.hp / a.max_hp
+                };
+                let ratio_b = if b.max_hp <= 0.0 {
+                    1.0
+                } else {
+                    b.hp / b.max_hp
+                };
                 ratio_a
                     .partial_cmp(&ratio_b)
                     .unwrap_or(Ordering::Equal)
@@ -7449,25 +8864,34 @@ fn try_cast_special_ultimate(runtime: &mut RuntimeState, champion_idx: usize, no
 
         let shield = runtime.champions[ally_idx].max_hp * 0.30;
         let ally_pos = runtime.champions[ally_idx].pos;
-        runtime.champions[ally_idx].hp = (runtime.champions[ally_idx].hp + shield).min(runtime.champions[ally_idx].max_hp);
+        runtime.champions[ally_idx].hp =
+            (runtime.champions[ally_idx].hp + shield).min(runtime.champions[ally_idx].max_hp);
         runtime.champions[champion_idx].pos = ally_pos;
         runtime.champions[champion_idx].target_path.clear();
         runtime.champions[champion_idx].target_path_index = 0;
         runtime.champions[champion_idx].next_decision_at = now;
-        log_event(runtime, &format!("{} cast Stand United", champion.name), "info");
+        log_event(
+            runtime,
+            &format!("{} cast Stand United", champion.name),
+            "info",
+        );
         return Some(true);
     }
 
     if key == "mordekaiser" {
-        let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE + 0.03) else {
+        let Some(target_idx) =
+            nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE + 0.03)
+        else {
             return Some(false);
         };
         let caster_pos = runtime.champions[champion_idx].pos;
         let target_pos = runtime.champions[target_idx].pos;
 
-        runtime.champions[champion_idx].realm_banished_until = now + ULTIMATE_MORDE_REALM_DURATION_SEC;
+        runtime.champions[champion_idx].realm_banished_until =
+            now + ULTIMATE_MORDE_REALM_DURATION_SEC;
         runtime.champions[champion_idx].realm_return_pos = Some(caster_pos);
-        runtime.champions[target_idx].realm_banished_until = now + ULTIMATE_MORDE_REALM_DURATION_SEC;
+        runtime.champions[target_idx].realm_banished_until =
+            now + ULTIMATE_MORDE_REALM_DURATION_SEC;
         runtime.champions[target_idx].realm_return_pos = Some(target_pos);
 
         runtime.champions[champion_idx].pos = Vec2 { x: -5.0, y: -5.0 };
@@ -7477,7 +8901,11 @@ fn try_cast_special_ultimate(runtime: &mut RuntimeState, champion_idx: usize, no
         runtime.champions[champion_idx].target_path_index = 0;
         runtime.champions[target_idx].target_path_index = 0;
 
-        log_event(runtime, &format!("{} cast Realm of Death", champion.name), "info");
+        log_event(
+            runtime,
+            &format!("{} cast Realm of Death", champion.name),
+            "info",
+        );
         return Some(true);
     }
 
@@ -7496,7 +8924,11 @@ fn try_cast_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
 
     if let Some(casted_special) = try_cast_special_ultimate(runtime, champion_idx, now) {
         if casted_special {
-            if set_ultimate_cd(&mut runtime.champions[champion_idx], now, ULTIMATE_BASE_CD_SEC) {
+            if set_ultimate_cd(
+                &mut runtime.champions[champion_idx],
+                now,
+                ULTIMATE_BASE_CD_SEC,
+            ) {
                 return true;
             }
         }
@@ -7507,11 +8939,15 @@ fn try_cast_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
         .ultimate
         .as_ref()
         .map(|ultimate| ultimate.archetype.to_lowercase())
-        .unwrap_or_else(|| default_ultimate_archetype_for_role(&champion_snapshot.role).to_string());
+        .unwrap_or_else(|| {
+            default_ultimate_archetype_for_role(&champion_snapshot.role).to_string()
+        });
 
     let casted = match archetype.as_str() {
         "execute" => {
-            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE) else {
+            let Some(target_idx) =
+                nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE)
+            else {
                 return false;
             };
             let hp_ratio = if runtime.champions[target_idx].max_hp <= 0.0 {
@@ -7527,7 +8963,9 @@ fn try_cast_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
             true
         }
         "engage" => {
-            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_GLOBAL_RANGE) else {
+            let Some(target_idx) =
+                nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_GLOBAL_RANGE)
+            else {
                 return false;
             };
             let target = runtime.champions[target_idx].pos;
@@ -7546,19 +8984,23 @@ fn try_cast_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
                 return false;
             }
             let heal_amount = champion_snapshot.max_hp * 0.26;
-            runtime.champions[champion_idx].hp =
-                (runtime.champions[champion_idx].hp + heal_amount).min(runtime.champions[champion_idx].max_hp);
+            runtime.champions[champion_idx].hp = (runtime.champions[champion_idx].hp + heal_amount)
+                .min(runtime.champions[champion_idx].max_hp);
             true
         }
         "global" | "zone" => {
-            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_GLOBAL_RANGE) else {
+            let Some(target_idx) =
+                nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_GLOBAL_RANGE)
+            else {
                 return false;
             };
             attack_enemy_champion(runtime, champion_idx, target_idx);
             true
         }
         _ => {
-            let Some(target_idx) = nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE) else {
+            let Some(target_idx) =
+                nearest_enemy_in_range(runtime, champion_idx, ULTIMATE_BURST_RANGE)
+            else {
                 return false;
             };
             attack_enemy_champion(runtime, champion_idx, target_idx);
@@ -7570,7 +9012,11 @@ fn try_cast_ultimate(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
         return false;
     }
 
-    if set_ultimate_cd(&mut runtime.champions[champion_idx], now, ULTIMATE_BASE_CD_SEC) {
+    if set_ultimate_cd(
+        &mut runtime.champions[champion_idx],
+        now,
+        ULTIMATE_BASE_CD_SEC,
+    ) {
         log_event(
             runtime,
             &format!("{} cast Ultimate ({})", champion_snapshot.name, archetype),
@@ -7603,7 +9049,8 @@ fn tick_ignite_dot_effects(runtime: &mut RuntimeState, now: f64) {
         runtime.champions[idx].hp = 0.0;
         runtime.champions[idx].alive = false;
         runtime.champions[idx].deaths += 1;
-        runtime.champions[idx].respawn_at = now + champion_respawn_seconds(runtime.champions[idx].level, now);
+        runtime.champions[idx].respawn_at =
+            now + champion_respawn_seconds(runtime.champions[idx].level, now);
 
         let victim_name = runtime.champions[idx].name.clone();
         let killer_id = runtime.champions[idx].ignite_source_id.clone();
@@ -7611,15 +9058,27 @@ fn tick_ignite_dot_effects(runtime: &mut RuntimeState, now: f64) {
         runtime.champions[idx].ignite_source_id = None;
 
         if let Some(killer_id) = killer_id {
-            if let Some(killer_idx) = runtime.champions.iter().position(|champion| champion.id == killer_id) {
+            if let Some(killer_idx) = runtime
+                .champions
+                .iter()
+                .position(|champion| champion.id == killer_id)
+            {
                 if runtime.champions[killer_idx].alive {
                     runtime.champions[killer_idx].kills += 1;
                     let killer_team = runtime.champions[killer_idx].team.clone();
                     team_stats_mut(&mut runtime.stats, &killer_team).kills += 1;
-                    add_gold_xp_to_champion(runtime, &killer_id, CHAMPION_KILL_GOLD, CHAMPION_KILL_XP);
+                    add_gold_xp_to_champion(
+                        runtime,
+                        &killer_id,
+                        CHAMPION_KILL_GOLD,
+                        CHAMPION_KILL_XP,
+                    );
                     log_event(
                         runtime,
-                        &format!("{} ignited {}", runtime.champions[killer_idx].name, victim_name),
+                        &format!(
+                            "{} ignited {}",
+                            runtime.champions[killer_idx].name, victim_name
+                        ),
                         "kill",
                     );
                     continue;
@@ -7654,7 +9113,8 @@ fn best_lane_tp_target(
                 .then_with(|| a.id.cmp(&b.id))
         })
         .map(|structure| {
-            let progress = closest_lane_path_index(structure.pos, &lane_path) as f64 / max_idx as f64;
+            let progress =
+                closest_lane_path_index(structure.pos, &lane_path) as f64 / max_idx as f64;
             (structure.pos, progress)
         });
 
@@ -7723,7 +9183,9 @@ fn try_cast_summoner_spells(
 
 fn try_cast_heal(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
     let champion_snapshot = runtime.champions[champion_idx].clone();
-    if !champion_has_spell(&champion_snapshot, "Heal") || !spell_ready(&champion_snapshot, "Heal", now) {
+    if !champion_has_spell(&champion_snapshot, "Heal")
+        || !spell_ready(&champion_snapshot, "Heal", now)
+    {
         return false;
     }
 
@@ -7750,7 +9212,9 @@ fn try_cast_heal(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> b
         if !ally.alive || normalized_team(&ally.team) != normalized_team(&champion_snapshot.team) {
             continue;
         }
-        if ally.id != champion_snapshot.id && dist(ally.pos, champion_snapshot.pos) > SUMMONER_HEAL_RADIUS {
+        if ally.id != champion_snapshot.id
+            && dist(ally.pos, champion_snapshot.pos) > SUMMONER_HEAL_RADIUS
+        {
             continue;
         }
         let ratio = if ally.id == champion_snapshot.id {
@@ -7761,8 +9225,17 @@ fn try_cast_heal(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> b
         ally.hp = (ally.hp + ally.max_hp * ratio).min(ally.max_hp);
     }
 
-    if set_spell_cd(&mut runtime.champions[champion_idx], "Heal", now, SUMMONER_HEAL_CD_SEC) {
-        log_event(runtime, &format!("{} cast Heal", champion_snapshot.name), "info");
+    if set_spell_cd(
+        &mut runtime.champions[champion_idx],
+        "Heal",
+        now,
+        SUMMONER_HEAL_CD_SEC,
+    ) {
+        log_event(
+            runtime,
+            &format!("{} cast Heal", champion_snapshot.name),
+            "info",
+        );
         return true;
     }
     false
@@ -7770,7 +9243,9 @@ fn try_cast_heal(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> b
 
 fn try_cast_flash(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
     let champion_snapshot = runtime.champions[champion_idx].clone();
-    if !champion_has_spell(&champion_snapshot, "Flash") || !spell_ready(&champion_snapshot, "Flash", now) {
+    if !champion_has_spell(&champion_snapshot, "Flash")
+        || !spell_ready(&champion_snapshot, "Flash", now)
+    {
         return false;
     }
 
@@ -7802,18 +9277,37 @@ fn try_cast_flash(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> 
         x: base.x - champion_snapshot.pos.x,
         y: base.y - champion_snapshot.pos.y,
     };
-    let len = (to_base.x * to_base.x + to_base.y * to_base.y).sqrt().max(1e-6);
+    let len = (to_base.x * to_base.x + to_base.y * to_base.y)
+        .sqrt()
+        .max(1e-6);
     let target = Vec2 {
-        x: clamp(champion_snapshot.pos.x + (to_base.x / len) * SUMMONER_FLASH_RANGE, 0.01, 0.99),
-        y: clamp(champion_snapshot.pos.y + (to_base.y / len) * SUMMONER_FLASH_RANGE, 0.01, 0.99),
+        x: clamp(
+            champion_snapshot.pos.x + (to_base.x / len) * SUMMONER_FLASH_RANGE,
+            0.01,
+            0.99,
+        ),
+        y: clamp(
+            champion_snapshot.pos.y + (to_base.y / len) * SUMMONER_FLASH_RANGE,
+            0.01,
+            0.99,
+        ),
     };
 
     runtime.champions[champion_idx].pos = target;
     runtime.champions[champion_idx].target_path.clear();
     runtime.champions[champion_idx].target_path_index = 0;
 
-    if set_spell_cd(&mut runtime.champions[champion_idx], "Flash", now, SUMMONER_FLASH_CD_SEC) {
-        log_event(runtime, &format!("{} flashed", champion_snapshot.name), "info");
+    if set_spell_cd(
+        &mut runtime.champions[champion_idx],
+        "Flash",
+        now,
+        SUMMONER_FLASH_CD_SEC,
+    ) {
+        log_event(
+            runtime,
+            &format!("{} flashed", champion_snapshot.name),
+            "info",
+        );
         return true;
     }
     false
@@ -7821,7 +9315,9 @@ fn try_cast_flash(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> 
 
 fn try_cast_ignite(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
     let champion_snapshot = runtime.champions[champion_idx].clone();
-    if !champion_has_spell(&champion_snapshot, "Ignite") || !spell_ready(&champion_snapshot, "Ignite", now) {
+    if !champion_has_spell(&champion_snapshot, "Ignite")
+        || !spell_ready(&champion_snapshot, "Ignite", now)
+    {
         return false;
     }
 
@@ -7855,7 +9351,12 @@ fn try_cast_ignite(runtime: &mut RuntimeState, champion_idx: usize, now: f64) ->
     runtime.champions[target_idx].last_damaged_by_champion_id = Some(champion_snapshot.id.clone());
     runtime.champions[target_idx].last_damaged_at = now;
 
-    if set_spell_cd(&mut runtime.champions[champion_idx], "Ignite", now, SUMMONER_IGNITE_CD_SEC) {
+    if set_spell_cd(
+        &mut runtime.champions[champion_idx],
+        "Ignite",
+        now,
+        SUMMONER_IGNITE_CD_SEC,
+    ) {
         log_event(
             runtime,
             &format!("{} ignited {}", champion_snapshot.name, target_name),
@@ -7873,7 +9374,9 @@ fn try_cast_smite(
     now: f64,
 ) -> bool {
     let champion_snapshot = runtime.champions[champion_idx].clone();
-    if !champion_has_spell(&champion_snapshot, "Smite") || !spell_ready(&champion_snapshot, "Smite", now) {
+    if !champion_has_spell(&champion_snapshot, "Smite")
+        || !spell_ready(&champion_snapshot, "Smite", now)
+    {
         return false;
     }
     if champion_snapshot.role != "JGL" {
@@ -7902,8 +9405,17 @@ fn try_cast_smite(
     }
     mark_neutral_taken(runtime, neutral_timers, &neutral_key, Some(champion_idx));
 
-    if set_spell_cd(&mut runtime.champions[champion_idx], "Smite", now, SUMMONER_SMITE_CD_SEC) {
-        log_event(runtime, &format!("{} cast Smite", champion_snapshot.name), "info");
+    if set_spell_cd(
+        &mut runtime.champions[champion_idx],
+        "Smite",
+        now,
+        SUMMONER_SMITE_CD_SEC,
+    ) {
+        log_event(
+            runtime,
+            &format!("{} cast Smite", champion_snapshot.name),
+            "info",
+        );
         return true;
     }
     false
@@ -7911,7 +9423,9 @@ fn try_cast_smite(
 
 fn try_cast_teleport(runtime: &mut RuntimeState, champion_idx: usize, now: f64) -> bool {
     let champion_snapshot = runtime.champions[champion_idx].clone();
-    if !champion_has_spell(&champion_snapshot, "Teleport") || !spell_ready(&champion_snapshot, "Teleport", now) {
+    if !champion_has_spell(&champion_snapshot, "Teleport")
+        || !spell_ready(&champion_snapshot, "Teleport", now)
+    {
         return false;
     }
     if now < SUMMONER_TP_UNLOCK_AT_SEC {
@@ -7933,7 +9447,9 @@ fn try_cast_teleport(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
         return false;
     }
 
-    let Some(target) = best_lane_tp_target(&champion_snapshot, &runtime.structures, &runtime.minions) else {
+    let Some(target) =
+        best_lane_tp_target(&champion_snapshot, &runtime.structures, &runtime.minions)
+    else {
         return false;
     };
 
@@ -7942,8 +9458,17 @@ fn try_cast_teleport(runtime: &mut RuntimeState, champion_idx: usize, now: f64) 
     runtime.champions[champion_idx].target_path_index = 0;
     runtime.champions[champion_idx].next_decision_at = now;
 
-    if set_spell_cd(&mut runtime.champions[champion_idx], "Teleport", now, SUMMONER_TP_CD_SEC) {
-        log_event(runtime, &format!("{} cast Teleport", champion_snapshot.name), "recall");
+    if set_spell_cd(
+        &mut runtime.champions[champion_idx],
+        "Teleport",
+        now,
+        SUMMONER_TP_CD_SEC,
+    ) {
+        log_event(
+            runtime,
+            &format!("{} cast Teleport", champion_snapshot.name),
+            "recall",
+        );
         return true;
     }
     false
@@ -8155,7 +9680,11 @@ fn mark_neutral_taken(
 
     if is_jungle_camp_key(key) {
         if killer_role == "SUP" && runtime.time_sec >= SUPPORT_OPEN_ROAM_AT_SEC {
-            log_event(runtime, &format!("{} skipped {}", killer_name, timer_label), "info");
+            log_event(
+                runtime,
+                &format!("{} skipped {}", killer_name, timer_label),
+                "info",
+            );
             return;
         }
         if let Some((gold, xp)) = jungle_camp_reward(key) {
@@ -8181,7 +9710,11 @@ fn mark_neutral_taken(
             .max(1);
             add_cs_to_champion(runtime, &killer_id, award_cs);
         }
-        log_event(runtime, &format!("{} cleared {}", killer_name, timer_label), "info");
+        log_event(
+            runtime,
+            &format!("{} cleared {}", killer_name, timer_label),
+            "info",
+        );
         return;
     }
 
@@ -8205,35 +9738,56 @@ fn mark_neutral_taken(
         team_stats_mut(&mut runtime.stats, &killer_team).barons += 1;
         add_gold_xp_to_champion(runtime, &killer_id, BARON_SECURE_GOLD, BARON_SECURE_XP);
         let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
-        team_buffs_mut(&mut buffs, &killer_team).baron_until = runtime.time_sec + BARON_BUFF_DURATION_SEC;
+        team_buffs_mut(&mut buffs, &killer_team).baron_until =
+            runtime.time_sec + BARON_BUFF_DURATION_SEC;
         set_runtime_buffs(runtime, &buffs);
         log_event(
             runtime,
-            &format!("{} secured baron", normalized_team(&killer_team).to_uppercase()),
+            &format!(
+                "{} secured baron",
+                normalized_team(&killer_team).to_uppercase()
+            ),
             "baron",
         );
         return;
     }
 
     if key == "elder" {
-        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD + 35, OBJECTIVE_SECURE_XP + 55);
+        add_gold_xp_to_champion(
+            runtime,
+            &killer_id,
+            OBJECTIVE_SECURE_GOLD + 35,
+            OBJECTIVE_SECURE_XP + 55,
+        );
         let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
-        team_buffs_mut(&mut buffs, &killer_team).elder_until = runtime.time_sec + ELDER_BUFF_DURATION_SEC;
+        team_buffs_mut(&mut buffs, &killer_team).elder_until =
+            runtime.time_sec + ELDER_BUFF_DURATION_SEC;
         set_runtime_buffs(runtime, &buffs);
         log_event(
             runtime,
-            &format!("{} secured elder", normalized_team(&killer_team).to_uppercase()),
+            &format!(
+                "{} secured elder",
+                normalized_team(&killer_team).to_uppercase()
+            ),
             "dragon",
         );
         return;
     }
 
     if key == "herald" {
-        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD + 20, OBJECTIVE_SECURE_XP + 30);
+        add_gold_xp_to_champion(
+            runtime,
+            &killer_id,
+            OBJECTIVE_SECURE_GOLD + 20,
+            OBJECTIVE_SECURE_XP + 30,
+        );
         set_rift_herald_charge(runtime, &killer_team, &killer_id);
         log_event(
             runtime,
-            &format!("{} secured rift herald", normalized_team(&killer_team).to_uppercase()),
+            &format!(
+                "{} secured rift herald",
+                normalized_team(&killer_team).to_uppercase()
+            ),
             "info",
         );
         return;
@@ -8242,20 +9796,37 @@ fn mark_neutral_taken(
     if key == "voidgrubs" {
         // Voidgrubs stacks are awarded incrementally while damaging the camp.
         // At kill time we only grant completion rewards.
-        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD, OBJECTIVE_SECURE_XP);
+        add_gold_xp_to_champion(
+            runtime,
+            &killer_id,
+            OBJECTIVE_SECURE_GOLD,
+            OBJECTIVE_SECURE_XP,
+        );
         log_event(
             runtime,
-            &format!("{} cleared voidgrub camp", normalized_team(&killer_team).to_uppercase()),
+            &format!(
+                "{} cleared voidgrub camp",
+                normalized_team(&killer_team).to_uppercase()
+            ),
             "info",
         );
         return;
     }
 
     if is_objective_neutral_key(key) {
-        add_gold_xp_to_champion(runtime, &killer_id, OBJECTIVE_SECURE_GOLD, OBJECTIVE_SECURE_XP);
+        add_gold_xp_to_champion(
+            runtime,
+            &killer_id,
+            OBJECTIVE_SECURE_GOLD,
+            OBJECTIVE_SECURE_XP,
+        );
         log_event(
             runtime,
-            &format!("{} secured {}", normalized_team(&killer_team).to_uppercase(), timer_label),
+            &format!(
+                "{} secured {}",
+                normalized_team(&killer_team).to_uppercase(),
+                timer_label
+            ),
             "info",
         );
     }
@@ -8317,7 +9888,8 @@ fn attack_neutral_if_in_range(
         let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
         {
             let team_buffs = team_buffs_mut(&mut buffs, &killer_team);
-            team_buffs.voidgrub_stacks = (team_buffs.voidgrub_stacks + voidgrub_segments_gained).clamp(0, 3);
+            team_buffs.voidgrub_stacks =
+                (team_buffs.voidgrub_stacks + voidgrub_segments_gained).clamp(0, 3);
         }
         set_runtime_buffs(runtime, &buffs);
 
@@ -8332,7 +9904,10 @@ fn attack_neutral_if_in_range(
         for _ in 0..voidgrub_segments_gained {
             log_event(
                 runtime,
-                &format!("{} secured voidgrub", normalized_team(&killer_team).to_uppercase()),
+                &format!(
+                    "{} secured voidgrub",
+                    normalized_team(&killer_team).to_uppercase()
+                ),
                 "info",
             );
         }
@@ -8344,7 +9919,10 @@ fn attack_neutral_if_in_range(
     true
 }
 
-fn sync_objectives_from_neutral_timers(runtime: &mut RuntimeState, neutral_timers: &NeutralTimersRuntime) {
+fn sync_objectives_from_neutral_timers(
+    runtime: &mut RuntimeState,
+    neutral_timers: &NeutralTimersRuntime,
+) {
     let Some(objectives) = runtime.objectives.as_object_mut() else {
         return;
     };
@@ -8356,7 +9934,11 @@ fn sync_objectives_from_neutral_timers(runtime: &mut RuntimeState, neutral_timer
             dragon_obj.insert("alive".to_string(), Value::from(dragon_timer.alive));
             dragon_obj.insert(
                 "nextSpawnAt".to_string(),
-                Value::from(dragon_timer.next_spawn_at.unwrap_or(OBJECTIVE_NEXT_SPAWN_FALLBACK)),
+                Value::from(
+                    dragon_timer
+                        .next_spawn_at
+                        .unwrap_or(OBJECTIVE_NEXT_SPAWN_FALLBACK),
+                ),
             );
             dragon_obj.insert(
                 "currentKind".to_string(),
@@ -8386,8 +9968,14 @@ fn sync_objectives_from_neutral_timers(runtime: &mut RuntimeState, neutral_timer
                     .cloned()
                     .unwrap_or(Value::from("")),
             );
-            dragon_obj.insert("homeStacks".to_string(), Value::from(buffs.blue.dragon_stacks));
-            dragon_obj.insert("awayStacks".to_string(), Value::from(buffs.red.dragon_stacks));
+            dragon_obj.insert(
+                "homeStacks".to_string(),
+                Value::from(buffs.blue.dragon_stacks),
+            );
+            dragon_obj.insert(
+                "awayStacks".to_string(),
+                Value::from(buffs.red.dragon_stacks),
+            );
             dragon_obj.insert(
                 "soulClaimedBy".to_string(),
                 if buffs.blue.soul_kind.is_some() {
@@ -8406,7 +9994,11 @@ fn sync_objectives_from_neutral_timers(runtime: &mut RuntimeState, neutral_timer
             baron_obj.insert("alive".to_string(), Value::from(baron_timer.alive));
             baron_obj.insert(
                 "nextSpawnAt".to_string(),
-                Value::from(baron_timer.next_spawn_at.unwrap_or(OBJECTIVE_NEXT_SPAWN_FALLBACK)),
+                Value::from(
+                    baron_timer
+                        .next_spawn_at
+                        .unwrap_or(OBJECTIVE_NEXT_SPAWN_FALLBACK),
+                ),
             );
         }
     }
@@ -8465,17 +10057,21 @@ fn tick_neutral_timers(runtime: &mut RuntimeState) {
                         despawn_text = Some(format!("{} despawned", timer.label));
 
                         if key == "voidgrubs" && had_remaining_hp {
-                            let mut buffs = runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
-                            let total = (buffs.blue.voidgrub_stacks + buffs.red.voidgrub_stacks).clamp(0, 3);
+                            let mut buffs =
+                                runtime_buffs_from_extra(runtime.extra.get("teamBuffs"));
+                            let total = (buffs.blue.voidgrub_stacks + buffs.red.voidgrub_stacks)
+                                .clamp(0, 3);
                             let remaining = (3 - total).max(0);
                             if remaining > 0 {
-                                let winner_team = if buffs.red.voidgrub_stacks > buffs.blue.voidgrub_stacks {
-                                    "red"
-                                } else {
-                                    "blue"
-                                };
+                                let winner_team =
+                                    if buffs.red.voidgrub_stacks > buffs.blue.voidgrub_stacks {
+                                        "red"
+                                    } else {
+                                        "blue"
+                                    };
                                 let target = team_buffs_mut(&mut buffs, winner_team);
-                                target.voidgrub_stacks = (target.voidgrub_stacks + remaining).clamp(0, 3);
+                                target.voidgrub_stacks =
+                                    (target.voidgrub_stacks + remaining).clamp(0, 3);
                                 set_runtime_buffs(runtime, &buffs);
                             }
                         }
@@ -8498,14 +10094,21 @@ fn tick_neutral_timers(runtime: &mut RuntimeState) {
     }
 }
 
-fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, target_idx: usize) -> bool {
+fn should_engage_enemy_champion(
+    runtime: &RuntimeState,
+    attacker_idx: usize,
+    target_idx: usize,
+) -> bool {
     if attacker_idx >= runtime.champions.len() || target_idx >= runtime.champions.len() {
         return false;
     }
 
     let attacker = &runtime.champions[attacker_idx];
     let target = &runtime.champions[target_idx];
-    if !attacker.alive || !target.alive || normalized_team(&attacker.team) == normalized_team(&target.team) {
+    if !attacker.alive
+        || !target.alive
+        || normalized_team(&attacker.team) == normalized_team(&target.team)
+    {
         return false;
     }
 
@@ -8523,7 +10126,8 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
     let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &attacker.team);
     let fight_plan = team_tactics.fight_plan.as_str();
     let risk_tolerance = stat_delta(attacker.competitive_score).clamp(-1.0, 1.0);
-    let dynamic_retreat_hp_ratio = (runtime.policy.trade_retreat_hp_ratio - risk_tolerance * 0.05).clamp(0.24, 0.60);
+    let dynamic_retreat_hp_ratio =
+        (runtime.policy.trade_retreat_hp_ratio - risk_tolerance * 0.05).clamp(0.24, 0.60);
 
     let ally_nearby = runtime
         .champions
@@ -8610,15 +10214,15 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
     if !pick_force_open
         && !dive_force_open
         && should_disengage_champion_trade(
-        attacker,
-        target,
-        runtime.time_sec,
-        &runtime.champions,
-        &runtime.minions,
-        &runtime.structures,
-        runtime.ai_mode,
-        &runtime.policy,
-    )
+            attacker,
+            target,
+            runtime.time_sec,
+            &runtime.champions,
+            &runtime.minions,
+            &runtime.structures,
+            runtime.ai_mode,
+            &runtime.policy,
+        )
     {
         return false;
     }
@@ -8626,17 +10230,18 @@ fn should_engage_enemy_champion(runtime: &RuntimeState, attacker_idx: usize, tar
     can_champion_tower_dive(runtime, attacker, target)
 }
 
-fn can_champion_tower_dive(runtime: &RuntimeState, attacker: &ChampionRuntime, target: &ChampionRuntime) -> bool {
-    let defending_tower = runtime
-        .structures
-        .iter()
-        .find(|structure| {
-            structure.alive
-                && structure.kind == "tower"
-                && normalized_team(&structure.team) == normalized_team(&target.team)
-                && dist(structure.pos, target.pos) <= TOWER_AGGRO_VICTIM_RADIUS
-                && dist(structure.pos, attacker.pos) <= TOWER_AGGRO_ATTACKER_RADIUS
-        });
+fn can_champion_tower_dive(
+    runtime: &RuntimeState,
+    attacker: &ChampionRuntime,
+    target: &ChampionRuntime,
+) -> bool {
+    let defending_tower = runtime.structures.iter().find(|structure| {
+        structure.alive
+            && structure.kind == "tower"
+            && normalized_team(&structure.team) == normalized_team(&target.team)
+            && dist(structure.pos, target.pos) <= TOWER_AGGRO_VICTIM_RADIUS
+            && dist(structure.pos, attacker.pos) <= TOWER_AGGRO_ATTACKER_RADIUS
+    });
 
     let Some(tower) = defending_tower else {
         return true;
@@ -8659,7 +10264,7 @@ fn can_champion_tower_dive(runtime: &RuntimeState, attacker: &ChampionRuntime, t
         } else {
             0.0
         })
-        .clamp(0.2, 0.95);
+    .clamp(0.2, 0.95);
     let no_dive_hp_min = if attacker_is_backline {
         (no_dive_hp_min + 0.05).clamp(0.2, 0.95)
     } else {
@@ -8866,14 +10471,22 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
         let shared_gold = CHAMPION_ASSIST_GOLD_TOTAL / assisters.len() as i64;
         let shared_xp = (kill_xp / 2) / assisters.len() as i64;
         for assist_id in assisters {
-            if let Some(champion) = runtime.champions.iter_mut().find(|champion| champion.id == assist_id) {
+            if let Some(champion) = runtime
+                .champions
+                .iter_mut()
+                .find(|champion| champion.id == assist_id)
+            {
                 champion.assists += 1;
             }
             add_gold_xp_to_champion(runtime, &assist_id, shared_gold, shared_xp);
         }
     }
 
-    log_event(runtime, &format!("{} killed {}", killer_name, victim_name), "kill");
+    log_event(
+        runtime,
+        &format!("{} killed {}", killer_name, victim_name),
+        "kill",
+    );
 }
 
 fn mark_tower_aggro_on_champion_attack(
@@ -8883,7 +10496,10 @@ fn mark_tower_aggro_on_champion_attack(
     now: f64,
 ) {
     for tower in &mut runtime.structures {
-        if !tower.alive || tower.kind != "tower" || normalized_team(&tower.team) != normalized_team(&victim.team) {
+        if !tower.alive
+            || tower.kind != "tower"
+            || normalized_team(&tower.team) != normalized_team(&victim.team)
+        {
             continue;
         }
         if dist(tower.pos, victim.pos) > TOWER_AGGRO_VICTIM_RADIUS {
@@ -8898,12 +10514,20 @@ fn mark_tower_aggro_on_champion_attack(
     }
 }
 
-fn apply_tower_shot_to_champion(runtime: &mut RuntimeState, structure_idx: usize, champion_idx: usize) {
+fn apply_tower_shot_to_champion(
+    runtime: &mut RuntimeState,
+    structure_idx: usize,
+    champion_idx: usize,
+) {
     let now = runtime.time_sec;
     runtime.champions[champion_idx].hp -= TOWER_SHOT_DAMAGE;
     runtime.champions[champion_idx].last_damaged_by_champion_id = None;
     runtime.champions[champion_idx].last_damaged_at = now;
-    cancel_recall(&mut runtime.champions[champion_idx], now, &mut runtime.events);
+    cancel_recall(
+        &mut runtime.champions[champion_idx],
+        now,
+        &mut runtime.events,
+    );
     runtime.structures[structure_idx].attack_cd_until = now + TOWER_ATTACK_CADENCE_SEC;
     if runtime.champions[champion_idx].hp <= 0.0 && runtime.champions[champion_idx].alive {
         runtime.champions[champion_idx].alive = false;
@@ -8935,7 +10559,8 @@ fn apply_level_scaling(champion: &mut ChampionRuntime) {
     let level_delta = target_level - champion.level;
     champion.max_hp += CHAMPION_LEVEL_UP_HP_GAIN * level_delta as f64;
     champion.attack_damage += CHAMPION_LEVEL_UP_AD_GAIN * level_delta as f64;
-    champion.hp = (champion.hp + CHAMPION_LEVEL_UP_HP_GAIN * level_delta as f64).min(champion.max_hp);
+    champion.hp =
+        (champion.hp + CHAMPION_LEVEL_UP_HP_GAIN * level_delta as f64).min(champion.max_hp);
     champion.level = target_level;
 }
 
@@ -8947,7 +10572,8 @@ fn champion_respawn_seconds(level: i64, now_sec: f64) -> f64 {
     } else {
         1.0
     };
-    ((CHAMPION_RESPAWN_BASE_SEC + (level.max(1) - 1) as f64 * CHAMPION_RESPAWN_PER_LEVEL_SEC) * time_factor)
+    ((CHAMPION_RESPAWN_BASE_SEC + (level.max(1) - 1) as f64 * CHAMPION_RESPAWN_PER_LEVEL_SEC)
+        * time_factor)
         .clamp(10.0, 42.0)
 }
 
@@ -8993,7 +10619,11 @@ fn lane_tag_from_structure_id(id: &str) -> Option<&'static str> {
     }
 }
 
-fn inhib_tower_alive_for_lane(structures: &[StructureRuntime], defending_team: &str, lane: &str) -> bool {
+fn inhib_tower_alive_for_lane(
+    structures: &[StructureRuntime],
+    defending_team: &str,
+    lane: &str,
+) -> bool {
     structures.iter().any(|candidate| {
         candidate.alive
             && candidate.kind == "tower"
@@ -9003,8 +10633,15 @@ fn inhib_tower_alive_for_lane(structures: &[StructureRuntime], defending_team: &
     })
 }
 
-fn weakest_enemy_lane_for_team(structures: &[StructureRuntime], team: &str) -> Option<&'static str> {
-    let enemy = if normalized_team(team) == "blue" { "red" } else { "blue" };
+fn weakest_enemy_lane_for_team(
+    structures: &[StructureRuntime],
+    team: &str,
+) -> Option<&'static str> {
+    let enemy = if normalized_team(team) == "blue" {
+        "red"
+    } else {
+        "blue"
+    };
     let lane_count = |lane: &str| -> usize {
         structures
             .iter()
@@ -9043,7 +10680,11 @@ fn add_dragon_stack_for_kind(team_buffs: &mut RuntimeTeamBuffState, kind: &str) 
     team_buffs.dragon_stacks += 1;
 }
 
-fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut NeutralTimersRuntime, killer_team: &str) -> String {
+fn process_dragon_capture(
+    runtime: &mut RuntimeState,
+    neutral_timers: &mut NeutralTimersRuntime,
+    killer_team: &str,
+) -> String {
     ensure_dragon_cycle_defaults(runtime, neutral_timers);
     let dragon_kind = current_dragon_kind(neutral_timers);
 
@@ -9060,10 +10701,14 @@ fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut Neutr
     let total_dragons = buffs.blue.dragon_stacks + buffs.red.dragon_stacks;
 
     if total_dragons == 1 {
-        neutral_timers
-            .extra
-            .insert("dragonFirstKind".to_string(), Value::from(dragon_kind.as_str()));
-        let second_kind = choose_different_dragon_kind(&dragon_kind, runtime.time_sec as i64 + runtime.events.len() as i64);
+        neutral_timers.extra.insert(
+            "dragonFirstKind".to_string(),
+            Value::from(dragon_kind.as_str()),
+        );
+        let second_kind = choose_different_dragon_kind(
+            &dragon_kind,
+            runtime.time_sec as i64 + runtime.events.len() as i64,
+        );
         set_current_dragon_kind(neutral_timers, second_kind);
     } else if total_dragons == 2 {
         let first_kind = neutral_timers
@@ -9074,9 +10719,10 @@ fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut Neutr
             .filter(|value| !value.is_empty())
             .unwrap_or("")
             .to_string();
-        neutral_timers
-            .extra
-            .insert("dragonSecondKind".to_string(), Value::from(dragon_kind.as_str()));
+        neutral_timers.extra.insert(
+            "dragonSecondKind".to_string(),
+            Value::from(dragon_kind.as_str()),
+        );
         let rift_kind = choose_dragon_kind_excluding(
             &[first_kind.as_str(), dragon_kind.as_str()],
             runtime.time_sec as i64 + runtime.events.len() as i64 + 37,
@@ -9122,8 +10768,16 @@ fn process_dragon_capture(runtime: &mut RuntimeState, neutral_timers: &mut Neutr
     dragon_kind
 }
 
-fn baron_push_target_for_lane(structures: &[StructureRuntime], team: &str, lane: &str) -> Option<Vec2> {
-    let enemy = if normalized_team(team) == "blue" { "red" } else { "blue" };
+fn baron_push_target_for_lane(
+    structures: &[StructureRuntime],
+    team: &str,
+    lane: &str,
+) -> Option<Vec2> {
+    let enemy = if normalized_team(team) == "blue" {
+        "red"
+    } else {
+        "blue"
+    };
     let lane_tower = structures
         .iter()
         .filter(|structure| {
@@ -9174,7 +10828,11 @@ fn prerequisite_tower_alive(structures: &[StructureRuntime], structure_id: &str)
     None
 }
 
-fn is_structure_targetable(structures: &[StructureRuntime], attacker_team: &str, structure: &StructureRuntime) -> bool {
+fn is_structure_targetable(
+    structures: &[StructureRuntime],
+    attacker_team: &str,
+    structure: &StructureRuntime,
+) -> bool {
     if !structure.alive || normalized_team(&structure.team) == normalized_team(attacker_team) {
         return false;
     }
@@ -9208,11 +10866,20 @@ fn tower_damage_multiplier(at_time_sec: f64, structure: &StructureRuntime) -> f6
     }
 }
 
-fn apply_damage_to_structure(runtime: &mut RuntimeState, structure_idx: usize, raw_damage: f64, attacker_team: &str) {
+fn apply_damage_to_structure(
+    runtime: &mut RuntimeState,
+    structure_idx: usize,
+    raw_damage: f64,
+    attacker_team: &str,
+) {
     if structure_idx >= runtime.structures.len() {
         return;
     }
-    if !is_structure_targetable(&runtime.structures, attacker_team, &runtime.structures[structure_idx]) {
+    if !is_structure_targetable(
+        &runtime.structures,
+        attacker_team,
+        &runtime.structures[structure_idx],
+    ) {
         return;
     }
 
@@ -9293,7 +10960,9 @@ fn register_minion_death(runtime: &mut RuntimeState, minion_idx: usize) {
             .iter_mut()
             .find(|champion| champion.id == champion_id)
         {
-            if champion.role == "SUP" && (now - champion.last_support_cs_at) < SUPPORT_CS_MIN_INTERVAL_SEC {
+            if champion.role == "SUP"
+                && (now - champion.last_support_cs_at) < SUPPORT_CS_MIN_INTERVAL_SEC
+            {
                 return;
             }
             champion.gold += gold;
@@ -9421,7 +11090,8 @@ fn nearest_enemy_champion_for_minion(
             enemy.alive
                 && !champion_is_banished(enemy)
                 && normalized_team(&enemy.team) != normalized_team(attacker_team)
-                && (attacker_kind == "summon" || normalized_lane(&enemy.lane) == normalized_lane(attacker_lane))
+                && (attacker_kind == "summon"
+                    || normalized_lane(&enemy.lane) == normalized_lane(attacker_lane))
                 && dist(enemy.pos, from) <= range
         })
         .min_by(|(idx_a, a), (idx_b, b)| {
@@ -9437,7 +11107,11 @@ fn nearest_enemy_champion_for_minion(
         .map(|(idx, _)| idx)
 }
 
-fn nearest_enemy_minion_index(minions: &[MinionRuntime], source_idx: usize, range: f64) -> Option<usize> {
+fn nearest_enemy_minion_index(
+    minions: &[MinionRuntime],
+    source_idx: usize,
+    range: f64,
+) -> Option<usize> {
     let source = &minions[source_idx];
     minions
         .iter()
@@ -9471,7 +11145,8 @@ fn nearest_enemy_structure_index(
         .filter(|(_, structure)| {
             structure.alive
                 && normalized_team(&structure.team) != normalized_team(team)
-                && (normalized_lane(&structure.lane) == normalized_lane(lane) || structure.lane == "base")
+                && (normalized_lane(&structure.lane) == normalized_lane(lane)
+                    || structure.lane == "base")
                 && is_structure_targetable(structures, team, structure)
                 && dist(structure.pos, from) <= range
         })
@@ -9584,17 +11259,31 @@ fn classify_item_build(role: &str, champion_id: &str) -> ItemBuildCategory {
         }
         if matches!(
             c,
-            "alistar" | "blitzcrank" | "braum" | "leona" | "nautilus" | "pyke" | "rakan" | "rell" | "thresh"
+            "alistar"
+                | "blitzcrank"
+                | "braum"
+                | "leona"
+                | "nautilus"
+                | "pyke"
+                | "rakan"
+                | "rell"
+                | "thresh"
         ) {
             return ItemBuildCategory::SupportEngage;
         }
     }
 
     if role == "ADC" {
-        if matches!(c, "kaisa" | "kalista" | "kogmaw" | "masteryi" | "twitch" | "varus" | "vayne" | "yunara") {
+        if matches!(
+            c,
+            "kaisa" | "kalista" | "kogmaw" | "masteryi" | "twitch" | "varus" | "vayne" | "yunara"
+        ) {
             return ItemBuildCategory::AdcAttackSpeed;
         }
-        if matches!(c, "graves" | "jhin" | "kindred" | "missfortune" | "quinn" | "senna" | "smolder") {
+        if matches!(
+            c,
+            "graves" | "jhin" | "kindred" | "missfortune" | "quinn" | "senna" | "smolder"
+        ) {
             return ItemBuildCategory::LethalityMarksman;
         }
     }
@@ -9643,11 +11332,27 @@ fn classify_item_build(role: &str, champion_id: &str) -> ItemBuildCategory {
         return ItemBuildCategory::Colossus;
     }
 
-    if matches!(c, "akshan" | "khazix" | "naafiri" | "nocturne" | "pyke" | "qiyana" | "rengar" | "shaco" | "talon" | "zed" | "kayn") {
+    if matches!(
+        c,
+        "akshan"
+            | "khazix"
+            | "naafiri"
+            | "nocturne"
+            | "pyke"
+            | "qiyana"
+            | "rengar"
+            | "shaco"
+            | "talon"
+            | "zed"
+            | "kayn"
+    ) {
         return ItemBuildCategory::AssassinAd;
     }
 
-    if matches!(c, "akali" | "ekko" | "evelynn" | "fizz" | "kassadin" | "katarina" | "leblanc" | "nidalee") {
+    if matches!(
+        c,
+        "akali" | "ekko" | "evelynn" | "fizz" | "kassadin" | "katarina" | "leblanc" | "nidalee"
+    ) {
         return ItemBuildCategory::AssassinAp;
     }
 
@@ -9676,7 +11381,19 @@ fn classify_item_build(role: &str, champion_id: &str) -> ItemBuildCategory {
         return ItemBuildCategory::ControlMage;
     }
 
-    if matches!(c, "cassiopeia" | "karthus" | "vladimir" | "swain" | "rumble" | "singed" | "sylas" | "gwen" | "lillia" | "morgana") {
+    if matches!(
+        c,
+        "cassiopeia"
+            | "karthus"
+            | "vladimir"
+            | "swain"
+            | "rumble"
+            | "singed"
+            | "sylas"
+            | "gwen"
+            | "lillia"
+            | "morgana"
+    ) {
         return ItemBuildCategory::BattleMage;
     }
 
@@ -9718,12 +11435,26 @@ fn classify_item_build(role: &str, champion_id: &str) -> ItemBuildCategory {
 
     if matches!(
         c,
-        "aphelios" | "ashe" | "caitlyn" | "draven" | "jinx" | "lucian" | "nilah" | "samira" | "sivir" | "tristana" | "xayah" | "tryndamere"
+        "aphelios"
+            | "ashe"
+            | "caitlyn"
+            | "draven"
+            | "jinx"
+            | "lucian"
+            | "nilah"
+            | "samira"
+            | "sivir"
+            | "tristana"
+            | "xayah"
+            | "tryndamere"
     ) {
         return ItemBuildCategory::AdcCrit;
     }
 
-    if matches!(c, "graves" | "jhin" | "kindred" | "missfortune" | "quinn" | "senna" | "smolder") {
+    if matches!(
+        c,
+        "graves" | "jhin" | "kindred" | "missfortune" | "quinn" | "senna" | "smolder"
+    ) {
         return ItemBuildCategory::LethalityMarksman;
     }
 
@@ -9769,7 +11500,17 @@ fn try_auto_buy_items(runtime: &mut RuntimeState) {
             }
         }
 
-        let (alive, role, champion_id, at_base, item_count, gold, name, owned_items, has_left_base_once) = {
+        let (
+            alive,
+            role,
+            champion_id,
+            at_base,
+            item_count,
+            gold,
+            name,
+            owned_items,
+            has_left_base_once,
+        ) = {
             let champion = &runtime.champions[idx];
             (
                 champion.alive,
@@ -9792,7 +11533,8 @@ fn try_auto_buy_items(runtime: &mut RuntimeState) {
         let has_boots = owned_items.iter().any(|item| is_boots_item_key(item));
 
         let next_item = if !has_boots {
-            plan.iter().find(|candidate| is_boots_item_key(candidate.key))
+            plan.iter()
+                .find(|candidate| is_boots_item_key(candidate.key))
         } else {
             plan.iter()
                 .find(|candidate| !owned_items.iter().any(|owned| owned == candidate.key))
@@ -9916,7 +11658,9 @@ fn cleanup_tick(runtime: &mut RuntimeState) {
     runtime
         .minions
         .retain(|minion| minion.alive && minion.path_index < minion.path.len());
-    runtime.wards.retain(|ward| ward.expires_at > runtime.time_sec);
+    runtime
+        .wards
+        .retain(|ward| ward.expires_at > runtime.time_sec);
 
     try_auto_buy_items(runtime);
 
@@ -10152,8 +11896,9 @@ mod tests {
 
         assert!(path.len() > 1, "expected non-trivial path around wall");
         assert!(
-            path.iter()
-                .all(|p| !active_nav_walls().iter().any(|w| point_in_polygon(*p, &w.points))),
+            path.iter().all(|p| !active_nav_walls()
+                .iter()
+                .any(|w| point_in_polygon(*p, &w.points))),
             "path should not contain blocked wall nodes"
         );
     }
@@ -10168,17 +11913,11 @@ mod tests {
         };
 
         let mut blue = test_minion("m-blue-1", "blue", "mid", Vec2 { x: 0.5, y: 0.5 });
-        blue.path = vec![
-            Vec2 { x: 0.5, y: 0.5 },
-            Vec2 { x: 0.7, y: 0.5 },
-        ];
+        blue.path = vec![Vec2 { x: 0.5, y: 0.5 }, Vec2 { x: 0.7, y: 0.5 }];
         blue.path_index = 1;
 
         let mut red = test_minion("m-red-1", "red", "mid", Vec2 { x: 0.54, y: 0.5 });
-        red.path = vec![
-            Vec2 { x: 0.54, y: 0.5 },
-            Vec2 { x: 0.3, y: 0.5 },
-        ];
+        red.path = vec![Vec2 { x: 0.54, y: 0.5 }, Vec2 { x: 0.3, y: 0.5 }];
         red.path_index = 1;
 
         let start_pos = blue.pos;
@@ -10203,7 +11942,8 @@ mod tests {
         blue.attack_range = 0.06;
 
         let red_minion = test_minion("m-red-1", "red", "mid", Vec2 { x: 0.53, y: 0.5 });
-        let mut red_tower = test_structure("red-mid-outer", "red", "mid", Vec2 { x: 0.535, y: 0.5 });
+        let mut red_tower =
+            test_structure("red-mid-outer", "red", "mid", Vec2 { x: 0.535, y: 0.5 });
         red_tower.hp = 100.0;
 
         let mut runtime = test_runtime(vec![], vec![blue, red_minion], vec![red_tower], neutral);
@@ -10229,17 +11969,33 @@ mod tests {
         blue.attack_damage = 10.0;
         blue.attack_range = 0.06;
 
-        let mut red_inhib = test_structure("red-inhib-mid", "red", "base", Vec2 { x: 0.7832, y: 0.2240 });
+        let mut red_inhib = test_structure(
+            "red-inhib-mid",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.7832,
+                y: 0.2240,
+            },
+        );
         red_inhib.kind = "inhib".to_string();
         red_inhib.hp = 200.0;
         let red_inhib_tower = test_structure(
             "red-mid-inhib-tower",
             "red",
             "mid",
-            Vec2 { x: 0.740234375, y: 0.26171875 },
+            Vec2 {
+                x: 0.740234375,
+                y: 0.26171875,
+            },
         );
 
-        let mut runtime = test_runtime(vec![], vec![blue], vec![red_inhib, red_inhib_tower], neutral);
+        let mut runtime = test_runtime(
+            vec![],
+            vec![blue],
+            vec![red_inhib, red_inhib_tower],
+            neutral,
+        );
         let hp_before = runtime.structures[0].hp;
 
         resolve_minion_combat(&mut runtime);
@@ -10260,7 +12016,15 @@ mod tests {
         blue.attack_damage = 10.0;
         blue.attack_range = 0.06;
 
-        let mut red_inhib = test_structure("red-inhib-mid", "red", "base", Vec2 { x: 0.7832, y: 0.2240 });
+        let mut red_inhib = test_structure(
+            "red-inhib-mid",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.7832,
+                y: 0.2240,
+            },
+        );
         red_inhib.kind = "inhib".to_string();
         red_inhib.hp = 200.0;
 
@@ -10285,12 +12049,32 @@ mod tests {
         blue.attack_damage = 10.0;
         blue.attack_range = 0.06;
 
-        let mut red_nexus_top_tower =
-            test_structure("red-nexus-top-tower", "red", "base", Vec2 { x: 0.845703125, y: 0.1328125 });
+        let mut red_nexus_top_tower = test_structure(
+            "red-nexus-top-tower",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.845703125,
+                y: 0.1328125,
+            },
+        );
         red_nexus_top_tower.hp = 200.0;
-        let red_inhib_top = test_structure("red-inhib-top", "red", "base", Vec2 { x: 0.7545572916666666, y: 0.09114583333333333 });
+        let red_inhib_top = test_structure(
+            "red-inhib-top",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.7545572916666666,
+                y: 0.09114583333333333,
+            },
+        );
 
-        let mut runtime = test_runtime(vec![], vec![blue], vec![red_nexus_top_tower, red_inhib_top], neutral);
+        let mut runtime = test_runtime(
+            vec![],
+            vec![blue],
+            vec![red_nexus_top_tower, red_inhib_top],
+            neutral,
+        );
         let hp_before = runtime.structures[0].hp;
 
         resolve_minion_combat(&mut runtime);
@@ -10311,8 +12095,15 @@ mod tests {
         blue.attack_damage = 10.0;
         blue.attack_range = 0.06;
 
-        let mut red_nexus_top_tower =
-            test_structure("red-nexus-top-tower", "red", "base", Vec2 { x: 0.845703125, y: 0.1328125 });
+        let mut red_nexus_top_tower = test_structure(
+            "red-nexus-top-tower",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.845703125,
+                y: 0.1328125,
+            },
+        );
         red_nexus_top_tower.hp = 200.0;
 
         let mut runtime = test_runtime(vec![], vec![blue], vec![red_nexus_top_tower], neutral);
@@ -10368,7 +12159,12 @@ mod tests {
             extra: HashMap::new(),
         };
 
-        let runtime = test_runtime(vec![adc, jungler, enemy], vec![minion], vec![], neutral.clone());
+        let runtime = test_runtime(
+            vec![adc, jungler, enemy],
+            vec![minion],
+            vec![],
+            neutral.clone(),
+        );
 
         let target = pick_combat_target(&runtime, 0, runtime.time_sec, &neutral);
         assert!(matches!(target, Some(CombatTarget::Neutral(ref key)) if key == "dragon"));
@@ -10377,7 +12173,15 @@ mod tests {
     #[test]
     fn structure_pressure_blocked_with_two_enemy_minions_near_tower() {
         let laner = test_champion("top-blue", "blue", "TOP", "top", Vec2 { x: 0.28, y: 0.09 });
-        let tower = test_structure("red-top-outer", "red", "top", Vec2 { x: 0.275390625, y: 0.07161458333333333 });
+        let tower = test_structure(
+            "red-top-outer",
+            "red",
+            "top",
+            Vec2 {
+                x: 0.275390625,
+                y: 0.07161458333333333,
+            },
+        );
 
         let allied_wave = test_minion("m-blue-1", "blue", "top", Vec2 { x: 0.29, y: 0.08 });
         let enemy_wave_1 = test_minion("m-red-1", "red", "top", Vec2 { x: 0.27, y: 0.074 });
@@ -10513,7 +12317,8 @@ mod tests {
             extra: HashMap::new(),
         };
 
-        let mut champion = test_champion("adc-blue", "blue", "ADC", "bot", Vec2 { x: 0.50, y: 0.50 });
+        let mut champion =
+            test_champion("adc-blue", "blue", "ADC", "bot", Vec2 { x: 0.50, y: 0.50 });
         champion.hp = 20.0;
         champion.summoner_spells = vec![RuntimeSummonerSpellSlot {
             key: "Heal".to_string(),
@@ -10538,7 +12343,14 @@ mod tests {
     #[test]
     fn smite_executes_low_hp_dragon_for_jungler() {
         let mut entities = HashMap::new();
-        let mut dragon = test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true);
+        let mut dragon = test_neutral_timer(
+            "dragon",
+            Vec2 {
+                x: 0.6738,
+                y: 0.7031,
+            },
+            true,
+        );
         dragon.hp = 520.0;
         dragon.max_hp = 3600.0;
         entities.insert("dragon".to_string(), dragon);
@@ -10654,10 +12466,9 @@ mod tests {
         let mut runtime = test_runtime(vec![annie], vec![], vec![], neutral);
         resolve_champion_combat(&mut runtime);
 
-        let summon = runtime
-            .minions
-            .iter()
-            .find(|minion| minion.id.contains("tibbers") && minion.owner_champion_id.as_deref() == Some("mid-blue"));
+        let summon = runtime.minions.iter().find(|minion| {
+            minion.id.contains("tibbers") && minion.owner_champion_id.as_deref() == Some("mid-blue")
+        });
         assert!(summon.is_some());
     }
 
@@ -10739,12 +12550,18 @@ mod tests {
 
         let mut runtime = test_runtime(vec![annie], vec![], vec![], neutral);
         resolve_champion_combat(&mut runtime);
-        assert!(runtime.minions.iter().any(|minion| minion.alive && minion.kind == "summon"));
+        assert!(runtime
+            .minions
+            .iter()
+            .any(|minion| minion.alive && minion.kind == "summon"));
 
         runtime.time_sec += 46.0;
         move_minions(&mut runtime, 0.1);
 
-        assert!(!runtime.minions.iter().any(|minion| minion.alive && minion.kind == "summon"));
+        assert!(!runtime
+            .minions
+            .iter()
+            .any(|minion| minion.alive && minion.kind == "summon"));
     }
 
     #[test]
@@ -10796,9 +12613,18 @@ mod tests {
         });
         let target = test_champion("mid-red", "red", "MID", "mid", Vec2 { x: 0.56, y: 0.40 });
 
-        let mut runtime = test_runtime(vec![caster.clone(), target.clone()], vec![], vec![], neutral.clone());
+        let mut runtime = test_runtime(
+            vec![caster.clone(), target.clone()],
+            vec![],
+            vec![],
+            neutral.clone(),
+        );
         resolve_champion_combat(&mut runtime);
-        let cd_without_vision = runtime.champions[0].ultimate.as_ref().map(|u| u.cd_until).unwrap_or(0.0);
+        let cd_without_vision = runtime.champions[0]
+            .ultimate
+            .as_ref()
+            .map(|u| u.cd_until)
+            .unwrap_or(0.0);
         assert_eq!(cd_without_vision, 0.0);
 
         let mut runtime_with_ward = test_runtime(vec![caster, target], vec![], vec![], neutral);
@@ -10810,7 +12636,11 @@ mod tests {
             expires_at: runtime_with_ward.time_sec + 30.0,
         });
         resolve_champion_combat(&mut runtime_with_ward);
-        let cd_with_vision = runtime_with_ward.champions[0].ultimate.as_ref().map(|u| u.cd_until).unwrap_or(0.0);
+        let cd_with_vision = runtime_with_ward.champions[0]
+            .ultimate
+            .as_ref()
+            .map(|u| u.cd_until)
+            .unwrap_or(0.0);
         assert!(cd_with_vision > runtime_with_ward.time_sec);
     }
 
@@ -10908,7 +12738,10 @@ mod tests {
         place_wards(&mut runtime);
         assert_eq!(runtime.wards.len(), 1);
         let ward_pos = runtime.wards[0].pos;
-        assert!(dist(ward_pos, Vec2 { x: 0.615, y: 0.61 }) < 0.03 || dist(ward_pos, Vec2 { x: 0.565, y: 0.455 }) < 0.03);
+        assert!(
+            dist(ward_pos, Vec2 { x: 0.615, y: 0.61 }) < 0.03
+                || dist(ward_pos, Vec2 { x: 0.565, y: 0.455 }) < 0.03
+        );
     }
 
     #[test]
@@ -10967,7 +12800,8 @@ mod tests {
             cd_until: 0.0,
         }];
 
-        let target_tower = test_structure("blue-top-outer", "blue", "top", Vec2 { x: 0.11, y: 0.56 });
+        let target_tower =
+            test_structure("blue-top-outer", "blue", "top", Vec2 { x: 0.11, y: 0.56 });
         let mut runtime = test_runtime(vec![top], vec![], vec![target_tower.clone()], neutral);
         runtime.time_sec = SUMMONER_TP_UNLOCK_AT_SEC + 10.0;
 
@@ -11012,7 +12846,14 @@ mod tests {
         let mut entities = HashMap::new();
         entities.insert(
             "dragon".to_string(),
-            test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true),
+            test_neutral_timer(
+                "dragon",
+                Vec2 {
+                    x: 0.6738,
+                    y: 0.7031,
+                },
+                true,
+            ),
         );
 
         let mut neutral = NeutralTimersRuntime {
@@ -11047,11 +12888,25 @@ mod tests {
     #[test]
     fn dragon_soul_unlocks_elder_after_fourth_stack() {
         let mut entities = HashMap::new();
-        let mut dragon = test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true);
+        let mut dragon = test_neutral_timer(
+            "dragon",
+            Vec2 {
+                x: 0.6738,
+                y: 0.7031,
+            },
+            true,
+        );
         dragon.next_spawn_at = Some(0.0);
         entities.insert("dragon".to_string(), dragon);
 
-        let mut elder = test_neutral_timer("elder", Vec2 { x: 0.6738, y: 0.7031 }, false);
+        let mut elder = test_neutral_timer(
+            "elder",
+            Vec2 {
+                x: 0.6738,
+                y: 0.7031,
+            },
+            false,
+        );
         elder.unlocked = false;
         elder.next_spawn_at = None;
         entities.insert("elder".to_string(), elder);
@@ -11104,11 +12959,25 @@ mod tests {
     #[test]
     fn dragon_cycle_progresses_a_b_then_soul_rift_c_repeats() {
         let mut entities = HashMap::new();
-        let mut dragon = test_neutral_timer("dragon", Vec2 { x: 0.6738, y: 0.7031 }, true);
+        let mut dragon = test_neutral_timer(
+            "dragon",
+            Vec2 {
+                x: 0.6738,
+                y: 0.7031,
+            },
+            true,
+        );
         dragon.next_spawn_at = Some(0.0);
         entities.insert("dragon".to_string(), dragon);
 
-        let mut elder = test_neutral_timer("elder", Vec2 { x: 0.6738, y: 0.7031 }, false);
+        let mut elder = test_neutral_timer(
+            "elder",
+            Vec2 {
+                x: 0.6738,
+                y: 0.7031,
+            },
+            false,
+        );
         elder.unlocked = false;
         elder.next_spawn_at = None;
         entities.insert("elder".to_string(), elder);
@@ -11120,7 +12989,8 @@ mod tests {
             extra: HashMap::new(),
         };
 
-        let killer_blue = test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
+        let killer_blue =
+            test_champion("jgl-blue", "blue", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
         let killer_red = test_champion("jgl-red", "red", "JGL", "bot", Vec2 { x: 0.67, y: 0.70 });
         let mut runtime = test_runtime(vec![killer_blue, killer_red], vec![], vec![], neutral);
 
@@ -11150,11 +13020,17 @@ mod tests {
             Some(second_kind.as_str())
         );
         assert_eq!(
-            timers.extra.get("dragonSoulRiftKind").and_then(Value::as_str),
+            timers
+                .extra
+                .get("dragonSoulRiftKind")
+                .and_then(Value::as_str),
             Some(third_kind.as_str())
         );
         assert_eq!(
-            timers.extra.get("dragonCurrentKind").and_then(Value::as_str),
+            timers
+                .extra
+                .get("dragonCurrentKind")
+                .and_then(Value::as_str),
             Some(third_kind.as_str())
         );
     }
@@ -11188,13 +13064,36 @@ mod tests {
         };
 
         let laner = test_champion("mid-blue", "blue", "MID", "mid", Vec2 { x: 0.885, y: 0.12 });
-        let mut nexus = test_structure("red-nexus", "red", "base", Vec2 { x: 0.8912760416666666, y: 0.1171875 });
+        let mut nexus = test_structure(
+            "red-nexus",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.8912760416666666,
+                y: 0.1171875,
+            },
+        );
         nexus.kind = "nexus".to_string();
-        let nexus_tower = test_structure("red-nexus-top-tower", "red", "base", Vec2 { x: 0.845703125, y: 0.1328125 });
+        let nexus_tower = test_structure(
+            "red-nexus-top-tower",
+            "red",
+            "base",
+            Vec2 {
+                x: 0.845703125,
+                y: 0.1328125,
+            },
+        );
 
-        let runtime = test_runtime(vec![laner], vec![], vec![nexus, nexus_tower], neutral.clone());
+        let runtime = test_runtime(
+            vec![laner],
+            vec![],
+            vec![nexus, nexus_tower],
+            neutral.clone(),
+        );
         let target = pick_combat_target(&runtime, 0, runtime.time_sec, &neutral);
 
-        assert!(!matches!(target, Some(CombatTarget::Structure(idx)) if runtime.structures[idx].kind == "nexus"));
+        assert!(
+            !matches!(target, Some(CombatTarget::Structure(idx)) if runtime.structures[idx].kind == "nexus")
+        );
     }
 }

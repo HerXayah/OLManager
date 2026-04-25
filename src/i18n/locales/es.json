@@ -59,6 +59,7 @@
     "squad": "Plantilla",
     "tactics": "Táctica",
     "training": "Entrenamiento",
+    "champions": "Campeones",
     "staff": "Staff",
     "finances": "Finanzas",
     "transfers": "Fichajes",
@@ -105,6 +106,18 @@
     "skipToMatchDayDesc": "Avanzar hasta tu próximo partido",
     "matchDayTitle": "Día de Partido",
     "delegateWarning": "Tu asistente gestionará el partido. No podrás intervenir."
+  },
+  "champions": {
+    "metaTitle": "Meta de campeones",
+    "patchNumber": "Parche {{n}}",
+    "patchLastDate": "Último parche: {{date}}",
+    "patchPending": "Aún no hay parches aplicados.",
+    "metaHiddenHint": "Tu staff todavía está descifrando el meta de este parche. Mejores scouts revelan más rápido.",
+    "tierScore": "Tier score: {{value}}",
+    "masteryTrainingTitle": "Entrenamiento de maestrías",
+    "noTarget": "Sin objetivo",
+    "currentMastery": "Maestría: {{value}}",
+    "selectChampion": "Elegí un campeón"
   },
   "closeConfirm": {
     "title": "Cambios sin guardar",

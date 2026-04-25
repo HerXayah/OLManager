@@ -42,6 +42,10 @@ export type {
   NewsArticle,
   BoardObjective,
   ScoutingAssignment,
+  ChampionMasteryEntryData,
+  ChampionMetaEntryData,
+  ChampionPatchNoteData,
+  ChampionPatchStateData,
   GameStateData,
 } from './types';
 

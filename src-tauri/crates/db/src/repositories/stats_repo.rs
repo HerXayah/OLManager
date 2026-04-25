@@ -217,7 +217,8 @@ fn load_stats_state_from_lol_tables(conn: &Connection) -> Result<StatsState, Str
 
     let mut team_matches = Vec::new();
     for row in team_rows {
-        team_matches.push(row.map_err(|e| format!("Failed to read lol_team_match_stats row: {}", e))?);
+        team_matches
+            .push(row.map_err(|e| format!("Failed to read lol_team_match_stats row: {}", e))?);
     }
 
     Ok(StatsState {
@@ -286,9 +287,8 @@ fn load_stats_state_from_legacy_tables(conn: &Connection) -> Result<StatsState, 
 
     let mut player_matches = Vec::new();
     for row in player_rows {
-        player_matches.push(
-            row.map_err(|e| format!("Failed to read legacy player_match_stats row: {}", e))?,
-        );
+        player_matches
+            .push(row.map_err(|e| format!("Failed to read legacy player_match_stats row: {}", e))?);
     }
 
     let mut team_stmt = conn
@@ -334,7 +334,11 @@ fn load_stats_state_from_legacy_tables(conn: &Connection) -> Result<StatsState, 
                 } else {
                     row.get(18)?
                 },
-                objectives: if objectives > 0 { objectives } else { row.get(19)? },
+                objectives: if objectives > 0 {
+                    objectives
+                } else {
+                    row.get(19)?
+                },
             })
         })
         .map_err(|e| format!("Failed to query legacy team_match_stats: {}", e))?;
@@ -424,7 +428,10 @@ fn replace_lol_stats_state(conn: &Connection, stats: &StatsState) -> Result<(), 
 }
 
 /// Legacy write-path explícito para import/migración. NO usar como ruta principal.
-fn mirror_lol_stats_into_legacy_tables(conn: &Connection, stats: &StatsState) -> Result<(), String> {
+fn mirror_lol_stats_into_legacy_tables(
+    conn: &Connection,
+    stats: &StatsState,
+) -> Result<(), String> {
     conn.execute("DELETE FROM player_match_stats", [])
         .map_err(|e| format!("Failed to clear player_match_stats: {}", e))?;
     conn.execute("DELETE FROM team_match_stats", [])

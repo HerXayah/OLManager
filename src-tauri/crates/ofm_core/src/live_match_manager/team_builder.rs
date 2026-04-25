@@ -29,9 +29,9 @@ fn role_from_player(player: &domain::player::Player) -> LolRole {
         | DomainPosition::RightWingBack
         | DomainPosition::LeftWingBack => LolRole::Top,
         DomainPosition::Midfielder | DomainPosition::CentralMidfielder => LolRole::Jungla,
-        DomainPosition::AttackingMidfielder | DomainPosition::RightMidfielder | DomainPosition::LeftMidfielder => {
-            LolRole::Mid
-        }
+        DomainPosition::AttackingMidfielder
+        | DomainPosition::RightMidfielder
+        | DomainPosition::LeftMidfielder => LolRole::Mid,
         DomainPosition::Forward
         | DomainPosition::Striker
         | DomainPosition::RightWinger
@@ -75,9 +75,7 @@ pub(super) fn build_team_with_bench(game: &Game, team_id: &str) -> (TeamData, Ve
 
     // Ensure first 5 starters are stable LoL core (Top/Jungla/Mid/ADC/Support)
     // because several UI flows (draft/profile context) rely on `players[0..5]`.
-    let saved_starters = team
-        .map(|t| t.starting_xi_ids.clone())
-        .unwrap_or_default();
+    let saved_starters = team.map(|t| t.starting_xi_ids.clone()).unwrap_or_default();
     for starter_id in saved_starters.iter().take(5) {
         if let Some(player) = available_players
             .iter()

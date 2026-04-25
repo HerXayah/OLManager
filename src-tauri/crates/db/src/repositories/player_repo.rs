@@ -1,6 +1,6 @@
 use domain::player::{Footedness, Player, PlayerAttributes, Position};
 use domain::team::TrainingFocus;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 
 /// Insert or replace a player row.
 pub fn upsert_player(conn: &Connection, p: &Player) -> Result<(), String> {
@@ -28,11 +28,12 @@ pub fn upsert_player(conn: &Connection, p: &Player) -> Result<(), String> {
     conn.execute(
         "INSERT OR REPLACE INTO players
          (id, match_name, full_name, date_of_birth, nationality, football_nation, birth_country, position,
-          attributes, condition, morale, injury, team_id, traits,
-          contract_end, wage, market_value, stats, career,
-          transfer_listed, loan_listed, transfer_offers, alternate_positions,
-          natural_position, training_focus, morale_core, footedness, weak_foot, fitness)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29)",
+           attributes, condition, morale, injury, team_id, traits,
+           contract_end, wage, market_value, stats, career,
+           transfer_listed, loan_listed, transfer_offers, alternate_positions,
+           natural_position, training_focus, morale_core, footedness, weak_foot, fitness,
+           potential_base, potential_revealed, potential_research_started_on, potential_research_eta_days)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33)",
         params![
             p.id,
             p.match_name,
@@ -63,6 +64,10 @@ pub fn upsert_player(conn: &Connection, p: &Player) -> Result<(), String> {
             footedness_str,
             p.weak_foot,
             p.fitness,
+            p.potential_base,
+            p.potential_revealed,
+            p.potential_research_started_on,
+            p.potential_research_eta_days,
         ],
     )
     .map_err(|e| format!("Failed to upsert player: {}", e))?;
@@ -120,7 +125,8 @@ pub fn load_all_players(conn: &Connection) -> Result<Vec<Player>, String> {
                     attributes, condition, morale, injury, team_id, traits,
                     contract_end, wage, market_value, stats, career,
                     transfer_listed, loan_listed, transfer_offers, alternate_positions,
-                    natural_position, training_focus, morale_core, footedness, weak_foot, fitness
+                    natural_position, training_focus, morale_core, footedness, weak_foot, fitness,
+                    potential_base, potential_revealed, potential_research_started_on, potential_research_eta_days
              FROM players",
         )
         .map_err(|e| format!("Failed to prepare players query: {}", e))?;
@@ -144,7 +150,8 @@ pub fn load_players_by_team(conn: &Connection, team_id: &str) -> Result<Vec<Play
                     attributes, condition, morale, injury, team_id, traits,
                     contract_end, wage, market_value, stats, career,
                     transfer_listed, loan_listed, transfer_offers, alternate_positions,
-                    natural_position, training_focus, morale_core, footedness, weak_foot, fitness
+                    natural_position, training_focus, morale_core, footedness, weak_foot, fitness,
+                    potential_base, potential_revealed, potential_research_started_on, potential_research_eta_days
              FROM players WHERE team_id = ?1",
         )
         .map_err(|e| format!("Failed to prepare players query: {}", e))?;
@@ -175,6 +182,10 @@ fn row_to_player(row: &rusqlite::Row) -> rusqlite::Result<Player> {
     let footedness_str: String = row.get(26)?;
     let weak_foot: u8 = row.get(27)?;
     let fitness: u8 = row.get(28).unwrap_or(75); // default 75 for saves before V13
+    let potential_base: u8 = row.get(29).unwrap_or(99);
+    let potential_revealed: Option<u8> = row.get(30).unwrap_or(None);
+    let potential_research_started_on: Option<String> = row.get(31).unwrap_or(None);
+    let potential_research_eta_days: Option<u8> = row.get(32).unwrap_or(None);
     let transfer_listed_int: i32 = row.get(19)?;
     let loan_listed_int: i32 = row.get(20)?;
     let market_value_i64: i64 = row.get(16)?;
@@ -236,6 +247,12 @@ fn row_to_player(row: &rusqlite::Row) -> rusqlite::Result<Player> {
         loan_listed: loan_listed_int != 0,
         transfer_offers: serde_json::from_str(&offers_json).unwrap_or_default(),
         morale_core: serde_json::from_str(&morale_core_json).unwrap_or_default(),
+        potential_base,
+        potential_revealed,
+        potential_research_started_on,
+        potential_research_eta_days,
+        champion_training_target: None,
+        champion_training_targets: Vec::new(),
     })
 }
 

@@ -1297,6 +1297,33 @@ export default function MatchSimulation() {
           ? snapshotForResult.home_team.id
           : snapshotForResult.away_team.id;
 
+      const masteryPicks = [
+        ...(draftPayload?.blue.picks ?? []).map((pick, idx) => ({
+          playerId: snapshotForResult.home_team.players[idx]?.id ?? "",
+          championId: pick.championId,
+        })),
+        ...(draftPayload?.red.picks ?? []).map((pick, idx) => ({
+          playerId: snapshotForResult.away_team.players[idx]?.id ?? "",
+          championId: pick.championId,
+        })),
+      ].filter((entry) => entry.playerId.length > 0 && entry.championId.length > 0);
+
+      if (masteryPicks.length > 0) {
+        void (async () => {
+          try {
+            const updated = await invoke<GameStateData>("apply_champion_mastery_from_draft", {
+              winnerTeamId,
+              picks: masteryPicks,
+            });
+            if (updated) {
+              setGameState(updated);
+            }
+          } catch (error) {
+            console.error("[MatchSimulation] apply_champion_mastery_from_draft failed", error);
+          }
+        })();
+      }
+
       homeSeriesWins = Math.min(
         targetSeriesWins,
         winnerTeamId === currentFixture.home_team_id

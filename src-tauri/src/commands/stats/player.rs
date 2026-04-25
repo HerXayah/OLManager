@@ -341,7 +341,11 @@ pub(super) fn get_player_stats_overview_internal(
     let game = state
         .get_game(|game| game.clone())
         .ok_or("No active game session".to_string())?;
-    if game.players.iter().all(|candidate| candidate.id != player_id) {
+    if game
+        .players
+        .iter()
+        .all(|candidate| candidate.id != player_id)
+    {
         return Err("Player not found".to_string());
     }
 

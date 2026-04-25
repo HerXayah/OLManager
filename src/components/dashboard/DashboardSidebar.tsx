@@ -21,6 +21,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   User,
+  Gamepad2,
 } from "lucide-react";
 
 interface DashboardSidebarProps {
@@ -115,6 +116,7 @@ export default function DashboardSidebar({
     { icon: <Users />, label: t("dashboard.squad"), tab: "Squad" },
     { icon: <Crosshair />, label: t("dashboard.tactics"), tab: "Tactics" },
     { icon: <Dumbbell />, label: t("dashboard.training"), tab: "Training" },
+    { icon: <Gamepad2 />, label: t("dashboard.champions"), tab: "Champions" },
     { icon: <UserCog />, label: t("dashboard.staff"), tab: "Staff" },
     { icon: <Eye />, label: t("dashboard.scouting"), tab: "Scouting" },
     {

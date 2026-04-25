@@ -3,8 +3,10 @@ mod post_match;
 mod round_summary;
 
 use crate::board_objectives;
+use crate::champions;
 use crate::game::Game;
 use crate::player_events;
+use crate::potential;
 use crate::random_events;
 use crate::scouting;
 use crate::training;
@@ -84,6 +86,8 @@ where
 
     crate::firing::check_manager_firing(game);
     crate::job_offers::check_job_offers(game);
+    potential::process_potential_research(game);
+    champions::process_daily_champion_system(game);
 
     debug!("[turn] process_day {}: complete, advancing clock", today);
     game.clock.advance_days(1);
@@ -112,6 +116,8 @@ pub fn finish_live_match_day(game: &mut Game) {
 
     crate::firing::check_manager_firing(game);
     crate::job_offers::check_job_offers(game);
+    potential::process_potential_research(game);
+    champions::process_daily_champion_system(game);
 
     game.clock.advance_days(1);
     crate::season_context::refresh_game_context(game);
