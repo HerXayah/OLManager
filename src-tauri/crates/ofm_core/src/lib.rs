@@ -14,6 +14,7 @@ pub mod generator;
 pub mod job_offers;
 pub mod live_match_manager;
 pub mod messages;
+pub mod narrative;
 pub mod news;
 pub mod player_events;
 pub mod player_identity;

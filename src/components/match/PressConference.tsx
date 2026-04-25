@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
-import type { TFunction } from "i18next";
 import { GameStateData } from "../../store/gameStore";
 import { MatchSnapshot } from "./types";
 import { Badge, ThemeToggle } from "../ui";
 import { ChevronRight, Mic, MessageSquare } from "lucide-react";
+import { buildPressConferenceQuestions } from "./pressConferenceContent";
 
 interface PressConferenceProps {
   snapshot: MatchSnapshot;
@@ -15,193 +15,14 @@ interface PressConferenceProps {
   onGameUpdate?: (game: GameStateData) => void;
 }
 
-interface PressQuestion {
-  id: string;
-  journalist: string;
-  outlet: string;
-  question: string;
-  responses: PressResponse[];
-}
-
-interface PressResponse {
-  id: string;
-  tone: string;
-  text: string;
-}
-
 interface AnswerPayload {
   question_id: string;
   response_id: string;
+  effect_id: string;
   response_tone: string;
   response_text: string;
   question_text: string;
   player_id?: string;
-}
-
-interface PlayerFocusQuestion extends PressQuestion {
-  playerId?: string;
-}
-
-function response(
-  t: TFunction,
-  id: string,
-  key: string,
-  params?: Record<string, string | number>,
-): PressResponse {
-  return {
-    id,
-    tone: t(`${key}.tone`, params),
-    text: t(`${key}.text`, params),
-  };
-}
-
-function generateQuestions(
-  snapshot: MatchSnapshot,
-  userSide: "Home" | "Away",
-  _gameState: GameStateData,
-  t: TFunction,
-): PlayerFocusQuestion[] {
-  const userScore =
-    userSide === "Home" ? snapshot.home_score : snapshot.away_score;
-  const oppScore =
-    userSide === "Home" ? snapshot.away_score : snapshot.home_score;
-  const oppName =
-    userSide === "Home" ? snapshot.away_team.name : snapshot.home_team.name;
-  const userTeam =
-    userSide === "Home" ? snapshot.home_team : snapshot.away_team;
-  const isWin = userScore > oppScore;
-
-  const questions: PlayerFocusQuestion[] = [];
-
-  // 1. Result question
-  questions.push({
-    id: "result",
-    journalist: "David Thomson",
-    outlet: "Sports Daily",
-    question: isWin
-      ? t("match.press.result.questions.win", { userScore, oppScore, oppName })
-      : t("match.press.result.questions.loss", {
-          userScore,
-          oppScore,
-          oppName,
-        }),
-    responses: isWin
-      ? [
-          response(t, "humble", "match.press.result.responses.win.humble"),
-          response(
-            t,
-            "confident",
-            "match.press.result.responses.win.confident",
-          ),
-          response(t, "deflect", "match.press.result.responses.win.deflect"),
-        ]
-      : [
-          response(t, "accept", "match.press.result.responses.loss.accept"),
-          response(t, "defiant", "match.press.result.responses.loss.defiant"),
-          response(t, "deflect", "match.press.result.responses.loss.deflect"),
-        ],
-  });
-
-  // 2. Player-focused question — pick a notable player
-  const goalEvents = snapshot.events.filter(
-    (e) =>
-      e.side === userSide &&
-      (e.event_type === "Goal" || e.event_type === "PenaltyGoal") &&
-      e.player_id,
-  );
-  let focusPlayer =
-    goalEvents.length > 0
-      ? userTeam.players.find((p) => p.id === goalEvents[0].player_id)
-      : userTeam.players[
-          Math.floor(Math.random() * Math.min(userTeam.players.length, 5))
-        ];
-  if (focusPlayer) {
-    const scored = goalEvents.some((e) => e.player_id === focusPlayer!.id);
-    const playerName = focusPlayer.name;
-    questions.push({
-      id: "player_focus",
-      journalist: "Rachel Cooper",
-      outlet: "Match Day Live",
-      playerId: focusPlayer.id,
-      question: scored
-        ? t("match.press.playerFocus.questions.scored", { playerName })
-        : t("match.press.playerFocus.questions.default", { playerName }),
-      responses: [
-        response(t, "praise", "match.press.playerFocus.responses.praise", {
-          playerName,
-        }),
-        response(
-          t,
-          "demanding",
-          "match.press.playerFocus.responses.demanding",
-          { playerName },
-        ),
-        response(t, "deflect", "match.press.playerFocus.responses.deflect", {
-          playerName,
-        }),
-      ],
-    });
-  }
-
-  // 3. Tactical question
-  questions.push({
-    id: "tactics",
-    journalist: "Sarah Mitchell",
-    outlet: "Football Weekly",
-    question: t("match.press.tactics.question"),
-    responses: [
-      response(t, "detailed", "match.press.tactics.responses.detailed"),
-      response(t, "brief", "match.press.tactics.responses.brief"),
-      response(t, "evasive", "match.press.tactics.responses.evasive"),
-    ],
-  });
-
-  // 4. Fan/atmosphere question (contextual)
-  const fanQuestions: PlayerFocusQuestion[] = [
-    {
-      id: "fans",
-      journalist: "James O'Brien",
-      outlet: "Supporters' Voice",
-      question: isWin
-        ? t("match.press.fans.questions.win")
-        : t("match.press.fans.questions.loss"),
-      responses: isWin
-        ? [
-            response(t, "grateful", "match.press.fans.responses.win.grateful"),
-            response(t, "shared", "match.press.fans.responses.win.shared"),
-            response(t, "deflect", "match.press.fans.responses.win.deflect"),
-          ]
-        : [
-            response(
-              t,
-              "apologize",
-              "match.press.fans.responses.loss.apologize",
-            ),
-            response(
-              t,
-              "patience",
-              "match.press.fans.responses.loss.patience",
-            ),
-            response(t, "curt", "match.press.fans.responses.loss.curt"),
-          ],
-    },
-  ];
-  questions.push(fanQuestions[0]);
-
-  // 5. Looking ahead
-  questions.push({
-    id: "ahead",
-    journalist: "Mark Williams",
-    outlet: "The Athletic",
-    question: t("match.press.ahead.question"),
-    responses: [
-      response(t, "focused", "match.press.ahead.responses.focused"),
-      response(t, "ambitious", "match.press.ahead.responses.ambitious"),
-      response(t, "curt", "match.press.ahead.responses.curt"),
-    ],
-  });
-
-  return questions;
 }
 
 export default function PressConference({
@@ -213,7 +34,7 @@ export default function PressConference({
 }: PressConferenceProps) {
   const { t } = useTranslation();
   const [questions] = useState(() =>
-    generateQuestions(snapshot, userSide, gameState, t),
+    buildPressConferenceQuestions({ snapshot, userSide, gameState, t }),
   );
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -238,10 +59,11 @@ export default function PressConference({
           return {
             question_id: q.id,
             response_id: rid || "",
+            effect_id: resp?.effectId || "",
             response_tone: resp?.tone || "",
             response_text: resp?.text || "",
             question_text: q.question,
-            player_id: (q as PlayerFocusQuestion).playerId || "",
+            player_id: q.playerId || "",
           };
         })
         .filter((p) => p.response_id);

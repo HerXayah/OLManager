@@ -1,0 +1,36 @@
+[
+  {
+    "id": "press_squad_morale_small_up",
+    "target": "squad",
+    "moraleDelta": 3
+  },
+  {
+    "id": "press_player_pressure_small_down",
+    "target": "player",
+    "moraleDelta": -2
+  },
+  {
+    "id": "press_no_effect",
+    "target": "none"
+  },
+  {
+    "id": "player_conversation_pressure_reset",
+    "target": "player",
+    "moraleDelta": 4
+  },
+  {
+    "id": "player_conversation_stage_time_request",
+    "target": "player",
+    "moraleDelta": 3
+  },
+  {
+    "id": "player_conversation_high_form_checkin",
+    "target": "player",
+    "moraleDelta": 2
+  },
+  {
+    "id": "player_conversation_contract_pressure",
+    "target": "player",
+    "moraleDelta": -4
+  }
+]

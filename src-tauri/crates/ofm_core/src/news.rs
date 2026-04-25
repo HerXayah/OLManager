@@ -68,42 +68,42 @@ pub fn league_roundup_article(
     let biggest_winner = biggest_winner_name(results);
 
     let mut body = format!(
-        "Matchday {} is in the books. Here are the full results:\n",
+        "Matchday {} is in the books. Here are the full series results:\n",
         matchday
     );
     for line in &results_text {
         body.push_str(&format!("\n{}", line));
     }
 
-    let total_goals: u8 = results.iter().map(|(_, hg, _, ag)| hg + ag).sum();
+    let total_maps: u8 = results.iter().map(|(_, hg, _, ag)| hg + ag).sum();
     body.push_str(&format!(
-        "\n\n{} goals scored across {} matches. ",
-        total_goals,
+        "\n\n{} maps played across {} series. ",
+        total_maps,
         results.len()
     ));
 
     if !biggest_winner.is_empty() {
         body.push_str(&format!(
-            "{} recorded the biggest win of the day.",
+            "{} recorded the cleanest series win of the day.",
             biggest_winner
         ));
     }
 
     let headlines = [
         format!(
-            "Matchday {} Round-Up: {} Goals in Action-Packed Day",
-            matchday, total_goals
+            "Matchday {} Round-Up: {} Maps Across the Rift",
+            matchday, total_maps
         ),
-        format!("Premier Division Matchday {}: All the Results", matchday),
-        format!("Goals Galore in Matchday {} Action", matchday),
+        format!("League Matchday {}: All the Series Results", matchday),
+        format!("Drafts, Objectives and Maps Define Matchday {}", matchday),
     ];
 
     let source_keys = [
-        "be.source.leagueWire",
-        "be.source.footballHerald",
-        "be.source.sportsGazette",
+        "be.source.riftWire",
+        "be.source.riftHerald",
+        "be.source.leaguePulse",
     ];
-    let sources = ["League Wire", "The Football Herald", "Sports Gazette"];
+    let sources = ["Rift Wire", "The Rift Herald", "League Pulse"];
     let src_idx = rng.random_range(0..sources.len());
     let headline_idx = rng.random_range(0..headlines.len());
 
@@ -121,7 +121,7 @@ pub fn league_roundup_article(
         source_keys[src_idx],
         params(&[
             ("matchday", &matchday.to_string()),
-            ("totalGoals", &total_goals.to_string()),
+            ("totalMaps", &total_maps.to_string()),
             ("matchCount", &results.len().to_string()),
             ("results", &results_text.join("\n")),
             ("biggestWinner", &biggest_winner),
@@ -142,7 +142,7 @@ pub fn standings_update_article(
         .map(|(n, _, _)| n.as_str())
         .unwrap_or("Unknown");
     let mut body = format!(
-        "After Matchday {}, {} sit at the top of the Premier Division table.\n\nStandings:",
+        "After Matchday {}, {} sit at the top of the league table.\n\nStandings by map differential:",
         matchday, leader
     );
 
@@ -153,17 +153,17 @@ pub fn standings_update_article(
     }
 
     let headlines = [
-        format!("{} Lead the Way After Matchday {}", leader, matchday),
-        format!("Premier Division Table: {} on Top", leader),
-        format!("Standings Update — Matchday {}", matchday),
+        format!("{} Lead the Standings After Matchday {}", leader, matchday),
+        format!("League Table: {} Control the Top Spot", leader),
+        format!("Power Rankings Update — Matchday {}", matchday),
     ];
 
     let source_keys = [
-        "be.source.leagueWire",
-        "be.source.footballHerald",
-        "be.source.leagueChronicle",
+        "be.source.riftWire",
+        "be.source.riftHerald",
+        "be.source.leaguePulse",
     ];
-    let sources = ["League Wire", "The Football Herald", "League Chronicle"];
+    let sources = ["Rift Wire", "The Rift Herald", "League Pulse"];
     let src_idx = rng.random_range(0..sources.len());
     let headline_idx = rng.random_range(0..headlines.len());
 
@@ -211,11 +211,11 @@ pub fn season_preview_article(team_names: &[String], date: &str) -> NewsArticle 
     let (favourite, dark_horse) = preview_contenders(team_names, &mut rng);
 
     let body = format!(
-        "The Premier Division is set to kick off with {} teams vying for the title.\n\n\
-        Pre-season predictions have {} as the early favourites, but {} could be the dark horse \
+        "The league is set to kick off with {} teams entering the split.\n\n\
+        Analyst predictions have {} as the early favourites, but {} could be the dark horse \
         to watch this campaign.\n\n\
-        With new managers taking the reins at some clubs, this season promises to be one of the \
-        most competitive in recent memory. Every point will matter as the race for the title \
+        With new coaching staffs refining draft prep, this split promises to be one of the \
+        most competitive in recent memory. Every map will matter as the playoff race \
         heats up.\n\n\
         Teams: {}",
         team_names.len(),
@@ -226,11 +226,11 @@ pub fn season_preview_article(team_names: &[String], date: &str) -> NewsArticle 
 
     let headlines = [
         format!(
-            "Season Preview: {} Teams Battle for Glory",
+            "Split Preview: {} Teams Battle for the Top Spot",
             team_names.len()
         ),
-        "Premier Division Season Set to Begin".to_string(),
-        format!("Can {} Claim the Title? Season Preview", favourite),
+        "League Split Set to Begin".to_string(),
+        format!("Can {} Control the Meta? Split Preview", favourite),
     ];
 
     let headline_idx = rng.random_range(0..headlines.len());
@@ -239,14 +239,14 @@ pub fn season_preview_article(team_names: &[String], date: &str) -> NewsArticle 
         "season_preview".to_string(),
         headlines[headline_idx].clone(),
         body,
-        "The Football Herald".to_string(),
+        "The Rift Herald".to_string(),
         date.to_string(),
         NewsCategory::SeasonPreview,
     )
     .with_i18n(
         &format!("be.news.seasonPreview.headline{}", headline_idx),
         "be.news.seasonPreview.body",
-        "be.source.footballHerald",
+        "be.source.riftHerald",
         params(&[
             ("teamCount", &team_names.len().to_string()),
             ("favourite", favourite),
@@ -303,18 +303,18 @@ pub fn weekly_digest_article(
     let (body, body_key) = if top_scorer.is_empty() {
         (
             format!(
-                "The latest weekly digest is here. {} lead the table, and {} storyline(s) are shaping the division this week.",
+                "The latest weekly power rankings are here. {} lead the table, and {} storyline(s) are shaping the league this week.",
                 leader, storyline_count
             ),
-            "be.news.weeklyDigest.bodyNoTopScorer",
+            "be.news.weeklyDigest.bodyNoTopPerformer",
         )
     } else {
         (
             format!(
-                "The latest weekly digest is here. {} lead the table, while {} heads the scoring charts with {} goal(s). {} storyline(s) are shaping the division this week.",
+                "The latest weekly power rankings are here. {} lead the table, while {} heads the kill participation charts with {} standout play(s). {} storyline(s) are shaping the league this week.",
                 leader, top_scorer, top_scorer_goals, storyline_count
             ),
-            "be.news.weeklyDigest.bodyWithTopScorer",
+            "be.news.weeklyDigest.bodyWithTopPerformer",
         )
     };
 
@@ -322,19 +322,19 @@ pub fn weekly_digest_article(
         id.to_string(),
         headline,
         body,
-        "League Chronicle".to_string(),
+        "League Pulse".to_string(),
         date.to_string(),
         NewsCategory::Editorial,
     )
     .with_i18n(
         "be.news.weeklyDigest.headline",
         body_key,
-        "be.source.leagueChronicle",
+        "be.source.leaguePulse",
         params(&[
             ("weekStart", week_start),
             ("leader", leader),
-            ("topScorer", top_scorer),
-            ("topScorerGoals", &top_scorer_goals.to_string()),
+            ("topPerformer", top_scorer),
+            ("topPerformerPlays", &top_scorer_goals.to_string()),
             ("storylineCount", &storyline_count.to_string()),
         ]),
     )
@@ -352,14 +352,14 @@ pub fn title_race_storyline_article(
     NewsArticle::new(
         id.to_string(),
         format!(
-            "Title Race Tightens — {} Lead {} by {} Point(s)",
+            "Top Spot Race Tightens — {} Lead {} by {} Point(s)",
             leader, challenger, gap
         ),
         format!(
-            "{} remain in front, but {} are only {} point(s) behind as the title race takes shape.",
+            "{} remain in front, but {} are only {} point(s) behind as the playoff race takes shape.",
             leader, challenger, gap
         ),
-        "League Chronicle".to_string(),
+        "League Pulse".to_string(),
         date.to_string(),
         NewsCategory::Editorial,
     )
@@ -370,7 +370,7 @@ pub fn title_race_storyline_article(
     .with_i18n(
         "be.news.storyline.titleRace.headline",
         "be.news.storyline.titleRace.body",
-        "be.source.leagueChronicle",
+        "be.source.leaguePulse",
         params(&[
             ("leader", leader),
             ("challenger", challenger),
@@ -388,12 +388,12 @@ pub fn unbeaten_streak_storyline_article(
 ) -> NewsArticle {
     NewsArticle::new(
         id.to_string(),
-        format!("{} Extend Unbeaten Run to {}", team, run_length),
+        format!("{} Extend Series Run to {}", team, run_length),
         format!(
-            "{} have gone {} match(es) without defeat and are building real momentum.",
+            "{} have gone {} series without a loss and are building real momentum around drafts and objectives.",
             team, run_length
         ),
-        "League Chronicle".to_string(),
+        "League Pulse".to_string(),
         date.to_string(),
         NewsCategory::Editorial,
     )
@@ -401,7 +401,7 @@ pub fn unbeaten_streak_storyline_article(
     .with_i18n(
         "be.news.storyline.unbeatenStreak.headline",
         "be.news.storyline.unbeatenStreak.body",
-        "be.source.leagueChronicle",
+        "be.source.leaguePulse",
         params(&[("team", team), ("runLength", &run_length.to_string())]),
     )
 }
@@ -414,7 +414,7 @@ mod tests {
     fn assert_valid_roundup_source_pair(source: &str, source_key: &str) {
         let valid = [
             ("League Wire", "be.source.leagueWire"),
-            ("The Football Herald", "be.source.footballHerald"),
+            ("The Rift Herald", "be.source.riftHerald"),
             ("Sports Gazette", "be.source.sportsGazette"),
         ];
 
@@ -428,7 +428,7 @@ mod tests {
     fn assert_valid_standings_source_pair(source: &str, source_key: &str) {
         let valid = [
             ("League Wire", "be.source.leagueWire"),
-            ("The Football Herald", "be.source.footballHerald"),
+            ("The Rift Herald", "be.source.riftHerald"),
             ("League Chronicle", "be.source.leagueChronicle"),
         ];
 
@@ -573,10 +573,10 @@ mod tests {
 
         assert_eq!(article.id, "season_preview");
         assert_eq!(article.category, NewsCategory::SeasonPreview);
-        assert_eq!(article.source, "The Football Herald");
+        assert_eq!(article.source, "The Rift Herald");
         assert_eq!(
             article.source_key.as_deref(),
-            Some("be.source.footballHerald")
+            Some("be.source.riftHerald")
         );
         assert!(
             [

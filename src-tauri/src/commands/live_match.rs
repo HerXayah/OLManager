@@ -14,6 +14,64 @@ use domain::stats::MatchOutcome;
 use ofm_core::game::Game;
 use ofm_core::state::StateManager;
 
+fn apply_delta(value: u8, delta: i16) -> u8 {
+    ((value as i16) + delta).clamp(10, 100) as u8
+}
+
+fn press_effect_delta(effect_id: &str) -> Option<(&'static str, i16)> {
+    match effect_id {
+        "press_squad_morale_small_up" => Some(("squad", 3)),
+        "press_player_pressure_small_down" => Some(("player", -2)),
+        "press_no_effect" => Some(("none", 0)),
+        _ => None,
+    }
+}
+
+fn apply_press_conference_effects(
+    game: &mut Game,
+    answers: &[serde_json::Value],
+    user_team_id: &str,
+) -> i16 {
+    let mut morale_delta: i16 = 0;
+
+    for answer in answers {
+        let effect_id = answer
+            .get("effect_id")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+        let Some((target, delta)) = press_effect_delta(effect_id) else {
+            continue;
+        };
+
+        match target {
+            "squad" => morale_delta += delta,
+            "player" => {
+                if let Some(player_id) = answer.get("player_id").and_then(|value| value.as_str()) {
+                    if let Some(player) = game
+                        .players
+                        .iter_mut()
+                        .find(|player| player.id == player_id)
+                    {
+                        player.morale = apply_delta(player.morale, delta);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    morale_delta = morale_delta.clamp(-8, 8);
+    if morale_delta != 0 {
+        for player in game.players.iter_mut() {
+            if player.team_id.as_deref() == Some(user_team_id) {
+                player.morale = apply_delta(player.morale, morale_delta);
+            }
+        }
+    }
+
+    morale_delta
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FixtureChampionPickInput {
@@ -219,6 +277,12 @@ pub fn submit_press_conference(
     let mut quotes: Vec<String> = Vec::new();
     let mut morale_delta: i16 = 0;
     let mut mentioned_player_ids: Vec<String> = Vec::new();
+    let has_stable_effects = answers.iter().any(|answer| {
+        answer
+            .get("effect_id")
+            .and_then(|value| value.as_str())
+            .is_some_and(|effect_id| !effect_id.is_empty())
+    });
 
     for answer in &answers {
         let tone = answer
@@ -245,21 +309,25 @@ pub fn submit_press_conference(
             }
         }
 
-        // Morale effects based on tone
-        match tone {
-            "Humble" | "Fair" | "Positive" | "Focused" => morale_delta += rng.random_range(1..=3),
-            "Confident" | "Ambitious" => morale_delta += rng.random_range(2..=5),
-            "Defiant" | "Frustrated" => morale_delta += rng.random_range(-2..=2),
-            "Curt" | "Evasive" => morale_delta += rng.random_range(-3..=0),
-            "Accept" | "Detailed" => morale_delta += rng.random_range(0..=2),
-            "Deflect" => morale_delta += rng.random_range(-1..=1),
-            "Praise" => morale_delta += rng.random_range(3..=6),
-            "Demanding" => morale_delta += rng.random_range(-2..=3),
-            _ => {}
+        if !has_stable_effects {
+            // Legacy morale effects based on localized tone. Kept only for old payloads.
+            match tone {
+                "Humble" | "Fair" | "Positive" | "Focused" => {
+                    morale_delta += rng.random_range(1..=3)
+                }
+                "Confident" | "Ambitious" => morale_delta += rng.random_range(2..=5),
+                "Defiant" | "Frustrated" => morale_delta += rng.random_range(-2..=2),
+                "Curt" | "Evasive" => morale_delta += rng.random_range(-3..=0),
+                "Accept" | "Detailed" => morale_delta += rng.random_range(0..=2),
+                "Deflect" => morale_delta += rng.random_range(-1..=1),
+                "Praise" => morale_delta += rng.random_range(3..=6),
+                "Demanding" => morale_delta += rng.random_range(-2..=3),
+                _ => {}
+            }
         }
 
-        // Player-focused question effects
-        if qid == "player_focus" {
+        // Legacy player-focused question effects.
+        if !has_stable_effects && qid == "player_focus" {
             if let Some(pid) = answer.get("player_id").and_then(|v| v.as_str()) {
                 if !pid.is_empty() {
                     let player_delta: i16 = match tone {
@@ -276,12 +344,16 @@ pub fn submit_press_conference(
         }
     }
 
-    // Apply squad-wide morale effect
-    morale_delta = morale_delta.clamp(-8, 8);
-    if morale_delta != 0 {
-        for p in game.players.iter_mut() {
-            if p.team_id.as_deref() == Some(&user_team_id) {
-                p.morale = ((p.morale as i16) + morale_delta).clamp(10, 100) as u8;
+    if has_stable_effects {
+        morale_delta = apply_press_conference_effects(&mut game, &answers, &user_team_id);
+    } else {
+        // Apply legacy squad-wide morale effect
+        morale_delta = morale_delta.clamp(-8, 8);
+        if morale_delta != 0 {
+            for p in game.players.iter_mut() {
+                if p.team_id.as_deref() == Some(&user_team_id) {
+                    p.morale = apply_delta(p.morale, morale_delta);
+                }
             }
         }
     }
@@ -350,7 +422,9 @@ pub fn submit_press_conference(
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_team_talk_internal, finish_live_match_internal};
+    use super::{
+        apply_press_conference_effects, apply_team_talk_internal, finish_live_match_internal,
+    };
     use chrono::{TimeZone, Utc};
     use domain::league::{Fixture, FixtureCompetition, FixtureStatus, League, StandingEntry};
     use domain::manager::Manager;
@@ -517,6 +591,62 @@ mod tests {
             .find(|result| result["player_id"] == player_id)
             .and_then(|result| result["delta"].as_i64())
             .unwrap()
+    }
+
+    #[test]
+    fn stable_press_effect_id_applies_squad_morale_once() {
+        let mut game = make_game_with_round();
+        apply_press_conference_effects(
+            &mut game,
+            &[serde_json::json!({ "effect_id": "press_squad_morale_small_up" })],
+            "team1",
+        );
+
+        let team_morale: Vec<u8> = game
+            .players
+            .iter()
+            .filter(|player| player.team_id.as_deref() == Some("team1"))
+            .map(|player| player.morale)
+            .collect();
+        let opponent_morale: Vec<u8> = game
+            .players
+            .iter()
+            .filter(|player| player.team_id.as_deref() == Some("team2"))
+            .map(|player| player.morale)
+            .collect();
+
+        assert!(team_morale.iter().all(|morale| *morale == 73));
+        assert!(opponent_morale.iter().all(|morale| *morale == 70));
+    }
+
+    #[test]
+    fn stable_press_effect_id_applies_player_morale_once() {
+        let mut game = make_game_with_round();
+        apply_press_conference_effects(
+            &mut game,
+            &[
+                serde_json::json!({
+                    "effect_id": "press_player_pressure_small_down",
+                    "player_id": "t1_mid0"
+                }),
+                serde_json::json!({ "effect_id": "press_no_effect", "player_id": "t1_mid0" }),
+            ],
+            "team1",
+        );
+
+        let focused = game
+            .players
+            .iter()
+            .find(|player| player.id == "t1_mid0")
+            .unwrap();
+        let teammate = game
+            .players
+            .iter()
+            .find(|player| player.id == "t1_mid1")
+            .unwrap();
+
+        assert_eq!(focused.morale, 68);
+        assert_eq!(teammate.morale, 70);
     }
 
     #[test]

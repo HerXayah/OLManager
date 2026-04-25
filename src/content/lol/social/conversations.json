@@ -1,0 +1,34 @@
+[
+  {
+    "id": "player-pressure-reset",
+    "templateKey": "content.lol.social.conversations.playerPressureReset.body",
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "effectId": "player_conversation_pressure_reset",
+    "tags": ["underperformance", "pressure"],
+    "weight": 1
+  },
+  {
+    "id": "player-stage-time-request",
+    "templateKey": "content.lol.social.conversations.playerStageTimeRequest.body",
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "effectId": "player_conversation_stage_time_request",
+    "tags": ["stage_time", "pressure"],
+    "weight": 1
+  },
+  {
+    "id": "player-high-form-checkin",
+    "templateKey": "content.lol.social.conversations.playerHighFormCheckin.body",
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "effectId": "player_conversation_high_form_checkin",
+    "tags": ["form", "positive"],
+    "weight": 1
+  },
+  {
+    "id": "player-contract-pressure",
+    "templateKey": "content.lol.social.conversations.playerContractPressure.body",
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "effectId": "player_conversation_contract_pressure",
+    "tags": ["contract", "pressure"],
+    "weight": 1
+  }
+]

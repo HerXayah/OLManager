@@ -15,6 +15,8 @@ use message_builders::{
     bench_complaint_message, contract_concern_message, happy_player_message, low_morale_message,
 };
 
+pub use message_builders::build_player_conversation_from_narrative;
+
 fn talk_cooldown_active(player: &domain::player::Player, today: &str) -> bool {
     player.morale_core.talk_cooldown_until.as_deref() == Some(today)
 }

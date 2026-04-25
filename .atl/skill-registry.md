@@ -1,35 +1,67 @@
 # Skill Registry
 
-Generated: 2026-04-21
-Project: OLManager
+**Delegator use only.** Any agent that launches sub-agents reads this registry to resolve compact rules, then injects them directly into sub-agent prompts. Sub-agents do NOT read this registry or individual SKILL.md files.
 
-## Scan Sources
+See `_shared/skill-resolver.md` for the full resolution protocol.
 
-- User-level scanned: `~/.claude/skills/`, `~/.config/opencode/skills/`, `~/.gemini/skills/`, `~/.cursor/skills/`, `~/.copilot/skills/`
-- Project-level scanned: `.claude/skills/`, `.gemini/skills/`, `.agent/skills/`, `skills/`
-- Project convention files scanned: `agents.md`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `GEMINI.md`, `copilot-instructions.md`
+## User Skills
 
-## Skills
+| Trigger | Skill | Path |
+|---------|-------|------|
+| When creating a pull request, opening a PR, or preparing changes for review. | branch-pr | /home/aalonso/.config/opencode/skills/branch-pr/SKILL.md |
+| When creating a GitHub issue, reporting a bug, or requesting a feature. | issue-creation | /home/aalonso/.config/opencode/skills/issue-creation/SKILL.md |
+| When writing Go tests, using teatest, or adding test coverage. | go-testing | /home/aalonso/.config/opencode/skills/go-testing/SKILL.md |
+| When user says "judgment day", "judgment-day", "review adversarial", "dual review", "doble review", "juzgar", "que lo juzguen". | judgment-day | /home/aalonso/.config/opencode/skills/judgment-day/SKILL.md |
+| When user asks to create a new skill, add agent instructions, or document patterns for AI. | skill-creator | /home/aalonso/.config/opencode/skills/skill-creator/SKILL.md |
 
-| Skill | Source | Trigger |
-|---|---|---|
-| `branch-pr` | user (`~/.config/opencode/skills/branch-pr/SKILL.md`) | Creating/opening/preparing a pull request |
-| `go-testing` | user (`~/.config/opencode/skills/go-testing/SKILL.md`) | Writing Go tests, Bubbletea TUI tests, or adding Go test coverage |
-| `issue-creation` | user (`~/.config/opencode/skills/issue-creation/SKILL.md`) | Creating a GitHub issue, bug report, or feature request |
-| `judgment-day` | user (`~/.config/opencode/skills/judgment-day/SKILL.md`) | User asks for “judgment day” / adversarial dual review |
-| `skill-creator` | user (`~/.config/opencode/skills/skill-creator/SKILL.md`) | Creating new AI agent skills or documenting AI patterns |
+## Compact Rules
 
-Excluded by policy: all `sdd-*`, `_shared`, `skill-registry`.
+Pre-digested rules per skill. Delegators copy matching blocks into sub-agent prompts as `## Project Standards (auto-resolved)`.
+
+### branch-pr
+- Every PR MUST link an approved issue; blank PRs without issue linkage are blocked.
+- Verify the linked issue has `status:approved` before opening the PR.
+- Create branches as `type/description` matching `feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert` plus lowercase slug.
+- Use conventional commits; never include AI attribution.
+- Open PR with the repository template and add exactly one `type:*` label.
+- Ensure automated checks pass before merge.
+
+### issue-creation
+- Use GitHub issue templates only; blank issues are disabled.
+- Search existing issues for duplicates before creating a new one.
+- Bug reports and feature requests must fill all required fields and pre-flight checkboxes.
+- Newly created issues receive `status:needs-review`; maintainer approval adds `status:approved`.
+- Do not open PRs until the linked issue is approved.
+- Questions belong in Discussions, not issues.
+
+### go-testing
+- Prefer table-driven tests with named cases and `t.Run`.
+- Test Bubbletea model state transitions directly by sending messages to `Update`.
+- Use `teatest` for full TUI integration when terminal behavior matters.
+- Keep assertions precise; check both returned values and error presence.
+- Use golden files for stable complex output snapshots.
+- Separate unit tests from integration tests when external resources or long-running setup is involved.
+
+### judgment-day
+- Before launching judges, resolve the skill registry and inject matching compact rules into every judge/fix prompt.
+- Launch TWO independent blind judge sub-agents in parallel with identical target and criteria.
+- Judges must not know about each other; synthesize verdicts only after both complete.
+- Classify findings as confirmed, suspect from one judge, or contradiction.
+- Apply fixes, then re-judge until both pass or escalate after two iterations.
+- Never perform the review inline when acting as orchestrator.
+
+### skill-creator
+- Create skills only for repeated patterns, project-specific conventions, or complex workflows.
+- Do not create a skill for trivial one-off guidance or when documentation already solves the problem.
+- Use `skills/{skill-name}/SKILL.md` with frontmatter: name, description with Trigger, license, metadata.
+- Keep skill instructions actionable: critical patterns, rules, gotchas, and examples where needed.
+- Add optional assets/references only when they materially help execution.
+- Validate triggers are specific enough to auto-load at the right time.
 
 ## Project Conventions
 
-- No project-level convention index/instruction file found in repository root (`agents.md`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `GEMINI.md`, `copilot-instructions.md`).
-- Effective runtime conventions are provided by global OpenCode agent instructions (`~/.config/opencode/AGENTS.md`).
+| File | Path | Notes |
+|------|------|-------|
+| — | — | No project-level convention files found in the project root. |
 
-## Compact Rules (auto-resolver input)
-
-- **Go/Rust test work**: load `go-testing` for Go-specific patterns; for Rust keep native `cargo test` + integration tests under `tests/`.
-- **PR workflow**: load `branch-pr` before opening or preparing PRs.
-- **Issue workflow**: load `issue-creation` before creating GitHub issues.
-- **Adversarial review**: load `judgment-day` when user asks for dual/blind review.
-- **Skill authoring**: load `skill-creator` when requested to create or update an AI skill.
+Read the convention files listed above for project-specific patterns and rules. All referenced paths have been extracted — no need to read index files to discover more.

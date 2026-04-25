@@ -3,6 +3,34 @@
     "name": "Open League Manager",
     "version": "pre-alpha"
   },
+  "content": {
+    "lol": {
+      "social": {
+        "questions": {
+          "cleanWinObjectives": {
+            "text": "Tu bot lane acumuló dragones y controló el Barón. ¿Cuánto de esta victoria nació de la preparación de objetivos?"
+          },
+          "underperformancePressure": {
+            "text": "Tu bot lane sufrió mucho bajo presión esta noche. ¿Empieza a ser un patrón?"
+          }
+        },
+        "responses": {
+          "creditPreparation": {
+            "label": "Profesional",
+            "text": "Los jugadores se lo ganaron con preparación de draft y llamadas limpias alrededor de objetivos."
+          },
+          "demandReset": {
+            "label": "Exigir reset",
+            "text": "Tenemos que resetear estándares de inmediato; la presión forma parte de competir a este nivel."
+          },
+          "stayMeasured": {
+            "label": "Medido",
+            "text": "Un resultado no define nuestro estado de forma. Lo revisamos y seguimos adelante."
+          }
+        }
+      }
+    }
+  },
   "menu": {
     "newGame": "Nueva Partida",
     "loadGame": "Cargar Partida",
@@ -1587,11 +1615,14 @@
       "scout": "Ojeador"
     },
     "source": {
-      "sportsGazette": "Gaceta Deportiva",
-      "footballHerald": "El Heraldo del Fútbol",
-      "matchDayPress": "Prensa del Partido",
-      "leagueChronicle": "Crónica de la Liga",
-      "leagueWire": "Cable de la Liga"
+      "sportsGazette": "Esports Gazette",
+      "footballHerald": "The Rift Herald",
+      "matchDayPress": "Matchday Desk",
+      "leagueChronicle": "League Pulse",
+      "leagueWire": "Rift Wire",
+      "riftWire": "Rift Wire",
+      "riftHerald": "The Rift Herald",
+      "leaguePulse": "League Pulse"
     },
     "msg": {
       "welcome": {
@@ -1978,56 +2009,56 @@
       "matchReport": {
         "headline": {
           "homeWin": {
-            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Triunfo Local",
-            "1": "{{home}} Supera a {{away}} en la Jornada {{matchday}}",
-            "2": "{{home}} Despacha a {{away}} con Eficacia"
+            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Hosts Control the Rift",
+            "1": "{{home}} Edge Past {{away}} in Matchday {{matchday}}",
+            "2": "Clinical {{home}} Close Out {{away}}"
           },
           "awayWin": {
-            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Golpe Visitante",
-            "1": "{{away}} Sorprende a {{home}} a Domicilio",
-            "2": "Alegría Visitante para {{away}}"
+            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Visitors Strike on the Rift",
+            "1": "{{away}} Stun {{home}} Away from Base",
+            "2": "Road Series Delight for {{away}}"
           },
           "draw": {
-            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Honores Compartidos",
-            "1": "{{home}} y {{away}} Reparten Puntos",
-            "2": "Tablas en el Campo de {{home}}"
+            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Series Ends Level",
+            "1": "{{home}} and {{away}} Share the Points",
+            "2": "Even Series Between {{home}} and {{away}}"
           }
         },
-        "body0": "En la acción de la Jornada {{matchday}}, el partido terminó {{home}} {{homeGoals}} - {{awayGoals}} {{away}}. El resultado podría tener implicaciones en la clasificación a medida que avanza la temporada.\n\nGoles: {{scorers}}",
-        "body1": "El partido terminó {{home}} {{homeGoals}} - {{awayGoals}} {{away}} en un choque de la Jornada {{matchday}}. Ambos equipos dieron todo en un encuentro apasionante.\n\nGoles: {{scorers}}",
-        "body2": "La Jornada {{matchday}} trajo otro encuentro emocionante entre {{home}} y {{away}} ({{homeGoals}}-{{awayGoals}}). Los aficionados disfrutaron de un partido competitivo.\n\nGoles: {{scorers}}"
+        "body0": "In Matchday {{matchday}} action, the series ended {{home}} {{homeGoals}} - {{awayGoals}} {{away}}. The result could shape league standings as the split progresses.\n\nKey plays: {{scorers}}",
+        "body1": "The series ended {{home}} {{homeGoals}} - {{awayGoals}} {{away}} in a Matchday {{matchday}} clash. Both sides contested drafts, objectives and late-game calls.\n\nKey plays: {{scorers}}",
+        "body2": "Matchday {{matchday}} delivered another competitive series as {{home}} faced {{away}} ({{homeGoals}}-{{awayGoals}}). Fans saw draft adaptations and objective fights throughout.\n\nKey plays: {{scorers}}"
       },
       "roundup": {
-        "headline0": "Resumen Jornada {{matchday}}: {{totalGoals}} Goles en un Día de Acción",
-        "headline1": "Primera División Jornada {{matchday}}: Todos los Resultados",
-        "headline2": "Lluvia de Goles en la Jornada {{matchday}}",
-        "body": "La Jornada {{matchday}} ha concluido. Estos son los resultados completos:\n\n{{results}}\n\n{{totalGoals}} goles marcados en {{matchCount}} partidos."
+        "headline0": "Matchday {{matchday}} Round-Up: {{totalMaps}} Maps Across the Rift",
+        "headline1": "League Matchday {{matchday}}: All the Series Results",
+        "headline2": "Drafts, Objectives and Maps Define Matchday {{matchday}}",
+        "body": "Matchday {{matchday}} is in the books. Here are the full series results:\n\n{{results}}\n\n{{totalMaps}} maps played across {{matchCount}} series."
       },
       "standings": {
-        "headline0": "{{leader}} Lidera Tras la Jornada {{matchday}}",
-        "headline1": "Tabla de la Primera División: {{leader}} en Cabeza",
-        "headline2": "Actualización de Clasificación — Jornada {{matchday}}",
-        "body": "Tras la Jornada {{matchday}}, {{leader}} se sitúa en lo más alto de la tabla de la Primera División.\n\nClasificación:\n{{standings}}"
+        "headline0": "{{leader}} Lead the Standings After Matchday {{matchday}}",
+        "headline1": "League Table: {{leader}} Control the Top Spot",
+        "headline2": "Power Rankings Update — Matchday {{matchday}}",
+        "body": "After Matchday {{matchday}}, {{leader}} sit at the top of the league table.\n\nStandings by map differential:\n{{standings}}"
       },
       "seasonPreview": {
-        "headline0": "Previa de Temporada: {{teamCount}} Equipos Luchan por la Gloria",
-        "headline1": "La Temporada de Primera División Está a Punto de Comenzar",
-        "headline2": "¿Puede {{favourite}} Reclamar el Título? Previa de Temporada",
-        "body": "La Primera División está lista para comenzar con {{teamCount}} equipos compitiendo por el título.\n\nLas predicciones de pretemporada tienen a {{favourite}} como favorito, pero {{darkHorse}} podría ser la revelación de esta campaña.\n\nCon nuevos entrenadores tomando las riendas en algunos clubes, esta temporada promete ser una de las más competitivas en la memoria reciente. Cada punto importará en la carrera por el título.\n\nEquipos: {{teamList}}"
+        "headline0": "Split Preview: {{teamCount}} Teams Battle for the Top Spot",
+        "headline1": "League Split Set to Begin",
+        "headline2": "Can {{favourite}} Control the Meta? Split Preview",
+        "body": "The league is set to kick off with {{teamCount}} teams entering the split.\n\nAnalyst predictions have {{favourite}} as the early favourites, but {{darkHorse}} could be the dark horse to watch this campaign.\n\nWith coaching staffs refining draft prep, this split promises to be one of the most competitive in recent memory. Every map will matter as the playoff race heats up.\n\nTeams: {{teamList}}"
       },
       "weeklyDigest": {
-        "headline": "Resumen Semanal — Semana del {{weekStart}}",
-        "bodyNoTopScorer": "Ya está aquí el último resumen semanal. {{leader}} lidera la tabla y {{storylineCount}} historia(s) marcan la división esta semana.",
-        "bodyWithTopScorer": "Ya está aquí el último resumen semanal. {{leader}} lidera la tabla, mientras {{topScorer}} encabeza la clasificación de goleadores con {{topScorerGoals}} gol(es). {{storylineCount}} historia(s) marcan la división esta semana."
+        "headline": "Weekly Power Rankings — Week of {{weekStart}}",
+        "bodyNoTopPerformer": "The latest weekly power rankings are here. {{leader}} lead the table, and {{storylineCount}} storyline(s) are shaping the league this week.",
+        "bodyWithTopPerformer": "The latest weekly power rankings are here. {{leader}} lead the table, while {{topPerformer}} heads the kill participation charts with {{topPerformerPlays}} standout play(s). {{storylineCount}} storyline(s) are shaping the league this week."
       },
       "storyline": {
         "titleRace": {
-          "headline": "La pelea por el título se aprieta — {{leader}} aventaja a {{challenger}} por {{gap}} punto(s)",
-          "body": "{{leader}} sigue al frente, pero {{challenger}} está a solo {{gap}} punto(s) mientras la lucha por el título toma forma."
+          "headline": "Top Spot Race Tightens — {{leader}} Lead {{challenger}} by {{gap}} Point(s)",
+          "body": "{{leader}} remain in front, but {{challenger}} are only {{gap}} point(s) behind as the playoff race takes shape."
         },
         "unbeatenStreak": {
-          "headline": "{{team}} amplía su racha invicta a {{runLength}}",
-          "body": "{{team}} suma {{runLength}} partido(s) sin perder y está ganando un impulso real."
+          "headline": "{{team}} Extend Series Run to {{runLength}}",
+          "body": "{{team}} have gone {{runLength}} series without a loss and are building real momentum around drafts and objectives."
         }
       }
     }

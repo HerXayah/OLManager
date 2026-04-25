@@ -1,0 +1,26 @@
+[
+  {
+    "id": "credit-preparation",
+    "labelKey": "content.lol.social.responses.creditPreparation.label",
+    "textKey": "content.lol.social.responses.creditPreparation.text",
+    "tone": "professional",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
+  },
+  {
+    "id": "demand-reset",
+    "labelKey": "content.lol.social.responses.demandReset.label",
+    "textKey": "content.lol.social.responses.demandReset.text",
+    "tone": "pressure",
+    "effectId": "press_player_pressure_small_down",
+    "target": "player"
+  },
+  {
+    "id": "stay-measured",
+    "labelKey": "content.lol.social.responses.stayMeasured.label",
+    "textKey": "content.lol.social.responses.stayMeasured.text",
+    "tone": "analytical",
+    "effectId": "press_no_effect",
+    "target": "none"
+  }
+]

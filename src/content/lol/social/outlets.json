@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rift-desk",
+    "name": "Rift Desk",
+    "scope": { "type": "general" },
+    "weight": 3
+  },
+  {
+    "id": "league-beat",
+    "name": "League Beat",
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "weight": 2
+  },
+  {
+    "id": "academy-wire",
+    "name": "Academy Wire",
+    "scope": { "type": "general" },
+    "weight": 1
+  },
+  {
+    "id": "lec-spotlight",
+    "name": "LEC Spotlight",
+    "scope": { "type": "league", "leagueIds": ["lec"] },
+    "weight": 1
+  }
+]

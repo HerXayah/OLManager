@@ -55,6 +55,9 @@ pnpm-debug.log*
 !.vscode/extensions.json
 .idea/
 
+# Agent Teams Lite local registry
+.atl/
+
 # =========================
 # OS files
 # =========================

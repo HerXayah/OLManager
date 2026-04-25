@@ -1,0 +1,24 @@
+[
+  {
+    "id": "clean-win-objectives",
+    "textKey": "content.lol.social.questions.cleanWinObjectives.text",
+    "scope": { "type": "general" },
+    "personaIds": ["verified-analyst"],
+    "tones": ["professional", "analytical"],
+    "requiredTags": ["win", "neutral_objectives"],
+    "excludedTags": ["loss"],
+    "responseIds": ["credit-preparation", "stay-measured"],
+    "weight": 3
+  },
+  {
+    "id": "underperformance-pressure",
+    "textKey": "content.lol.social.questions.underperformancePressure.text",
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "personaIds": ["rift-instigator"],
+    "tones": ["spicy", "pressure"],
+    "requiredTags": ["loss", "underperformance"],
+    "excludedTags": ["win", "comeback"],
+    "responseIds": ["demand-reset", "stay-measured"],
+    "weight": 1
+  }
+]

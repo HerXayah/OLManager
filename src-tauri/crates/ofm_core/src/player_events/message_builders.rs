@@ -1,3 +1,4 @@
+use crate::narrative::{NarrativeSelector, load_default_content_pack};
 use domain::message::*;
 use rand::RngExt;
 use std::collections::HashMap;
@@ -43,6 +44,17 @@ pub(crate) fn low_morale_message(
     morale: u8,
     date: &str,
 ) -> InboxMessage {
+    if let Some(message) = build_player_conversation_from_narrative(
+        msg_id,
+        "low_morale",
+        player_id,
+        player_name,
+        Some(i64::from(morale)),
+        date,
+    ) {
+        return message;
+    }
+
     let mut rng = rand::rng();
     let variations = [
         format!(
@@ -116,6 +128,17 @@ pub(crate) fn bench_complaint_message(
     player_name: &str,
     date: &str,
 ) -> InboxMessage {
+    if let Some(message) = build_player_conversation_from_narrative(
+        msg_id,
+        "bench_complaint",
+        player_id,
+        player_name,
+        None,
+        date,
+    ) {
+        return message;
+    }
+
     let mut rng = rand::rng();
     let variations = [
         format!(
@@ -125,7 +148,7 @@ pub(crate) fn bench_complaint_message(
         ),
         format!(
             "{} knocked on your office door looking unhappy. They haven't featured in the last few matches and want answers.\n\n\
-            \"I came to this club to play football. If I'm not in your plans, I'd rather you tell me straight.\"",
+            \"I came to this club to play competitively. If I'm not in your plans, I'd rather you tell me straight.\"",
             player_name
         ),
     ];
@@ -189,11 +212,22 @@ pub(crate) fn happy_player_message(
     player_name: &str,
     date: &str,
 ) -> InboxMessage {
+    if let Some(message) = build_player_conversation_from_narrative(
+        msg_id,
+        "happy_player",
+        player_id,
+        player_name,
+        None,
+        date,
+    ) {
+        return message;
+    }
+
     let mut rng = rand::rng();
     let variations = [
         format!(
             "{} stopped by your office with a big smile. They're feeling great about their form and the team's direction.\n\n\
-            \"Just wanted to say I'm really enjoying my football right now, boss. The mood in the dressing room is fantastic.\"",
+            \"Just wanted to say I'm really enjoying my game right now, boss. The mood in the team room is fantastic.\"",
             player_name
         ),
         format!(
@@ -264,6 +298,17 @@ pub(crate) fn contract_concern_message(
     date: &str,
 ) -> InboxMessage {
     let months = (days_remaining as f64 / 30.0).ceil() as u32;
+    if let Some(message) = build_player_conversation_from_narrative(
+        msg_id,
+        "contract_concern",
+        player_id,
+        player_name,
+        Some(days_remaining),
+        date,
+    ) {
+        return message;
+    }
+
     let mut rng = rand::rng();
     let variations = [
         format!(
@@ -333,4 +378,179 @@ pub(crate) fn contract_concern_message(
         ]),
     )
     .with_sender_i18n("be.sender.assistantManager", "be.role.assistantManager")
+}
+
+pub fn build_player_conversation_from_narrative(
+    msg_id: &str,
+    conversation_kind: &str,
+    player_id: &str,
+    player_name: &str,
+    context_value: Option<i64>,
+    date: &str,
+) -> Option<InboxMessage> {
+    let pack = load_default_content_pack().ok()?;
+    let selector = NarrativeSelector::new(&pack);
+    let tags = conversation_tags(conversation_kind)?;
+    let template = selector.select_conversation(Some("default"), &tags)?;
+    let (subject, body, sender, priority, options) = conversation_copy_and_options(
+        conversation_kind,
+        player_name,
+        context_value,
+    )?;
+
+    Some(
+        InboxMessage::new(
+            msg_id.to_string(),
+            subject,
+            body,
+            sender.to_string(),
+            date.to_string(),
+        )
+        .with_category(if conversation_kind == "contract_concern" {
+            MessageCategory::Contract
+        } else {
+            MessageCategory::PlayerMorale
+        })
+        .with_priority(priority)
+        .with_sender_role(sender)
+        .with_action(action(
+            "respond",
+            "Respond",
+            "be.msg.playerEvent.respond",
+            ActionType::ChooseOption { options },
+        ))
+        .with_context(MessageContext {
+            player_id: Some(player_id.to_string()),
+            ..Default::default()
+        })
+        .with_i18n(
+            conversation_subject_key(conversation_kind)?,
+            &template.template_key,
+            conversation_params(player_name, context_value, &template.effect_id),
+        )
+        .with_sender_i18n(
+            if conversation_kind == "contract_concern" {
+                "be.sender.assistantManager"
+            } else {
+                "be.sender.player"
+            },
+            if conversation_kind == "contract_concern" {
+                "be.role.assistantManager"
+            } else {
+                "be.role.player"
+            },
+        ),
+    )
+}
+
+fn conversation_tags(conversation_kind: &str) -> Option<Vec<&'static str>> {
+    match conversation_kind {
+        "low_morale" => Some(vec!["underperformance", "pressure"]),
+        "bench_complaint" => Some(vec!["stage_time", "pressure"]),
+        "happy_player" => Some(vec!["form", "positive"]),
+        "contract_concern" => Some(vec!["contract", "pressure"]),
+        _ => None,
+    }
+}
+
+fn conversation_subject_key(conversation_kind: &str) -> Option<&'static str> {
+    match conversation_kind {
+        "low_morale" => Some("be.msg.moraleCrisis.subject"),
+        "bench_complaint" => Some("be.msg.benchComplaint.subject"),
+        "happy_player" => Some("be.msg.happyPlayer.subject"),
+        "contract_concern" => Some("be.msg.contractConcern.subject"),
+        _ => None,
+    }
+}
+
+fn conversation_params(
+    player_name: &str,
+    context_value: Option<i64>,
+    effect_id: &str,
+) -> HashMap<String, String> {
+    let mut values = HashMap::from([
+        ("player".to_string(), player_name.to_string()),
+        ("effectId".to_string(), effect_id.to_string()),
+    ]);
+    if let Some(value) = context_value {
+        values.insert("morale".to_string(), value.to_string());
+        values.insert("days".to_string(), value.to_string());
+        values.insert(
+            "months".to_string(),
+            ((value as f64 / 30.0).ceil() as i64).to_string(),
+        );
+    }
+    values
+}
+
+fn conversation_copy_and_options(
+    conversation_kind: &str,
+    player_name: &str,
+    context_value: Option<i64>,
+) -> Option<(String, String, &'static str, MessagePriority, Vec<ActionOption>)> {
+    match conversation_kind {
+        "low_morale" => Some((
+            format!("{} — Mental Reset Needed", player_name),
+            format!(
+                "{} has asked for a private reset after a rough scrim block. Their morale is at {}, and the player is worried their stage confidence is starting to affect team comms.\n\n\
+                \"I need to reset before this pressure follows me into the next series, boss.\"",
+                player_name,
+                context_value.unwrap_or_default()
+            ),
+            "Player",
+            MessagePriority::High,
+            vec![
+                option("encourage", "Encourage them", "be.msg.playerEvent.options.moraleCrisis.encourage.label", "Show empathy and help them reset around scrims and stage pressure.", "be.msg.playerEvent.options.moraleCrisis.encourage.description"),
+                option("promise_time", "Promise more stage time", "be.msg.playerEvent.options.moraleCrisis.promiseTime.label", "Tell them they'll get their chance in an upcoming series — bigger morale boost but sets expectations.", "be.msg.playerEvent.options.moraleCrisis.promiseTime.description"),
+                option("work_harder", "Challenge their preparation", "be.msg.playerEvent.options.moraleCrisis.workHarder.label", "Tough love around practice discipline — could backfire or motivate them.", "be.msg.playerEvent.options.moraleCrisis.workHarder.description"),
+            ],
+        )),
+        "bench_complaint" => Some((
+            format!("{} — Wants More Stage Time", player_name),
+            format!(
+                "{} came in frustrated about limited stage reps. They feel their scrims have been strong and want clarity on what earns them a spot in the next series.\n\n\
+                \"If I'm not in the plan for stage time, I need to know what has to change.\"",
+                player_name
+            ),
+            "Player",
+            MessagePriority::Normal,
+            vec![
+                option("explain", "Explain the rotation", "be.msg.playerEvent.options.benchComplaint.explain.label", "Calmly explain roster competition and map-specific plans. Steady morale boost.", "be.msg.playerEvent.options.benchComplaint.explain.description"),
+                option("promise_chance", "Promise a chance soon", "be.msg.playerEvent.options.benchComplaint.promiseChance.label", "They'll be happier but will expect to start in an upcoming series.", "be.msg.playerEvent.options.benchComplaint.promiseChance.description"),
+                option("prove_yourself", "Tell them to prove it in scrims", "be.msg.playerEvent.options.benchComplaint.proveYourself.label", "Challenge them to earn their place. Risky — could motivate or frustrate.", "be.msg.playerEvent.options.benchComplaint.proveYourself.description"),
+            ],
+        )),
+        "happy_player" => Some((
+            format!("{} — Feeling Locked In", player_name),
+            format!(
+                "{} checked in after a strong run of solo queue and team practice. They're enjoying the draft room clarity and believe the roster is close to finding another level.\n\n\
+                \"Keep the structure like this and I'll bring that confidence onto stage.\"",
+                player_name
+            ),
+            "Player",
+            MessagePriority::Low,
+            vec![
+                option("praise_back", "Return the praise", "be.msg.playerEvent.options.happyPlayer.praiseBack.label", "Tell them how much you value their contribution.", "be.msg.playerEvent.options.happyPlayer.praiseBack.description"),
+                option("stay_professional", "Stay professional", "be.msg.playerEvent.options.happyPlayer.stayProfessional.label", "Acknowledge their form but keep things measured.", "be.msg.playerEvent.options.happyPlayer.stayProfessional.description"),
+                option("higher_expectations", "Set higher expectations", "be.msg.playerEvent.options.happyPlayer.higherExpectations.label", "Challenge them to reach an even higher level. Could push or pressure.", "be.msg.playerEvent.options.happyPlayer.higherExpectations.description"),
+            ],
+        )),
+        "contract_concern" => Some((
+            format!("{} — Contract Running Down", player_name),
+            format!(
+                "{} wants clarity before the next league window. With {} days left, they're asking whether they're part of the roster plan or should prepare for other offers.\n\n\
+                \"I need to know if this project still has a place for me after the split.\"",
+                player_name,
+                context_value.unwrap_or_default()
+            ),
+            "Assistant Manager",
+            MessagePriority::High,
+            vec![
+                option("reassure", "Reassure them about renewal", "be.msg.playerEvent.options.contractConcern.reassure.label", "Tell them you want them to stay. Big morale boost.", "be.msg.playerEvent.options.contractConcern.reassure.description"),
+                option("noncommittal", "Be noncommittal", "be.msg.playerEvent.options.contractConcern.noncommittal.label", "Keep your options open. Player may become unsettled.", "be.msg.playerEvent.options.contractConcern.noncommittal.description"),
+                option("no_renewal", "Tell them you won't renew", "be.msg.playerEvent.options.contractConcern.noRenewal.label", "Honest but brutal. Morale will tank.", "be.msg.playerEvent.options.contractConcern.noRenewal.description"),
+            ],
+        )),
+        _ => None,
+    }
 }

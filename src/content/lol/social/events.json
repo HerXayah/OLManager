@@ -1,0 +1,38 @@
+[
+  {
+    "id": "fan-clean-win-objectives",
+    "templateKey": "content.lol.social.events.fanCleanWinObjectives.body",
+    "scope": { "type": "general" },
+    "personaIds": ["rift-instigator"],
+    "effectId": "press_squad_morale_small_up",
+    "tags": ["win", "neutral_objectives"],
+    "weight": 1
+  },
+  {
+    "id": "media-positive-rift-form",
+    "templateKey": "content.lol.social.events.mediaPositiveRiftForm.body",
+    "scope": { "type": "general" },
+    "personaIds": ["verified-analyst"],
+    "effectId": "press_squad_morale_small_up",
+    "tags": ["media", "positive"],
+    "weight": 1
+  },
+  {
+    "id": "media-negative-pressure-watch",
+    "templateKey": "content.lol.social.events.mediaNegativePressureWatch.body",
+    "scope": { "type": "general" },
+    "personaIds": ["rift-instigator"],
+    "effectId": "press_player_pressure_small_down",
+    "tags": ["media", "pressure"],
+    "weight": 1
+  },
+  {
+    "id": "fan-petition-draft-objectives",
+    "templateKey": "content.lol.social.events.fanPetitionDraftObjectives.body",
+    "scope": { "type": "general" },
+    "personaIds": ["rift-instigator"],
+    "effectId": "press_squad_morale_small_up",
+    "tags": ["fan", "petition"],
+    "weight": 1
+  }
+]

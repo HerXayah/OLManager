@@ -1,4 +1,5 @@
 use super::{action, format_money, params};
+use crate::narrative::{NarrativeSelector, load_default_content_pack};
 use domain::message::*;
 use rand::RngExt;
 
@@ -124,6 +125,17 @@ pub(super) fn media_story_message(
     is_positive: bool,
     date: &str,
 ) -> InboxMessage {
+    if let Some(message) = build_media_story_from_narrative(
+        msg_id,
+        team_name,
+        player_id,
+        player_name,
+        is_positive,
+        date,
+    ) {
+        return message;
+    }
+
     let mut rng = rand::rng();
 
     let (subject, body) = if is_positive {
@@ -209,6 +221,89 @@ pub(super) fn media_story_message(
         params(&[("player", player_name), ("team", team_name)]),
     )
     .with_sender_i18n("be.sender.pressOfficer", "be.role.pressOfficer")
+}
+
+pub fn build_media_story_from_narrative(
+    msg_id: &str,
+    team_name: &str,
+    player_id: &str,
+    player_name: &str,
+    is_positive: bool,
+    date: &str,
+) -> Option<InboxMessage> {
+    let pack = load_default_content_pack().ok()?;
+    let selector = NarrativeSelector::new(&pack);
+    let tags = if is_positive {
+        vec!["media", "positive"]
+    } else {
+        vec!["media", "pressure"]
+    };
+    let tones = if is_positive {
+        vec!["professional", "analytical", "community"]
+    } else {
+        vec!["spicy", "pressure"]
+    };
+    let template = selector.select_event(Some("default"), &tags, &tones)?;
+
+    let (subject, body, priority) = if is_positive {
+        (
+            format!("Rift Desk Praise — {}", player_name),
+            format!(
+                "Analysts on the Rift Desk are highlighting {}'s recent form for {}.\n\n\
+                They called out cleaner objective setups, sharper draft discipline, and better map pressure around the team. \
+                The coverage should reinforce confidence across the roster.",
+                player_name, team_name
+            ),
+            MessagePriority::Low,
+        )
+    } else {
+        (
+            format!("Pressure Watch — {}", player_name),
+            format!(
+                "League Beat has put {} under the microscope after a rough stretch for {}.\n\n\
+                The piece questions lane pressure, scrim adaptation, and whether the player can reset before the next series on the Rift.",
+                player_name, team_name
+            ),
+            MessagePriority::Normal,
+        )
+    };
+
+    Some(
+        InboxMessage::new(
+            msg_id.to_string(),
+            subject,
+            body,
+            "Press Officer".to_string(),
+            date.to_string(),
+        )
+        .with_category(MessageCategory::Media)
+        .with_priority(priority)
+        .with_sender_role("Press Officer")
+        .with_action(action(
+            "ack",
+            "Noted",
+            "be.msg.event.ack",
+            ActionType::Acknowledge,
+        ))
+        .with_context(MessageContext {
+            player_id: Some(player_id.to_string()),
+            ..Default::default()
+        })
+        .with_i18n(
+            if is_positive {
+                "be.msg.mediaLolPositive.subject"
+            } else {
+                "be.msg.mediaLolNegative.subject"
+            },
+            &template.template_key,
+            params(&[
+                ("player", player_name),
+                ("team", team_name),
+                ("effectId", &template.effect_id),
+            ]),
+        )
+        .with_sender_i18n("be.sender.pressOfficer", "be.role.pressOfficer"),
+    )
 }
 
 pub(super) fn international_callup_message(

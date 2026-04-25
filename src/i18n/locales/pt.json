@@ -1526,11 +1526,14 @@
       "scout": "Olheiro"
     },
     "source": {
-      "sportsGazette": "Gazeta Desportiva",
-      "footballHerald": "O Arauto do Futebol",
-      "matchDayPress": "Imprensa do Jogo",
-      "leagueChronicle": "Crónica da Liga",
-      "leagueWire": "Notícias da Liga"
+      "sportsGazette": "Esports Gazette",
+      "footballHerald": "The Rift Herald",
+      "matchDayPress": "Matchday Desk",
+      "leagueChronicle": "League Pulse",
+      "leagueWire": "Rift Wire",
+      "riftWire": "Rift Wire",
+      "riftHerald": "The Rift Herald",
+      "leaguePulse": "League Pulse"
     },
     "msg": {
       "welcome": {
@@ -1917,56 +1920,56 @@
       "matchReport": {
         "headline": {
           "homeWin": {
-            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Triunfo Caseiro",
-            "1": "{{home}} Supera {{away}} na Jornada {{matchday}}",
-            "2": "{{home}} Eficaz Despacha {{away}}"
+            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Hosts Control the Rift",
+            "1": "{{home}} Edge Past {{away}} in Matchday {{matchday}}",
+            "2": "Clinical {{home}} Close Out {{away}}"
           },
           "awayWin": {
-            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Golpe Visitante",
-            "1": "{{away}} Surpreende {{home}} Fora de Casa",
-            "2": "Alegria Fora para o {{away}}"
+            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Visitors Strike on the Rift",
+            "1": "{{away}} Stun {{home}} Away from Base",
+            "2": "Road Series Delight for {{away}}"
           },
           "draw": {
-            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Honras Divididas",
-            "1": "{{home}} e {{away}} Repartem Pontos",
-            "2": "Empate no Campo do {{home}}"
+            "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Series Ends Level",
+            "1": "{{home}} and {{away}} Share the Points",
+            "2": "Even Series Between {{home}} and {{away}}"
           }
         },
-        "body0": "Na acção da Jornada {{matchday}}, o jogo terminou {{home}} {{homeGoals}} - {{awayGoals}} {{away}}. O resultado poderá ter implicações na classificação à medida que a época avança.\n\nGolos: {{scorers}}",
-        "body1": "O jogo terminou {{home}} {{homeGoals}} - {{awayGoals}} {{away}} num confronto da Jornada {{matchday}}. Ambas as equipas deram tudo num encontro envolvente.\n\nGolos: {{scorers}}",
-        "body2": "A Jornada {{matchday}} trouxe mais um encontro emocionante entre {{home}} e {{away}} ({{homeGoals}}-{{awayGoals}}). Os adeptos assistiram a um jogo competitivo.\n\nGolos: {{scorers}}"
+        "body0": "In Matchday {{matchday}} action, the series ended {{home}} {{homeGoals}} - {{awayGoals}} {{away}}. The result could shape league standings as the split progresses.\n\nKey plays: {{scorers}}",
+        "body1": "The series ended {{home}} {{homeGoals}} - {{awayGoals}} {{away}} in a Matchday {{matchday}} clash. Both sides contested drafts, objectives and late-game calls.\n\nKey plays: {{scorers}}",
+        "body2": "Matchday {{matchday}} delivered another competitive series as {{home}} faced {{away}} ({{homeGoals}}-{{awayGoals}}). Fans saw draft adaptations and objective fights throughout.\n\nKey plays: {{scorers}}"
       },
       "roundup": {
-        "headline0": "Resumo da Jornada {{matchday}}: {{totalGoals}} Golos num Dia Repleto de Acção",
-        "headline1": "Primeira Divisão Jornada {{matchday}}: Todos os Resultados",
-        "headline2": "Chuva de Golos na Jornada {{matchday}}",
-        "body": "A Jornada {{matchday}} está concluída. Aqui estão os resultados completos:\n\n{{results}}\n\n{{totalGoals}} golos marcados em {{matchCount}} jogos."
+        "headline0": "Matchday {{matchday}} Round-Up: {{totalMaps}} Maps Across the Rift",
+        "headline1": "League Matchday {{matchday}}: All the Series Results",
+        "headline2": "Drafts, Objectives and Maps Define Matchday {{matchday}}",
+        "body": "Matchday {{matchday}} is in the books. Here are the full series results:\n\n{{results}}\n\n{{totalMaps}} maps played across {{matchCount}} series."
       },
       "standings": {
-        "headline0": "{{leader}} Lidera Após a Jornada {{matchday}}",
-        "headline1": "Tabela da Primeira Divisão: {{leader}} no Topo",
-        "headline2": "Actualização da Classificação — Jornada {{matchday}}",
-        "body": "Após a Jornada {{matchday}}, o {{leader}} está no topo da tabela da Primeira Divisão.\n\nClassificação:\n{{standings}}"
+        "headline0": "{{leader}} Lead the Standings After Matchday {{matchday}}",
+        "headline1": "League Table: {{leader}} Control the Top Spot",
+        "headline2": "Power Rankings Update — Matchday {{matchday}}",
+        "body": "After Matchday {{matchday}}, {{leader}} sit at the top of the league table.\n\nStandings by map differential:\n{{standings}}"
       },
       "seasonPreview": {
-        "headline0": "Antevisão da Época: {{teamCount}} Equipas Lutam pela Glória",
-        "headline1": "Época da Primeira Divisão Prestes a Começar",
-        "headline2": "Pode o {{favourite}} Conquistar o Título? Antevisão da Época",
-        "body": "A Primeira Divisão está pronta para arrancar com {{teamCount}} equipas a disputar o título.\n\nAs previsões de pré-época apontam o {{favourite}} como favorito, mas o {{darkHorse}} pode ser a surpresa desta campanha.\n\nCom novos treinadores a assumir o comando em alguns clubes, esta época promete ser uma das mais competitivas da memória recente. Cada ponto vai contar na corrida pelo título.\n\nEquipas: {{teamList}}"
+        "headline0": "Split Preview: {{teamCount}} Teams Battle for the Top Spot",
+        "headline1": "League Split Set to Begin",
+        "headline2": "Can {{favourite}} Control the Meta? Split Preview",
+        "body": "The league is set to kick off with {{teamCount}} teams entering the split.\n\nAnalyst predictions have {{favourite}} as the early favourites, but {{darkHorse}} could be the dark horse to watch this campaign.\n\nWith coaching staffs refining draft prep, this split promises to be one of the most competitive in recent memory. Every map will matter as the playoff race heats up.\n\nTeams: {{teamList}}"
       },
       "weeklyDigest": {
-        "headline": "Resumo Semanal — Semana de {{weekStart}}",
-        "bodyNoTopScorer": "Já chegou o mais recente resumo semanal. {{leader}} lidera a tabela e {{storylineCount}} narrativa(s) estão a marcar a divisão esta semana.",
-        "bodyWithTopScorer": "Já chegou o mais recente resumo semanal. {{leader}} lidera a tabela, enquanto {{topScorer}} comanda a lista de marcadores com {{topScorerGoals}} golo(s). {{storylineCount}} narrativa(s) estão a marcar a divisão esta semana."
+        "headline": "Weekly Power Rankings — Week of {{weekStart}}",
+        "bodyNoTopPerformer": "The latest weekly power rankings are here. {{leader}} lead the table, and {{storylineCount}} storyline(s) are shaping the league this week.",
+        "bodyWithTopPerformer": "The latest weekly power rankings are here. {{leader}} lead the table, while {{topPerformer}} heads the kill participation charts with {{topPerformerPlays}} standout play(s). {{storylineCount}} storyline(s) are shaping the league this week."
       },
       "storyline": {
         "titleRace": {
-          "headline": "A luta pelo título aperta — {{leader}} tem {{gap}} ponto(s) de vantagem sobre {{challenger}}",
-          "body": "{{leader}} continua na frente, mas {{challenger}} está apenas a {{gap}} ponto(s) enquanto a corrida pelo título ganha forma."
+          "headline": "Top Spot Race Tightens — {{leader}} Lead {{challenger}} by {{gap}} Point(s)",
+          "body": "{{leader}} remain in front, but {{challenger}} are only {{gap}} point(s) behind as the playoff race takes shape."
         },
         "unbeatenStreak": {
-          "headline": "{{team}} prolonga série invicta para {{runLength}}",
-          "body": "{{team}} soma {{runLength}} jogo(s) sem perder e está a ganhar verdadeiro embalo."
+          "headline": "{{team}} Extend Series Run to {{runLength}}",
+          "body": "{{team}} have gone {{runLength}} series without a loss and are building real momentum around drafts and objectives."
         }
       }
     }

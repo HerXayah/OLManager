@@ -1,4 +1,5 @@
 use super::{action, params};
+use crate::narrative::{NarrativeSelector, load_default_content_pack};
 use domain::message::*;
 use rand::RngExt;
 
@@ -154,43 +155,22 @@ pub(super) fn board_confidence_message(msg_id: &str, date: &str) -> InboxMessage
 }
 
 pub(super) fn fan_petition_message(msg_id: &str, team_name: &str, date: &str) -> InboxMessage {
-    let mut rng = rand::rng();
-    let petitions = [
-        (
-            "Fan Petition — More Attacking Football",
-            format!(
-                "A group of {} supporters has organized a petition calling for more attacking football.\n\n\
-                \"We pay good money to watch exciting football. We want to see the team go forward and entertain us!\"\n\n\
-                Over 500 signatures so far. How do you respond?",
-                team_name
-            ),
-        ),
-        (
-            "Fan Petition — Give Youth a Chance",
-            format!(
-                "Supporters of {} have started a campaign urging you to give more opportunities to young players from the academy.\n\n\
-                \"The future of our club depends on developing homegrown talent. Stop overlooking the kids!\"\n\n\
-                It's getting traction on social media. What's your response?",
-                team_name
-            ),
-        ),
-        (
-            "Fan Open Letter — Transparency",
-            format!(
-                "An open letter from the {} Supporters Trust has been published, asking for more transparency from the management.\n\n\
-                \"We want to understand the club's vision. Where are we heading? What's the long-term plan?\"\n\n\
-                The local press is covering it. How do you handle this?",
-                team_name
-            ),
-        ),
-    ];
-    let idx = rng.random_range(0..petitions.len());
-    let (subject, body) = &petitions[idx];
+    if let Some(message) = build_fan_petition_from_narrative(msg_id, team_name, date) {
+        return message;
+    }
+
+    let subject = "Fan Petition — Draft Identity".to_string();
+    let body = format!(
+        "A group of {} supporters has organized a petition asking for a clearer draft identity and sharper objective setups.\n\n\
+        \"We want proactive plans on the Rift, not passive scaling every series. Show us the team knows how it wants to win.\"\n\n\
+        Over 500 signatures so far. How do you respond?",
+        team_name
+    );
 
     InboxMessage::new(
         msg_id.to_string(),
-        subject.to_string(),
-        body.clone(),
+        subject,
+        body,
         "Community Manager".to_string(),
         date.to_string(),
     )
@@ -210,8 +190,8 @@ pub(super) fn fan_petition_message(msg_id: &str, team_name: &str, date: &str) ->
                 },
                 ActionOption {
                     id: "ignore_fans".to_string(),
-                    label: "Focus on football".to_string(),
-                    description: "Politely decline — football decisions stay in the dressing room.".to_string(),
+                    label: "Focus on prep".to_string(),
+                    description: "Politely decline — competitive decisions stay with the staff.".to_string(),
                     label_key: Some("be.msg.fanPetition.options.ignoreFans.label".to_string()),
                     description_key: Some("be.msg.fanPetition.options.ignoreFans.description".to_string()),
                 },
@@ -225,12 +205,74 @@ pub(super) fn fan_petition_message(msg_id: &str, team_name: &str, date: &str) ->
             ],
         },
     ))
-    .with_i18n(
-        &format!("be.msg.fanPetition.subject{}", idx),
-        &format!("be.msg.fanPetition.body{}", idx),
+        .with_i18n(
+        "be.msg.fanPetition.subject",
+        "be.msg.fanPetition.body",
         params(&[("team", team_name)]),
     )
     .with_sender_i18n("be.sender.communityManager", "be.role.communityManager")
+}
+
+pub fn build_fan_petition_from_narrative(
+    msg_id: &str,
+    team_name: &str,
+    date: &str,
+) -> Option<InboxMessage> {
+    let pack = load_default_content_pack().ok()?;
+    let selector = NarrativeSelector::new(&pack);
+    let template = selector.select_event(Some("default"), &["fan", "petition"], &["spicy", "community"])?;
+
+    Some(
+        InboxMessage::new(
+            msg_id.to_string(),
+            "Fan Petition — Draft Identity".to_string(),
+            format!(
+                "A wave of {} supporters has organized a campaign asking for a clearer draft identity and sharper objective setups.\n\n\
+                \"We want proactive plans on the Rift, not passive scaling every series. Show us the team knows how it wants to win.\"\n\n\
+                The thread is gaining traction across esports social channels. How do you respond?",
+                team_name
+            ),
+            "Community Manager".to_string(),
+            date.to_string(),
+        )
+        .with_category(MessageCategory::Media)
+        .with_priority(MessagePriority::Normal)
+        .with_sender_role("Community Manager")
+        .with_action(action(
+            "respond", "Respond", "be.msg.event.respond",
+            ActionType::ChooseOption {
+                options: vec![
+                    ActionOption {
+                        id: "listen_fans".to_string(),
+                        label: "Engage with the fans".to_string(),
+                        description: "Meet with fan representatives and explain the team's competitive direction. Good for morale.".to_string(),
+                        label_key: Some("be.msg.fanPetition.options.listenFans.label".to_string()),
+                        description_key: Some("be.msg.fanPetition.options.listenFans.description".to_string()),
+                    },
+                    ActionOption {
+                        id: "ignore_fans".to_string(),
+                        label: "Focus on prep".to_string(),
+                        description: "Politely decline — draft and roster decisions stay with the competitive staff.".to_string(),
+                        label_key: Some("be.msg.fanPetition.options.ignoreFans.label".to_string()),
+                        description_key: Some("be.msg.fanPetition.options.ignoreFans.description".to_string()),
+                    },
+                    ActionOption {
+                        id: "address_publicly".to_string(),
+                        label: "Make a public statement".to_string(),
+                        description: "Address the petition in media. Transparent and proactive.".to_string(),
+                        label_key: Some("be.msg.fanPetition.options.addressPublicly.label".to_string()),
+                        description_key: Some("be.msg.fanPetition.options.addressPublicly.description".to_string()),
+                    },
+                ],
+            },
+        ))
+        .with_i18n(
+            "be.msg.fanPetitionLol.subject",
+            &template.template_key,
+            params(&[("team", team_name), ("effectId", &template.effect_id)]),
+        )
+        .with_sender_i18n("be.sender.communityManager", "be.role.communityManager"),
+    )
 }
 
 pub(super) fn rival_interest_message(

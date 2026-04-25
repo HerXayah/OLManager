@@ -1,0 +1,38 @@
+[
+  {
+    "id": "verified-analyst",
+    "displayName": "Verified Analyst",
+    "outletId": "rift-desk",
+    "type": "real",
+    "allowedTones": ["professional", "analytical"],
+    "scope": { "type": "general" },
+    "weight": 2
+  },
+  {
+    "id": "rift-instigator",
+    "displayName": "The Rift Instigator",
+    "outletId": "league-beat",
+    "type": "fictional",
+    "allowedTones": ["spicy", "pressure", "dramatic"],
+    "scope": { "type": "league", "leagueIds": ["default"] },
+    "weight": 1
+  },
+  {
+    "id": "academy-voice",
+    "displayName": "Academy Voice",
+    "outletId": "academy-wire",
+    "type": "inspired",
+    "allowedTones": ["community", "close"],
+    "scope": { "type": "general" },
+    "weight": 1
+  },
+  {
+    "id": "lec-instigator",
+    "displayName": "LEC Instigator",
+    "outletId": "lec-spotlight",
+    "type": "fictional",
+    "allowedTones": ["spicy", "pressure"],
+    "scope": { "type": "league", "leagueIds": ["lec"] },
+    "weight": 1
+  }
+]

@@ -119,7 +119,7 @@ pub fn apply_event_response(
                     }
                 }
                 Some(
-                    "You decided to focus on football matters. The fans are a little disappointed."
+                    "You decided to focus on competitive matters. The fans are a little disappointed."
                         .to_string(),
                 )
             }

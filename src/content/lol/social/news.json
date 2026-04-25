@@ -1,0 +1,30 @@
+[
+  {
+    "id": "league-roundup-maps",
+    "templateKey": "be.news.roundup.body",
+    "scope": { "type": "general" },
+    "tags": ["roundup", "maps"],
+    "weight": 1
+  },
+  {
+    "id": "standings-power-rankings",
+    "templateKey": "be.news.standings.body",
+    "scope": { "type": "general" },
+    "tags": ["standings", "form"],
+    "weight": 1
+  },
+  {
+    "id": "season-preview-split",
+    "templateKey": "be.news.seasonPreview.body",
+    "scope": { "type": "general" },
+    "tags": ["season-preview", "split", "draft"],
+    "weight": 1
+  },
+  {
+    "id": "weekly-digest-social-buzz",
+    "templateKey": "be.news.weeklyDigest.bodyWithTopPerformer",
+    "scope": { "type": "general" },
+    "tags": ["weekly-digest", "social", "form"],
+    "weight": 1
+  }
+]
