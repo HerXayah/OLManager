@@ -57,6 +57,7 @@ export type LolSimV1RuntimeState = Pick<
   "timeSec" | "running" | "winner" | "showWalls" | "champions" | "minions" | "structures" | "objectives" | "neutralTimers" | "stats" | "events"
 > & {
   speed: number;
+  goldDiffTimeline?: Array<{ minute: number; diff: number }>;
 };
 
 export interface LolSimV1InitRequest {

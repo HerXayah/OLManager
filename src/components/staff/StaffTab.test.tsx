@@ -173,4 +173,66 @@ describe("StaffTab", () => {
       expect(onGameUpdate).toHaveBeenCalledWith(updatedState);
     });
   });
+
+  it("renders LoL staff labels, role-aware impact rows, and team impact summary", () => {
+    render(
+      <StaffTab
+        gameState={createGameState([
+          createStaff({
+            id: "coach-1",
+            first_name: "Mina",
+            last_name: "Coach",
+            role: "Coach",
+            attributes: {
+              coaching: 80,
+              judging_ability: 40,
+              judging_potential: 40,
+              physiotherapy: 40,
+            },
+          }),
+          createStaff({
+            id: "scout-1",
+            first_name: "Sam",
+            last_name: "Scout",
+            role: "Scout",
+            attributes: {
+              coaching: 35,
+              judging_ability: 80,
+              judging_potential: 75,
+              physiotherapy: 30,
+            },
+          }),
+          createStaff({
+            id: "physio-1",
+            first_name: "Pat",
+            last_name: "Physio",
+            role: "Physio",
+            attributes: {
+              coaching: 45,
+              judging_ability: 35,
+              judging_potential: 35,
+              physiotherapy: 85,
+            },
+          }),
+        ])}
+      />,
+    );
+
+    expect(screen.getByText("Impacto LoL del staff")).toBeInTheDocument();
+    expect(screen.getAllByText("Aprendizaje").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Preparación scrim").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Lectura meta").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ejecución").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Recuperación").length).toBeGreaterThan(0);
+
+    expect(screen.getAllByText("Entrenamiento LoL").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Lectura de meta").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Proyección de meta").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Recuperación").length).toBeGreaterThan(0);
+
+    expect(screen.getByText("68 OVR")).toBeInTheDocument();
+    expect(screen.queryByText("50 OVR")).not.toBeInTheDocument();
+    expect(screen.getByText("Análisis draft")).toBeInTheDocument();
+    expect(screen.getByText("Control de tilt")).toBeInTheDocument();
+  });
 });

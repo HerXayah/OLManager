@@ -74,6 +74,10 @@ export interface MinionState {
   ownerChampionId?: string | null;
   summonKind?: string | null;
   summonExpiresAt?: number;
+  debugTargetStructureId?: string | null;
+  debugPhysicalBlockerId?: string | null;
+  debugRedirectToStructure?: boolean;
+  debugStructureDistance?: number | null;
   attackCdUntil: number;
   moveSpeed: number;
   attackRange: number;

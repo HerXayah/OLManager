@@ -126,6 +126,14 @@ function getIcon(src: string) {
   return img;
 }
 
+function isDebugOverlayEnabled() {
+  try {
+    return globalThis.localStorage?.getItem("lol-debug") === "1";
+  } catch {
+    return false;
+  }
+}
+
 function drawIcon(ctx: CanvasRenderingContext2D, src: string, x: number, y: number, size: number) {
   const icon = getIcon(src);
   if (!icon.complete || icon.naturalWidth <= 0 || icon.naturalHeight <= 0) return false;
@@ -190,6 +198,7 @@ export function renderSimulation(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const { width, height } = canvas;
+  const debugOverlay = isDebugOverlayEnabled();
   ctx.clearRect(0, 0, width, height);
 
   const map = getMapImage();
@@ -293,6 +302,26 @@ export function renderSimulation(
     ctx.fillRect(m.pos.x * width - 4, m.pos.y * height - 7, 8, 2);
     ctx.fillStyle = "#22c55e";
     ctx.fillRect(m.pos.x * width - 4, m.pos.y * height - 7, 8 * (m.hp / m.maxHp), 2);
+
+    if (debugOverlay && m.debugTargetStructureId) {
+      const target = state.structures.find((s) => s.id === m.debugTargetStructureId);
+      if (target) {
+        ctx.beginPath();
+        ctx.strokeStyle = m.debugRedirectToStructure ? "rgba(34, 197, 94, 0.9)" : "rgba(250, 204, 21, 0.9)";
+        ctx.lineWidth = 1;
+        ctx.moveTo(m.pos.x * width, m.pos.y * height);
+        ctx.lineTo(target.pos.x * width, target.pos.y * height);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(0,0,0,0.78)";
+      ctx.fillRect(m.pos.x * width + 3, m.pos.y * height - 18, 56, 16);
+      ctx.fillStyle = m.debugPhysicalBlockerId ? "#22c55e" : "#facc15";
+      ctx.font = "6px Inter, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText(`${m.lane}:${m.pathIndex}`, m.pos.x * width + 5, m.pos.y * height - 12);
+      ctx.fillText(m.debugTargetStructureId.replace(/^red-|^blue-/, "").slice(0, 13), m.pos.x * width + 5, m.pos.y * height - 5);
+    }
   });
 
   state.champions.forEach((c) => {

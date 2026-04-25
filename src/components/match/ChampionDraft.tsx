@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { MatchSnapshot } from "./types";
 import type { GameStateData } from "../../store/gameStore";
 import { getChampionTiming } from "../../lib/championTiming";
+import { formatStaffEffectPercent, getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
 import teamsSeed from "../../../data/lec/draft/teams.json";
 import playersSeed from "../../../data/lec/draft/players.json";
 import championsSeed from "../../../data/lec/draft/champions.json";
@@ -51,6 +52,7 @@ interface DraftScoreBreakdown {
   synergy: number;
   counter: number;
   comfort: number;
+  preparation: number;
   total: number;
 }
 
@@ -1096,11 +1098,14 @@ export default function ChampionDraft({
     const ownPicks = side === "blue" ? bluePicks : redPicks;
     const enemyPicks = side === "blue" ? redPicks : bluePicks;
     const ownPlan = planTempo(side === "blue" ? snapshot.home_team.play_style : snapshot.away_team.play_style);
+    const teamId = side === "blue" ? snapshot.home_team.id : snapshot.away_team.id;
+    const staffEffects = getLolStaffEffectsForTeam(gameState, teamId);
 
     let mastery = 0;
     let synergy = 0;
     let counter = 0;
     let comfort = 0;
+    let preparation = 0;
 
     ownPicks.forEach((pick, idx) => {
       const champMastery = resolvePlayerMastery(side, idx, pick.championId);
@@ -1133,17 +1138,22 @@ export default function ChampionDraft({
       }
     }
 
+    if (ownPicks.length > 0) {
+      preparation = Math.round(Math.max(-1, Math.min(3, (staffEffects.tactics - 1) * 4 + (staffEffects.analysis - 1) * 3)));
+    }
+
     return {
       mastery,
       synergy,
       counter,
       comfort,
-      total: mastery + synergy + counter + comfort,
+      preparation,
+      total: mastery + synergy + counter + comfort + preparation,
     };
   };
 
-  const blueScore = useMemo(() => scoreDraft("blue"), [bluePicks, redPicks, snapshot.home_team.play_style]);
-  const redScore = useMemo(() => scoreDraft("red"), [bluePicks, redPicks, snapshot.away_team.play_style]);
+  const blueScore = useMemo(() => scoreDraft("blue"), [bluePicks, redPicks, snapshot.home_team.id, snapshot.home_team.play_style, gameState?.staff]);
+  const redScore = useMemo(() => scoreDraft("red"), [bluePicks, redPicks, snapshot.away_team.id, snapshot.away_team.play_style, gameState?.staff]);
 
   useEffect(() => {
     if (!finished) return;
@@ -1338,6 +1348,7 @@ export default function ChampionDraft({
     const assistantCoach = gameState.staff.find(
       (staff) => staff.team_id === userTeamId && staff.role === "AssistantManager",
     );
+    const staffEffects = getLolStaffEffectsForTeam(gameState, userTeamId);
     const coachSkill = assistantCoach?.attributes?.coaching ?? 60;
     const coachName =
       assistantCoach && (assistantCoach.first_name || assistantCoach.last_name)
@@ -1355,6 +1366,13 @@ export default function ChampionDraft({
       champion,
       });
     };
+
+    if (staffEffects.tactics > 1.03 || staffEffects.analysis > 1.03) {
+      addCoachTip(
+        "pick",
+        `Preparación de staff: tácticas ${formatStaffEffectPercent(staffEffects.tactics)}, análisis ${formatStaffEffectPercent(staffEffects.analysis)}. Es ventaja chica, no magia: ejecutan los jugadores.`,
+      );
+    }
 
     const enemyPickedRoles = new Set<Role>();
     enemyPicksList.forEach((pick) => {
@@ -1695,6 +1713,7 @@ export default function ChampionDraft({
     { label: t("match.draft.scoreLabels.synergy"), value: controlledScore.synergy },
     { label: t("match.draft.scoreLabels.mastery"), value: controlledScore.mastery },
     { label: t("match.draft.scoreLabels.comfort"), value: controlledScore.comfort },
+    { label: t("match.draft.scoreLabels.preparation", "Staff prep"), value: controlledScore.preparation },
   ];
   const formattedScoreDelta = scoreDelta >= 0 ? `+${scoreDelta}` : `${scoreDelta}`;
   const seriesBansRequiresTwoRows = seriesLength > 1 && seriesLockedChampions.length > 10;

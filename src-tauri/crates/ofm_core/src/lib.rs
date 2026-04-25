@@ -1,7 +1,7 @@
 pub mod board_objectives;
+pub mod champions;
 pub mod clock;
 pub mod club;
-pub mod champions;
 pub mod contract_wage_policy;
 pub mod contracts;
 pub mod delegated_renewals;
@@ -25,6 +25,7 @@ pub mod schedule;
 pub mod scouting;
 pub mod season_awards;
 pub mod season_context;
+pub mod staff_effects;
 pub mod state;
 pub mod training;
 pub mod transfers;

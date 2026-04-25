@@ -6,6 +6,7 @@ import championsSeed from "../../../data/lec/draft/champions.json";
 import playersSeed from "../../../data/lec/draft/players.json";
 import { setPlayerChampionTrainingTarget } from "../../services/playerService";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
+import { formatStaffEffectPercent, getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
 
 interface ChampionsTabProps {
   gameState: GameStateData;
@@ -237,6 +238,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
   const [metaRoleFilter, setMetaRoleFilter] = useState<"ALL" | UiRole>("ALL");
   const managerTeamId = gameState.manager.team_id;
   const patch = gameState.champion_patch;
+  const staffEffects = getLolStaffEffectsForTeam(gameState, managerTeamId);
 
   const ownPlayers = useMemo(() => {
     if (!managerTeamId) return [];
@@ -429,6 +431,9 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
             <div className="mt-2 h-2 rounded-full bg-navy-700">
               <div className="h-2 rounded-full bg-linear-to-r from-yellow-400 to-amber-500" style={{ width: `${discoveredPct}%` }} />
             </div>
+            <p className="mt-2 text-[11px] text-gray-400">
+              {t("champions.staffMetaImpact", "Scout read")}: {formatStaffEffectPercent(staffEffects.metaDiscovery)} · {t("champions.staffMasteryImpact", "mastery learning")}: {formatStaffEffectPercent(staffEffects.development)}
+            </p>
           </div>
         </div>
 

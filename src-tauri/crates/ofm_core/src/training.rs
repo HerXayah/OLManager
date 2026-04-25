@@ -3,9 +3,10 @@ pub use fitness_warnings::check_squad_fitness_warnings;
 
 use crate::game::Game;
 use crate::potential::{calculate_lol_ovr, effective_potential_cap};
+use crate::staff_effects::LolStaffEffects;
 use chrono::Datelike;
 use domain::message::{InboxMessage, MessageCategory, MessagePriority};
-use domain::staff::{CoachingSpecialization, StaffRole};
+use domain::staff::CoachingSpecialization;
 use domain::team::{TrainingFocus, TrainingIntensity, TrainingSchedule};
 use std::collections::HashMap;
 
@@ -18,31 +19,6 @@ pub struct TeamCoachingBonus {
 
 /// Compute coaching bonuses from a team's staff.
 fn compute_coaching_bonus(game: &Game, team_id: &str, focus: &TrainingFocus) -> TeamCoachingBonus {
-    let team_staff: Vec<_> = game
-        .staff
-        .iter()
-        .filter(|s| s.team_id.as_deref() == Some(team_id))
-        .collect();
-
-    // Average coaching rating of coaches + assistant managers
-    let coaching_staff: Vec<_> = team_staff
-        .iter()
-        .filter(|s| matches!(s.role, StaffRole::Coach | StaffRole::AssistantManager))
-        .collect();
-
-    let coaching_mult = if coaching_staff.is_empty() {
-        0.8 // Penalty for having no coaching staff
-    } else {
-        let avg_coaching: f64 = coaching_staff
-            .iter()
-            .map(|s| s.attributes.coaching as f64)
-            .sum::<f64>()
-            / coaching_staff.len() as f64;
-        // Range: 0.85 (coaching=0) to 1.35 (coaching=100)
-        0.85 + (avg_coaching / 100.0) * 0.5
-    };
-
-    // Check if any coach specializes in the current training focus
     let focus_spec = match focus {
         TrainingFocus::Scrims => Some(CoachingSpecialization::Tactics),
         TrainingFocus::VODReview => Some(CoachingSpecialization::Tactics),
@@ -52,37 +28,14 @@ fn compute_coaching_bonus(game: &Game, team_id: &str, focus: &TrainingFocus) -> 
         TrainingFocus::MentalResetRecovery => None,
     };
 
-    let specialization_mult = if let Some(target_spec) = focus_spec {
-        let has_specialist = coaching_staff
-            .iter()
-            .any(|s| s.specialization.as_ref() == Some(&target_spec));
-        if has_specialist { 1.25 } else { 1.0 }
-    } else {
-        1.0
-    };
-
-    // Physio bonus for recovery
-    let physio_staff: Vec<_> = team_staff
-        .iter()
-        .filter(|s| matches!(s.role, StaffRole::Physio))
-        .collect();
-
-    let physio_mult = if physio_staff.is_empty() {
-        1.0
-    } else {
-        let avg_physio: f64 = physio_staff
-            .iter()
-            .map(|s| s.attributes.physiotherapy as f64)
-            .sum::<f64>()
-            / physio_staff.len() as f64;
-        // Range: 1.0 (physio=0) to 1.4 (physio=100)
-        1.0 + (avg_physio / 100.0) * 0.4
-    };
+    let effects = LolStaffEffects::for_team(&game.staff, team_id);
+    let specialization_mult =
+        effects.focus_specialization_multiplier(&game.staff, team_id, focus_spec);
 
     TeamCoachingBonus {
-        coaching_mult,
+        coaching_mult: effects.coaching,
         specialization_mult,
-        physio_mult,
+        physio_mult: effects.recovery,
     }
 }
 
@@ -128,7 +81,13 @@ fn scrim_slots_for_day(schedule: &TrainingSchedule, weekday_num: u32) -> Vec<usi
     scrim_slot_weekdays(schedule)
         .iter()
         .enumerate()
-        .filter_map(|(index, day)| if *day == weekday_num { Some(index) } else { None })
+        .filter_map(|(index, day)| {
+            if *day == weekday_num {
+                Some(index)
+            } else {
+                None
+            }
+        })
         .take(scrims_per_week_for_schedule(schedule))
         .collect()
 }
@@ -254,6 +213,7 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
         }
 
         let own_strength = *strength_by_team.get(&team.id).unwrap_or(&74.0);
+        let staff_effects = LolStaffEffects::for_team(&game.staff, &team.id);
         let mut gain_sum = 0.0;
         let mut played: u8 = 0;
         let mut wins: u8 = 0;
@@ -262,7 +222,11 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
         let mut slot_results: Vec<(u8, u8, String, bool)> = Vec::new();
 
         for slot_idx in day_slots {
-            let configured = team.weekly_scrim_opponent_ids.get(slot_idx).cloned().unwrap_or_default();
+            let configured = team
+                .weekly_scrim_opponent_ids
+                .get(slot_idx)
+                .cloned()
+                .unwrap_or_default();
             let opponent_id = if configured.is_empty()
                 || configured == team.id
                 || !strength_by_team.contains_key(&configured)
@@ -280,7 +244,9 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             };
 
             let opponent_strength = *strength_by_team.get(&opponent_id).unwrap_or(&own_strength);
-            let gain_mult = compute_scrim_gain_multiplier(own_strength, opponent_strength);
+            let gain_mult = compute_scrim_gain_multiplier(own_strength, opponent_strength)
+                * ((staff_effects.tactics * 0.55) + (staff_effects.analysis * 0.45))
+                    .clamp(0.90, 1.15);
             gain_sum += gain_mult;
             played = played.saturating_add(1);
 
@@ -288,11 +254,7 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             let win_prob = (0.5 + diff * 0.022).clamp(0.2, 0.8);
             let seed = format!(
                 "scrim:{}:{}:{}:{}:{}",
-                week_seed,
-                team.id,
-                opponent_id,
-                weekday_num,
-                slot_idx
+                week_seed, team.id, opponent_id, weekday_num, slot_idx
             );
             let roll = {
                 use std::hash::{Hash, Hasher};
@@ -317,7 +279,7 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             continue;
         }
 
-        let morale_penalty = if next_loss_streak >= 5 {
+        let base_morale_penalty = if next_loss_streak >= 5 {
             4
         } else if next_loss_streak >= 4 {
             3
@@ -326,11 +288,16 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
         } else {
             0
         };
+        let morale_softening = ((staff_effects.morale - 1.0).max(0.0)
+            + (staff_effects.recovery - 1.0).max(0.0))
+        .clamp(0.0, 0.35);
+        let morale_penalty =
+            ((f64::from(base_morale_penalty)) * (1.0 - morale_softening)).round() as u8;
 
         scrim_outcome_by_team.insert(
             team.id.clone(),
             TeamScrimDayOutcome {
-                gain_mult: gain_sum / f64::from(played.max(1)),
+                gain_mult: (gain_sum / f64::from(played.max(1))).clamp(0.80, 1.30),
                 morale_penalty,
                 next_loss_streak,
                 played,
@@ -511,9 +478,10 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             team.scrim_weekly_losses = team.scrim_weekly_losses.saturating_add(outcome.losses);
 
             for (slot_index, weekday, opponent_team_id, won) in &outcome.slot_results {
-                let already_exists = team.scrim_slot_results.iter().any(|entry| {
-                    entry.week_key == week_seed && entry.slot_index == *slot_index
-                });
+                let already_exists = team
+                    .scrim_slot_results
+                    .iter()
+                    .any(|entry| entry.week_key == week_seed && entry.slot_index == *slot_index);
                 if already_exists {
                     continue;
                 }
@@ -565,7 +533,10 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
 
     if weekday_num == 6
         && let Some(manager_team_id) = game.manager.team_id.clone()
-        && let Some(team) = game.teams.iter_mut().find(|candidate| candidate.id == manager_team_id)
+        && let Some(team) = game
+            .teams
+            .iter_mut()
+            .find(|candidate| candidate.id == manager_team_id)
     {
         if team.scrim_weekly_played > 0 {
             let body = format!(

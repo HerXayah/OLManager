@@ -1,3 +1,4 @@
+use crate::champions::{ChampionMasteryEntry, ChampionPatchState};
 use crate::clock::GameClock;
 use domain::league::League;
 use domain::manager::Manager;
@@ -7,7 +8,6 @@ use domain::player::Player;
 use domain::season::SeasonContext;
 use domain::staff::Staff;
 use domain::team::Team;
-use crate::champions::{ChampionMasteryEntry, ChampionPatchState};
 
 use serde::{Deserialize, Serialize};
 

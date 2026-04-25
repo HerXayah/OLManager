@@ -20,6 +20,7 @@ import {
   TRAINING_FOCUS_IDS,
   normalizeTrainingFocus,
 } from "../../lib/trainingFocus";
+import { formatStaffEffectPercent, getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
 import type { GameStateData } from "../../store/gameStore";
 import { setTraining, setTrainingSchedule } from "../../services/trainingService";
 import { Card, CardBody, CardHeader, ProgressBar } from "../ui";
@@ -151,6 +152,12 @@ export default function TrainingTab({
     currentSchedule,
     currentFocus,
   });
+  const staffEffects = getLolStaffEffectsForTeam(gameState, myTeam.id);
+  const staffImpactRows = [
+    { label: t("training.staffImpact.learning", "Learning"), value: staffEffects.development },
+    { label: t("training.staffImpact.scrims", "Scrim prep"), value: (staffEffects.tactics * 0.55) + (staffEffects.analysis * 0.45) },
+    { label: t("training.staffImpact.recovery", "Recovery"), value: staffEffects.recovery },
+  ];
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -226,6 +233,28 @@ export default function TrainingTab({
       </div>
 
       <div className="flex flex-col gap-5">
+        <Card accent="primary">
+          <CardHeader>{t("training.staffImpact.title", "Staff impact")}</CardHeader>
+          <CardBody>
+            <div className="space-y-2 text-sm">
+              {staffImpactRows.map((row) => (
+                <div key={row.label} className="flex items-center justify-between gap-3">
+                  <span className="text-gray-600 dark:text-gray-400">{row.label}</span>
+                  <span className="font-heading font-bold text-gray-800 dark:text-gray-100">
+                    {formatStaffEffectPercent(row.value)}
+                  </span>
+                </div>
+              ))}
+              <p className="pt-2 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-navy-700">
+                {t(
+                  "training.staffImpact.note",
+                  "Staff improves learning, preparation and recovery conservatively; player attributes still drive results.",
+                )}
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+
         <Card accent="accent">
           <CardHeader>{t("training.squadFitness")}</CardHeader>
           <CardBody>

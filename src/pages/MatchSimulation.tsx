@@ -34,6 +34,7 @@ import type {
   LolSimV1RuntimeState,
 } from "../components/match/lol-prototype/backend/contract-v1";
 import { computeRoleModifiers, ROLE_ORDER, type DraftRole } from "../lib/lolTactics";
+import { getLolStaffEffectsForTeam } from "../lib/lolStaffEffects";
 
 // ---------------------------------------------------------------------------
 // Multi-stage Match Day Orchestrator
@@ -121,6 +122,8 @@ function attachLolTacticsToSnapshot(snapshot: MatchSnapshot, gameState: GameStat
 
   const homeTactics = homeTeam?.lol_tactics ?? DEFAULT_LOL_TACTICS;
   const awayTactics = awayTeam?.lol_tactics ?? DEFAULT_LOL_TACTICS;
+  const homeStaffEffects = getLolStaffEffectsForTeam(gameState, homeTeam?.id ?? snapshot.home_team.id);
+  const awayStaffEffects = getLolStaffEffectsForTeam(gameState, awayTeam?.id ?? snapshot.away_team.id);
   const roleImpactByPlayer = {
     home: buildImpactByPlayer(snapshot.home_team.players, homeTactics),
     away: buildImpactByPlayer(snapshot.away_team.players, awayTactics),
@@ -136,6 +139,12 @@ function attachLolTacticsToSnapshot(snapshot: MatchSnapshot, gameState: GameStat
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     lol_role_impact_by_player: roleImpactByPlayer,
+    // extra payload consumed by Rust sim v2: conservative preparation/execution signal
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    lol_staff_effects: {
+      home: homeStaffEffects,
+      away: awayStaffEffects,
+    },
   } as MatchSnapshot;
 }
 
@@ -278,8 +287,13 @@ function runtimeEventToDraftType(event: { type?: string; text?: string }):
   | "turret"
   | "inhibitor"
   | "nexus_turret"
-  | "nexus" {
+  | "nexus"
+  | null {
   const text = (event.text ?? "").toLowerCase();
+  const eventType = (event.type ?? "").toLowerCase();
+  const isMeaningfulText = /\b(killed|destroyed|secured|deployed)\b/.test(text);
+  if (!isMeaningfulText && !["kill", "tower", "dragon", "baron", "nexus"].includes(eventType)) return null;
+
   if (text.includes("first blood")) return "first_blood";
   if (text.includes("voidgrub")) return "voidgrubs";
   if (text.includes("dragon soul") || text.includes(" soul")) return "dragon_soul";
@@ -287,12 +301,12 @@ function runtimeEventToDraftType(event: { type?: string; text?: string }):
   if (text.includes("baron")) return "baron";
   if (text.includes("herald")) return "herald";
   if (text.includes("inhib")) return "inhibitor";
-  if (text.includes("nexus") && text.includes("turret")) return "nexus_turret";
+  if (text.includes("nexus") && (text.includes("turret") || text.includes("tower"))) return "nexus_turret";
   if (text.includes("nexus")) return "nexus";
   if (text.includes("tower") || text.includes("turret")) return "turret";
   if (text.includes("dragon")) return "dragon";
 
-  switch ((event.type ?? "").toLowerCase()) {
+  switch (eventType) {
     case "kill":
       return "first_blood";
     case "tower":
@@ -304,11 +318,11 @@ function runtimeEventToDraftType(event: { type?: string; text?: string }):
     case "nexus":
       return "nexus";
     default:
-      return "herald";
+      return null;
   }
 }
 
-function draftTypeLabel(type: ReturnType<typeof runtimeEventToDraftType>): string {
+function draftTypeLabel(type: NonNullable<ReturnType<typeof runtimeEventToDraftType>>): string {
   switch (type) {
     case "first_blood":
       return "First Blood";
@@ -419,6 +433,7 @@ function buildDraftResultFromRuntime(params: {
       const side = parseRuntimeEventSide(event.text);
       if (!side) return null;
       const type = runtimeEventToDraftType(event);
+      if (!type) return null;
       return {
         minute: Math.max(0, Math.floor((event.t ?? 0) / 60)),
         side,
@@ -427,9 +442,12 @@ function buildDraftResultFromRuntime(params: {
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
-    .slice(-20);
+    .slice(-28);
 
   const finalDelta = blueGold - redGold;
+  const runtimeGoldTimeline = (runtime.goldDiffTimeline ?? [])
+    .filter((point) => Number.isFinite(point.minute) && Number.isFinite(point.diff))
+    .map((point) => ({ minute: Math.max(0, Math.floor(point.minute)), diff: Math.round(point.diff) }));
   const timelinePoints = Math.max(8, Math.min(24, Math.floor(durationMinutes / 2) + 1));
   const timelineMinutes = Array.from({ length: timelinePoints }, (_, idx) =>
     Math.floor((idx / Math.max(1, timelinePoints - 1)) * durationMinutes),
@@ -438,7 +456,7 @@ function buildDraftResultFromRuntime(params: {
     timelineMinutes.push(durationMinutes);
   }
 
-  const eventImpact = (type: ReturnType<typeof runtimeEventToDraftType>, side: "blue" | "red") => {
+  const eventImpact = (type: NonNullable<ReturnType<typeof runtimeEventToDraftType>>, side: "blue" | "red") => {
     const sign = side === "blue" ? 1 : -1;
     switch (type) {
       case "first_blood":
@@ -482,10 +500,12 @@ function buildDraftResultFromRuntime(params: {
   const rawFirst = rawTimeline[0] ?? 0;
   const rawLast = rawTimeline[rawTimeline.length - 1] ?? 0;
   const scale = Math.abs(rawLast - rawFirst) < 1 ? 1 : (finalDelta / (rawLast - rawFirst));
-  const goldDiffTimeline = timelineMinutes.map((minute, idx) => ({
-    minute,
-    diff: Math.round((rawTimeline[idx] - rawFirst) * scale),
-  }));
+  const goldDiffTimeline = runtimeGoldTimeline.length >= 2
+    ? runtimeGoldTimeline
+    : timelineMinutes.map((minute, idx) => ({
+      minute,
+      diff: Math.round((rawTimeline[idx] - rawFirst) * scale),
+    }));
 
   const winnerSide = runtime.winner === "red" ? "red" : "blue";
 
@@ -1619,6 +1639,7 @@ export default function MatchSimulation() {
       return (
         <LolMatchLive
           key={stage}
+          gameState={gameState}
           snapshot={renderSnapshotWithTactics ?? snapshot}
           championSelections={championSelections}
           onSnapshotUpdate={handleSnapshotUpdate}

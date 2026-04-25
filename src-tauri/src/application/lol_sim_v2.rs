@@ -128,6 +128,10 @@ fn default_visible_stat() -> f64 {
     70.0
 }
 
+fn default_staff_execution() -> f64 {
+    1.0
+}
+
 #[derive(Debug, Clone, Default)]
 struct TelemetryRuntime {
     config: SimulatorTelemetryConfig,
@@ -1405,6 +1409,8 @@ struct ChampionRuntime {
     iq_score: f64,
     #[serde(default = "default_visible_stat")]
     competitive_score: f64,
+    #[serde(default = "default_staff_execution")]
+    staff_execution: f64,
     #[serde(default)]
     summoner_spells: Vec<RuntimeSummonerSpellSlot>,
     #[serde(default)]
@@ -1536,6 +1542,17 @@ struct RuntimeTeamTactics {
 struct RuntimeRoleImpact {
     modifier: f64,
     variance: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeStaffEffects {
+    #[serde(default = "default_staff_execution")]
+    execution: f64,
+    #[serde(default = "default_staff_execution")]
+    tactics: f64,
+    #[serde(default = "default_staff_execution")]
+    analysis: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1889,8 +1906,8 @@ const STRUCTURE_LAYOUT: [StructureSeed; 30] = [
         lane: "top",
         kind: "tower",
         pos: Vec2 {
-            x: 0.912109375,
-            y: 0.3125,
+            x: 0.7024739583333334,
+            y: 0.09375,
         },
     },
     StructureSeed {
@@ -1949,8 +1966,8 @@ const STRUCTURE_LAYOUT: [StructureSeed; 30] = [
         lane: "bot",
         kind: "tower",
         pos: Vec2 {
-            x: 0.7024739583333334,
-            y: 0.09375,
+            x: 0.912109375,
+            y: 0.3125,
         },
     },
     StructureSeed {
@@ -2096,6 +2113,8 @@ const MINION_RANGED_ATTACK_RANGE: f64 = 0.055;
 const MINION_RANGED_ATTACK_DAMAGE: f64 = 7.0;
 const MINION_RANGED_ATTACK_CADENCE: f64 = 1.14;
 const MINION_STRUCTURE_AGGRO_RANGE: f64 = 0.05;
+const MINION_STRUCTURE_BLOCKER_APPROACH_RANGE: f64 = 0.24;
+const MINION_STRUCTURE_BLOCKER_ATTACK_RANGE: f64 = 0.13;
 const MINION_CHAMPION_AGGRO_MIN_RANGE: f64 = 0.055;
 const JUNGLE_INITIAL_SPAWN_AT: f64 = MINION_FIRST_WAVE_AT;
 const SCUTTLE_INITIAL_SPAWN_AT: f64 = 210.0;
@@ -2865,6 +2884,11 @@ fn seed_team(
             .as_ref()
             .map(|impact| impact.variance.clamp(0.5, 4.5))
             .unwrap_or(1.0);
+        let staff_effects = extract_runtime_staff_effects(snapshot, side_key);
+        let staff_execution = staff_effects.execution.clamp(0.96, 1.10);
+        let staff_tactics_modifier = ((staff_effects.tactics - 1.0) * 1.2
+            + (staff_effects.analysis - 1.0) * 0.8)
+            .clamp(-0.18, 0.24);
 
         let (
             mechanics,
@@ -2896,12 +2920,17 @@ fn seed_team(
             * (1.0 + role_modifier * 0.012 + competitive_delta * 0.04 + teamfighting_delta * 0.02))
             .clamp(120.0, 340.0);
         let attack_damage = (14.0 + rng.next_f64() * 5.0)
-            * (1.0 + role_modifier * 0.016 + gameplay_delta * 0.06 + mechanics_delta * 0.03);
+            * (1.0
+                + role_modifier * 0.016
+                + gameplay_delta * 0.06
+                + mechanics_delta * 0.03
+                + staff_tactics_modifier * 0.015);
         let move_speed = (0.043
             + rng.next_f64() * 0.008
             + (role_modifier * 0.00035)
             + iq_delta * 0.001
-            + laning_delta * 0.0006)
+            + laning_delta * 0.0006
+            + staff_tactics_modifier * 0.0004)
             .clamp(0.036, 0.062);
 
         let spawn_pos = Vec2 {
@@ -2950,8 +2979,9 @@ fn seed_team(
         let consistency_factor =
             (1.0 - consistency_delta * 0.26 - discipline_delta * 0.12 - champion_pool_delta * 0.08)
                 .clamp(0.65, 1.35);
-        let decision_jitter =
-            (((role_variance - 1.0).max(0.0) * 0.35) + rng.next_f64() * 0.08) * consistency_factor;
+        let decision_jitter = (((role_variance - 1.0).max(0.0) * 0.35) + rng.next_f64() * 0.08)
+            * consistency_factor
+            / staff_execution;
         let initial_next_decision_at = if role_seed.role == "JGL" {
             6.0 + decision_jitter
         } else {
@@ -2975,52 +3005,63 @@ fn seed_team(
                 })
             });
 
-        let mut champion_json = json!({
-            "id": player.id,
-            "name": player.name,
-            "championId": champion_id.cloned().unwrap_or_default(),
-            "team": team,
-            "role": role_seed.role,
-            "lane": role_seed.lane,
-            "pos": {
+        // Keep this object built manually instead of one huge `json!` call.
+        // The champion runtime payload is large enough that serde_json's macro can
+        // hit the crate recursion limit when new fields are added.
+        let mut champion_obj = Map::new();
+        champion_obj.insert("id".to_string(), Value::from(player.id.clone()));
+        champion_obj.insert("name".to_string(), Value::from(player.name.clone()));
+        champion_obj.insert(
+            "championId".to_string(),
+            Value::from(champion_id.cloned().unwrap_or_default()),
+        );
+        champion_obj.insert("team".to_string(), Value::from(team));
+        champion_obj.insert("role".to_string(), Value::from(role_seed.role));
+        champion_obj.insert("lane".to_string(), Value::from(role_seed.lane));
+        champion_obj.insert(
+            "pos".to_string(),
+            json!({
                 "x": spawn_pos.x,
                 "y": spawn_pos.y,
-            },
-            "hp": max_hp,
-            "maxHp": max_hp,
-            "alive": true,
-            "respawnAt": 0.0,
-            "attackCdUntil": 0.0,
-            "moveSpeed": move_speed,
-            "attackRange": attack_range,
-            "attackType": attack_type,
-            "attackDamage": attack_damage,
-            "targetPath": initial_target_path,
-            "targetPathIndex": 0,
-            "nextDecisionAt": initial_next_decision_at,
-            "kills": 0,
-            "deaths": 0,
-            "assists": 0,
-            "gold": 500,
-            "spentGold": 0,
-            "xp": 0,
-            "level": 1,
-            "cs": 0,
-            "hasLeftBaseOnce": false,
-            "lastSupportCsAt": -999.0,
-            "items": [],
-            "gameplayScore": gameplay_score,
-            "iqScore": iq_score,
-            "competitiveScore": competitive_score,
-            "summonerSpells": summoner_spells,
-            "igniteDotUntil": 0.0,
-            "igniteSourceId": Value::Null,
-            "lastDamagedByChampionId": Value::Null,
-            "lastDamagedAt": -999.0,
-            "state": initial_state,
-            "recallAnchor": Value::Null,
-            "recallChannelUntil": 0.0,
-        });
+            }),
+        );
+        champion_obj.insert("hp".to_string(), Value::from(max_hp));
+        champion_obj.insert("maxHp".to_string(), Value::from(max_hp));
+        champion_obj.insert("alive".to_string(), Value::from(true));
+        champion_obj.insert("respawnAt".to_string(), Value::from(0.0));
+        champion_obj.insert("attackCdUntil".to_string(), Value::from(0.0));
+        champion_obj.insert("moveSpeed".to_string(), Value::from(move_speed));
+        champion_obj.insert("attackRange".to_string(), Value::from(attack_range));
+        champion_obj.insert("attackType".to_string(), Value::from(attack_type));
+        champion_obj.insert("attackDamage".to_string(), Value::from(attack_damage));
+        champion_obj.insert("targetPath".to_string(), Value::Array(initial_target_path));
+        champion_obj.insert("targetPathIndex".to_string(), Value::from(0));
+        champion_obj.insert("nextDecisionAt".to_string(), Value::from(initial_next_decision_at));
+        champion_obj.insert("kills".to_string(), Value::from(0));
+        champion_obj.insert("deaths".to_string(), Value::from(0));
+        champion_obj.insert("assists".to_string(), Value::from(0));
+        champion_obj.insert("gold".to_string(), Value::from(500));
+        champion_obj.insert("spentGold".to_string(), Value::from(0));
+        champion_obj.insert("xp".to_string(), Value::from(0));
+        champion_obj.insert("level".to_string(), Value::from(1));
+        champion_obj.insert("cs".to_string(), Value::from(0));
+        champion_obj.insert("hasLeftBaseOnce".to_string(), Value::from(false));
+        champion_obj.insert("lastSupportCsAt".to_string(), Value::from(-999.0));
+        champion_obj.insert("items".to_string(), Value::Array(Vec::new()));
+        champion_obj.insert("gameplayScore".to_string(), Value::from(gameplay_score));
+        champion_obj.insert("iqScore".to_string(), Value::from(iq_score));
+        champion_obj.insert("competitiveScore".to_string(), Value::from(competitive_score));
+        champion_obj.insert("staffExecution".to_string(), Value::from(staff_execution));
+        champion_obj.insert("summonerSpells".to_string(), Value::Array(summoner_spells));
+        champion_obj.insert("igniteDotUntil".to_string(), Value::from(0.0));
+        champion_obj.insert("igniteSourceId".to_string(), Value::Null);
+        champion_obj.insert("lastDamagedByChampionId".to_string(), Value::Null);
+        champion_obj.insert("lastDamagedAt".to_string(), Value::from(-999.0));
+        champion_obj.insert("state".to_string(), Value::from(initial_state));
+        champion_obj.insert("recallAnchor".to_string(), Value::Null);
+        champion_obj.insert("recallChannelUntil".to_string(), Value::from(0.0));
+
+        let mut champion_json = Value::Object(champion_obj);
 
         if let Some(obj) = champion_json.as_object_mut() {
             obj.insert("ultimate".to_string(), ultimate);
@@ -3615,6 +3656,20 @@ fn extract_runtime_role_impact(
         .and_then(|by_player| by_player.get(player_id))
         .cloned()
         .and_then(|value| serde_json::from_value::<RuntimeRoleImpact>(value).ok())
+}
+
+fn extract_runtime_staff_effects(snapshot: &Value, side_key: &str) -> RuntimeStaffEffects {
+    snapshot
+        .get("lol_staff_effects")
+        .and_then(Value::as_object)
+        .and_then(|obj| obj.get(side_key))
+        .cloned()
+        .and_then(|value| serde_json::from_value::<RuntimeStaffEffects>(value).ok())
+        .unwrap_or(RuntimeStaffEffects {
+            execution: 1.0,
+            tactics: 1.0,
+            analysis: 1.0,
+        })
 }
 
 fn team_tactics_for_runtime(team_tactics: Option<&Value>, team: &str) -> RuntimeTeamTactics {
@@ -6888,7 +6943,8 @@ fn move_champions(runtime: &mut RuntimeState, dt: f64) {
                 &team_tactics_for_runtime(team_tactics_snapshot.as_ref(), &champion.team),
                 &team_buffs_for_runtime(team_buffs_snapshot.as_ref(), &champion.team),
             );
-            champion.next_decision_at = now + CHAMPION_DECISION_CADENCE_SEC;
+            champion.next_decision_at =
+                now + (CHAMPION_DECISION_CADENCE_SEC / champion.staff_execution.clamp(0.96, 1.10));
         }
 
         if champion.state == "recall" {
@@ -7067,6 +7123,25 @@ fn move_minions(runtime: &mut RuntimeState, dt: f64) {
             continue;
         }
 
+        if let Some(structure_idx) = nearest_enemy_structure_blocker_index(
+            &runtime.structures,
+            &runtime.minions[i].team,
+            runtime.minions[i].pos,
+            MINION_STRUCTURE_BLOCKER_APPROACH_RANGE,
+        ) {
+            let target = runtime.structures[structure_idx].pos;
+            let attack_range = runtime.minions[i]
+                .attack_range
+                .max(MINION_STRUCTURE_BLOCKER_ATTACK_RANGE);
+            if dist(runtime.minions[i].pos, target) > attack_range {
+                let speed = minion_move_speed(runtime, &runtime.minions[i]);
+                move_entity(&mut runtime.minions[i].pos, target, speed, dt);
+                runtime.minions[i].pos.x = clamp(runtime.minions[i].pos.x, 0.01, 0.99);
+                runtime.minions[i].pos.y = clamp(runtime.minions[i].pos.y, 0.01, 0.99);
+                continue;
+            }
+        }
+
         let minion = &mut runtime.minions[i];
 
         if minion.path_index >= minion.path.len() {
@@ -7142,14 +7217,22 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
 
         let structure_range = runtime.minions[i]
             .attack_range
-            .max(MINION_STRUCTURE_AGGRO_RANGE);
-        let enemy_structure = nearest_enemy_structure_index(
+            .max(MINION_STRUCTURE_BLOCKER_ATTACK_RANGE);
+        let enemy_structure = nearest_enemy_structure_blocker_index(
             &runtime.structures,
             &runtime.minions[i].team,
-            &runtime.minions[i].lane,
             runtime.minions[i].pos,
             structure_range,
-        );
+        )
+        .or_else(|| {
+            nearest_enemy_structure_index(
+                &runtime.structures,
+                &runtime.minions[i].team,
+                &runtime.minions[i].lane,
+                runtime.minions[i].pos,
+                structure_range,
+            )
+        });
 
         if let Some(structure_idx) = enemy_structure {
             if !runtime.structures[structure_idx].alive
@@ -10792,12 +10875,38 @@ fn baron_push_target_for_lane(
         return Some(tower.pos);
     }
 
+    let lane_inhib = structures.iter().find(|structure| {
+        structure.alive
+            && normalized_team(&structure.team) == enemy
+            && structure.kind == "inhib"
+            && structure.id.contains(lane)
+            && is_structure_targetable(structures, team, structure)
+    });
+
+    if let Some(inhib) = lane_inhib {
+        return Some(inhib.pos);
+    }
+
+    let nexus_tower = structures.iter().find(|structure| {
+        structure.alive
+            && normalized_team(&structure.team) == enemy
+            && structure.kind == "tower"
+            && structure.lane == "base"
+            && structure.id.contains("nexus")
+            && is_structure_targetable(structures, team, structure)
+    });
+
+    if let Some(tower) = nexus_tower {
+        return Some(tower.pos);
+    }
+
     structures
         .iter()
         .find(|structure| {
             structure.alive
                 && normalized_team(&structure.team) == enemy
                 && structure.kind == "nexus"
+                && is_structure_targetable(structures, team, structure)
         })
         .map(|nexus| nexus.pos)
 }
@@ -11153,6 +11262,33 @@ fn nearest_enemy_structure_index(
         .min_by(|(idx_a, a), (idx_b, b)| {
             dist(a.pos, from)
                 .partial_cmp(&dist(b.pos, from))
+                .unwrap_or(Ordering::Equal)
+                .then_with(|| idx_a.cmp(idx_b))
+        })
+        .map(|(idx, _)| idx)
+}
+
+fn nearest_enemy_structure_blocker_index(
+    structures: &[StructureRuntime],
+    team: &str,
+    from: Vec2,
+    range: f64,
+) -> Option<usize> {
+    structures
+        .iter()
+        .enumerate()
+        .filter(|(_, structure)| {
+            structure.alive
+                && structure.kind != "nexus"
+                && normalized_team(&structure.team) != normalized_team(team)
+                && is_structure_targetable(structures, team, structure)
+                && dist(structure.pos, from) <= range
+        })
+        .min_by(|(idx_a, a), (idx_b, b)| {
+            let priority_a = if a.kind == "tower" { 0.0 } else { 0.035 };
+            let priority_b = if b.kind == "tower" { 0.0 } else { 0.035 };
+            (dist(a.pos, from) + priority_a)
+                .partial_cmp(&(dist(b.pos, from) + priority_b))
                 .unwrap_or(Ordering::Equal)
                 .then_with(|| idx_a.cmp(idx_b))
         })
@@ -11654,6 +11790,14 @@ fn minion_is_baron_empowered(runtime: &RuntimeState, minion: &MinionRuntime) -> 
     })
 }
 
+fn minion_move_speed(runtime: &RuntimeState, minion: &MinionRuntime) -> f64 {
+    if minion_is_baron_empowered(runtime, minion) {
+        minion.move_speed * 1.12
+    } else {
+        minion.move_speed
+    }
+}
+
 fn cleanup_tick(runtime: &mut RuntimeState) {
     runtime
         .minions
@@ -11747,6 +11891,7 @@ mod tests {
             gameplay_score: 70.0,
             iq_score: 70.0,
             competitive_score: 70.0,
+            staff_execution: 1.0,
             summoner_spells: vec![
                 RuntimeSummonerSpellSlot {
                     key: "Flash".to_string(),
@@ -11929,6 +12074,40 @@ mod tests {
     }
 
     #[test]
+    fn minion_moves_toward_nearby_structure_blocker_before_attack_range() {
+        let neutral = NeutralTimersRuntime {
+            dragon_soul_unlocked: false,
+            elder_unlocked: false,
+            entities: HashMap::new(),
+            extra: HashMap::new(),
+        };
+
+        let mut blue = test_minion("m-blue-1", "blue", "bot", Vec2 { x: 0.82, y: 0.31 });
+        blue.path = vec![blue.pos, Vec2 { x: 0.89, y: 0.12 }];
+        blue.path_index = 1;
+
+        let red_inhib_tower = test_structure(
+            "red-bot-inhib-tower",
+            "red",
+            "bot",
+            Vec2 {
+                x: 0.912109375,
+                y: 0.3125,
+            },
+        );
+
+        let start_distance = dist(blue.pos, red_inhib_tower.pos);
+        let mut runtime = test_runtime(vec![], vec![blue], vec![red_inhib_tower], neutral);
+
+        move_minions(&mut runtime, 0.5);
+
+        assert!(
+            dist(runtime.minions[0].pos, runtime.structures[0].pos) < start_distance,
+            "minion should move toward the physical structure blocker instead of lane path"
+        );
+    }
+
+    #[test]
     fn minion_prioritizes_minion_over_structure_when_both_in_range() {
         let neutral = NeutralTimersRuntime {
             dragon_soul_unlocked: false,
@@ -12001,6 +12180,18 @@ mod tests {
         resolve_minion_combat(&mut runtime);
 
         assert_eq!(runtime.structures[0].hp, hp_before);
+    }
+
+    #[test]
+    fn baron_push_targets_inhib_before_nexus() {
+        let mut red_inhib =
+            test_structure("red-inhib-bot", "red", "base", Vec2 { x: 0.91, y: 0.25 });
+        red_inhib.kind = "inhib".to_string();
+        let red_nexus = test_structure("red-nexus", "red", "base", Vec2 { x: 0.891, y: 0.117 });
+        let target = baron_push_target_for_lane(&[red_inhib.clone(), red_nexus], "blue", "bot");
+
+        let target = target.expect("expected Baron push to target inhibitor before nexus");
+        assert!(dist(target, red_inhib.pos) < 1e-9);
     }
 
     #[test]

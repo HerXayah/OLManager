@@ -21,6 +21,10 @@ import {
 import { countryName } from "../../lib/countries";
 import { useTranslation } from "react-i18next";
 import { hireStaff, releaseStaff } from "../../services/staffService";
+import {
+  formatStaffEffectPercent,
+  getLolStaffEffectsForTeam,
+} from "../../lib/lolStaffEffects";
 
 interface StaffTabProps {
   gameState: GameStateData;
@@ -40,6 +44,32 @@ const ROLE_COLORS: Record<string, string> = {
   Physio: "text-red-400",
 };
 
+const ATTR_LABELS = {
+  coaching: "Entrenamiento LoL",
+  judgingAbility: "Lectura de meta",
+  judgingPotential: "Proyección de meta",
+  physiotherapy: "Recuperación",
+} as const;
+
+const TEAM_IMPACT_ROWS = [
+  { key: "development", label: "Aprendizaje" },
+  { key: "tactics", label: "Preparación scrim" },
+  { key: "analysis", label: "Lectura meta" },
+  { key: "execution", label: "Ejecución" },
+  { key: "recovery", label: "Recuperación" },
+] as const;
+
+type StaffAttrKey = keyof typeof ATTR_LABELS;
+type ImpactRow = { label: string; value: number };
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function qualityMult(value: number, min: number, max: number): number {
+  return clamp(min + (clamp(value, 0, 100) / 100) * (max - min), min, max);
+}
+
 function bestAttr(s: StaffData): { key: string; value: number } {
   const attrs = [
     { key: "coaching", value: s.attributes.coaching },
@@ -51,13 +81,70 @@ function bestAttr(s: StaffData): { key: string; value: number } {
 }
 
 function ovrRating(s: StaffData): number {
+  const { coaching, judging_ability, judging_potential, physiotherapy } = s.attributes;
+  const weights: Record<string, [number, number, number, number]> = {
+    Coach: [0.7, 0.15, 0.1, 0.05],
+    AssistantManager: [0.35, 0.25, 0.25, 0.15],
+    Scout: [0.1, 0.45, 0.4, 0.05],
+    Physio: [0.15, 0.05, 0.05, 0.75],
+  };
+  const [coachW, abilityW, potentialW, physioW] = weights[s.role] ?? [0.25, 0.25, 0.25, 0.25];
   return Math.round(
-    (s.attributes.coaching +
-      s.attributes.judging_ability +
-      s.attributes.judging_potential +
-      s.attributes.physiotherapy) /
-      4,
+    coaching * coachW +
+      judging_ability * abilityW +
+      judging_potential * potentialW +
+      physiotherapy * physioW,
   );
+}
+
+function getStaffImpactRows(s: StaffData): ImpactRow[] {
+  const coaching = qualityMult(s.attributes.coaching, 0.88, 1.22);
+  const development = qualityMult(s.attributes.coaching, 0.92, 1.18);
+  const tactics = qualityMult(s.attributes.coaching, 0.94, 1.14);
+  const analysis = qualityMult(s.attributes.judging_ability, 0.94, 1.14);
+  const potential = qualityMult(s.attributes.judging_potential, 0.98, 1.16);
+  const recovery = qualityMult(s.attributes.physiotherapy, 1, 1.2);
+  const morale = qualityMult(
+    s.role === "Physio" ? s.attributes.physiotherapy : s.attributes.coaching,
+    0.96,
+    1.12,
+  );
+  const metaDiscovery = clamp(analysis * 0.75 + potential * 0.25, 0.9, 1.2);
+  const execution = clamp((tactics + analysis) / 2, 0.96, 1.1);
+
+  if (s.role === "Coach") {
+    return [
+      { label: "Aprendizaje", value: development },
+      { label: "Preparación scrim", value: tactics },
+      { label: "Ejecución", value: execution },
+    ];
+  }
+  if (s.role === "AssistantManager") {
+    return [
+      { label: "Aprendizaje", value: coaching },
+      { label: "Preparación scrim", value: tactics },
+      { label: "Lectura meta", value: analysis },
+    ];
+  }
+  if (s.role === "Scout") {
+    return [
+      { label: "Lectura meta", value: analysis },
+      { label: "Análisis draft", value: execution },
+      { label: "Meta futura", value: metaDiscovery },
+    ];
+  }
+  if (s.role === "Physio") {
+    return [
+      { label: "Recuperación", value: recovery },
+      { label: "Control de tilt", value: morale },
+    ];
+  }
+
+  return [
+    { label: "Aprendizaje", value: development },
+    { label: "Lectura meta", value: analysis },
+    { label: "Recuperación", value: recovery },
+  ];
 }
 
 export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
@@ -109,6 +196,12 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
   });
 
   const roles = ["AssistantManager", "Coach", "Scout", "Physio"];
+  const teamEffects = getLolStaffEffectsForTeam(gameState, userTeamId);
+  const attrLabel = (key: StaffAttrKey) => {
+    const translationKey = `staff.lolAttrs.${key}`;
+    const translation = t(translationKey, { defaultValue: ATTR_LABELS[key] });
+    return translation === translationKey ? ATTR_LABELS[key] : translation;
+  };
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -177,6 +270,29 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
         </div>
       </div>
 
+      {view === "mystaff" && myStaff.length > 0 && (
+        <Card className="mb-4">
+          <CardBody>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mr-1">
+                Impacto LoL del staff
+              </span>
+              {TEAM_IMPACT_ROWS.map((row) => (
+                <span
+                  key={row.key}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 dark:bg-primary-500/10 px-2 py-1 text-[11px] font-heading uppercase tracking-wider text-primary-600 dark:text-primary-300"
+                >
+                  <span>{row.label}</span>
+                  <span className="font-bold tabular-nums">
+                    {formatStaffEffectPercent(teamEffects[row.key])}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {/* Staff grid */}
       {filtered.length === 0 ? (
         <div className="py-12 text-center">
@@ -195,6 +311,7 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
             const age = calcAge(staff.date_of_birth);
             const ovr = ovrRating(staff);
             const best = bestAttr(staff);
+            const impactRows = getStaffImpactRows(staff);
 
             return (
               <Card key={staff.id}>
@@ -263,27 +380,46 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
                       {/* Attributes */}
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3">
                         <AttrBar
-                          label={t("staff.attrs.coaching")}
+                          label={attrLabel("coaching")}
                           value={staff.attributes.coaching}
                         />
                         <AttrBar
-                          label={t("staff.attrs.judgingAbility")}
+                          label={attrLabel("judgingAbility")}
                           value={staff.attributes.judging_ability}
                         />
                         <AttrBar
-                          label={t("staff.attrs.judgingPotential")}
+                          label={attrLabel("judgingPotential")}
                           value={staff.attributes.judging_potential}
                         />
                         <AttrBar
-                          label={t("staff.attrs.physiotherapy")}
+                          label={attrLabel("physiotherapy")}
                           value={staff.attributes.physiotherapy}
                         />
+                      </div>
+
+                      <div className="mt-3">
+                        <p className="text-[10px] font-heading font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+                          Impacto LoL
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {impactRows.map((row) => (
+                            <span
+                              key={row.label}
+                              className="inline-flex items-center gap-1 rounded bg-navy-50 dark:bg-navy-700/70 px-1.5 py-0.5 text-[10px] font-heading uppercase tracking-wider text-gray-600 dark:text-gray-300"
+                            >
+                              <span>{row.label}</span>
+                              <span className="font-bold tabular-nums text-primary-500">
+                                {formatStaffEffectPercent(row.value)}
+                              </span>
+                            </span>
+                          ))}
+                        </div>
                       </div>
 
                       <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                         {t("staff.best")}:{" "}
                         <span className="font-medium text-gray-600 dark:text-gray-300">
-                          {t(`staff.attrs.${best.key}`)} ({best.value})
+                          {attrLabel(best.key as StaffAttrKey)} ({best.value})
                         </span>
                       </p>
                     </div>

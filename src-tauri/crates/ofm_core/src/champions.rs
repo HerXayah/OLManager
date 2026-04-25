@@ -1,4 +1,5 @@
 use crate::game::Game;
+use crate::staff_effects::LolStaffEffects;
 use chrono::{Datelike, NaiveDate};
 use domain::message::{InboxMessage, MessageCategory, MessagePriority};
 use domain::staff::StaffRole;
@@ -226,7 +227,11 @@ pub fn soloq_tier_for_player(game: &Game, player: &domain::player::Player) -> So
 }
 
 pub fn mastery_gain_multiplier_for_player(game: &Game, player_id: &str) -> f64 {
-    let Some(player) = game.players.iter().find(|candidate| candidate.id == player_id) else {
+    let Some(player) = game
+        .players
+        .iter()
+        .find(|candidate| candidate.id == player_id)
+    else {
         return 1.0;
     };
     match soloq_tier_for_player(game, player) {
@@ -342,7 +347,8 @@ fn base_role_score(role: &str) -> i16 {
 fn upsert_mastery(game: &mut Game, player_id: &str, champion_id: &str, value: u8) {
     let today = today_str(game);
     if let Some(existing) = game.champion_masteries.iter_mut().find(|entry| {
-        entry.player_id == player_id && normalize_key(&entry.champion_id) == normalize_key(champion_id)
+        entry.player_id == player_id
+            && normalize_key(&entry.champion_id) == normalize_key(champion_id)
     }) {
         existing.mastery = value.clamp(MIN_MASTERY, MASTERY_CAP);
         existing.last_active_on = today;
@@ -526,7 +532,10 @@ pub fn set_player_training_target(
 
     // Backward compatibility: if legacy single-target exists and new slots are empty,
     // migrate it to priority slot 1.
-    if player.champion_training_targets.iter().all(|slot| slot.is_empty())
+    if player
+        .champion_training_targets
+        .iter()
+        .all(|slot| slot.is_empty())
         && let Some(legacy) = player.champion_training_target.clone()
         && !legacy.trim().is_empty()
     {
@@ -593,7 +602,8 @@ pub fn mastery_for_player_champion(game: &Game, player_id: &str, champion_id: &s
     game.champion_masteries
         .iter()
         .find(|entry| {
-            entry.player_id == player_id && normalize_key(&entry.champion_id) == normalize_key(champion_id)
+            entry.player_id == player_id
+                && normalize_key(&entry.champion_id) == normalize_key(champion_id)
         })
         .map(|entry| entry.mastery)
         .unwrap_or(MIN_MASTERY)
@@ -606,7 +616,11 @@ pub fn apply_training_mastery_progress(
     gain_factor: f64,
 ) {
     let current = mastery_for_player_champion(game, player_id, champion_id);
-    let Some(player) = game.players.iter().find(|candidate| candidate.id == player_id) else {
+    let Some(player) = game
+        .players
+        .iter()
+        .find(|candidate| candidate.id == player_id)
+    else {
         return;
     };
 
@@ -641,26 +655,39 @@ pub fn apply_training_mastery_progress(
     upsert_mastery(game, player_id, champion_id, next);
 }
 
-pub fn apply_match_mastery_progress(game: &mut Game, winner_team_id: &str, picks: &[(String, String)]) {
+pub fn apply_match_mastery_progress(
+    game: &mut Game,
+    winner_team_id: &str,
+    picks: &[(String, String)],
+) {
     for (player_id, champion_id) in picks {
         let current = mastery_for_player_champion(game, player_id, champion_id);
-        let mut gain = if current >= 90 {
-            1
+        let mut raw_gain = if current >= 90 {
+            1.0
         } else if current >= 70 {
-            2
+            2.0
         } else {
-            3
+            3.0
         };
 
-        if game
+        let player_team_id = game
             .players
             .iter()
             .find(|player| player.id == *player_id)
             .and_then(|player| player.team_id.as_deref())
-            == Some(winner_team_id)
-        {
-            gain += 1;
+            .map(str::to_string);
+
+        if player_team_id.as_deref() == Some(winner_team_id) {
+            raw_gain += 1.0;
         }
+
+        let staff_mult = player_team_id
+            .as_deref()
+            .map(|team_id| {
+                LolStaffEffects::for_team(&game.staff, team_id).match_mastery_multiplier()
+            })
+            .unwrap_or(1.0);
+        let gain = (raw_gain * staff_mult).round().clamp(1.0, 5.0) as u8;
 
         upsert_mastery(
             game,
@@ -762,7 +789,12 @@ fn apply_patch(game: &mut Game) {
     let low_window = sorted.len().max(10) / 3;
 
     let nerf_pool: Vec<usize> = sorted.iter().take(top_window.max(1)).copied().collect();
-    let buff_pool: Vec<usize> = sorted.iter().rev().take(low_window.max(1)).copied().collect();
+    let buff_pool: Vec<usize> = sorted
+        .iter()
+        .rev()
+        .take(low_window.max(1))
+        .copied()
+        .collect();
 
     let nerf_indices = pick_unique_indices(&nerf_pool, 4);
     let buff_indices = pick_unique_indices(&buff_pool, 4);
@@ -820,12 +852,12 @@ fn apply_patch(game: &mut Game) {
         .collect();
 
     let year = two_digit_year(game);
-    let next_index = if game.champion_patch.patch_year == year && game.champion_patch.patch_index_in_year > 0
-    {
-        game.champion_patch.patch_index_in_year.saturating_add(1)
-    } else {
-        1
-    };
+    let next_index =
+        if game.champion_patch.patch_year == year && game.champion_patch.patch_index_in_year > 0 {
+            game.champion_patch.patch_index_in_year.saturating_add(1)
+        } else {
+            1
+        };
 
     game.champion_patch.current_patch = game.champion_patch.current_patch.saturating_add(1);
     game.champion_patch.patch_year = year;
@@ -903,10 +935,22 @@ fn process_meta_discovery(game: &mut Game) {
         .map(|scout| scout.attributes.judging_ability as f64)
         .sum::<f64>()
         / scouts.len() as f64;
+    let avg_potential = scouts
+        .iter()
+        .map(|scout| scout.attributes.judging_potential as f64)
+        .sum::<f64>()
+        / scouts.len() as f64;
+    let staff_effects = LolStaffEffects::for_team(&game.staff, manager_team_id);
 
     let mut reveals = 6usize;
     reveals += scouts.len() * 2;
     reveals += (avg_scouting / 25.0).floor() as usize;
+    // Ability discovers the current obvious meta; potential adds a small read on
+    // sleeper/future-ish picks. The data model only stores discovered champions,
+    // so we express that as a conservative extra reveal count instead of inventing
+    // speculative hints.
+    reveals += (avg_potential / 50.0).floor() as usize;
+    reveals = ((reveals as f64) * staff_effects.meta_discovery).round() as usize;
 
     let mut rng = rand::rng();
     reveals += rng.random_range(0..=4);

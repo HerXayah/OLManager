@@ -2,6 +2,7 @@
 
 import type { TFunction } from "i18next";
 import type { LolRole } from "../../store/gameStore";
+import type { LolStaffEffectsData } from "../../lib/lolStaffEffects";
 
 export interface MatchEvent {
   minute: number;
@@ -178,6 +179,10 @@ export interface MatchSnapshot {
   away_yellows: Record<string, number>;
   sent_off: string[];
   lol_map?: LolMapState;
+  lol_staff_effects?: {
+    home: LolStaffEffectsData;
+    away: LolStaffEffectsData;
+  };
 }
 
 export interface MinuteResult {

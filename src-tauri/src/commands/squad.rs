@@ -1,6 +1,6 @@
+use chrono::Datelike;
 use log::info;
 use tauri::State;
-use chrono::Datelike;
 
 use ofm_core::champions;
 use ofm_core::game::Game;
@@ -317,9 +317,10 @@ pub fn set_weekly_scrims(
         let previous_slots = team.weekly_scrim_opponent_ids.clone();
 
         for (index, day) in slot_days.iter().enumerate() {
-            let already_simulated = team.scrim_slot_results.iter().any(|entry| {
-                entry.week_key == week_key && entry.slot_index == index as u8
-            });
+            let already_simulated = team
+                .scrim_slot_results
+                .iter()
+                .any(|entry| entry.week_key == week_key && entry.slot_index == index as u8);
             if *day < current_weekday || already_simulated {
                 next_slots[index] = previous_slots.get(index).cloned().unwrap_or_default();
                 continue;

@@ -80,6 +80,17 @@ const JUNGLE_GANK_WINDOW_RADIUS = 0.22;
 const CHAMPION_SOFT_COLLISION_RADIUS = 0.012;
 const CHAMPION_SOFT_COLLISION_RADIUS_SUP_JGL = 0.015;
 const CHAMPION_SOFT_COLLISION_PUSH = 0.55;
+const BARON_BUFF_DURATION_SEC = 180;
+const BARON_MINION_AURA_RADIUS = 0.16;
+const BARON_MINION_STRUCTURE_RANGE = 0.09;
+const MINION_STRUCTURE_AGGRO_RADIUS = 0.24;
+const MINION_STRUCTURE_BLOCKER_ATTACK_RADIUS = 0.13;
+const BARON_MINION_COMBAT_RANGE_BONUS = 0.018;
+const BARON_MINION_STRUCTURE_DAMAGE_MULTIPLIER = 2.35;
+const BARON_MINION_MINION_DAMAGE_MULTIPLIER = 1.65;
+const BARON_MINION_CHAMPION_DAMAGE_MULTIPLIER = 1.2;
+const BARON_MINION_MOVE_SPEED_MULTIPLIER = 1.12;
+const BARON_MINION_TOWER_DAMAGE_TAKEN_MULTIPLIER = 0.55;
 
 const LANER_FARM_SEARCH_RADIUS: Record<Exclude<RoleId, "JGL">, number> = {
   TOP: 0.14,
@@ -465,6 +476,7 @@ export class PrototypeSimulation {
   private midKillAdvantageUntilByChampion = new Map<string, number>();
   private towerForcedTargetById = new Map<string, string>();
   private towerForcedUntilById = new Map<string, number>();
+  private baronBuffByChampion = new Map<string, { until: number; deathsAtGrant: number }>();
 
   constructor(
     private nav: NavGrid,
@@ -490,6 +502,7 @@ export class PrototypeSimulation {
     this.midKillAdvantageUntilByChampion.clear();
     this.towerForcedTargetById.clear();
     this.towerForcedUntilById.clear();
+    this.baronBuffByChampion.clear();
     this.state = this.createInitialState();
   }
 
@@ -528,6 +541,43 @@ export class PrototypeSimulation {
       ch.hp = Math.min(ch.maxHp, ch.hp + ch.maxHp * 0.22);
       this.log(`${ch.name} reached level ${ch.level}`, "info");
     }
+  }
+
+  private grantBaronBuff(team: TeamId) {
+    const until = this.state.timeSec + BARON_BUFF_DURATION_SEC;
+    this.state.champions
+      .filter((ch) => ch.alive && ch.team === team)
+      .forEach((ch) => this.baronBuffByChampion.set(ch.id, { until, deathsAtGrant: ch.deaths }));
+  }
+
+  private championHasBaronBuff(ch: ChampionState, now = this.state.timeSec) {
+    const buff = this.baronBuffByChampion.get(ch.id);
+    return Boolean(ch.alive && buff && buff.until > now && buff.deathsAtGrant === ch.deaths);
+  }
+
+  private hasBaronAuraForMinion(minion: MinionState, now = this.state.timeSec) {
+    return this.state.champions.some(
+      (ch) => ch.team === minion.team && this.championHasBaronBuff(ch, now) && dist(ch.pos, minion.pos) <= BARON_MINION_AURA_RADIUS,
+    );
+  }
+
+  private minionAttackRange(minion: MinionState, target: "structure" | "unit", now = this.state.timeSec) {
+    if (!this.hasBaronAuraForMinion(minion, now)) return minion.attackRange;
+    if (target === "structure") return Math.max(minion.attackRange, BARON_MINION_STRUCTURE_RANGE);
+    return minion.attackRange + BARON_MINION_COMBAT_RANGE_BONUS;
+  }
+
+  private minionMoveSpeed(minion: MinionState, now = this.state.timeSec) {
+    return this.hasBaronAuraForMinion(minion, now)
+      ? minion.moveSpeed * BARON_MINION_MOVE_SPEED_MULTIPLIER
+      : minion.moveSpeed;
+  }
+
+  private minionDamageMultiplier(minion: MinionState, target: "structure" | "minion" | "champion", now = this.state.timeSec) {
+    if (!this.hasBaronAuraForMinion(minion, now)) return 1;
+    if (target === "structure") return BARON_MINION_STRUCTURE_DAMAGE_MULTIPLIER;
+    if (target === "minion") return BARON_MINION_MINION_DAMAGE_MULTIPLIER;
+    return BARON_MINION_CHAMPION_DAMAGE_MULTIPLIER;
   }
 
   private nearbyChampions(team: TeamId, pos: Vec2, radius: number, aliveOnly = true) {
@@ -597,6 +647,14 @@ export class PrototypeSimulation {
   }
 
   private shouldAvoidDive(ch: ChampionState, targetPos: Vec2) {
+    const nextLaneStructure = this.nextEnemyStructureForLane(ch.team, ch.lane, ch.pos);
+    if (nextLaneStructure && dist(nextLaneStructure.pos, targetPos) > 0.08) {
+      const alliedMinionsNearNextStructure = this.state.minions.some(
+        (m) => m.alive && m.team === ch.team && m.lane === ch.lane && dist(m.pos, nextLaneStructure.pos) <= 0.09,
+      );
+      if (!alliedMinionsNearNextStructure) return true;
+    }
+
     const tower = this.state.structures.find(
       (s) => s.alive && s.team !== ch.team && s.kind === "tower" && dist(s.pos, targetPos) <= 0.095,
     );
@@ -795,6 +853,30 @@ export class PrototypeSimulation {
     return true;
   }
 
+  private shouldHoldBaronSiege(ch: ChampionState, now = this.state.timeSec) {
+    if (!this.championHasBaronBuff(ch, now)) return false;
+    if (ch.role === "JGL") return false;
+
+    const nextStructure = this.nextEnemyStructureForLane(ch.team, ch.lane, ch.pos);
+    if (!nextStructure) return false;
+
+    const nearEnemyStructure = dist(ch.pos, nextStructure.pos) <= 0.18;
+    if (!nearEnemyStructure) return false;
+
+    const alliedWaveAtStructure = this.state.minions.some(
+      (m) => m.alive && m.team === ch.team && m.lane === ch.lane && dist(m.pos, nextStructure.pos) <= 0.12,
+    );
+    if (alliedWaveAtStructure) return false;
+
+    const lanePath = this.lanePath(ch.team, ch.lane);
+    const championIdx = this.closestLanePathIndex(ch.pos, lanePath);
+    const alliedFrontIdx = this.state.minions
+      .filter((m) => m.alive && m.team === ch.team && m.lane === ch.lane)
+      .reduce((best, m) => Math.max(best, m.pathIndex), 1);
+
+    return championIdx >= alliedFrontIdx;
+  }
+
   private pickCombatTarget(ch: ChampionState, now: number):
     | { kind: "champion"; target: ChampionState }
     | { kind: "minion"; target: MinionState }
@@ -802,6 +884,13 @@ export class PrototypeSimulation {
     | { kind: "neutral"; target: NeutralTimerState }
     | null {
     const enemyTeam: TeamId = ch.team === "blue" ? "red" : "blue";
+
+    if (this.shouldHoldBaronSiege(ch, now)) {
+      const nearbyWaveTarget = this.state.minions
+        .filter((m) => m.alive && m.team === enemyTeam && m.lane === ch.lane && dist(ch.pos, m.pos) <= this.lanerFarmSearchRadius(ch))
+        .sort((a, b) => a.hp - b.hp || dist(ch.pos, a.pos) - dist(ch.pos, b.pos))[0];
+      return nearbyWaveTarget ? { kind: "minion", target: nearbyWaveTarget } : null;
+    }
 
     const killWindowEnemy = this.state.champions
       .filter((enemy) => enemy.alive && enemy.team === enemyTeam && this.hasCredibleKillChance(ch, enemy))
@@ -915,23 +1004,23 @@ export class PrototypeSimulation {
       if (nearbyObjective) return { kind: "neutral", target: nearbyObjective };
     }
 
-    const pressureStructure = this.state.structures
-      .filter((s) => {
-        if (!s.alive || s.team !== enemyTeam || (s.lane !== ch.lane && s.kind !== "nexus")) return false;
+    const pressureCandidate = this.nextEnemyStructureForLane(ch.team, ch.lane, ch.pos);
+    const pressureStructure = pressureCandidate && pressureCandidate.team === enemyTeam
+      ? (() => {
         if (ch.role !== "JGL") {
-          if (dist(ch.pos, s.pos) > LANE_STRUCTURE_PRESSURE_RADIUS) return false;
+          if (dist(ch.pos, pressureCandidate.pos) > LANE_STRUCTURE_PRESSURE_RADIUS) return null;
           const hasAlliedWaveAtStructure = this.state.minions.some(
-            (m) => m.alive && m.team === ch.team && m.lane === ch.lane && dist(m.pos, s.pos) <= 0.1,
+            (m) => m.alive && m.team === ch.team && m.lane === ch.lane && dist(m.pos, pressureCandidate.pos) <= 0.1,
           );
-          if (!hasAlliedWaveAtStructure) return false;
+          if (!hasAlliedWaveAtStructure) return null;
           const enemyWaveAtStructure = this.state.minions.filter(
-            (m) => m.alive && m.team !== ch.team && m.lane === ch.lane && dist(m.pos, s.pos) <= 0.08,
+            (m) => m.alive && m.team !== ch.team && m.lane === ch.lane && dist(m.pos, pressureCandidate.pos) <= 0.08,
           ).length;
-          if (enemyWaveAtStructure >= 2) return false;
+          if (enemyWaveAtStructure >= 2) return null;
         }
-        return true;
-      })
-      .sort((a, b) => dist(ch.pos, a.pos) - dist(ch.pos, b.pos))[0];
+        return pressureCandidate;
+      })()
+      : null;
     if (pressureStructure) return { kind: "structure", target: pressureStructure };
 
     const waveFront = this.laneWaveFrontPos(ch);
@@ -946,20 +1035,19 @@ export class PrototypeSimulation {
       .sort((a, b) => dist(waveFront, a.pos) - dist(waveFront, b.pos) || dist(ch.pos, a.pos) - dist(ch.pos, b.pos))[0];
     if (farmingMinion) return { kind: "minion", target: farmingMinion };
 
-    const nearestStructure = this.state.structures
-      .filter((s) => {
-        if (!s.alive || s.team !== enemyTeam || (s.lane !== ch.lane && s.kind !== "nexus")) return false;
+    const nearestStructure = pressureCandidate && pressureCandidate.team === enemyTeam
+      ? (() => {
         // Laners should pressure structures only when truly nearby and with allied wave support.
         if (ch.role !== "JGL") {
-          if (dist(ch.pos, s.pos) > LANE_STRUCTURE_PRESSURE_RADIUS) return false;
+          if (dist(ch.pos, pressureCandidate.pos) > LANE_STRUCTURE_PRESSURE_RADIUS) return null;
           const hasAlliedWaveAtStructure = this.state.minions.some(
-            (m) => m.alive && m.team === ch.team && m.lane === ch.lane && dist(m.pos, s.pos) <= 0.09,
+            (m) => m.alive && m.team === ch.team && m.lane === ch.lane && dist(m.pos, pressureCandidate.pos) <= 0.09,
           );
-          if (!hasAlliedWaveAtStructure) return false;
+          if (!hasAlliedWaveAtStructure) return null;
         }
-        return true;
-      })
-      .sort((a, b) => dist(ch.pos, a.pos) - dist(ch.pos, b.pos))[0];
+        return pressureCandidate;
+      })()
+      : null;
     const nearestMinion = this.state.minions
       .filter((m) => m.alive && m.team === enemyTeam && m.lane === ch.lane)
       .sort((a, b) => dist(ch.pos, a.pos) - dist(ch.pos, b.pos))[0];
@@ -1589,6 +1677,28 @@ export class PrototypeSimulation {
     };
   }
 
+  private baronSiegeAnchorPos(ch: ChampionState) {
+    const lanePath = this.lanePath(ch.team, ch.lane);
+    const alliedLaneMinions = this.state.minions
+      .filter((m) => m.alive && m.team === ch.team && m.lane === ch.lane)
+      .sort((a, b) => b.pathIndex - a.pathIndex || dist(ch.pos, a.pos) - dist(ch.pos, b.pos));
+    if (!alliedLaneMinions.length) return null;
+
+    const front = alliedLaneMinions[0];
+    const safeOffset = ch.attackType === "ranged" ? 2 : 1;
+    const anchorIdx = clamp(front.pathIndex - safeOffset, 1, lanePath.length - 1);
+    const anchor = lanePath[anchorIdx] ?? front.pos;
+
+    const nextStructure = this.nextEnemyStructureForLane(ch.team, ch.lane, ch.pos);
+    if (nextStructure) {
+      const waveAtStructure = alliedLaneMinions.some((m) => dist(m.pos, nextStructure.pos) <= 0.1);
+      const championAheadOfWave = this.closestLanePathIndex(ch.pos, lanePath) > front.pathIndex + 1;
+      if (!waveAtStructure || championAheadOfWave) return anchor;
+    }
+
+    return this.laneFarmAnchorPos(ch);
+  }
+
   private shouldDisengageChampionTrade(ch: ChampionState, enemy: ChampionState) {
     if (ch.role === "JGL") return false;
 
@@ -1883,6 +1993,7 @@ export class PrototypeSimulation {
 
     if (killer && key === "baron") {
       this.state.stats[killer.team].barons += 1;
+      this.grantBaronBuff(killer.team);
       this.addGold(killer, 80);
       this.addXp(killer, 140);
       this.log(`${killer.team.toUpperCase()} secured baron`, "baron");
@@ -2033,6 +2144,10 @@ export class PrototypeSimulation {
         kind,
         lastHitByChampionId: null,
         attackCdUntil: 0,
+        debugTargetStructureId: null,
+        debugPhysicalBlockerId: null,
+        debugRedirectToStructure: false,
+        debugStructureDistance: null,
         moveSpeed: profile.moveSpeed,
         attackRange: profile.attackRange,
         attackDamage: profile.attackDamage,
@@ -2183,6 +2298,14 @@ export class PrototypeSimulation {
     if (now < LANE_COMBAT_UNLOCK_AT) {
       this.setChampionPath(ch, this.lanePreWaveHoldPos(ch), 0.008, true);
       return;
+    }
+
+    if (this.championHasBaronBuff(ch, now)) {
+      const siegeAnchor = this.baronSiegeAnchorPos(ch);
+      if (siegeAnchor) {
+        this.setChampionPath(ch, siegeAnchor, 0.01);
+        return;
+      }
     }
 
     this.setChampionPath(ch, this.laneFarmAnchorPos(ch), 0.012);
@@ -2361,6 +2484,56 @@ export class PrototypeSimulation {
     return candidates.sort((a, b) => dist(m.pos, a.pos) - dist(m.pos, b.pos))[0];
   }
 
+  private isRelevantEnemyLaneStructure(structure: StructureState, lane: LaneId) {
+    if (!structure.alive) return false;
+    if (structure.kind === "nexus") return true;
+    if (structure.lane === lane) return true;
+    if (structure.kind === "tower" && structure.lane === "base") return true;
+    if (structure.kind === "inhib" && structure.lane === "base") {
+      return structure.id.includes(`-${lane}`);
+    }
+    return false;
+  }
+
+  private laneStructureBucket(structure: StructureState, lane: LaneId) {
+    if (structure.kind === "tower" && structure.lane === lane) return 0;
+    if (structure.kind === "inhib" && structure.lane === "base" && structure.id.includes(`-${lane}`)) return 1;
+    if (structure.kind === "tower" && structure.lane === "base") return 2;
+    if (structure.kind === "nexus") return 3;
+    return 99;
+  }
+
+  private nextEnemyStructureForLane(team: TeamId, lane: LaneId, fromPos: Vec2) {
+    const enemyTeam: TeamId = team === "blue" ? "red" : "blue";
+    const lanePath = this.lanePath(team, lane);
+
+    const candidates = this.state.structures
+      .filter((s) => s.team === enemyTeam)
+      .filter((s) => this.isRelevantEnemyLaneStructure(s, lane))
+      .map((s) => {
+        const idx = this.closestLanePathIndex(s.pos, lanePath);
+        const bucket = this.laneStructureBucket(s, lane);
+        return {
+          structure: s,
+          idx,
+          bucket,
+          distance: dist(fromPos, s.pos),
+        };
+      });
+
+    if (!candidates.length) return null;
+    const activeBucket = Math.min(...candidates.map((c) => c.bucket));
+    const stageCandidates = candidates.filter((c) => c.bucket === activeBucket);
+
+    stageCandidates.sort((a, b) => {
+      if (activeBucket === 0) return a.idx - b.idx || a.distance - b.distance;
+      if (activeBucket === 1) return a.distance - b.distance;
+      return a.distance - b.distance;
+    });
+
+    return stageCandidates[0]?.structure ?? null;
+  }
+
   private nearestEnemyChampionForMinion(m: MinionState, range: number) {
     return this.state.champions
       .filter((enemy) => enemy.alive && enemy.team !== m.team && enemy.lane === m.lane && dist(m.pos, enemy.pos) < range)
@@ -2368,20 +2541,74 @@ export class PrototypeSimulation {
   }
 
   private nearestEnemyStructureForLane(team: TeamId, lane: LaneId, fromPos: Vec2) {
+    return this.nextEnemyStructureForLane(team, lane, fromPos);
+  }
+
+  private mandatoryEnemyStructuresForLane(team: TeamId, lane: LaneId) {
     const enemyTeam: TeamId = team === "blue" ? "red" : "blue";
     return this.state.structures
-      .filter((s) => s.alive && s.team === enemyTeam && (s.lane === lane || s.kind === "nexus"))
-      .sort((a, b) => dist(fromPos, a.pos) - dist(fromPos, b.pos))[0] ?? null;
+      .filter((s) => s.team === enemyTeam && this.isRelevantEnemyLaneStructure(s, lane))
+      .map((s) => ({ structure: s, bucket: this.laneStructureBucket(s, lane) }))
+      .filter((entry) => entry.bucket < 99);
+  }
+
+  private minionStructureTarget(minion: MinionState) {
+    const nearbyPhysicalBlocker = this.nearbyPhysicalStructureBlocker(minion);
+    if (nearbyPhysicalBlocker) return nearbyPhysicalBlocker;
+
+    const mandatory = this.mandatoryEnemyStructuresForLane(minion.team, minion.lane);
+    if (!mandatory.length) return null;
+
+    const activeBucket = Math.min(...mandatory.map((entry) => entry.bucket));
+    const activeStructures = mandatory.filter((entry) => entry.bucket === activeBucket).map((entry) => entry.structure);
+
+    const aggroStructure = activeStructures
+      .filter((s) => dist(minion.pos, s.pos) <= MINION_STRUCTURE_AGGRO_RADIUS)
+      .sort((a, b) => dist(minion.pos, a.pos) - dist(minion.pos, b.pos))[0];
+
+    if (aggroStructure) return aggroStructure;
+    return this.nextEnemyStructureForLane(minion.team, minion.lane, minion.pos);
+  }
+
+  private nearbyPhysicalStructureBlocker(minion: MinionState) {
+    return this.state.structures
+      .filter((s) => s.alive && s.team !== minion.team && s.kind !== "nexus" && dist(minion.pos, s.pos) <= MINION_STRUCTURE_AGGRO_RADIUS)
+      .sort((a, b) => {
+        const distanceA = dist(minion.pos, a.pos);
+        const distanceB = dist(minion.pos, b.pos);
+        const priorityA = a.kind === "tower" ? 0 : 1;
+        const priorityB = b.kind === "tower" ? 0 : 1;
+        const blockerScoreA = distanceA + priorityA * 0.035;
+        const blockerScoreB = distanceB + priorityB * 0.035;
+        return blockerScoreA - blockerScoreB;
+      })[0] ?? null;
+  }
+
+  private shouldMinionMoveDirectlyToStructure(minion: MinionState, targetStruct: StructureState) {
+    const targetIdx = this.closestLanePathIndex(targetStruct.pos, minion.path);
+    const reachedStructureApproach = minion.pathIndex >= Math.max(1, targetIdx - 1);
+    const closeEnoughToStructure = dist(minion.pos, targetStruct.pos) <= 0.18;
+    return reachedStructureApproach || closeEnoughToStructure;
   }
 
   private tickMinions(dt: number) {
     const now = this.state.timeSec;
     for (const m of this.state.minions) {
       if (!m.alive) continue;
-      const targetStruct = this.nearestEnemyStructureForLane(m.team, m.lane, m.pos);
-      if (targetStruct && dist(m.pos, targetStruct.pos) <= 0.05) {
+      const targetStruct = this.minionStructureTarget(m);
+      const targetStructBucket = targetStruct ? this.laneStructureBucket(targetStruct, m.lane) : 99;
+      const structureDistance = targetStruct ? dist(m.pos, targetStruct.pos) : Number.POSITIVE_INFINITY;
+      const physicalBlocker = this.nearbyPhysicalStructureBlocker(m);
+      m.debugTargetStructureId = targetStruct?.id ?? null;
+      m.debugPhysicalBlockerId = physicalBlocker?.id ?? null;
+      m.debugStructureDistance = Number.isFinite(structureDistance) ? structureDistance : null;
+      m.debugRedirectToStructure = false;
+      const structureAttackRange = targetStruct && targetStruct.kind !== "nexus"
+        ? Math.max(this.minionAttackRange(m, "structure", now), MINION_STRUCTURE_BLOCKER_ATTACK_RADIUS)
+        : this.minionAttackRange(m, "structure", now);
+      if (targetStruct && structureDistance <= structureAttackRange) {
         if (now >= m.attackCdUntil) {
-          targetStruct.hp -= m.attackDamage * this.towerDamageMultiplier(targetStruct, now);
+          targetStruct.hp -= m.attackDamage * this.minionDamageMultiplier(m, "structure", now) * this.towerDamageMultiplier(targetStruct, now);
           m.attackCdUntil = now + MINION_PROFILE[m.kind].attackCadence;
           if (targetStruct.hp <= 0 && targetStruct.alive) {
             targetStruct.alive = false;
@@ -2396,20 +2623,20 @@ export class PrototypeSimulation {
         continue;
       }
 
-      const enemyMinion = this.nearestEnemyMinion(m, 0.05);
+      const enemyMinion = this.nearestEnemyMinion(m, this.minionAttackRange(m, "unit", now));
       if (enemyMinion) {
         if (now >= m.attackCdUntil) {
-          enemyMinion.hp -= m.attackDamage * MINION_DAMAGE_TO_MINION_MULTIPLIER;
+          enemyMinion.hp -= m.attackDamage * this.minionDamageMultiplier(m, "minion", now) * MINION_DAMAGE_TO_MINION_MULTIPLIER;
           m.attackCdUntil = now + MINION_PROFILE[m.kind].attackCadence;
           if (enemyMinion.hp <= 0) this.registerMinionDeath(enemyMinion, null);
         }
         continue;
       }
 
-      const enemyChampion = this.nearestEnemyChampionForMinion(m, 0.055);
+      const enemyChampion = this.nearestEnemyChampionForMinion(m, this.minionAttackRange(m, "unit", now));
       if (enemyChampion) {
         if (now >= m.attackCdUntil) {
-          enemyChampion.hp -= m.attackDamage * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER;
+          enemyChampion.hp -= m.attackDamage * this.minionDamageMultiplier(m, "champion", now) * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER;
           enemyChampion.lastDamagedByChampionId = null;
           enemyChampion.lastDamagedAt = now;
           this.cancelRecall(enemyChampion, now);
@@ -2424,8 +2651,24 @@ export class PrototypeSimulation {
       }
 
       const next = m.path[m.pathIndex] ?? m.path[m.path.length - 1];
-      this.moveEntity(m.pos, next, m.moveSpeed, dt);
-      if (dist(m.pos, next) < 0.01 && m.pathIndex < m.path.length - 1) m.pathIndex += 1;
+      const nearPathEnd = m.pathIndex >= m.path.length - 2;
+      const stalledAtPathEnd = m.pathIndex >= m.path.length - 1 && dist(m.pos, next) <= 0.012;
+      const baseStructurePhase = targetStructBucket >= 1 && targetStructBucket <= 2;
+      const shouldRedirectToStructure = Boolean(
+        targetStruct
+        && (
+          physicalBlocker === targetStruct
+          || baseStructurePhase
+          || this.shouldMinionMoveDirectlyToStructure(m, targetStruct)
+          || (nearPathEnd && (stalledAtPathEnd || dist(next, targetStruct.pos) > 0.06))
+        ),
+      );
+      m.debugRedirectToStructure = shouldRedirectToStructure;
+      const moveTarget = shouldRedirectToStructure && targetStruct ? targetStruct.pos : next;
+      this.moveEntity(m.pos, moveTarget, this.minionMoveSpeed(m, now), dt);
+      if (!shouldRedirectToStructure && dist(m.pos, next) < 0.01 && m.pathIndex < m.path.length - 1) {
+        m.pathIndex += 1;
+      }
     }
 
     this.state.minions = this.state.minions.filter((m) => m.alive && m.pathIndex < m.path.length);
@@ -2460,7 +2703,7 @@ export class PrototypeSimulation {
 
       const minion = this.state.minions.find((m) => m.alive && m.team !== s.team && dist(m.pos, s.pos) < 0.08);
       if (minion) {
-        minion.hp -= 24;
+        minion.hp -= 24 * (this.hasBaronAuraForMinion(minion, now) ? BARON_MINION_TOWER_DAMAGE_TAKEN_MULTIPLIER : 1);
         s.attackCdUntil = now + 1.0;
         if (minion.hp <= 0) this.registerMinionDeath(minion, null);
         continue;

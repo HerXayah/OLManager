@@ -16,6 +16,7 @@ import { LolSimV2Client } from "./lol-prototype/backend/tauri-client";
 import { renderSimulation } from "./lol-prototype/ui/render";
 import { LecLowerThirdPanel } from "./lol-prototype/ui/panels";
 import { useSettingsStore } from "../../store/settingsStore";
+import type { GameStateData } from "../../store/gameStore";
 import teamsSeed from "../../../data/lec/draft/teams.json";
 
 export interface ChampionSelectionByPlayer {
@@ -27,6 +28,7 @@ export interface ChampionSelectionByPlayer {
 
 interface Props {
   snapshot: MatchSnapshot;
+  gameState: GameStateData | null;
   championSelections?: ChampionSelectionByPlayer | null;
   onSnapshotUpdate: (snap: MatchSnapshot) => void;
   onImportantEvent: (evt: MatchEvent) => void;
@@ -374,7 +376,7 @@ function sideFromActorLabel(
   return match.team === "red" ? "red" : "blue";
 }
 
-export default function LolMatchLive({ snapshot, championSelections, onSnapshotUpdate, onImportantEvent, onFullTime }: Props) {
+export default function LolMatchLive({ gameState, snapshot, championSelections, onSnapshotUpdate, onImportantEvent, onFullTime }: Props) {
   const { t } = useTranslation();
   const walls = useMemo(() => getWalls(), []);
   const nav = useMemo(() => new NavGrid(walls), [walls]);
@@ -402,6 +404,82 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   const [championProfilesById, setChampionProfilesById] = useState<Record<string, ChampionCombatProfile>>({});
   const [championUltimatesById, setChampionUltimatesById] = useState<Record<string, LolChampionUltimateProfile>>({});
 
+  const runtimeModifierByChampionId = useMemo<Record<string, number>>(() => {
+    const next: Record<string, number> = {};
+    const hiddenMeta = gameState?.champion_patch?.hidden_meta ?? [];
+    const masteryEntries = gameState?.champion_masteries ?? [];
+
+    const masteryByPlayerChampion = new Map<string, number>();
+    masteryEntries.forEach((entry) => {
+      masteryByPlayerChampion.set(`${entry.player_id}:${normalizeKey(entry.champion_id)}`, Number(entry.mastery ?? 25));
+    });
+
+    const roleLabel = (role: string): "Top" | "Jungle" | "Mid" | "ADC" | "Support" => {
+      const key = normalizeKey(role);
+      if (key === "top") return "Top";
+      if (key === "jungle") return "Jungle";
+      if (key === "mid" || key === "middle") return "Mid";
+      if (key === "adc" || key === "bot" || key === "bottom") return "ADC";
+      return "Support";
+    };
+
+    const tierWeight: Record<string, number> = { S: 0.08, A: 0.04, B: 0, C: -0.03, D: -0.06 };
+    const roleTierByChampion = new Map<string, string>();
+    const bestTierByChampion = new Map<string, string>();
+    const tierOrder: Record<string, number> = { S: 0, A: 1, B: 2, C: 3, D: 4 };
+
+    hiddenMeta.forEach((entry) => {
+      const championKey = normalizeKey(entry.champion_id);
+      const tier = String(entry.tier ?? "B").toUpperCase();
+      const role = roleLabel(entry.role);
+      const roleKey = `${role}:${championKey}`;
+      const previousRoleTier = roleTierByChampion.get(roleKey);
+      if (!previousRoleTier || (tierOrder[tier] ?? 99) < (tierOrder[previousRoleTier] ?? 99)) {
+        roleTierByChampion.set(roleKey, tier);
+      }
+
+      const previousBest = bestTierByChampion.get(championKey);
+      if (!previousBest || (tierOrder[tier] ?? 99) < (tierOrder[previousBest] ?? 99)) {
+        bestTierByChampion.set(championKey, tier);
+      }
+    });
+
+    const roleByPlayerId = {
+      ...(championSelections?.homeRoles ?? {}),
+      ...(championSelections?.awayRoles ?? {}),
+    };
+
+    Object.entries(championByPlayerId).forEach(([playerId, championId]) => {
+      if (!championId) return;
+      const championKey = normalizeKey(championId);
+      const mastery = masteryByPlayerChampion.get(`${playerId}:${championKey}`) ?? 25;
+      const masteryDelta = ((mastery - 50) / 50) * 0.14;
+
+      const rawRole = roleByPlayerId[playerId] ?? "MID";
+      const mappedRole = rawRole === "TOP"
+        ? "Top"
+        : rawRole === "JUNGLE"
+          ? "Jungle"
+          : rawRole === "ADC"
+            ? "ADC"
+            : rawRole === "SUPPORT"
+              ? "Support"
+              : "Mid";
+      const tier = roleTierByChampion.get(`${mappedRole}:${championKey}`) ?? bestTierByChampion.get(championKey) ?? "B";
+      const tierDelta = tierWeight[tier] ?? 0;
+      const modifier = Math.max(0.82, Math.min(1.25, 1 + masteryDelta + tierDelta));
+
+      // If same champion appears duplicated (rare), blend modifiers.
+      if (next[championId] !== undefined) {
+        next[championId] = (next[championId] + modifier) / 2;
+      } else {
+        next[championId] = modifier;
+      }
+    });
+
+    return next;
+  }, [championByPlayerId, championSelections?.awayRoles, championSelections?.homeRoles, gameState?.champion_masteries, gameState?.champion_patch?.hidden_meta]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -426,10 +504,14 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
           const data = champions[championId];
           if (!data) return;
           const attackType = attackTypeFromStats(data.stats.attackrange, data.tags ?? []);
+          const runtimeMod = runtimeModifierByChampionId[championId] ?? 1;
+          const baseHp = Math.round(data.stats.hp * runtimeMod);
+          const rangeBase = normalizeAttackRange(data.stats.attackrange);
+          const rangeWithMod = rangeBase * Math.max(0.92, Math.min(1.08, 1 + (runtimeMod - 1) * 0.35));
           nextProfiles[championId] = {
-            baseHp: Math.round(data.stats.hp),
+            baseHp,
             attackType,
-            attackRange: normalizeAttackRange(data.stats.attackrange),
+            attackRange: rangeWithMod,
           };
         });
 
@@ -480,7 +562,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     return () => {
       cancelled = true;
     };
-  }, [championByPlayerId]);
+  }, [championByPlayerId, runtimeModifierByChampionId]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const simRef = useRef<PrototypeSimulation | null>(null);
@@ -488,6 +570,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
   const backendStateRef = useRef<LolSimV1RuntimeState | null>(null);
   const backendTickInFlightRef = useRef(false);
   const backendPendingDtRef = useRef(0);
+  const goldDiffTimelineRef = useRef<Array<{ minute: number; diff: number }>>([]);
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
   const finishedRef = useRef(false);
@@ -504,6 +587,7 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     backendStateRef.current = null;
     backendTickInFlightRef.current = false;
     backendPendingDtRef.current = 0;
+    goldDiffTimelineRef.current = [{ minute: 0, diff: 0 }];
     finishedRef.current = false;
 
     if (!USE_RUST_SIM_V2) return;
@@ -513,16 +597,16 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
     let disposed = false;
 
     void client
-        .init({
+      .init({
         seed,
         aiMode,
         policy: simPolicy,
         snapshot,
-          championByPlayerId,
-          championProfilesById,
-          championUltimatesById,
-          initialState: { ...tsSim.state, speed },
-        })
+        championByPlayerId,
+        championProfilesById,
+        championUltimatesById,
+        initialState: { ...tsSim.state, speed },
+      })
       .then((response) => {
         if (disposed || backendClientRef.current !== client) return;
         backendStateRef.current = response.state;
@@ -594,6 +678,16 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
       const state = currentState();
       if (!state) return;
 
+      const minute = Math.max(0, Math.floor((state.timeSec ?? 0) / 60));
+      const diff = Math.round((state.stats?.blue?.gold ?? 0) - (state.stats?.red?.gold ?? 0));
+      const goldTimeline = goldDiffTimelineRef.current;
+      const lastGoldPoint = goldTimeline[goldTimeline.length - 1];
+      if (!lastGoldPoint || lastGoldPoint.minute !== minute) {
+        goldTimeline.push({ minute, diff });
+      } else {
+        lastGoldPoint.diff = diff;
+      }
+
       const rect = canvas.getBoundingClientRect();
       const size = Math.max(320, Math.floor(Math.min(rect.width, rect.height)));
       if (canvas.width !== size || canvas.height !== size) {
@@ -620,7 +714,11 @@ export default function LolMatchLive({ snapshot, championSelections, onSnapshotU
           home_score: state.winner === "blue" ? 1 : 0,
           away_score: state.winner === "red" ? 1 : 0,
         });
-        setTimeout(() => onFullTime(state, { source: "live" }), 400);
+        const finalState = {
+          ...state,
+          goldDiffTimeline: [...goldDiffTimelineRef.current],
+        };
+        setTimeout(() => onFullTime(finalState, { source: "live" }), 400);
       }
 
       setTick((v) => v + 1);
