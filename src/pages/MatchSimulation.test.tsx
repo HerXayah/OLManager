@@ -60,17 +60,24 @@ vi.mock("../components/match/PreMatchSetup", () => ({
 }));
 
 vi.mock("../components/match/ChampionDraft", () => ({
-  default: ({ onComplete }: { onComplete?: (payload?: unknown) => void }) => (
+  default: ({
+    onComplete,
+    lockedChampionIds,
+  }: {
+    onComplete?: (payload?: unknown) => void;
+    lockedChampionIds?: string[];
+  }) => (
     <button
       data-testid="champion-draft"
       onClick={() =>
         onComplete?.({
-          blue: { picks: [] },
-          red: { picks: [] },
+          blue: { picks: [{ role: "TOP", championId: "Aatrox" }] },
+          red: { picks: [{ role: "TOP", championId: "Ahri" }] },
+          history: ["Aatrox", "Ahri"],
         } as never)
       }
     >
-      Complete Draft
+      Complete Draft ({lockedChampionIds?.length ?? 0})
     </button>
   ),
 }));
@@ -610,6 +617,21 @@ describe("MatchSimulation", function (): void {
       setGameState: setGameStateMock,
     };
 
+    localStorage.setItem(
+      "fixture-draft-result:fixture-playoff-1",
+      JSON.stringify({
+        snapshot: makeSnapshot(),
+        controlledSide: "blue",
+        result: { winnerSide: "blue" },
+        seriesGames: [
+          { gameIndex: 1, result: { winnerSide: "blue" }, winnerSide: "blue" },
+          { gameIndex: 2, result: { winnerSide: "red" }, winnerSide: "red" },
+        ],
+        homeSeriesWins: 1,
+        awaySeriesWins: 1,
+      }),
+    );
+
     mockedInvoke.mockResolvedValueOnce(makeSnapshot()).mockResolvedValueOnce({
       game: gameStateWithPlayoff,
       round_summary: null,
@@ -642,6 +664,82 @@ describe("MatchSimulation", function (): void {
       expect(parsed.awaySeriesWins).toBe(1);
       expect(parsed.userSeriesWins).toBe(2);
       expect(parsed.opponentSeriesWins).toBe(1);
+      expect(parsed.seriesGames).toHaveLength(3);
+      expect(parsed.seriesGames.map((entry: { gameIndex: number }) => entry.gameIndex)).toEqual([1, 2, 3]);
+      expect(parsed.seriesGames[2].winnerSide).toBe(parsed.result.winnerSide);
     });
+  });
+
+  it("returns to draft for next map while series is still open", async function (): Promise<void> {
+    locationState = {
+      mode: "spectator",
+      snapshot: makeSnapshot(),
+    };
+
+    const gameStateWithPlayoff = makeGameState();
+    gameStateWithPlayoff.league = {
+      id: "league-1",
+      name: "Test League",
+      season: 1,
+      fixtures: [
+        {
+          id: "fixture-playoff-open-series",
+          matchday: 12,
+          date: "2026-08-01",
+          home_team_id: "home1",
+          away_team_id: "away1",
+          competition: "Playoffs",
+          status: "InProgress",
+          result: {
+            home_wins: 0,
+            away_wins: 0,
+          },
+        },
+      ],
+      standings: [],
+    };
+
+    gameStoreState = {
+      gameState: gameStateWithPlayoff,
+      setGameState: setGameStateMock,
+    };
+
+    mockedInvoke.mockResolvedValueOnce(makeSnapshot());
+
+    render(<MatchSimulation />);
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("champion-draft"));
+    await waitFor(function (): void {
+      expect(screen.getByTestId("tactics-stage")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("tactics-continue"));
+    await waitFor(function (): void {
+      expect(screen.getByTestId("match-live")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("match-live"));
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("postmatch-finish")).toBeInTheDocument();
+    });
+
+    expect(mockedInvoke).not.toHaveBeenCalledWith(
+      "finish_live_match",
+      expect.anything(),
+    );
+
+    fireEvent.click(screen.getByTestId("postmatch-finish"));
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toBeInTheDocument();
+      expect(screen.getByText("Complete Draft (2)")).toBeInTheDocument();
+    });
+
+    expect(navigateMock).not.toHaveBeenCalledWith("/dashboard");
   });
 });

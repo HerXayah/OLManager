@@ -15,6 +15,12 @@ import DraftResultScreen from "../match/DraftResultScreen";
 import type { MatchSnapshot } from "../match/types";
 import type { DraftMatchResult } from "../match/draftResultSimulator";
 
+interface StoredSeriesGameResult {
+  gameIndex: number;
+  result: DraftMatchResult;
+  winnerSide?: "blue" | "red";
+}
+
 interface TeamSeed {
   id: string;
   name: string;
@@ -28,6 +34,7 @@ interface StoredFixtureDraftResult {
   snapshot: MatchSnapshot;
   controlledSide: "blue" | "red";
   result: DraftMatchResult;
+  seriesGames?: StoredSeriesGameResult[];
   seriesLength?: 1 | 3 | 5;
   seriesGameIndex?: number;
   userSeriesWins?: number;
@@ -54,9 +61,27 @@ function normalizeKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function inferBestOf(fixture: FixtureData): 1 | 3 | 5 {
+function inferBestOf(
+  fixture: FixtureData,
+  bestOfContext: {
+    playoffBounds: { start: number | null; end: number | null };
+    friendlySeriesLengthById: Record<string, 1 | 3 | 5>;
+  },
+): 1 | 3 | 5 {
+  if (fixture.competition === "Friendly") {
+    return bestOfContext.friendlySeriesLengthById[fixture.id] ?? 1;
+  }
+
   if (fixture.competition !== "Playoffs") return 1;
-  return fixture.matchday >= 14 ? 5 : 3;
+
+  const { start, end } = bestOfContext.playoffBounds;
+  if (start === null) return 3;
+
+  if (fixture.matchday === start) return 3;
+  if (fixture.matchday === start + 1) return 5;
+  if (end !== null && fixture.matchday >= end) return 5;
+
+  return 3;
 }
 
 function toNonNegativeNumber(value: unknown): number | null {
@@ -68,10 +93,10 @@ function normalizeLolScore(
   fixture: FixtureData,
   storedResult: StoredFixtureDraftResult | null,
   userTeamId: string,
+  bo: 1 | 3 | 5,
 ): { home: number; away: number } | null {
   if (!fixture.result) return null;
 
-  const bo = inferBestOf(fixture);
   const rawHomeWins =
     toNonNegativeNumber(fixture.result.home_wins) ??
     toNonNegativeNumber(fixture.result.home_goals);
@@ -206,6 +231,7 @@ export default function ScheduleTab({
         snapshot={fixtureResultView.snapshot}
         controlledSide={fixtureResultView.controlledSide}
         result={fixtureResultView.result}
+        seriesGames={fixtureResultView.seriesGames}
         seriesLength={fixtureResultView.seriesLength}
         seriesGameIndex={fixtureResultView.seriesGameIndex}
         userSeriesWins={fixtureResultView.userSeriesWins}
@@ -216,6 +242,30 @@ export default function ScheduleTab({
   }
 
   const fixturesForDisplay = league.fixtures;
+  const playoffFixtures = fixturesForDisplay.filter((fixture) => fixture.competition === "Playoffs");
+  const preseasonFriendlyFixtures = fixturesForDisplay
+    .filter((fixture) => fixture.competition === "Friendly" && fixture.matchday === 0)
+    .sort((left, right) =>
+      left.date.localeCompare(right.date) ||
+      left.matchday - right.matchday ||
+      left.id.localeCompare(right.id),
+    );
+  const playoffBounds = {
+    start: playoffFixtures.length > 0
+      ? Math.min(...playoffFixtures.map((fixture) => fixture.matchday))
+      : null,
+    end: playoffFixtures.length > 0
+      ? Math.max(...playoffFixtures.map((fixture) => fixture.matchday))
+      : null,
+  };
+  const friendlySeriesLengthById: Record<string, 1 | 3 | 5> = {};
+  if (preseasonFriendlyFixtures[0]) {
+    friendlySeriesLengthById[preseasonFriendlyFixtures[0].id] = 3;
+  }
+  if (preseasonFriendlyFixtures[1]) {
+    friendlySeriesLengthById[preseasonFriendlyFixtures[1].id] = 5;
+  }
+  const bestOfContext = { playoffBounds, friendlySeriesLengthById };
 
   // Group fixtures by matchday
   const matchdays = new Map<string, FixtureData[]>();
@@ -311,8 +361,8 @@ export default function ScheduleTab({
                       f.home_team_id === userTeamId ||
                       f.away_team_id === userTeamId;
                     const completed = f.status === "Completed";
-                    const bo = inferBestOf(f);
-                    const score = normalizeLolScore(f, storedDraftResult, userTeamId);
+                    const bo = inferBestOf(f, bestOfContext);
+                    const score = normalizeLolScore(f, storedDraftResult, userTeamId, bo);
                     const homeLogo = getTeamLogoPath(gameState.teams, f.home_team_id);
                     const awayLogo = getTeamLogoPath(gameState.teams, f.away_team_id);
                     const hasStoredResult = !!storedDraftResult;

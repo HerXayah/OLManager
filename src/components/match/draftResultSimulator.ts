@@ -462,11 +462,12 @@ export function simulateDraftMatchResult(params: {
   snapshot: MatchSnapshot;
   gameState: GameStateData;
   draft: ChampionDraftResultPayload;
+  seedSalt?: string;
 }): DraftMatchResult {
-  const { snapshot, gameState, draft } = params;
+  const { snapshot, gameState, draft, seedSalt = "" } = params;
 
   const seed = hashText(
-    `${snapshot.home_team.name}|${snapshot.away_team.name}|${draft.history.join("|")}|${draft.blue.score.total}|${draft.red.score.total}`,
+    `${snapshot.home_team.name}|${snapshot.away_team.name}|${draft.history.join("|")}|${draft.blue.score.total}|${draft.red.score.total}|${seedSalt}`,
   );
   const rand = mulberry32(seed);
 

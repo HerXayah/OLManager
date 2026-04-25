@@ -28,9 +28,16 @@ vi.mock("react-i18next", () => ({
       if (key === "common.pts") return "Pts";
       if (key === "schedule.season") return `Season ${params?.number}`;
       if (key === "schedule.matchday") return `Matchday ${params?.number}`;
+      if (key === "schedule.viewResult") return "View result";
       return key;
     },
   }),
+}));
+
+vi.mock("../match/DraftResultScreen", () => ({
+  default: ({ seriesGames }: { seriesGames?: Array<{ gameIndex: number }> }) => (
+    <div data-testid="draft-result-series-games">{seriesGames?.length ?? 0}</div>
+  ),
 }));
 
 function createTeam(overrides: Partial<TeamData> = {}): TeamData {
@@ -238,5 +245,115 @@ describe("ScheduleTab", () => {
     );
 
     expect(screen.getByText("2 - 1")).toBeInTheDocument();
+  });
+
+  it("applies Bo3 to first playoff round and Bo5 to second", () => {
+    const playoffRoundOne = createFixture({
+      id: "playoff-r1",
+      competition: "Playoffs",
+      matchday: 10,
+      status: "Scheduled",
+      result: undefined,
+    });
+    const playoffRoundTwo = createFixture({
+      id: "playoff-r2",
+      competition: "Playoffs",
+      matchday: 11,
+      date: "2026-08-08",
+      status: "Scheduled",
+      result: undefined,
+    });
+
+    render(
+      <ScheduleTab
+        gameState={{
+          ...createGameState(true),
+          league: {
+            ...createGameState(true).league!,
+            fixtures: [playoffRoundOne, playoffRoundTwo],
+          },
+        }}
+        onSelectTeam={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("BO3")).toBeInTheDocument();
+    expect(screen.getByText("BO5")).toBeInTheDocument();
+  });
+
+  it("shows Bo3 and Bo5 on the first two preseason friendlies", () => {
+    const friendlyOne = createFixture({
+      id: "friendly-1",
+      competition: "Friendly",
+      matchday: 0,
+      date: "2026-01-04",
+      status: "Scheduled",
+      result: undefined,
+    });
+    const friendlyTwo = createFixture({
+      id: "friendly-2",
+      competition: "Friendly",
+      matchday: 0,
+      date: "2026-01-11",
+      status: "Scheduled",
+      result: undefined,
+    });
+
+    render(
+      <ScheduleTab
+        gameState={{
+          ...createGameState(true),
+          league: {
+            ...createGameState(true).league!,
+            fixtures: [friendlyOne, friendlyTwo],
+          },
+        }}
+        onSelectTeam={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("BO3")).toBeInTheDocument();
+    expect(screen.getByText("BO5")).toBeInTheDocument();
+  });
+
+  it("passes stored series games to calendar draft result view", () => {
+    const playoffFixture = createFixture({
+      id: "fixture-playoff-1",
+      competition: "Playoffs",
+      matchday: 12,
+    });
+
+    localStorage.setItem(
+      "fixture-draft-result:fixture-playoff-1",
+      JSON.stringify({
+        snapshot: {
+          home_team: { id: "team-1", name: "Alpha FC", players: [] },
+          away_team: { id: "team-2", name: "Beta FC", players: [] },
+        },
+        controlledSide: "blue",
+        result: { winnerSide: "blue" },
+        seriesGames: [
+          { gameIndex: 1, result: { winnerSide: "blue" }, winnerSide: "blue" },
+          { gameIndex: 2, result: { winnerSide: "red" }, winnerSide: "red" },
+        ],
+      }),
+    );
+
+    render(
+      <ScheduleTab
+        gameState={{
+          ...createGameState(true),
+          league: {
+            ...createGameState(true).league!,
+            fixtures: [playoffFixture],
+          },
+        }}
+        onSelectTeam={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle("View result"));
+
+    expect(screen.getByTestId("draft-result-series-games")).toHaveTextContent("2");
   });
 });

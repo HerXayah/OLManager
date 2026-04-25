@@ -54,12 +54,20 @@ interface StoredFixtureDraftResult {
   snapshot: MatchSnapshot;
   controlledSide: "blue" | "red";
   result: DraftMatchResult;
+  seriesGames?: StoredSeriesGameResult[];
   seriesLength?: 1 | 3 | 5;
   seriesGameIndex?: number;
   userSeriesWins?: number;
   opponentSeriesWins?: number;
   homeSeriesWins?: number;
   awaySeriesWins?: number;
+  seriesUsedChampionIds?: string[];
+}
+
+interface StoredSeriesGameResult {
+  gameIndex: number;
+  result: DraftMatchResult;
+  winnerSide?: "blue" | "red";
 }
 
 const DEFAULT_LOL_TACTICS: LolTacticsData = {
@@ -578,9 +586,52 @@ function persistFixtureDraftResult(
   }
 }
 
+function readStoredFixtureDraftResult(fixtureId: string): StoredFixtureDraftResult | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(`fixture-draft-result:${fixtureId}`);
+    if (!raw) return null;
+    return JSON.parse(raw) as StoredFixtureDraftResult;
+  } catch {
+    return null;
+  }
+}
+
 function readSeriesWins(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.floor(value));
+}
+
+function normalizeStoredSeriesGames(value: unknown): StoredSeriesGameResult[] {
+  if (!Array.isArray(value)) return [];
+
+  const byGameIndex = new Map<number, StoredSeriesGameResult>();
+
+  value.forEach((entry) => {
+    if (!entry || typeof entry !== "object") return;
+
+    const candidate = entry as Partial<StoredSeriesGameResult>;
+    const gameIndex =
+      typeof candidate.gameIndex === "number" && Number.isFinite(candidate.gameIndex)
+        ? Math.max(1, Math.floor(candidate.gameIndex))
+        : null;
+
+    if (gameIndex === null || !candidate.result || typeof candidate.result !== "object") return;
+
+    const winnerSide =
+      candidate.winnerSide === "blue" || candidate.winnerSide === "red"
+        ? candidate.winnerSide
+        : candidate.result.winnerSide;
+
+    byGameIndex.set(gameIndex, {
+      gameIndex,
+      result: candidate.result,
+      winnerSide,
+    });
+  });
+
+  return Array.from(byGameIndex.values()).sort((left, right) => left.gameIndex - right.gameIndex);
 }
 
 export default function MatchSimulation() {
@@ -604,6 +655,11 @@ export default function MatchSimulation() {
   const [draftPayload, setDraftPayload] = useState<ChampionDraftResultPayload | null>(null);
   const [draftResultSimulation, setDraftResultSimulation] = useState<DraftMatchResult | null>(null);
   const [championSelections, setChampionSelections] = useState<ChampionSelectionByPlayer | null>(null);
+  const [seriesGameIndex, setSeriesGameIndex] = useState(0);
+  const [seriesHomeWins, setSeriesHomeWins] = useState(0);
+  const [seriesAwayWins, setSeriesAwayWins] = useState(0);
+  const [seriesGames, setSeriesGames] = useState<StoredSeriesGameResult[]>([]);
+  const [seriesUsedChampionIds, setSeriesUsedChampionIds] = useState<string[]>([]);
   const [userSide, setUserSide] = useState<"Home" | "Away" | null>(null);
   const [isSpectator, setIsSpectator] = useState(matchMode === "spectator");
   const [hasFinalizedMatch, setHasFinalizedMatch] = useState(false);
@@ -746,6 +802,16 @@ export default function MatchSimulation() {
       ? resolveMatchFixture(gameState, snapshot, routeState?.fixtureIndex)
       : null;
 
+  useEffect(() => {
+    if (!currentFixture?.id) {
+      setSeriesGames([]);
+      return;
+    }
+
+    const stored = readStoredFixtureDraftResult(currentFixture.id);
+    setSeriesGames(normalizeStoredSeriesGames(stored?.seriesGames));
+  }, [currentFixture?.id]);
+
   const playoffFixtures =
     gameState?.league?.fixtures.filter(
       (fixture) => fixture.competition === "Playoffs",
@@ -756,13 +822,66 @@ export default function MatchSimulation() {
       ? Math.max(...playoffFixtures.map((fixture) => fixture.matchday))
       : null;
 
+  const preseasonFriendlyFixtures =
+    gameState?.league?.fixtures
+      .filter((fixture) => fixture.competition === "Friendly" && fixture.matchday === 0)
+      .sort((left, right) =>
+        left.date.localeCompare(right.date) ||
+        left.matchday - right.matchday ||
+        left.id.localeCompare(right.id),
+      ) ?? [];
+
+  const firstFriendlyFixtureId = preseasonFriendlyFixtures[0]?.id ?? null;
+  const secondFriendlyFixtureId = preseasonFriendlyFixtures[1]?.id ?? null;
+
+  const playoffStartMatchday =
+    playoffFixtures.length > 0
+      ? Math.min(...playoffFixtures.map((fixture) => fixture.matchday))
+      : null;
+
   const seriesLength: 1 | 3 | 5 =
-    currentFixture?.competition !== "Playoffs"
-      ? 1
-      : playoffFinalMatchday !== null &&
-          currentFixture.matchday >= playoffFinalMatchday
+    currentFixture?.competition === "Friendly"
+      ? currentFixture.id === firstFriendlyFixtureId
+        ? 3
+        : currentFixture.id === secondFriendlyFixtureId
+          ? 5
+          : 1
+      : currentFixture?.competition !== "Playoffs"
+        ? 1
+      : playoffStartMatchday !== null &&
+          currentFixture.matchday === playoffStartMatchday + 1
+        ? 5
+        : playoffFinalMatchday !== null &&
+            currentFixture.matchday >= playoffFinalMatchday
         ? 5
         : 3;
+
+  useEffect(() => {
+    if (!currentFixture?.id) {
+      setSeriesGameIndex(0);
+      setSeriesHomeWins(0);
+      setSeriesAwayWins(0);
+      setSeriesUsedChampionIds([]);
+      return;
+    }
+
+    const stored = readStoredFixtureDraftResult(currentFixture.id);
+    const fromResultHome = readSeriesWins(currentFixture.result?.home_wins) || readSeriesWins(currentFixture.result?.home_goals);
+    const fromResultAway = readSeriesWins(currentFixture.result?.away_wins) || readSeriesWins(currentFixture.result?.away_goals);
+    const homeWins = Math.max(fromResultHome, readSeriesWins(stored?.homeSeriesWins));
+    const awayWins = Math.max(fromResultAway, readSeriesWins(stored?.awaySeriesWins));
+
+    setSeriesHomeWins(homeWins);
+    setSeriesAwayWins(awayWins);
+    setSeriesGameIndex(homeWins + awayWins);
+    setSeriesUsedChampionIds(Array.isArray(stored?.seriesUsedChampionIds) ? stored.seriesUsedChampionIds : []);
+  }, [
+    currentFixture?.id,
+    currentFixture?.result?.away_goals,
+    currentFixture?.result?.away_wins,
+    currentFixture?.result?.home_goals,
+    currentFixture?.result?.home_wins,
+  ]);
 
   const normalizeTeamKey = (value: string): string =>
     value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -822,6 +941,41 @@ export default function MatchSimulation() {
     if (!renderSnapshot || !gameState) return renderSnapshot;
     return attachLolTacticsToSnapshot(renderSnapshot, gameState);
   }, [gameState, renderSnapshot]);
+
+  const userSeriesWins =
+    managerTeamId && currentFixture
+      ? managerTeamId === currentFixture.home_team_id
+        ? seriesHomeWins
+        : managerTeamId === currentFixture.away_team_id
+          ? seriesAwayWins
+          : 0
+      : 0;
+
+  const opponentSeriesWins =
+    managerTeamId && currentFixture
+      ? managerTeamId === currentFixture.home_team_id
+        ? seriesAwayWins
+        : managerTeamId === currentFixture.away_team_id
+          ? seriesHomeWins
+          : 0
+      : 0;
+
+  const blueSeriesWins =
+    currentFixture && renderSnapshotWithTactics
+      ? renderSnapshotWithTactics.home_team.id === currentFixture.home_team_id
+        ? seriesHomeWins
+        : seriesAwayWins
+      : seriesHomeWins;
+
+  const redSeriesWins =
+    currentFixture && renderSnapshotWithTactics
+      ? renderSnapshotWithTactics.away_team.id === currentFixture.away_team_id
+        ? seriesAwayWins
+        : seriesHomeWins
+      : seriesAwayWins;
+
+  const targetSeriesWins = seriesLength === 1 ? 1 : seriesLength === 3 ? 2 : 3;
+  const isSeriesComplete = seriesLength === 1 || userSeriesWins >= targetSeriesWins || opponentSeriesWins >= targetSeriesWins;
 
   // Callbacks for stage transitions
   const handleStartMatch = useCallback(() => {
@@ -1102,6 +1256,7 @@ export default function MatchSimulation() {
           snapshot: renderSnapshotWithTactics,
           gameState,
           draft: safeDraftPayload,
+          seedSalt: `${currentFixture?.id ?? "fixture"}-g${seriesGameIndex + 1}`,
         });
         setDraftResultSimulation(simulated);
         resultToPersist = simulated;
@@ -1114,17 +1269,27 @@ export default function MatchSimulation() {
       setDraftResultSimulation(null);
     }
 
+    const targetSeriesWins = seriesLength === 1 ? 1 : seriesLength === 3 ? 2 : 3;
+    let homeSeriesWins = seriesHomeWins;
+    let awaySeriesWins = seriesAwayWins;
+    let userSeriesWins = 0;
+    let opponentSeriesWins = 0;
+    let seriesComplete = seriesLength === 1;
+    let nextSeriesUsedChampionIds = seriesUsedChampionIds;
+
     if (currentFixture?.id) {
-      const targetSeriesWins = seriesLength === 1 ? 1 : seriesLength === 3 ? 2 : 3;
+      const stored = readStoredFixtureDraftResult(currentFixture.id);
+      const storedHomeWins = readSeriesWins(stored?.homeSeriesWins);
+      const storedAwayWins = readSeriesWins(stored?.awaySeriesWins);
+      const resultHomeWins = readSeriesWins(currentFixture.result?.home_wins) || readSeriesWins(currentFixture.result?.home_goals);
+      const resultAwayWins = readSeriesWins(currentFixture.result?.away_wins) || readSeriesWins(currentFixture.result?.away_goals);
       const existingHomeWins = Math.min(
         targetSeriesWins,
-        readSeriesWins(currentFixture.result?.home_wins) ||
-          readSeriesWins(currentFixture.result?.home_goals),
+        Math.max(resultHomeWins, storedHomeWins, seriesHomeWins),
       );
       const existingAwayWins = Math.min(
         targetSeriesWins,
-        readSeriesWins(currentFixture.result?.away_wins) ||
-          readSeriesWins(currentFixture.result?.away_goals),
+        Math.max(resultAwayWins, storedAwayWins, seriesAwayWins),
       );
 
       const winnerTeamId =
@@ -1132,43 +1297,81 @@ export default function MatchSimulation() {
           ? snapshotForResult.home_team.id
           : snapshotForResult.away_team.id;
 
-      const homeSeriesWins = Math.min(
+      homeSeriesWins = Math.min(
         targetSeriesWins,
         winnerTeamId === currentFixture.home_team_id
           ? existingHomeWins + 1
           : existingHomeWins,
       );
-      const awaySeriesWins = Math.min(
+      awaySeriesWins = Math.min(
         targetSeriesWins,
         winnerTeamId === currentFixture.away_team_id
           ? existingAwayWins + 1
           : existingAwayWins,
       );
+
+      const pickedThisMap = [
+        ...(draftPayload?.blue.picks ?? []).map((pick) => pick.championId),
+        ...(draftPayload?.red.picks ?? []).map((pick) => pick.championId),
+      ];
+      nextSeriesUsedChampionIds = Array.from(new Set<string>([
+        ...(stored?.seriesUsedChampionIds ?? []),
+        ...seriesUsedChampionIds,
+        ...pickedThisMap,
+      ]));
+
       const managerTeamId = gameState?.manager.team_id ?? null;
-      const userSeriesWins =
+      userSeriesWins =
         managerTeamId === currentFixture.home_team_id
           ? homeSeriesWins
           : managerTeamId === currentFixture.away_team_id
             ? awaySeriesWins
             : 0;
-      const opponentSeriesWins =
+      opponentSeriesWins =
         managerTeamId === currentFixture.home_team_id
           ? awaySeriesWins
           : managerTeamId === currentFixture.away_team_id
             ? homeSeriesWins
             : 0;
 
+      setSeriesHomeWins(homeSeriesWins);
+      setSeriesAwayWins(awaySeriesWins);
+      setSeriesGameIndex(homeSeriesWins + awaySeriesWins);
+      setSeriesUsedChampionIds(nextSeriesUsedChampionIds);
+
+      const currentSeriesGameIndex = homeSeriesWins + awaySeriesWins;
+      const nextSeriesGamesByIndex = new Map<number, StoredSeriesGameResult>();
+      normalizeStoredSeriesGames(stored?.seriesGames).forEach((entry) => {
+        nextSeriesGamesByIndex.set(entry.gameIndex, entry);
+      });
+      seriesGames.forEach((entry) => {
+        nextSeriesGamesByIndex.set(entry.gameIndex, entry);
+      });
+      nextSeriesGamesByIndex.set(currentSeriesGameIndex, {
+        gameIndex: currentSeriesGameIndex,
+        result: resultToPersist,
+        winnerSide: resultToPersist.winnerSide,
+      });
+      const nextSeriesGames = Array.from(nextSeriesGamesByIndex.values()).sort(
+        (left, right) => left.gameIndex - right.gameIndex,
+      );
+      setSeriesGames(nextSeriesGames);
+
       persistFixtureDraftResult(currentFixture.id, {
         snapshot: snapshotForResult,
         controlledSide: userSelectedSide,
         result: resultToPersist,
+        seriesGames: nextSeriesGames,
         seriesLength,
-        seriesGameIndex: homeSeriesWins + awaySeriesWins,
+        seriesGameIndex: currentSeriesGameIndex,
         userSeriesWins,
         opponentSeriesWins,
         homeSeriesWins,
         awaySeriesWins,
+        seriesUsedChampionIds: nextSeriesUsedChampionIds,
       });
+
+      seriesComplete = homeSeriesWins >= targetSeriesWins || awaySeriesWins >= targetSeriesWins;
     }
 
     const runtimeForFinalize = simulatedForSkip
@@ -1193,20 +1396,36 @@ export default function MatchSimulation() {
       }
       : finalRuntimeState;
 
-    void (async () => {
-      const finalized = await finalizeMatch(buildLolMatchReport(runtimeForFinalize));
-      if (finalized) {
-        setStage("draft_result");
-      }
-    })();
+    if (seriesComplete) {
+      void (async () => {
+        const finalized = await finalizeMatch(buildLolMatchReport(runtimeForFinalize));
+        if (finalized) {
+          setStage("draft_result");
+        }
+      })();
+      return;
+    }
+
+    setStage("draft_result");
   }, [
     championSelections,
     currentFixture?.id,
+    currentFixture?.away_team_id,
+    currentFixture?.home_team_id,
+    currentFixture?.result?.away_goals,
+    currentFixture?.result?.away_wins,
+    currentFixture?.result?.home_goals,
+    currentFixture?.result?.home_wins,
     draftPayload,
     finalizeMatch,
     gameState,
     renderSnapshotWithTactics,
+    seriesAwayWins,
+    seriesGameIndex,
+    seriesGames,
+    seriesHomeWins,
     seriesLength,
+    seriesUsedChampionIds,
     snapshot,
     userSelectedSide,
   ]);
@@ -1278,8 +1497,9 @@ export default function MatchSimulation() {
           onComplete={handleDraftComplete}
           controlledSide={userSelectedSide}
           seriesLength={seriesLength}
-          blueSeriesWins={0}
-          redSeriesWins={0}
+          blueSeriesWins={blueSeriesWins}
+          redSeriesWins={redSeriesWins}
+          lockedChampionIds={seriesUsedChampionIds}
           gameState={gameState}
         />
       );
@@ -1313,12 +1533,27 @@ export default function MatchSimulation() {
               snapshot={renderSnapshotWithTactics ?? snapshot}
               controlledSide={userSelectedSide}
               result={draftScreenResult}
+              seriesGames={seriesGames}
               seriesLength={seriesLength}
+              seriesGameIndex={Math.max(1, seriesGameIndex)}
+              userSeriesWins={userSeriesWins}
+              opponentSeriesWins={opponentSeriesWins}
               onPressConference={handlePressConference}
               onContinue={(nextUserSide) => {
                 if (nextUserSide) {
                   setUserSelectedSide(nextUserSide);
                 }
+
+                if (!isSeriesComplete && seriesLength > 1) {
+                  setDraftPayload(null);
+                  setDraftResultSimulation(null);
+                  setChampionSelections(null);
+                  setFinalRuntimeState(null);
+                  setImportantEvents([]);
+                  setStage("draft");
+                  return;
+                }
+
                 void handleFinishMatch();
               }}
             />

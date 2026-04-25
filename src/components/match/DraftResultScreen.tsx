@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import teamsSeed from "../../../data/lec/draft/teams.json";
 import type { MatchSnapshot } from "./types";
@@ -15,6 +16,7 @@ interface DraftResultScreenProps {
   snapshot: MatchSnapshot;
   controlledSide: Side;
   result: DraftMatchResult;
+  seriesGames?: DraftResultSeriesGame[];
   seriesLength?: 1 | 3 | 5;
   seriesGameIndex?: number;
   userSeriesWins?: number;
@@ -22,6 +24,12 @@ interface DraftResultScreenProps {
   canUserChooseSide?: boolean;
   onPressConference?: () => void;
   onContinue: (nextUserSide?: Side) => void;
+}
+
+export interface DraftResultSeriesGame {
+  gameIndex: number;
+  result: DraftMatchResult;
+  winnerSide?: Side;
 }
 
 const TEAM_SEEDS: TeamSeed[] = ((teamsSeed as { data?: { teams?: TeamSeed[] } }).data?.teams ?? []) as TeamSeed[];
@@ -93,6 +101,7 @@ export default function DraftResultScreen({
   snapshot,
   controlledSide,
   result,
+  seriesGames,
   seriesLength = 1,
   seriesGameIndex = 1,
   userSeriesWins = 0,
@@ -103,33 +112,62 @@ export default function DraftResultScreen({
 }: DraftResultScreenProps) {
   const { t } = useTranslation();
 
+  const seriesGamesForTabs = useMemo<DraftResultSeriesGame[]>(() => {
+    if (!Array.isArray(seriesGames) || seriesGames.length === 0) {
+      return [{ gameIndex: Math.max(1, seriesGameIndex), result, winnerSide: result.winnerSide }];
+    }
+
+    return [...seriesGames]
+      .filter((entry) => Number.isFinite(entry.gameIndex) && entry.gameIndex >= 1)
+      .sort((left, right) => left.gameIndex - right.gameIndex);
+  }, [result, seriesGameIndex, seriesGames]);
+
+  const latestSeriesGame = seriesGamesForTabs[seriesGamesForTabs.length - 1];
+  const [selectedGameIndex, setSelectedGameIndex] = useState<number>(latestSeriesGame?.gameIndex ?? 1);
+
+  useEffect(() => {
+    const hasSelectedGame = seriesGamesForTabs.some((entry) => entry.gameIndex === selectedGameIndex);
+    if (!hasSelectedGame) {
+      setSelectedGameIndex(latestSeriesGame?.gameIndex ?? 1);
+    }
+  }, [latestSeriesGame?.gameIndex, selectedGameIndex, seriesGamesForTabs]);
+
+  const selectedSeriesGame =
+    seriesGamesForTabs.find((entry) => entry.gameIndex === selectedGameIndex) ?? latestSeriesGame;
+  const selectedResult = selectedSeriesGame?.result ?? result;
+
   const blueTeam = sideTeam(snapshot, "blue");
   const redTeam = sideTeam(snapshot, "red");
   const blueTri = teamTriCode(blueTeam.name);
   const redTri = teamTriCode(redTeam.name);
 
-  const controlledWon = result.winnerSide === controlledSide;
+  const controlledWon = selectedResult.winnerSide === controlledSide;
   const title = controlledWon
     ? t("match.victory", "Victory")
     : t("match.defeat", "Defeat");
 
-  const blueRows = result.playerResults.filter((row) => row.side === "blue");
-  const redRows = result.playerResults.filter((row) => row.side === "red");
+  const blueRows = selectedResult.playerResults.filter((row) => row.side === "blue");
+  const redRows = selectedResult.playerResults.filter((row) => row.side === "red");
 
   const maxAbsGold =
-    Math.max(...result.goldDiffTimeline.map((point) => Math.abs(point.diff)), 1000) ||
+    Math.max(...selectedResult.goldDiffTimeline.map((point) => Math.abs(point.diff)), 1000) ||
     1000;
 
-  const points = result.goldDiffTimeline
+  const points = selectedResult.goldDiffTimeline
     .map((point, idx) => {
-      const x = (idx / Math.max(1, result.goldDiffTimeline.length - 1)) * 100;
+      const x = (idx / Math.max(1, selectedResult.goldDiffTimeline.length - 1)) * 100;
       const y = 50 - (point.diff / maxAbsGold) * 45;
       return `${x},${y}`;
     })
     .join(" ");
 
-  const mvpPhoto = playerPhotoUrl(result.mvp.playerId);
+  const mvpPhoto = playerPhotoUrl(selectedResult.mvp.playerId);
   const nextGameLabel = `${Math.min(seriesLength, seriesGameIndex + 1)}/${seriesLength}`;
+  const targetSeriesWins = seriesLength === 1 ? 1 : seriesLength === 3 ? 2 : 3;
+  const isSeriesFinished =
+    seriesLength === 1 ||
+    userSeriesWins >= targetSeriesWins ||
+    opponentSeriesWins >= targetSeriesWins;
 
   return (
     <div className="min-h-screen bg-[#050608] text-white p-4 md:p-6">
@@ -142,15 +180,32 @@ export default function DraftResultScreen({
 
           <div className="mt-3 flex items-center justify-center gap-4 text-3xl font-black">
             <span className="text-cyan-300">{blueTri}</span>
-            <span>{result.blueKills}</span>
+            <span>{selectedResult.blueKills}</span>
             <span className="text-gray-500">-</span>
-            <span>{result.redKills}</span>
+            <span>{selectedResult.redKills}</span>
             <span className="text-orange-300">{redTri}</span>
           </div>
 
           <p className="mt-2 text-sm text-gray-300">
-            MVP: <span className="font-bold text-cyan-300">{result.mvp.playerName}</span>
+            MVP: <span className="font-bold text-cyan-300">{selectedResult.mvp.playerName}</span>
           </p>
+          {seriesGamesForTabs.length > 1 ? (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {seriesGamesForTabs.map((entry) => {
+                const isSelected = entry.gameIndex === selectedGameIndex;
+                return (
+                  <button
+                    key={`game-tab-${entry.gameIndex}`}
+                    type="button"
+                    className={`rounded-md border px-3 py-1 text-xs font-heading font-bold uppercase tracking-wide ${isSelected ? "border-cyan-300 bg-cyan-500/20 text-cyan-100" : "border-white/20 bg-white/5 text-gray-300 hover:bg-white/10"}`}
+                    onClick={() => setSelectedGameIndex(entry.gameIndex)}
+                  >
+                    {t("match.game", { defaultValue: "Game" })} {entry.gameIndex}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
           {seriesLength > 1 ? (
             <p className="mt-1 text-xs text-gray-400">
               Serie ({seriesLength === 3 ? "Bo3" : "Bo5"}) · {userSeriesWins} - {opponentSeriesWins}
@@ -166,19 +221,19 @@ export default function DraftResultScreen({
                 {mvpPhoto ? (
                   <img
                     src={mvpPhoto}
-                    alt={result.mvp.playerName}
+                    alt={selectedResult.mvp.playerName}
                     className="w-14 h-14 rounded-full object-cover border border-white/15"
                     loading="lazy"
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-full bg-[#0b1226] border border-white/15 grid place-items-center text-xl font-black">
-                    {result.mvp.playerName.charAt(0).toUpperCase()}
+                    {selectedResult.mvp.playerName.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <p className="font-bold text-lg">{result.mvp.playerName}</p>
+                  <p className="font-bold text-lg">{selectedResult.mvp.playerName}</p>
                   <p className="text-sm text-gray-300">
-                    {result.mvp.kills}/{result.mvp.deaths}/{result.mvp.assists}
+                    {selectedResult.mvp.kills}/{selectedResult.mvp.deaths}/{selectedResult.mvp.assists}
                   </p>
                 </div>
               </div>
@@ -197,7 +252,7 @@ export default function DraftResultScreen({
                   />
                 </svg>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Duración: {result.durationMinutes}m</p>
+              <p className="text-xs text-gray-400 mt-2">Duración: {selectedResult.durationMinutes}m</p>
             </div>
           </aside>
 
@@ -208,7 +263,7 @@ export default function DraftResultScreen({
               <p className="text-sm font-bold text-cyan-300">{blueTri}</p>
               {blueRows.map((row) => {
                 const icon = playerPhotoUrl(row.playerId);
-                const isMvp = row.playerId === result.mvp.playerId;
+                const isMvp = row.playerId === selectedResult.mvp.playerId;
                 return (
                   <div
                     key={`blue-${row.playerId}-${row.role}`}
@@ -230,7 +285,7 @@ export default function DraftResultScreen({
               <p className="text-sm font-bold text-orange-300">{redTri}</p>
               {redRows.map((row) => {
                 const icon = playerPhotoUrl(row.playerId);
-                const isMvp = row.playerId === result.mvp.playerId;
+                const isMvp = row.playerId === selectedResult.mvp.playerId;
                 return (
                   <div
                     key={`red-${row.playerId}-${row.role}`}
@@ -255,7 +310,7 @@ export default function DraftResultScreen({
           <div className="space-y-2">
             <div className="h-px bg-white/10" />
             <div className="flex flex-wrap gap-2">
-              {result.timelineEvents.map((event, idx) => (
+              {selectedResult.timelineEvents.map((event, idx) => (
                 <span
                   key={`${event.type}-${event.minute}-${idx}`}
                   className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs ${eventPillClass(event)}`}
@@ -300,7 +355,7 @@ export default function DraftResultScreen({
               className="rounded-md bg-orange-500 hover:bg-orange-400 text-navy-900 font-heading font-bold uppercase tracking-wide px-6 py-2"
               onClick={() => onContinue()}
             >
-              {seriesLength > 1
+              {seriesLength > 1 && !isSeriesFinished
                 ? `${t("match.game", { defaultValue: "Game" })} ${nextGameLabel}`
                 : t("match.continue", { defaultValue: "Continue" })}
             </button>

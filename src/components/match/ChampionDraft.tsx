@@ -122,6 +122,7 @@ interface ChampionDraftProps {
   seriesLength?: 1 | 3 | 5;
   blueSeriesWins?: number;
   redSeriesWins?: number;
+  lockedChampionIds?: string[];
   gameState?: GameStateData;
 }
 
@@ -472,6 +473,7 @@ export default function ChampionDraft({
   seriesLength = 1,
   blueSeriesWins = 0,
   redSeriesWins = 0,
+  lockedChampionIds = [],
   gameState,
 }: ChampionDraftProps) {
   const { t } = useTranslation();
@@ -555,16 +557,23 @@ export default function ChampionDraft({
 
   const usedChampionIds = useMemo(() => {
     const set = new Set<string>();
+    lockedChampionIds.forEach((championId) => set.add(championId));
     [...blueBans, ...redBans].forEach((championId) => set.add(championId));
     [...bluePicks, ...redPicks].forEach((pick) => set.add(pick.championId));
     return set;
-  }, [blueBans, bluePicks, redBans, redPicks]);
+  }, [blueBans, bluePicks, lockedChampionIds, redBans, redPicks]);
 
   const championById = useMemo(() => {
     const map = new Map<string, ChampionData>();
     champions.forEach((champion) => map.set(champion.id, champion));
     return map;
   }, [champions]);
+
+  const seriesLockedChampions = useMemo(() => {
+    return lockedChampionIds
+      .map((championId) => championById.get(championId) ?? null)
+      .filter((champion): champion is ChampionData => champion !== null);
+  }, [championById, lockedChampionIds]);
 
   const visibleChampions = useMemo(() => {
     return champions.filter((champion) => {
@@ -873,6 +882,7 @@ export default function ChampionDraft({
     const nextHistory = [...draftHistory];
 
     const used = new Set<string>();
+    lockedChampionIds.forEach((championId) => used.add(championId));
     [...nextBlueBans, ...nextRedBans].forEach((championId) => used.add(championId));
     [...nextBluePicks, ...nextRedPicks].forEach((pick) => used.add(pick.championId));
 
@@ -961,6 +971,7 @@ export default function ChampionDraft({
     draftHistory,
     finished,
     loading,
+    lockedChampionIds,
     redBans,
     redPicks,
     stepIndex,
@@ -1648,12 +1659,17 @@ export default function ChampionDraft({
     { label: t("match.draft.scoreLabels.comfort"), value: controlledScore.comfort },
   ];
   const formattedScoreDelta = scoreDelta >= 0 ? `+${scoreDelta}` : `${scoreDelta}`;
+  const seriesBansRequiresTwoRows = seriesLength > 1 && seriesLockedChampions.length > 10;
 
   return (
     <div className="h-screen overflow-hidden bg-[#0a0a0a] text-white p-3 md:p-4">
       <div className="w-full h-full max-w-[1350px] mx-auto flex flex-col gap-3 overflow-hidden">
         <section className="order-2 rounded-md overflow-hidden border border-[#222]">
-          <div className="relative h-20 flex items-stretch overflow-hidden bg-linear-to-b from-[#032e35] via-[#021720] to-[#000] border-b-4 border-cyan-400 shadow-[0_0_16px_rgba(0,242,255,0.35)]">
+          <div
+            className={`relative flex items-stretch bg-linear-to-b from-[#032e35] via-[#021720] to-[#000] border-b-4 border-cyan-400 shadow-[0_0_16px_rgba(0,242,255,0.35)] ${
+              seriesBansRequiresTwoRows ? "h-28" : "h-20"
+            }`}
+          >
             <div
               className="absolute inset-0"
               style={{
@@ -1693,7 +1709,31 @@ export default function ChampionDraft({
               </div>
             </div>
 
-            <div className="relative z-10 flex-1 flex items-center justify-center">
+            <div className="relative z-10 flex-1 flex flex-col items-center justify-center gap-1.5 px-2">
+              {seriesLength > 1 && seriesLockedChampions.length > 0 ? (
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-gray-100 font-heading font-bold">
+                    {t("match.draft.seriesBans", { defaultValue: "SERIES BANS" })}
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-1 max-w-[520px]">
+                    {seriesLockedChampions.map((champion) => (
+                      <span
+                        key={`series-lock-${champion.id}`}
+                        className="relative w-8 h-8 border border-white/30 bg-black overflow-hidden"
+                        title={champion.name}
+                      >
+                        <img
+                          src={champion.image}
+                          alt={champion.name}
+                          className="w-full h-full object-cover grayscale opacity-80"
+                        />
+                        <span className="absolute top-1/2 -left-[10%] w-[120%] h-px bg-orange-500 -rotate-45" />
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <p className="text-[11px] uppercase tracking-[0.2em] text-gray-300 font-semibold">
                 {t("match.draft.championSelection")}
               </p>
