@@ -23,7 +23,7 @@ import {
 import type { GameStateData } from "../../store/gameStore";
 import { setTraining, setTrainingSchedule } from "../../services/trainingService";
 import { Card, CardBody, CardHeader, ProgressBar } from "../ui";
-import TrainingGroupsCard from "./TrainingGroupsCard";
+import TrainingScrimsCard from "./TrainingScrimsCard";
 import TrainingSettingsPanel from "./TrainingSettingsPanel";
 import { getTrainingStaffAdvice } from "./trainingAdvice";
 
@@ -216,14 +216,12 @@ export default function TrainingTab({
           intensityColors={INTENSITY_COLORS}
         />
 
-        <TrainingGroupsCard
+        <TrainingScrimsCard
           gameState={gameState}
           onGameUpdate={onGameUpdate}
-          roster={roster}
           isSaving={isSaving}
           setIsSaving={setIsSaving}
-          trainingFocusIds={TRAINING_FOCUS_IDS}
-          trainingFocusIcons={TRAINING_FOCUS_ICONS}
+          currentSchedule={currentSchedule}
         />
       </div>
 

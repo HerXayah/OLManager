@@ -57,6 +57,14 @@ pub struct Team {
     pub weekly_scrim_opponent_ids: Vec<String>,
     #[serde(default)]
     pub scrim_loss_streak: u8,
+    #[serde(default)]
+    pub scrim_weekly_played: u8,
+    #[serde(default)]
+    pub scrim_weekly_wins: u8,
+    #[serde(default)]
+    pub scrim_weekly_losses: u8,
+    #[serde(default)]
+    pub scrim_slot_results: Vec<ScrimSlotResult>,
 
     // Persistent starting XI (player IDs). If empty, auto-select by OVR.
     #[serde(default)]
@@ -287,6 +295,16 @@ pub struct TrainingGroup {
     pub player_ids: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ScrimSlotResult {
+    pub week_key: String,
+    pub slot_index: u8,
+    pub weekday: u8,
+    pub opponent_team_id: String,
+    pub won: bool,
+    pub simulated_on: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TeamColors {
     pub primary: String,
@@ -424,6 +442,10 @@ impl Team {
             training_groups: Vec::new(),
             weekly_scrim_opponent_ids: Vec::new(),
             scrim_loss_streak: 0,
+            scrim_weekly_played: 0,
+            scrim_weekly_wins: 0,
+            scrim_weekly_losses: 0,
+            scrim_slot_results: Vec::new(),
             founded_year: 1900,
             colors: TeamColors {
                 primary: "#10b981".to_string(),

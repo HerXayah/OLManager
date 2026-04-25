@@ -65,6 +65,12 @@ export interface TeamData {
   training_focus: string;
   training_intensity: string;
   training_schedule: string;
+  weekly_scrim_opponent_ids?: string[];
+  scrim_loss_streak?: number;
+  scrim_weekly_played?: number;
+  scrim_weekly_wins?: number;
+  scrim_weekly_losses?: number;
+  scrim_slot_results?: ScrimSlotResultData[];
   founded_year: number;
   colors: TeamColors;
   facilities?: FacilitiesData;
@@ -244,6 +250,15 @@ export interface PlayerData {
   potential_research_eta_days?: number | null;
   champion_training_target?: string | null;
   champion_training_targets?: string[];
+}
+
+export interface ScrimSlotResultData {
+  week_key: string;
+  slot_index: number;
+  weekday: number;
+  opponent_team_id: string;
+  won: boolean;
+  simulated_on: string;
 }
 
 export interface ChampionMasteryEntryData {

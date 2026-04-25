@@ -42,6 +42,14 @@ export async function setTrainingGroups(
   });
 }
 
+export async function setWeeklyScrims(
+  opponentTeamIds: string[],
+): Promise<GameStateData> {
+  return invoke<GameStateData>("set_weekly_scrims", {
+    opponentTeamIds,
+  });
+}
+
 export async function setPlayerTrainingFocus(
   playerId: string,
   focus: string | null,

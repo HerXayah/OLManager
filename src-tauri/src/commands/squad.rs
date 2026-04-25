@@ -1,10 +1,19 @@
 use log::info;
 use tauri::State;
+use chrono::Datelike;
 
 use ofm_core::champions;
 use ofm_core::game::Game;
 use ofm_core::potential;
 use ofm_core::state::StateManager;
+
+fn scrim_slot_weekdays(schedule: &domain::team::TrainingSchedule) -> Vec<u8> {
+    match schedule {
+        domain::team::TrainingSchedule::Intense => vec![1, 1, 2, 2, 3, 3],
+        domain::team::TrainingSchedule::Balanced => vec![1, 2, 2, 3],
+        domain::team::TrainingSchedule::Light => vec![1, 3],
+    }
+}
 
 #[tauri::command]
 pub fn set_formation(state: State<'_, StateManager>, formation: String) -> Result<Game, String> {
@@ -293,22 +302,44 @@ pub fn set_weekly_scrims(
         .clone()
         .ok_or("No team assigned".to_string())?;
 
-    let mut cleaned: Vec<String> = Vec::new();
-    for candidate in opponent_team_ids {
-        if candidate == manager_team_id {
-            continue;
-        }
-        if !game.teams.iter().any(|team| team.id == candidate) {
-            continue;
-        }
-        if !cleaned.iter().any(|existing| existing == &candidate) {
-            cleaned.push(candidate);
-        }
-    }
-    cleaned.truncate(6);
+    let known_team_ids: std::collections::HashSet<String> =
+        game.teams.iter().map(|team| team.id.clone()).collect();
 
     if let Some(team) = game.teams.iter_mut().find(|t| t.id == manager_team_id) {
-        team.weekly_scrim_opponent_ids = cleaned;
+        let slot_days = scrim_slot_weekdays(&team.training_schedule);
+        let current_weekday = game.clock.current_date.weekday().num_days_from_monday() as u8;
+        let week_key = format!(
+            "{}-W{}",
+            game.clock.current_date.iso_week().year(),
+            game.clock.current_date.iso_week().week()
+        );
+        let mut next_slots: Vec<String> = vec![String::new(); slot_days.len()];
+        let previous_slots = team.weekly_scrim_opponent_ids.clone();
+
+        for (index, day) in slot_days.iter().enumerate() {
+            let already_simulated = team.scrim_slot_results.iter().any(|entry| {
+                entry.week_key == week_key && entry.slot_index == index as u8
+            });
+            if *day < current_weekday || already_simulated {
+                next_slots[index] = previous_slots.get(index).cloned().unwrap_or_default();
+                continue;
+            }
+
+            let candidate = opponent_team_ids.get(index).cloned().unwrap_or_default();
+            if candidate.is_empty() {
+                next_slots[index] = String::new();
+                continue;
+            }
+            if candidate == team.id {
+                continue;
+            }
+            if !known_team_ids.contains(&candidate) {
+                continue;
+            }
+            next_slots[index] = candidate;
+        }
+
+        team.weekly_scrim_opponent_ids = next_slots;
     }
 
     state.set_game(game.clone());
