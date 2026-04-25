@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 
 import { SOCIAL_CONTENT_PACK } from "../../content/lol/social/content";
 import { extractMatchContext, type CompatibleMatchSummary } from "../../content/lol/social/matchContext";
+import { DEFAULT_LEAGUE_ID, registrySide, type UserSide } from "../../content/lol/social/shared";
 import {
   filterEligibleOutlets,
   filterEligiblePersonas,
@@ -12,9 +13,6 @@ import {
 import type { SocialQuestion } from "../../content/lol/social/schema";
 import type { GameStateData } from "../../store/gameStore";
 import type { MatchEvent, MatchSnapshot } from "./types";
-
-type UserSide = "Home" | "Away";
-type RegistrySide = "blue" | "red";
 
 export interface PressResponse {
   id: string;
@@ -47,10 +45,6 @@ interface BuildPressConferenceQuestionsParams {
   userSide: UserSide;
   t: TFunction | ((key: string) => string);
   random?: () => number;
-}
-
-function registrySide(side: UserSide): RegistrySide {
-  return side === "Home" ? "blue" : "red";
 }
 
 function countEvents(events: MatchEvent[], side: UserSide, names: string[]): number {
@@ -169,7 +163,7 @@ export function buildPressConferenceQuestions({
   t,
   random = Math.random,
 }: BuildPressConferenceQuestionsParams): PressQuestion[] {
-  const leagueId = gameState.league?.id ?? "default";
+  const leagueId = gameState.league?.id ?? DEFAULT_LEAGUE_ID;
   const context = extractMatchContext({
     match: snapshotToSummary(snapshot, userSide),
     userSide: registrySide(userSide),
