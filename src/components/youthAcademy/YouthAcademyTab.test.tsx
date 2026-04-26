@@ -161,6 +161,19 @@ function createGameState(players: PlayerData[]): GameStateData {
   };
 }
 
+function createGameStateForTeam(team: TeamData, players: PlayerData[] = []): GameStateData {
+  const baseGameState = createGameState(players);
+
+  return {
+    ...baseGameState,
+    manager: {
+      ...baseGameState.manager,
+      team_id: team.id,
+    },
+    teams: [team],
+  };
+}
+
 describe("YouthAcademyTab", () => {
   it("renders the empty state when the squad has no youth players", () => {
     render(
@@ -194,5 +207,54 @@ describe("YouthAcademyTab", () => {
     fireEvent.click(screen.getByText("Rising Star"));
 
     expect(onSelectPlayer).toHaveBeenCalledWith("player-young");
+  });
+
+  it("shows the affiliated ERL academy panel for a mapped LEC team", () => {
+    render(
+      <YouthAcademyTab
+        gameState={createGameStateForTeam(
+          createTeam({ id: "mkoi", name: "Movistar KOI", short_name: "MKOI" }),
+        )}
+        onSelectPlayer={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Equipo ERL afiliado")).toBeInTheDocument();
+    expect(screen.getByText("MKOI Academy")).toBeInTheDocument();
+    expect(screen.getByText("Roster ERL / prospectos")).toBeInTheDocument();
+    expect(screen.getByText("MKOIA Mid")).toBeInTheDocument();
+    expect(screen.getByText(/Afiliación configurable para MVP/)).toBeInTheDocument();
+    expect(screen.getByText(/Seed local · importación Leaguepedia pendiente/)).toBeInTheDocument();
+    expect(screen.getByText(/11 ligas ERL rastreadas/)).toBeInTheDocument();
+  });
+
+  it("maps G2 to G2 Nord without claiming imported roster data", () => {
+    render(
+      <YouthAcademyTab
+        gameState={createGameStateForTeam(
+          createTeam({ id: "g2", name: "G2 Esports", short_name: "G2" }),
+        )}
+        onSelectPlayer={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("G2 Nord")).toBeInTheDocument();
+    expect(screen.getByText("G2N Support")).toBeInTheDocument();
+    expect(screen.getByText(/seed local pendiente de importador Leaguepedia/)).toBeInTheDocument();
+  });
+
+  it("shows ERL funding and affiliation opportunities when no academy is mapped", () => {
+    render(
+      <YouthAcademyTab
+        gameState={createGameStateForTeam(createTeam({ id: "alpha-fc", name: "Alpha FC", short_name: "ALP" }))}
+        onSelectPlayer={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Sin academia ERL afiliada")).toBeInTheDocument();
+    expect(screen.getByText("Financiar proyecto ERL")).toBeInTheDocument();
+    expect(screen.getByText("Afiliarse a equipo ERL libre")).toBeInTheDocument();
+    expect(screen.getByText("Equipos ERL libres")).toBeInTheDocument();
+    expect(screen.getByText("Solary")).toBeInTheDocument();
   });
 });

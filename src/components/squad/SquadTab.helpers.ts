@@ -15,6 +15,7 @@ export type PitchSlot = {
   player: PlayerData | null;
 };
 export type PitchSlotRow = PitchRow & { slots: PitchSlot[] };
+export type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
 export const CORE_POSITIONS = [
   "Goalkeeper",
@@ -183,6 +184,34 @@ export function translatePositionAbbreviation(
   });
 }
 
+export function getLolRoleFromPosition(position: string): LolRole {
+  const pos = canonicalPosition(position);
+  if (
+    pos === "Defender" ||
+    pos === "RightBack" ||
+    pos === "LeftBack" ||
+    pos === "CenterBack" ||
+    pos === "RightWingBack" ||
+    pos === "LeftWingBack"
+  ) {
+    return "TOP";
+  }
+  if (pos === "AttackingMidfielder" || pos === "RightMidfielder" || pos === "LeftMidfielder") {
+    return "MID";
+  }
+  if (pos === "Forward" || pos === "Striker" || pos === "RightWinger" || pos === "LeftWinger") {
+    return "ADC";
+  }
+  if (pos === "DefensiveMidfielder" || pos === "Goalkeeper") {
+    return "SUPPORT";
+  }
+  return "JUNGLE";
+}
+
+export function getLolRoleForPlayer(player: PlayerData): LolRole {
+  return getLolRoleFromPosition(player.natural_position || player.position);
+}
+
 export function getPreferredPositions(player: PlayerData): string[] {
   return [
     ...new Set(
@@ -336,7 +365,6 @@ export function buildStartingXIIds(
   const _formation = formation;
   void _formation;
 
-  type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
   const roleOrder: LolRole[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
   const roleTargetPosition: Record<LolRole, string> = {
     TOP: "Defender",
@@ -346,29 +374,7 @@ export function buildStartingXIIds(
     SUPPORT: "DefensiveMidfielder",
   };
 
-  const roleFromPlayer = (player: PlayerData): LolRole => {
-    const pos = canonicalPosition(player.natural_position || player.position);
-    if (
-      pos === "Defender" ||
-      pos === "RightBack" ||
-      pos === "LeftBack" ||
-      pos === "CenterBack" ||
-      pos === "RightWingBack" ||
-      pos === "LeftWingBack"
-    ) {
-      return "TOP";
-    }
-    if (pos === "AttackingMidfielder" || pos === "RightMidfielder" || pos === "LeftMidfielder") {
-      return "MID";
-    }
-    if (pos === "Forward" || pos === "Striker" || pos === "RightWinger" || pos === "LeftWinger") {
-      return "ADC";
-    }
-    if (pos === "DefensiveMidfielder" || pos === "Goalkeeper") {
-      return "SUPPORT";
-    }
-    return "JUNGLE";
-  };
+  const roleFromPlayer = getLolRoleForPlayer;
 
   const byId = new Map(available.map((player) => [player.id, player]));
   const xi: string[] = [];

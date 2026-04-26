@@ -86,6 +86,82 @@ interface PlayerSeed {
   champions: Array<Array<string | number>>;
 }
 
+type RivalMasteryKnowledgeSource = "insignia" | "scouting" | "staff";
+
+interface RivalMasteryDisplayEntry {
+  champion: ChampionData;
+  mastery: number;
+  playerName: string;
+  playerRole: Role | null;
+  source: RivalMasteryKnowledgeSource;
+}
+
+type RivalMasteryOption = Omit<RivalMasteryDisplayEntry, "source">;
+
+export function selectRivalMasteryKnowledgeForPlayer(
+  allKnownOptions: RivalMasteryOption[],
+  usedChampionIds: Set<string>,
+  selectedChampionIds: Set<string>,
+  isScouted: boolean,
+): {
+  knownEntries: RivalMasteryDisplayEntry[];
+  staffCandidates: RivalMasteryDisplayEntry[];
+} {
+  const sortedOptions = allKnownOptions.slice().sort((a, b) => b.mastery - a.mastery);
+  const signature = sortedOptions[0];
+  const signatureChampionId = signature?.champion.id ?? null;
+  const knownEntries: RivalMasteryDisplayEntry[] = [];
+  const localSelectedChampionIds = new Set(selectedChampionIds);
+
+  if (
+    signature &&
+    !usedChampionIds.has(signature.champion.id) &&
+    !localSelectedChampionIds.has(signature.champion.id)
+  ) {
+    knownEntries.push({ ...signature, source: "insignia" });
+    localSelectedChampionIds.add(signature.champion.id);
+  }
+
+  const availableNonSignatureOptions = sortedOptions.filter((option) => {
+    if (option.champion.id === signatureChampionId) return false;
+    if (localSelectedChampionIds.has(option.champion.id)) return false;
+    return true;
+  });
+
+  if (isScouted) {
+    const scoutedExtra = availableNonSignatureOptions.find(
+      (option) => !usedChampionIds.has(option.champion.id),
+    );
+    if (scoutedExtra) {
+      knownEntries.push({ ...scoutedExtra, source: "scouting" });
+      localSelectedChampionIds.add(scoutedExtra.champion.id);
+    }
+  }
+
+  const staffCandidates = availableNonSignatureOptions
+    .filter((option) => !localSelectedChampionIds.has(option.champion.id))
+    .map((option) => ({ ...option, source: "staff" as const }));
+
+  return { knownEntries, staffCandidates };
+}
+
+export function calculateStaffRevealBudget(metaDiscovery: number): number {
+  const normalized = Math.max(0, Math.min(1, (metaDiscovery - 0.9) / 0.3));
+  return Math.max(1, Math.min(5, 1 + Math.round(normalized * 4)));
+}
+
+export function selectStaffRevealEntries(
+  candidates: RivalMasteryDisplayEntry[],
+  budget: number,
+  usedChampionIds: Set<string>,
+): RivalMasteryDisplayEntry[] {
+  return candidates
+    .slice()
+    .sort((a, b) => b.mastery - a.mastery)
+    .slice(0, budget)
+    .filter((candidate) => !usedChampionIds.has(candidate.champion.id));
+}
+
 interface ChampionsSeed {
   data?: {
     roles?: Record<string, string[]>;
@@ -173,6 +249,7 @@ const META_CHAMPION_SCORES: Record<string, number> = {
 const ROLE_ORDER: Role[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
 const ASSISTANT_COACH_PLACEHOLDER = "/player-photos/103935359525547325.png";
 const LEC_LOGO_URL = "/lec-logo.svg";
+const EMPTY_LOCKED_CHAMPION_IDS: string[] = [];
 const ROLE_ICON_URLS: Record<Role, string> = {
   TOP: "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-top.png",
   JUNGLE:
@@ -481,7 +558,7 @@ export default function ChampionDraft({
   seriesLength = 1,
   blueSeriesWins = 0,
   redSeriesWins = 0,
-  lockedChampionIds = [],
+  lockedChampionIds = EMPTY_LOCKED_CHAMPION_IDS,
   gameState,
 }: ChampionDraftProps) {
   const { t } = useTranslation();
@@ -507,8 +584,6 @@ export default function ChampionDraft({
   const [showFinalRoleReassignFx, setShowFinalRoleReassignFx] = useState(false);
   const autoResolvedStepKeyRef = useRef<string | null>(null);
   const finalRoleReassignFxPlayedRef = useRef(false);
-  const recentAdviceTextsRef = useRef<string[]>([]);
-  const recentBanChampionIdsRef = useRef<string[]>([]);
 
   const bluePlayerIds = snapshot.home_team.players.map((player) => player.id);
   const redPlayerIds = snapshot.away_team.players.map((player) => player.id);
@@ -1220,6 +1295,24 @@ export default function ChampionDraft({
 
     const rivalSide: Side = controlledSide === "blue" ? "red" : "blue";
     const rivalRosterPlayers = rivalSide === "blue" ? bluePlayers : redPlayers;
+    const rivalRosterPlayerIds = rivalSide === "blue" ? bluePlayerIds : redPlayerIds;
+    const userTeamId = controlledSide === "blue" ? snapshot.home_team.id : snapshot.away_team.id;
+    const staffEffects = getLolStaffEffectsForTeam(gameState, userTeamId);
+    const staffRevealBudget = calculateStaffRevealBudget(staffEffects.metaDiscovery);
+
+    const scoutedPlayerKeys = new Set<string>();
+    (gameState?.messages ?? []).forEach((message) => {
+      const report = message.context?.scout_report;
+      if (!report) return;
+      const reportPlayerId = report.player_id;
+      const matchedGamePlayer = gameState?.players.find((player) => player.id === reportPlayerId);
+      if (matchedGamePlayer) {
+        scoutedPlayerKeys.add(normalizeKey(matchedGamePlayer.match_name));
+      }
+      if (report.player_name) {
+        scoutedPlayerKeys.add(normalizeKey(report.player_name));
+      }
+    });
 
     const rivalSeedPlayers = PLAYER_SEEDS.filter((player) => player.teamId === rivalTeamSeed.id);
     const byIgn = new Map<string, PlayerSeed>();
@@ -1227,13 +1320,13 @@ export default function ChampionDraft({
       byIgn.set(normalizeKey(player.ign), player);
     });
 
-    const matchedPlayers: PlayerSeed[] = [];
+    const matchedPlayers: Array<{ seed: PlayerSeed; playerId: string | null }> = [];
     const matchedKeys = new Set<string>();
-    rivalRosterPlayers.forEach((player) => {
+    rivalRosterPlayers.forEach((player, index) => {
       const key = normalizeKey(player.name);
       const match = byIgn.get(key);
       if (match && !matchedKeys.has(key)) {
-        matchedPlayers.push(match);
+        matchedPlayers.push({ seed: match, playerId: rivalRosterPlayerIds[index] ?? null });
         matchedKeys.add(key);
       }
     });
@@ -1243,39 +1336,36 @@ export default function ChampionDraft({
         .filter((player) => !matchedKeys.has(normalizeKey(player.ign)))
         .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
         .slice(0, 5 - matchedPlayers.length)
-        .forEach((player) => matchedPlayers.push(player));
+        .forEach((player) => matchedPlayers.push({ seed: player, playerId: null }));
     }
 
     if (matchedPlayers.length === 0) return [];
 
-    const byOverall = [...matchedPlayers].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-    const primary = byOverall[0];
-    const others = byOverall.slice(1, 5);
-    const slots = [
-      { player: primary, max: 2 },
-      ...others.map((player) => ({ player, max: 1 })),
-    ];
-
     const selectedChampionIds = new Set<string>();
-    const result: Array<{ champion: ChampionData; mastery: number; playerName: string; playerRole: Role | null }> = [];
+    const result: RivalMasteryDisplayEntry[] = [];
+    const staffCandidates: RivalMasteryDisplayEntry[] = [];
 
-    slots.forEach(({ player, max }) => {
-      if (!player || max <= 0) return;
+    const addKnownChampion = (entry: RivalMasteryDisplayEntry): boolean => {
+      if (selectedChampionIds.has(entry.champion.id)) return false;
+      selectedChampionIds.add(entry.champion.id);
+      result.push(entry);
+      return true;
+    };
 
-      const options = (player.champions ?? [])
+    matchedPlayers.forEach(({ seed, playerId }) => {
+      const isScouted = Boolean(playerId && scoutedPlayerKeys.has(normalizeKey(seed.ign))) || scoutedPlayerKeys.has(normalizeKey(seed.ign));
+      const allKnownOptions: RivalMasteryOption[] = (seed.champions ?? [])
         .map((entry) => {
           const championName = String(entry[0] ?? "");
           const mastery = Number(entry[1] ?? 0);
           if (!championName) return null;
           const champion = championLookupByNormalizedName.get(normalizeKey(championName));
           if (!champion) return null;
-          if (usedChampionIds.has(champion.id)) return null;
-          if (selectedChampionIds.has(champion.id)) return null;
           return {
             champion,
             mastery,
-            playerName: String(player.ign ?? "").trim() || "N/A",
-            playerRole: mapSeedRoleToDraftRole(String(player.role ?? "")),
+            playerName: String(seed.ign ?? "").trim() || "N/A",
+            playerRole: mapSeedRoleToDraftRole(String(seed.role ?? "")),
           };
         })
         .filter(
@@ -1288,22 +1378,36 @@ export default function ChampionDraft({
             playerRole: Role | null;
           } => item !== null,
         )
-        .sort((a, b) => b.mastery - a.mastery)
-        .slice(0, max);
+        .sort((a, b) => b.mastery - a.mastery);
 
-      options.forEach((item) => {
-        selectedChampionIds.add(item.champion.id);
-        result.push(item);
+      const playerKnowledge = selectRivalMasteryKnowledgeForPlayer(
+        allKnownOptions,
+        usedChampionIds,
+        selectedChampionIds,
+        isScouted,
+      );
+
+      playerKnowledge.knownEntries.forEach(addKnownChampion);
+      playerKnowledge.staffCandidates.forEach((candidate) => {
+        staffCandidates.push(candidate);
       });
     });
 
+    selectStaffRevealEntries(staffCandidates, staffRevealBudget, usedChampionIds)
+      .forEach(addKnownChampion);
+
     return result;
   }, [
+    bluePlayerIds,
     bluePlayers,
     championLookupByNormalizedName,
     controlledSide,
+    gameState,
     redPlayers,
+    redPlayerIds,
     rivalTeamSeed,
+    snapshot.away_team.id,
+    snapshot.home_team.id,
     usedChampionIds,
   ]);
 
@@ -1320,24 +1424,12 @@ export default function ChampionDraft({
         ? "ban"
         : "pick";
 
-    const usedAdviceTexts = new Set<string>();
-    recentAdviceTextsRef.current.forEach((txt) => usedAdviceTexts.add(txt));
     const uniquePhrase = <T,>(
       pool: Array<(ctx: T) => string>,
       seed: string,
       ctx: T,
     ): string => {
-      if (pool.length === 0) return "";
-      for (let shift = 0; shift < pool.length; shift += 1) {
-        const candidate = pickPhrase(pool, seed, ctx, shift);
-        if (!usedAdviceTexts.has(candidate)) {
-          usedAdviceTexts.add(candidate);
-          return candidate;
-        }
-      }
-      const fallback = pickPhrase(pool, `${seed}-fallback-${draftHistory.length}`, ctx);
-      usedAdviceTexts.add(fallback);
-      return fallback;
+      return pickPhrase(pool, seed, ctx);
     };
 
     const userTeamId = controlledSide === "blue" ? snapshot.home_team.id : snapshot.away_team.id;
@@ -1388,9 +1480,7 @@ export default function ChampionDraft({
       .slice()
       .sort((a, b) => b.mastery - a.mastery);
     if (draftAdviceStage === "ban" && rivalMasteries.length > 0 && coachSkill >= 50) {
-      const topRival =
-        rivalMasteries.find((entry) => !recentBanChampionIdsRef.current.includes(entry.champion.id)) ??
-        rivalMasteries[0];
+      const topRival = rivalMasteries[0];
       if (topRival.mastery >= 75) {
         addCoachTip(
           "ban",
@@ -1567,11 +1657,7 @@ export default function ChampionDraft({
         const banTarget =
           availableChampions
             .map((champion) => ({ champion, value: counterValue(champion.id, bestChampionAny.champion.id) }))
-            .filter(
-              (item) =>
-                item.value >= 2 &&
-                !recentBanChampionIdsRef.current.includes(item.champion.id),
-            )
+            .filter((item) => item.value >= 2)
             .sort((a, b) => b.value - a.value)[0]?.champion ?? strongestThreat.champion;
 
         tips.push({
@@ -1641,7 +1727,6 @@ export default function ChampionDraft({
     gameState,
     currentStep?.type,
     controlledSide,
-    draftHistory.length,
     finished,
     homeTeamSeed,
     awayTeamSeed,
@@ -1658,25 +1743,6 @@ export default function ChampionDraft({
     usedChampionIds,
     rivalMasteryDisplay
   ]);
-
-  useEffect(() => {
-    if (assistantCoachTips.length === 0) return;
-
-    const phraseTrail = [...recentAdviceTextsRef.current];
-    assistantCoachTips.forEach((tip) => {
-      if (!tip.text) return;
-      phraseTrail.push(tip.text);
-    });
-    recentAdviceTextsRef.current = phraseTrail.slice(-2);
-
-    const banTrail = [...recentBanChampionIdsRef.current];
-    assistantCoachTips.forEach((tip) => {
-      if (tip.type === "ban" && tip.champion?.id) {
-        banTrail.push(tip.champion.id);
-      }
-    });
-    recentBanChampionIdsRef.current = banTrail.slice(-3);
-  }, [assistantCoachTips]);
 
   const topBgChampion =
     draftHistory[draftHistory.length - 1] ??
@@ -2187,8 +2253,13 @@ export default function ChampionDraft({
                 {t("match.draft.enemyComfortTitle")}
               </p>
               <div className="space-y-1 overflow-auto scrollbar-draft pr-1">
-                {rivalMasteryDisplay.map(({ champion, mastery, playerName }) => (
-                  <div key={`rival-row-${champion.id}`} className="rounded-sm border border-white/10 bg-[#111318] p-1">
+                {rivalMasteryDisplay.length === 0 ? (
+                  <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
+                    {t("match.draft.enemyComfortUnknown", "Sin maestrías rivales descubiertas")}
+                  </div>
+                ) : null}
+                {rivalMasteryDisplay.map(({ champion, mastery, playerName, source }) => (
+                  <div key={`rival-row-${champion.id}-${playerName}-${source}`} className="rounded-sm border border-white/10 bg-[#111318] p-1">
                     <div className="flex items-center gap-2">
                       <img
                         src={champion.image}
@@ -2199,6 +2270,13 @@ export default function ChampionDraft({
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] truncate">{champion.name}</p>
                         <p className="text-[10px] text-gray-400 truncate">{playerName}</p>
+                        <p className="text-[9px] uppercase tracking-wide text-cyan-200/70 truncate">
+                          {source === "insignia"
+                            ? t("match.draft.masterySourceSignature", "Insignia")
+                            : source === "scouting"
+                              ? t("match.draft.masterySourceScouting", "Scouting")
+                              : t("match.draft.masterySourceStaff", "Lectura staff")}
+                        </p>
                         <div className="mt-1 h-1.5 bg-black/35 rounded overflow-hidden">
                           <div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, mastery)}%` }} />
                         </div>

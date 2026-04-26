@@ -139,6 +139,18 @@ pub struct ScoutReportData {
     pub dribbling: Option<u8>,
     pub defending: Option<u8>,
     pub physical: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mechanics: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub laning: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub teamfighting: Option<u8>,
+    #[serde(default, rename = "macro", skip_serializing_if = "Option::is_none")]
+    pub macro_: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub champion_pool: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub discipline: Option<u8>,
     pub condition: Option<u8>,
     pub morale: Option<u8>,
     /// Approximate overall rating (fuzzed average)

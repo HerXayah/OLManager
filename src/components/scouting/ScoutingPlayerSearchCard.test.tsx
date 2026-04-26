@@ -155,17 +155,18 @@ describe("ScoutingPlayerSearchCard", () => {
     );
 
     expect(screen.getByText("Find Players")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "John Smith" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "J. Smith" })).toBeInTheDocument();
+    expect(screen.getByText("John Smith")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Def" }));
-    expect(onPositionFilterChange).toHaveBeenCalledWith("Defender");
+    fireEvent.click(screen.getByRole("button", { name: "TOP" }));
+    expect(onPositionFilterChange).toHaveBeenCalledWith("TOP");
 
     fireEvent.change(screen.getByPlaceholderText("Search players"), {
       target: { value: "john" },
     });
     expect(onSearchQueryChange).toHaveBeenCalledWith("john");
 
-    fireEvent.click(screen.getByRole("button", { name: "John Smith" }));
+    fireEvent.click(screen.getByRole("button", { name: "J. Smith" }));
     expect(onSelectPlayer).toHaveBeenCalledWith("player-1");
 
     fireEvent.click(screen.getByRole("button", { name: /Scout/i }));

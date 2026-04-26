@@ -5,15 +5,17 @@ import { countryName } from "../../lib/countries";
 import { calcAge, formatVal, getTeamName } from "../../lib/helpers";
 import type { PlayerData, TeamData } from "../../store/gameStore";
 import { Badge, Card, CardBody, CardHeader, CountryFlag } from "../ui";
-import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer, type LolRole } from "../squad/SquadTab.helpers";
 
-const POSITION_FILTERS = [
-  "All",
-  "Goalkeeper",
-  "Defender",
-  "Midfielder",
-  "Forward",
-];
+const POSITION_FILTERS = ["All", "TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+
+const LOL_ROLE_BADGE_VARIANT: Record<LolRole, "accent" | "primary" | "success" | "danger" | "neutral"> = {
+  TOP: "primary",
+  JUNGLE: "success",
+  MID: "accent",
+  ADC: "danger",
+  SUPPORT: "neutral",
+};
 
 interface ScoutingPlayerSearchCardProps {
   players: PlayerData[];
@@ -73,7 +75,7 @@ export default function ScoutingPlayerSearchCard({
               >
                 {position === "All"
                   ? t("common.all")
-                  : position.slice(0, 3)}
+                  : position}
               </button>
             ))}
           </div>
@@ -109,6 +111,7 @@ export default function ScoutingPlayerSearchCard({
                 const team = player.team_id
                   ? getTeamName(teams, player.team_id)
                   : t("common.freeAgent");
+                const lolRole = getLolRoleForPlayer(player);
 
                 return (
                   <tr
@@ -120,8 +123,11 @@ export default function ScoutingPlayerSearchCard({
                         onClick={() => onSelectPlayer?.(player.id)}
                         className="font-heading font-bold text-gray-800 dark:text-gray-100 hover:text-primary-500 transition-colors text-left"
                       >
-                        {player.full_name}
+                        {player.match_name}
                       </button>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-500 mt-0.5 truncate">
+                        {player.full_name}
+                      </div>
                       <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1">
                         <CountryFlag
                           code={player.nationality}
@@ -133,18 +139,10 @@ export default function ScoutingPlayerSearchCard({
                     </td>
                     <td className="py-2 px-1">
                       <Badge
-                        variant={
-                          player.position === "Goalkeeper"
-                            ? "accent"
-                            : player.position === "Defender"
-                              ? "primary"
-                              : player.position === "Midfielder"
-                                ? "success"
-                                : "danger"
-                        }
+                        variant={LOL_ROLE_BADGE_VARIANT[lolRole]}
                         size="sm"
                       >
-                        {translatePositionAbbreviation(t, player.position)}
+                        {lolRole}
                       </Badge>
                     </td>
                     <td className="text-center py-2 px-1 text-gray-600 dark:text-gray-400">

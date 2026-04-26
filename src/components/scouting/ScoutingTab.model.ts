@@ -3,8 +3,9 @@ import type {
   ScoutingAssignment,
   TeamData,
 } from "../../store/gameStore";
-import { calcOvr, getTeamName } from "../../lib/helpers";
-import { normalisePosition } from "../squad/SquadTab.helpers";
+import { getTeamName } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
+import { getLolRoleForPlayer } from "../squad/SquadTab.helpers";
 
 interface FilterScoutablePlayersParams {
   players: PlayerData[];
@@ -26,7 +27,7 @@ export function filterScoutablePlayers({
     .filter(
       (player) =>
         posFilter === "All" ||
-        normalisePosition(player.natural_position || player.position) === posFilter,
+        getLolRoleForPlayer(player) === posFilter,
     )
     .filter((player) => {
       if (!searchQuery) {
@@ -36,6 +37,7 @@ export function filterScoutablePlayers({
       const query = searchQuery.toLowerCase();
 
       return (
+        player.match_name.toLowerCase().includes(query) ||
         player.full_name.toLowerCase().includes(query) ||
         player.nationality.toLowerCase().includes(query) ||
         (player.team_id &&
@@ -44,8 +46,7 @@ export function filterScoutablePlayers({
     })
     .sort(
       (left, right) =>
-        calcOvr(right, right.natural_position || right.position) -
-        calcOvr(left, left.natural_position || left.position),
+        calculateLolOvr(right) - calculateLolOvr(left),
     );
 }
 

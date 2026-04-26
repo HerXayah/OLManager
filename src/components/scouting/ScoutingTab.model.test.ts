@@ -135,7 +135,7 @@ describe("ScoutingTab.model", () => {
         players,
         teams,
         myTeamId: "team-1",
-        posFilter: "Defender",
+        posFilter: "TOP",
         searchQuery: "",
       }).map((player) => player.id),
     ).toEqual(["defender"]);

@@ -347,6 +347,106 @@ describe("PlayerProfile contract surfaces", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("shows discovered scouting attributes for players outside your club", () => {
+    const player = createPlayer({ team_id: "team-2" });
+    const gameState = {
+      ...createGameState(player),
+      teams: [createTeam(), createTeam({ id: "team-2", name: "Beta FC", manager_id: "manager-2" })],
+      messages: [
+        {
+          id: "scout_report_1",
+          subject: "Scout Report — J. Smith",
+          body: "Report complete",
+          sender: "Scout",
+          sender_role: "Scout",
+          date: "2026-08-02",
+          read: false,
+          category: "ScoutReport",
+          priority: "Normal",
+          actions: [],
+          context: {
+            team_id: null,
+            player_id: player.id,
+            fixture_id: null,
+            match_result: null,
+            scout_report: {
+              player_id: player.id,
+              player_name: player.match_name,
+              position: "ADC",
+              nationality: player.nationality,
+              dob: player.date_of_birth,
+              team_name: "Beta FC",
+              pace: null,
+              shooting: null,
+              passing: null,
+              dribbling: null,
+              defending: null,
+              physical: null,
+              mechanics: 81,
+              laning: null,
+              teamfighting: 77,
+              macro: 73,
+              champion_pool: null,
+              discipline: 69,
+              condition: null,
+              morale: null,
+              avg_rating: 75,
+              rating_key: "common.scoutRatings.veryGood",
+              potential_key: "common.scoutPotential.strong",
+              confidence_key: "common.scoutConfidence.moderate",
+            },
+          },
+        },
+      ],
+    } satisfies GameStateData;
+
+    render(
+      <PlayerProfile
+        player={player}
+        gameState={gameState}
+        isOwnClub={false}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("playerProfile.attributesHidden")).not.toBeInTheDocument();
+    expect(screen.getByText("81")).toBeInTheDocument();
+    expect(screen.getByText("77")).toBeInTheDocument();
+    expect(screen.getAllByText("73").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("69").length).toBeGreaterThan(0);
+  });
+
+  it("hides outside-player attributes without a scout report even if the caller marks them as own club", () => {
+    const player = createPlayer({
+      team_id: "team-2",
+      attributes: {
+        ...createPlayer().attributes,
+        dribbling: 97,
+      },
+    });
+    const gameState = {
+      ...createGameState(player),
+      teams: [
+        createTeam(),
+        createTeam({ id: "team-2", name: "Beta FC", manager_id: "manager-2" }),
+      ],
+      messages: [],
+    } satisfies GameStateData;
+
+    render(
+      <PlayerProfile
+        player={player}
+        gameState={gameState}
+        isOwnClub
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("playerProfile.attributesHidden")).toBeInTheDocument();
+    expect(screen.getAllByText("??").length).toBeGreaterThanOrEqual(9);
+    expect(screen.queryByText("97")).not.toBeInTheDocument();
+  });
+
   it("allows selecting the player's team from the hero header", () => {
     const player = createPlayer();
     const gameState = createGameState(player);

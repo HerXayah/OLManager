@@ -317,7 +317,7 @@ describe("dashboardHelpers", function (): void {
     expect(alertIds).toContain("wage_pressure");
   });
 
-  it("adds finance alerts for modular hub upkeep and esports sponsors", function (): void {
+  it("adds finance alerts for esports sponsors without persistent upkeep notices", function (): void {
     const team = createTeam({
       finance: 25000,
       facilities: {
@@ -340,14 +340,10 @@ describe("dashboardHelpers", function (): void {
     const alerts = getDashboardAlerts(gameState, false, translateDashboardAlert);
     const alertIds = alerts.map((alert) => alert.id);
 
-    expect(alertIds).toContain("installation_scrimsRoom");
-    expect(alertIds).toContain("installation_analysisRoom");
-    expect(alertIds).toContain("installation_scoutingLab");
+    expect(alertIds).not.toContain("installation_scrimsRoom");
+    expect(alertIds).not.toContain("installation_analysisRoom");
+    expect(alertIds).not.toContain("installation_scoutingLab");
     expect(alertIds).toContain("sponsor_theme_esports");
-
-    expect(alerts.find((alert) => alert.id === "installation_scrimsRoom")?.text).toContain(
-      "Scrims Room",
-    );
   });
 
   it("does not warn about an incomplete Starting XI when a healthy roster can normalize a partial saved lineup", function (): void {

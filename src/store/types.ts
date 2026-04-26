@@ -358,6 +358,12 @@ export interface ScoutReportData {
   dribbling: number | null;
   defending: number | null;
   physical: number | null;
+  mechanics?: number | null;
+  laning?: number | null;
+  teamfighting?: number | null;
+  macro?: number | null;
+  champion_pool?: number | null;
+  discipline?: number | null;
   condition: number | null;
   morale: number | null;
   avg_rating: number | null;

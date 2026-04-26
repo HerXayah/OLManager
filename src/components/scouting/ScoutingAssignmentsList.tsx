@@ -8,7 +8,7 @@ import type {
   TeamData,
 } from "../../store/gameStore";
 import { getTeamName } from "../../lib/helpers";
-import { translatePositionLabel } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer } from "../squad/SquadTab.helpers";
 import { Card, CardBody, CardHeader } from "../ui";
 
 interface ScoutingAssignmentsListProps {
@@ -59,10 +59,10 @@ export default function ScoutingAssignmentsList({
                     onClick={() => onSelectPlayer?.(player.id)}
                     className="font-heading font-bold text-sm text-gray-800 dark:text-gray-100 hover:text-primary-500 transition-colors truncate block"
                   >
-                    {player.full_name}
+                    {player.match_name}
                   </button>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {translatePositionLabel(t, player.natural_position || player.position)} · {team}
+                    {getLolRoleForPlayer(player)} · {team}
                   </p>
                 </div>
                 <div className="text-right">

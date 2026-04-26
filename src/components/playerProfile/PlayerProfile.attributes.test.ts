@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PlayerData } from "../../store/gameStore";
+import type { PlayerData, ScoutReportData } from "../../store/gameStore";
 import { buildPlayerAttributeGroups } from "./PlayerProfile.attributes";
 
 function createPlayer(overrides: Partial<PlayerData> = {}): PlayerData {
@@ -76,18 +76,71 @@ describe("PlayerProfile.attributes", () => {
             "playerProfile.lolStats.laning",
             "playerProfile.lolStats.teamfighting",
         ]);
-        expect(groups[0]?.average).toBe(68);
+        expect(groups[0]?.average).toBe(69);
         expect(groups[1]?.attrs.map((attr) => attr.name)).toEqual([
             "playerProfile.lolStats.macro",
             "playerProfile.lolStats.consistency",
             "playerProfile.lolStats.shotcalling",
         ]);
-        expect(groups[1]?.average).toBe(71);
+        expect(groups[1]?.average).toBe(72);
         expect(groups[2]?.attrs.map((attr) => attr.name)).toEqual([
             "playerProfile.lolStats.championPool",
             "playerProfile.lolStats.discipline",
             "playerProfile.lolStats.mentalResilience",
         ]);
-        expect(groups[2]?.average).toBe(70);
+        expect(groups[2]?.average).toBe(65);
+    });
+
+    it("builds partial attribute groups from discovered scout report values", () => {
+        const report: ScoutReportData = {
+            player_id: "player-1",
+            player_name: "J. Smith",
+            position: "ADC",
+            nationality: "GB",
+            dob: "2000-01-01",
+            team_name: "Beta FC",
+            pace: null,
+            shooting: null,
+            passing: null,
+            dribbling: null,
+            defending: null,
+            physical: null,
+            mechanics: 81,
+            laning: null,
+            teamfighting: 77,
+            macro: 73,
+            champion_pool: null,
+            discipline: 69,
+            condition: null,
+            morale: null,
+            avg_rating: 75,
+            rating_key: "common.scoutRatings.veryGood",
+            potential_key: "common.scoutPotential.strong",
+            confidence_key: "common.scoutConfidence.moderate",
+        };
+
+        const groups = buildPlayerAttributeGroups(createPlayer(), t, report);
+
+        expect(groups[0]?.attrs.map((attr) => attr.value)).toEqual([81, null, 77]);
+        expect(groups[0]?.average).toBe(79);
+        expect(groups[1]?.attrs.map((attr) => attr.value)).toEqual([73, null, null]);
+        expect(groups[2]?.attrs.map((attr) => attr.value)).toEqual([null, 69, null]);
+    });
+
+    it("hides every attribute when an outside player has no scout report", () => {
+        const groups = buildPlayerAttributeGroups(createPlayer(), t, null);
+
+        expect(groups.flatMap((group) => group.attrs).map((attr) => attr.value)).toEqual([
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+        ]);
+        expect(groups.map((group) => group.average)).toEqual([null, null, null]);
     });
 });

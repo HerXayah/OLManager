@@ -169,11 +169,12 @@ describe("ScoutingAssignmentsList", () => {
     );
 
     expect(screen.getByText("Active Scouting Assignments")).toBeInTheDocument();
-    expect(screen.getByText("John Smith")).toBeInTheDocument();
+    expect(screen.getByText("J. Smith")).toBeInTheDocument();
+    expect(screen.getByText(/ADC · Beta FC/)).toBeInTheDocument();
     expect(screen.getByText("Scout Sam Scout")).toBeInTheDocument();
     expect(screen.getByText("3 days left")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "John Smith" }));
+    fireEvent.click(screen.getByRole("button", { name: "J. Smith" }));
 
     expect(onSelectPlayer).toHaveBeenCalledWith("player-1");
   });

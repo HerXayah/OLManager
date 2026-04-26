@@ -12,7 +12,20 @@ import { TraitList } from "../TraitBadge";
 import { useTranslation } from "react-i18next";
 import { countryName } from "../../lib/countries";
 import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
-import { GraduationCap, TrendingUp, Star, Users, Sparkles } from "lucide-react";
+import {
+  Building2,
+  GraduationCap,
+  Handshake,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import {
+  erlLeagueCoverage,
+  getAcademyForLecTeam,
+  getAvailableErlTeamsForAffiliation,
+} from "../../lib/erlAcademy";
 
 interface YouthAcademyTabProps {
   gameState: GameStateData;
@@ -44,6 +57,23 @@ function getPotentialLabel(
   return { label: t("youthAcademy.potLimited"), color: "text-gray-500" };
 }
 
+function formatErlStatus(status?: string, confidence?: string): string {
+  const statusLabel =
+    status === "imported"
+      ? "Importado"
+      : status === "import-pending"
+        ? "Importación Leaguepedia pendiente"
+        : "Seed local · importación Leaguepedia pendiente";
+  const confidenceLabel =
+    confidence === "configurable"
+      ? "configurable"
+      : confidence === "import-pending"
+        ? "pendiente de verificación"
+        : "base conocida";
+
+  return `${statusLabel} · ${confidenceLabel}`;
+}
+
 export default function YouthAcademyTab({
   gameState,
   onSelectPlayer,
@@ -51,6 +81,14 @@ export default function YouthAcademyTab({
   const { t, i18n } = useTranslation();
   const myTeam = gameState.teams.find(
     (tm) => tm.id === gameState.manager.team_id,
+  );
+  const academy = getAcademyForLecTeam(
+    myTeam?.id,
+    myTeam?.name,
+    myTeam?.short_name,
+  );
+  const availableErlTeams = getAvailableErlTeamsForAffiliation(
+    academy.team ? [academy.team.id] : [],
   );
 
   const roster = myTeam
@@ -174,9 +212,185 @@ export default function YouthAcademyTab({
         </Card>
       )}
 
+      {/* ERL Academy */}
+      <Card accent={academy.team ? "primary" : "accent"}>
+        <CardHeader
+          action={
+            <Badge variant={academy.team ? "success" : "neutral"} size="sm">
+              {academy.team ? "Afiliada" : "Futuro"}
+            </Badge>
+          }
+        >
+          Equipo ERL afiliado
+        </CardHeader>
+        <CardBody>
+          {academy.team && academy.league ? (
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center">
+                    <Building2 className="w-6 h-6 text-primary-600 dark:text-primary-300" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-heading font-bold text-xl text-gray-800 dark:text-gray-100">
+                        {academy.team.name}
+                      </h3>
+                      <Badge variant="primary" size="sm">
+                        {academy.team.shortName}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {academy.league.name} ({academy.league.shortName}) · {academy.team.region}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                      {formatErlStatus(academy.team.dataStatus, academy.team.confidence)} · {academy.note}
+                    </p>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                      {erlLeagueCoverage.trackedLeagues} ligas ERL rastreadas para importador · sin scraping en runtime
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="rounded-lg bg-gray-50 dark:bg-navy-800 px-3 py-2">
+                    <p className="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">
+                      {academy.team.developmentLevel}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                      Desarrollo
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 dark:bg-navy-800 px-3 py-2">
+                    <p className="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">
+                      {academy.team.reputation}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                      Reputación
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 dark:bg-navy-800 px-3 py-2">
+                    <p className="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">
+                      {academy.summary.prospectCount}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                      Prospectos
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 dark:bg-navy-800 px-3 py-2">
+                    <p className="font-heading font-bold text-lg text-accent-500">
+                      {academy.summary.averagePotential}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                      Potencial medio
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-heading font-bold text-sm uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-3">
+                  Roster ERL / prospectos
+                </h4>
+                <div className="grid md:grid-cols-2 gap-3">
+                  {academy.prospects.map((prospect) => (
+                    <div
+                      key={prospect.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 dark:border-navy-600 p-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-bold text-gray-800 dark:text-gray-100">
+                            {prospect.nickname}
+                          </p>
+                          <Badge variant="neutral" size="sm">
+                            {prospect.role}
+                          </Badge>
+                        </div>
+                        <div className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-1 mt-1">
+                          <CountryFlag code={prospect.country} locale={i18n.language} />
+                          <span>{prospect.age} años · OVR {prospect.ovr}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-heading font-bold text-accent-500 tabular-nums">
+                          {prospect.potential}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                          Potencial
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5">
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-xl bg-accent-100 dark:bg-accent-900/40 flex items-center justify-center">
+                  <Handshake className="w-6 h-6 text-accent-600 dark:text-accent-300" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-bold text-xl text-gray-800 dark:text-gray-100">
+                    Sin academia ERL afiliada
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {academy.note}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    Seed local · importación Leaguepedia pendiente · {erlLeagueCoverage.trackedLeagues} ligas ERL rastreadas · no se scrapea en runtime.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-dashed border-gray-200 dark:border-navy-600 p-4 opacity-75">
+                  <Badge variant="neutral" size="sm">Próximamente</Badge>
+                  <h4 className="font-heading font-bold text-gray-800 dark:text-gray-100 mt-3">
+                    Financiar proyecto ERL
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Crear una estructura nueva con presupuesto, staff y scouting regional.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-dashed border-gray-200 dark:border-navy-600 p-4 opacity-75">
+                  <Badge variant="neutral" size="sm">Próximamente</Badge>
+                  <h4 className="font-heading font-bold text-gray-800 dark:text-gray-100 mt-3">
+                    Afiliarse a equipo ERL libre
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Negociar un convenio con una organización ya existente del seed local.
+                  </p>
+                </div>
+              </div>
+
+              {availableErlTeams.length > 0 && (
+                <div>
+                  <h4 className="font-heading font-bold text-sm uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-3">
+                    Equipos ERL libres
+                  </h4>
+                  <div className="grid md:grid-cols-3 gap-3">
+                    {availableErlTeams.map((team) => (
+                      <div key={team.id} className="rounded-lg bg-gray-50 dark:bg-navy-800 p-3">
+                        <p className="text-sm font-bold text-gray-800 dark:text-gray-100">
+                          {team.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {team.region} · {formatErlStatus(team.dataStatus, team.confidence)} · Desarrollo {team.developmentLevel}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
       {/* Youth Players Table */}
       <Card>
-        <CardHeader>{t("youthAcademy.youthProspects")}</CardHeader>
+        <CardHeader>Promesas del primer equipo</CardHeader>
         <CardBody className="p-0">
           {youthPlayers.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12">

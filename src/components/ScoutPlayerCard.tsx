@@ -10,7 +10,7 @@ interface ScoutPlayerCardProps {
 }
 
 interface AttrRow {
-  labelKey: string;
+  label: string;
   value: number | null;
 }
 
@@ -32,12 +32,12 @@ export default function ScoutPlayerCard({ report, onPlayerClick }: ScoutPlayerCa
   const { t, i18n } = useTranslation();
 
   const attrs: AttrRow[] = [
-    { labelKey: "common.attributes.pace", value: report.pace },
-    { labelKey: "common.attributes.shooting", value: report.shooting },
-    { labelKey: "common.attributes.passing", value: report.passing },
-    { labelKey: "common.attributes.dribbling", value: report.dribbling },
-    { labelKey: "common.attributes.defending", value: report.defending },
-    { labelKey: "common.attributes.strength", value: report.physical },
+    { label: t("playerProfile.lolStats.mechanics", "Mecánicas"), value: report.mechanics ?? report.pace },
+    { label: t("playerProfile.lolStats.laning", "Línea"), value: report.laning ?? report.shooting },
+    { label: t("playerProfile.lolStats.teamfighting", "Teamfight"), value: report.teamfighting ?? report.passing },
+    { label: t("playerProfile.lolStats.macro", "Macro"), value: report.macro ?? report.dribbling },
+    { label: t("playerProfile.lolStats.championPool", "Champion pool"), value: report.champion_pool ?? report.defending },
+    { label: t("playerProfile.lolStats.discipline", "Disciplina"), value: report.discipline ?? report.physical },
   ];
 
   const discoveredCount = attrs.filter(a => a.value !== null).length;
@@ -58,7 +58,7 @@ export default function ScoutPlayerCard({ report, onPlayerClick }: ScoutPlayerCa
           <h4 className="font-heading font-bold text-white text-sm truncate">{report.player_name}</h4>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span className="flex items-center gap-1">
-              <Shield className="w-3 h-3" /> {t(`common.positions.${report.position}`, report.position)}
+              <Shield className="w-3 h-3" /> {report.position}
             </span>
             <span className="flex items-center gap-1">
               <CountryFlag
@@ -109,9 +109,9 @@ export default function ScoutPlayerCard({ report, onPlayerClick }: ScoutPlayerCa
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
             {attrs.map(attr => (
-              <div key={attr.labelKey} className="flex items-center gap-2">
+              <div key={attr.label} className="flex items-center gap-2">
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-300 w-20 truncate">
-                  {t(attr.labelKey)}
+                  {attr.label}
                 </span>
                 {attr.value !== null ? (
                   <>

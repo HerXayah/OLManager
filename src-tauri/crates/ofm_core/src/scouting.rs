@@ -5,6 +5,23 @@ use rand::RngExt;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+fn lol_role_from_position(position: &domain::player::Position) -> &'static str {
+    use domain::player::Position;
+
+    match position {
+        Position::Defender
+        | Position::RightBack
+        | Position::CenterBack
+        | Position::LeftBack
+        | Position::RightWingBack
+        | Position::LeftWingBack => "TOP",
+        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => "MID",
+        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => "ADC",
+        Position::Goalkeeper | Position::DefensiveMidfielder => "SUPPORT",
+        Position::Midfielder | Position::CentralMidfielder => "JUNGLE",
+    }
+}
+
 fn params(pairs: &[(&str, &str)]) -> HashMap<String, String> {
     pairs
         .iter()
@@ -140,7 +157,7 @@ pub fn process_scouting(game: &mut Game) {
                 &player.match_name,
                 &player.nationality,
                 &player.date_of_birth,
-                &format!("{:?}", player.position),
+                lol_role_from_position(&player.natural_position),
                 &player.attributes,
                 player.morale,
                 player.condition,
@@ -188,14 +205,17 @@ fn build_scout_report(
         ((val as i16) + delta).clamp(1, 99) as u8
     };
 
-    // Build fuzzed attribute values
+    // Build fuzzed LoL-facing attribute values. The underlying save still uses
+    // legacy football-shaped fields, but reports should reveal the concepts the
+    // LoL UI teaches: mechanics, laning, teamfighting, macro, champion pool and
+    // discipline.
     let all_fuzzed: [(u8, &str); 6] = [
-        (fuzz(attrs.pace), "Pace"),
-        (fuzz(attrs.shooting), "Shooting"),
-        (fuzz(attrs.passing), "Passing"),
-        (fuzz(attrs.dribbling), "Dribbling"),
-        (fuzz(attrs.defending), "Defending"),
-        (fuzz(attrs.strength), "Physical"),
+        (fuzz(attrs.dribbling), "Mechanics"),
+        (fuzz(attrs.shooting), "Laning"),
+        (fuzz(attrs.teamwork), "Teamfighting"),
+        (fuzz(attrs.vision), "Macro"),
+        (fuzz(attrs.agility), "Champion Pool"),
+        (fuzz(attrs.composure), "Discipline"),
     ];
 
     // Discovery mechanic: scout ability determines how many attrs are revealed
@@ -230,12 +250,12 @@ fn build_scout_report(
         }
     };
 
-    let pace = to_opt(0);
-    let shooting = to_opt(1);
-    let passing = to_opt(2);
-    let dribbling = to_opt(3);
-    let defending = to_opt(4);
-    let physical = to_opt(5);
+    let mechanics = to_opt(0);
+    let laning = to_opt(1);
+    let teamfighting = to_opt(2);
+    let macro_ = to_opt(3);
+    let champion_pool = to_opt(4);
+    let discipline = to_opt(5);
 
     let reported_condition = if judging_ability >= 60 {
         Some(condition)
@@ -298,12 +318,20 @@ fn build_scout_report(
         nationality: nationality.to_string(),
         dob: dob.to_string(),
         team_name: team_name.map(|s| s.to_string()),
-        pace,
-        shooting,
-        passing,
-        dribbling,
-        defending,
-        physical,
+        // Legacy field names are kept for saved-message compatibility, but now
+        // carry the same LoL values as the explicit fields below.
+        pace: mechanics,
+        shooting: laning,
+        passing: teamfighting,
+        dribbling: macro_,
+        defending: champion_pool,
+        physical: discipline,
+        mechanics,
+        laning,
+        teamfighting,
+        macro_,
+        champion_pool,
+        discipline,
         condition: reported_condition,
         morale: reported_morale,
         avg_rating: Some(avg_attrs),

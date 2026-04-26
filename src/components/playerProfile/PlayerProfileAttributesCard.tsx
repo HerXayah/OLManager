@@ -5,7 +5,7 @@ import { Card, CardBody, CardHeader, ProgressBar } from "../ui";
 
 interface PlayerProfileAttributesCardProps {
     attrGroups: PlayerAttributeGroup[];
-    isOwnClub: boolean;
+    canViewAttributes: boolean;
     title: string;
     averageLabel: string;
     hiddenTitle: string;
@@ -14,7 +14,7 @@ interface PlayerProfileAttributesCardProps {
 
 export default function PlayerProfileAttributesCard({
     attrGroups,
-    isOwnClub,
+    canViewAttributes,
     title,
     averageLabel,
     hiddenTitle,
@@ -24,7 +24,7 @@ export default function PlayerProfileAttributesCard({
         <Card>
             <CardHeader>{title}</CardHeader>
             <CardBody className="p-4">
-                {isOwnClub ? (
+                {canViewAttributes ? (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {attrGroups.map((group) => (
                             <div key={group.label}>
@@ -37,17 +37,30 @@ export default function PlayerProfileAttributesCard({
                                             <span className="text-xs text-gray-600 dark:text-gray-400 w-20">
                                                 {attr.name}
                                             </span>
-                                            <ProgressBar
-                                                value={attr.value}
-                                                variant="auto"
-                                                size="sm"
-                                                className="flex-1"
-                                            />
-                                            <span
-                                                className={`font-heading font-bold text-xs w-7 text-right tabular-nums ${getAttributeColorClass(attr.value)}`}
-                                            >
-                                                {attr.value}
-                                            </span>
+                                            {attr.value !== null ? (
+                                                <>
+                                                    <ProgressBar
+                                                        value={attr.value}
+                                                        variant="auto"
+                                                        size="sm"
+                                                        className="flex-1"
+                                                    />
+                                                    <span
+                                                        className={`font-heading font-bold text-xs w-7 text-right tabular-nums ${getAttributeColorClass(attr.value)}`}
+                                                    >
+                                                        {attr.value}
+                                                    </span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="flex-1 h-2 bg-gray-200 dark:bg-navy-600 rounded-full overflow-hidden">
+                                                        <div className="h-full w-1/3 bg-gray-300 dark:bg-navy-500 rounded-full" />
+                                                    </div>
+                                                    <span className="font-heading font-bold text-xs w-7 text-right tabular-nums text-gray-400 dark:text-gray-500">
+                                                        ??
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                     ))}
                                     <div className="pt-1 border-t border-gray-100 dark:border-navy-600 flex items-center gap-2">
@@ -56,7 +69,7 @@ export default function PlayerProfileAttributesCard({
                                         </span>
                                         <span className="flex-1" />
                                         <span className="font-heading font-bold text-xs w-7 text-right tabular-nums text-gray-700 dark:text-gray-200">
-                                            {group.average}
+                                            {group.average ?? "??"}
                                         </span>
                                     </div>
                                 </div>
@@ -88,7 +101,7 @@ export default function PlayerProfileAttributesCard({
                                             <div className="flex-1 h-2 bg-gray-200 dark:bg-navy-600 rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full bg-gray-300 dark:bg-navy-500 rounded-full"
-                                                    style={{ width: `${Math.random() * 60 + 20}%` }}
+                                                    style={{ width: "33%" }}
                                                 />
                                             </div>
                                             <span className="text-xs text-gray-400 dark:text-gray-500 w-6 text-right">

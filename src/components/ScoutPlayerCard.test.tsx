@@ -39,7 +39,7 @@ describe("ScoutPlayerCard", () => {
   it("renders player name and position", () => {
     render(<ScoutPlayerCard report={fullReport()} />);
     expect(screen.getByText("Carlos Silva")).toBeInTheDocument();
-    expect(screen.getByText(/common\.positions\.Midfielder/)).toBeInTheDocument();
+    expect(screen.getByText("Midfielder")).toBeInTheDocument();
   });
 
   it("renders team name when provided", () => {
@@ -54,6 +54,9 @@ describe("ScoutPlayerCard", () => {
 
   it("renders discovered attributes with values", () => {
     render(<ScoutPlayerCard report={fullReport()} />);
+    expect(screen.getByText("playerProfile.lolStats.mechanics")).toBeInTheDocument();
+    expect(screen.getByText("playerProfile.lolStats.laning")).toBeInTheDocument();
+    expect(screen.getByText("playerProfile.lolStats.teamfighting")).toBeInTheDocument();
     // All 6 attrs are revealed → should see values
     expect(screen.getByText("72")).toBeInTheDocument();
     expect(screen.getByText("65")).toBeInTheDocument();
@@ -61,6 +64,12 @@ describe("ScoutPlayerCard", () => {
     expect(screen.getByText("70")).toBeInTheDocument();
     expect(screen.getByText("55")).toBeInTheDocument();
     expect(screen.getByText("60")).toBeInTheDocument();
+  });
+
+  it("prefers explicit LoL scouting stats when present", () => {
+    render(<ScoutPlayerCard report={fullReport({ mechanics: 91, laning: 88 })} />);
+    expect(screen.getByText("91")).toBeInTheDocument();
+    expect(screen.getByText("88")).toBeInTheDocument();
   });
 
   it("shows 'undiscovered' for null attributes", () => {

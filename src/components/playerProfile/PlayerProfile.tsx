@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getContractRiskLevel } from "../../lib/helpers";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
-import { PlayerData, GameStateData, PlayerMatchHistoryEntryData } from "../../store/gameStore";
+import { PlayerData, GameStateData, PlayerMatchHistoryEntryData, ScoutReportData } from "../../store/gameStore";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveBackendText } from "../../utils/backendI18n";
@@ -37,6 +37,16 @@ import championsSeed from "../../../data/lec/draft/champions.json";
 import { startPotentialResearch } from "../../services/playerService";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
+
+function getLatestScoutReportForPlayer(
+  gameState: GameStateData,
+  playerId: string,
+): ScoutReportData | null {
+  return gameState.messages
+    .filter((message) => message.context?.scout_report?.player_id === playerId)
+    .sort((left, right) => right.date.localeCompare(left.date))[0]
+    ?.context.scout_report ?? null;
+}
 
 interface PlayerSeed {
   ign: string;
@@ -132,6 +142,7 @@ function buildChampionPerformanceMap(
 function buildTopChampionMasteries(
   matchName: string,
   championPerformance: Map<string, { wr: number; games: number }>,
+  visibleChampionCount = 4,
 ) {
   const seed = PLAYER_SEEDS.find((entry) => normalizeKey(entry.ign) === normalizeKey(matchName));
   const champions = [...(seed?.champions ?? [])]
@@ -145,7 +156,7 @@ function buildTopChampionMasteries(
   if (champions.length === 0) return [];
 
   const insignia = champions[0];
-  const rest = champions.slice(1, 4);
+  const rest = champions.slice(1, Math.max(1, visibleChampionCount));
 
   const firstId = championIdFromName(insignia.championName);
   if (!firstId) return [];
@@ -198,7 +209,6 @@ interface PlayerProfileProps {
 export default function PlayerProfile({
   player,
   gameState,
-  isOwnClub,
   startWithRenewalModal = false,
   onClose,
   onSelectTeam,
@@ -251,6 +261,8 @@ export default function PlayerProfile({
       unknown: t("common.unknown"),
     },
   );
+  const actualIsOwnClub =
+    gameState.manager.team_id !== null && player.team_id === gameState.manager.team_id;
   const contractRiskLevel = getContractRiskLevel(
     player.contract_end,
     gameState.clock.current_date,
@@ -296,9 +308,22 @@ export default function PlayerProfile({
     playerId: player.id,
     scoutStatus,
   });
-  const attrGroups = buildPlayerAttributeGroups(player, t);
+  const latestScoutReport = getLatestScoutReportForPlayer(gameState, player.id);
+  const attrGroups = buildPlayerAttributeGroups(
+    player,
+    t,
+    actualIsOwnClub ? undefined : latestScoutReport,
+  );
+  const canViewAttributes = actualIsOwnClub || attrGroups.some((group) =>
+    group.attrs.some((attribute) => attribute.value !== null),
+  );
   const championPerformance = buildChampionPerformanceMap(playerHistory);
-  const topChampions = buildTopChampionMasteries(player.match_name, championPerformance);
+  const visibleChampionMasteryCount = actualIsOwnClub ? 4 : latestScoutReport ? 2 : 1;
+  const topChampions = buildTopChampionMasteries(
+    player.match_name,
+    championPerformance,
+    visibleChampionMasteryCount,
+  );
   const activePotentialResearchPlayer = gameState.players.find(
     (candidate) => (candidate.potential_research_eta_days ?? 0) > 0,
   );
@@ -333,7 +358,7 @@ export default function PlayerProfile({
   }, [player.id]);
 
   async function handleRerollRole(role: LolRole): Promise<void> {
-    if (!isOwnClub || !onGameUpdate || rerollingRole) {
+    if (!actualIsOwnClub || !onGameUpdate || rerollingRole) {
       return;
     }
 
@@ -381,7 +406,7 @@ export default function PlayerProfile({
 
   useEffect(() => {
     if (
-      !isOwnClub ||
+      !actualIsOwnClub ||
       !startWithRenewalModal ||
       showRenewalModal ||
       hasConsumedInitialRenewalIntent
@@ -393,7 +418,7 @@ export default function PlayerProfile({
     openRenewalModal();
   }, [
     hasConsumedInitialRenewalIntent,
-    isOwnClub,
+    actualIsOwnClub,
     showRenewalModal,
     startWithRenewalModal,
   ]);
@@ -580,7 +605,7 @@ export default function PlayerProfile({
         teamName={teamName}
         weeklySuffix={weeklySuffix}
         language={i18n.language}
-        isOwnClub={isOwnClub || !onGameUpdate}
+        isOwnClub={actualIsOwnClub || !onGameUpdate}
         scoutAvailability={scoutAvailability}
         scoutStatus={scoutStatus}
         scoutError={scoutError}
@@ -658,7 +683,7 @@ export default function PlayerProfile({
           language={i18n.language}
           contractRiskLevel={contractRiskLevel}
           contractRiskLabel={contractRiskLabel}
-          isOwnClub={isOwnClub}
+          isOwnClub={actualIsOwnClub}
           onOpenRenewal={openRenewalModal}
           t={t}
         />
@@ -666,7 +691,7 @@ export default function PlayerProfile({
         <div className="lg:col-span-2 flex flex-col gap-5">
           <PlayerProfileAttributesCard
             attrGroups={attrGroups}
-            isOwnClub={isOwnClub}
+            canViewAttributes={canViewAttributes}
             title={t("playerProfile.attributes")}
             averageLabel={t("common.average")}
             hiddenTitle={t("playerProfile.attributesHidden")}
