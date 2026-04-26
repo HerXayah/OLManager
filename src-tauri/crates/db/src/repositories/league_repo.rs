@@ -24,8 +24,8 @@ pub fn upsert_league(conn: &Connection, league: &League) -> Result<(), String> {
             .as_ref()
             .map(|r| serde_json::to_string(r).unwrap_or_default());
         conn.execute(
-            "INSERT INTO fixtures (id, league_id, matchday, date, home_team_id, away_team_id, competition, status, result)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            "INSERT INTO fixtures (id, league_id, matchday, date, home_team_id, away_team_id, competition, best_of, status, result)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
                 f.id,
                 league.id,
@@ -34,6 +34,7 @@ pub fn upsert_league(conn: &Connection, league: &League) -> Result<(), String> {
                 f.home_team_id,
                 f.away_team_id,
                 competition_str,
+                f.best_of,
                 status_str,
                 result_json,
             ],
@@ -105,7 +106,7 @@ pub fn load_league(conn: &Connection) -> Result<Option<League>, String> {
     // Load fixtures
     let mut fix_stmt = conn
         .prepare(
-            "SELECT id, matchday, date, home_team_id, away_team_id, competition, status, result
+            "SELECT id, matchday, date, home_team_id, away_team_id, competition, best_of, status, result
              FROM fixtures WHERE league_id = ?1 ORDER BY matchday, id",
         )
         .map_err(|e| format!("Failed to prepare fixtures query: {}", e))?;
@@ -113,8 +114,8 @@ pub fn load_league(conn: &Connection) -> Result<Option<League>, String> {
     let fixture_rows = fix_stmt
         .query_map(params![league_id], |row| {
             let competition_str: String = row.get(5)?;
-            let status_str: String = row.get(6)?;
-            let result_json: Option<String> = row.get(7)?;
+            let status_str: String = row.get(7)?;
+            let result_json: Option<String> = row.get(8)?;
             Ok(Fixture {
                 id: row.get(0)?,
                 matchday: row.get(1)?,
@@ -122,6 +123,7 @@ pub fn load_league(conn: &Connection) -> Result<Option<League>, String> {
                 home_team_id: row.get(3)?,
                 away_team_id: row.get(4)?,
                 competition: parse_fixture_competition(&competition_str),
+                best_of: row.get(6)?,
                 status: parse_fixture_status(&status_str),
                 result: result_json.and_then(|j| serde_json::from_str(&j).ok()),
             })

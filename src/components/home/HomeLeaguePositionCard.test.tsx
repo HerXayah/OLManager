@@ -2,12 +2,13 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import HomeLeaguePositionCard from "./HomeLeaguePositionCard";
-import type { TeamData } from "../../store/gameStore";
+import type { LeagueData, TeamData } from "../../store/gameStore";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) => {
       if (key === "home.standings") return "Standings";
+      if (key === "schedule.playoffs") return "Playoffs";
       if (key === "home.leaguePosition") return "League Position";
       if (key === "season.phases.Preseason") return "Preseason";
       if (key === "season.startsOn") return `Starts on ${params?.date}`;
@@ -94,7 +95,7 @@ describe("HomeLeaguePositionCard", () => {
     expect(screen.getByText("League Position")).toBeInTheDocument();
     expect(screen.getByText("T1")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
     expect(screen.getByText("75%")).toBeInTheDocument();
   });
 
@@ -111,5 +112,53 @@ describe("HomeLeaguePositionCard", () => {
     );
 
     expect(screen.getByText("No league data")).toBeInTheDocument();
+  });
+
+  it("renders playoff bracket in place of standings during playoffs", () => {
+    const league: LeagueData = {
+      id: "league-1",
+      name: "LEC Winter",
+      season: 1,
+      fixtures: [
+        {
+          id: "fixture-aa11",
+          matchday: 10,
+          date: "2025-03-20",
+          home_team_id: "lec-team-1",
+          away_team_id: "lec-team-2",
+          competition: "Playoffs",
+          status: "Scheduled",
+          best_of: 3,
+          result: null,
+        },
+      ],
+      standings: [],
+    };
+
+    render(
+      <HomeLeaguePositionCard
+        isPreseason={false}
+        phase="Playoffs"
+        seasonStartLabel={null}
+        league={league}
+        sortedStandings={[]}
+        teams={[
+          ...teams,
+          {
+            ...teams[0],
+            id: "lec-team-2",
+            name: "Team Two",
+            short_name: "T2",
+          },
+        ]}
+        myTeamId="lec-team-1"
+      />,
+    );
+
+    expect(screen.getAllByText("Playoffs").length).toBeGreaterThan(0);
+    expect(screen.getByText("home.nextMatch")).toBeInTheDocument();
+    expect(screen.getByText("T1 vs T2")).toBeInTheDocument();
+    expect(screen.getByText(/BO3/)).toBeInTheDocument();
+    expect(screen.queryByText(/M10-/i)).not.toBeInTheDocument();
   });
 });

@@ -47,6 +47,15 @@ pub(super) fn build_team_with_bench(game: &Game, team_id: &str) -> (TeamData, Ve
         Vec::new()
     };
 
+    // Keep LoL lane order stable for draft/pre-match UIs.
+    // Selection stays top-5 by OVR+condition; this only reorders those five.
+    starters.sort_by(|left, right| {
+        lol_role_rank(&left.natural_position)
+            .cmp(&lol_role_rank(&right.natural_position))
+            .then_with(|| calculate_lol_ovr(right).cmp(&calculate_lol_ovr(left)))
+            .then_with(|| right.condition.cmp(&left.condition))
+    });
+
     let starting_xi = starters.into_iter().map(to_engine_player).collect::<Vec<_>>();
     let bench = bench_domain
         .into_iter()
@@ -120,6 +129,17 @@ fn map_position_to_lol_role(position: &DomainPosition) -> &'static str {
         | DomainPosition::Striker => "ADC",
         DomainPosition::Goalkeeper | DomainPosition::DefensiveMidfielder => "SUPPORT",
         DomainPosition::Midfielder | DomainPosition::CentralMidfielder => "JUNGLE",
+    }
+}
+
+fn lol_role_rank(position: &DomainPosition) -> u8 {
+    match map_position_to_lol_role(position) {
+        "TOP" => 0,
+        "JUNGLE" => 1,
+        "MID" => 2,
+        "ADC" => 3,
+        "SUPPORT" => 4,
+        _ => 5,
     }
 }
 

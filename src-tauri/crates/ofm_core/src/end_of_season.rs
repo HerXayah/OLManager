@@ -1,15 +1,18 @@
 use crate::game::Game;
-use crate::schedule::{append_fixtures, generate_league, generate_preseason_friendlies};
+use crate::schedule::{
+    append_fixtures, generate_preseason_friendlies,
+    generate_single_round_league_with_offsets_and_bo, parse_lec_split, regular_best_of, LecSplit,
+};
 use crate::season_awards::compute_season_awards;
-use chrono::Duration;
-use domain::league::{FixtureStatus, League};
+use chrono::{TimeZone, Utc};
+use domain::league::{FixtureCompetition, FixtureStatus, League};
 use domain::message::*;
 use domain::player::PlayerSeasonStats;
 use domain::team::{FinancialTransaction, FinancialTransactionKind, TeamSeasonRecord};
 
 pub fn expected_fixture_count(team_count: usize) -> Option<usize> {
     if team_count >= 2 && team_count % 2 == 0 {
-        Some(team_count * (team_count - 1))
+        Some((team_count * (team_count - 1)) / 2)
     } else {
         None
     }
@@ -17,13 +20,15 @@ pub fn expected_fixture_count(team_count: usize) -> Option<usize> {
 
 pub fn has_full_schedule(league: &League) -> bool {
     match expected_fixture_count(league.standings.len()) {
-        Some(expected_fixture_count) => {
-            league
+        Some(expected_single_round_count) => {
+            let expected_double_round_count = expected_single_round_count * 2;
+            let actual = league
                 .fixtures
                 .iter()
                 .filter(|fixture| fixture.counts_for_league_standings())
-                .count()
-                == expected_fixture_count
+                .count();
+
+            actual == expected_single_round_count || actual == expected_double_round_count
         }
         None => false,
     }
@@ -41,13 +46,55 @@ pub fn season_has_started(league: &League) -> bool {
 }
 
 pub fn is_league_complete(league: &League) -> bool {
-    season_has_started(league)
+    let regular_complete = season_has_started(league)
         && has_full_schedule(league)
         && league
             .fixtures
             .iter()
             .filter(|fixture| fixture.counts_for_league_standings())
-            .all(|fixture| fixture.status == FixtureStatus::Completed)
+            .all(|fixture| fixture.status == FixtureStatus::Completed);
+
+    let playoffs_exist = league
+        .fixtures
+        .iter()
+        .any(|fixture| fixture.competition == FixtureCompetition::Playoffs);
+    let playoffs_complete = !playoffs_exist
+        || league
+            .fixtures
+            .iter()
+            .filter(|fixture| fixture.competition == FixtureCompetition::Playoffs)
+            .all(|fixture| fixture.status == FixtureStatus::Completed);
+
+    regular_complete && playoffs_complete
+}
+
+fn next_lec_split(current_name: &str, current_season: u32) -> (String, u32, LecSplit, chrono::DateTime<Utc>, [i64; 9]) {
+    match parse_lec_split(current_name) {
+        Some(LecSplit::Winter) => (
+            "LEC Spring".to_string(),
+            current_season,
+            LecSplit::Spring,
+            Utc.with_ymd_and_hms(current_season as i32, 3, 29, 0, 0, 0).unwrap(),
+            [0, 7, 14, 21, 28, 35, 42, 49, 56],
+        ),
+        Some(LecSplit::Spring) => (
+            "LEC Summer".to_string(),
+            current_season,
+            LecSplit::Summer,
+            Utc.with_ymd_and_hms(current_season as i32, 8, 2, 0, 0, 0).unwrap(),
+            [0, 7, 14, 21, 28, 35, 42, 49, 56],
+        ),
+        _ => {
+            let next_season = current_season + 1;
+            (
+                "LEC Winter".to_string(),
+                next_season,
+                LecSplit::Winter,
+                Utc.with_ymd_and_hms(next_season as i32, 1, 18, 0, 0, 0).unwrap(),
+                [0, 1, 2, 7, 8, 9, 14, 15, 16],
+            )
+        }
+    }
 }
 
 /// Check if the season is complete (all fixtures played).
@@ -119,10 +166,29 @@ pub fn process_end_of_season(game: &mut Game) -> EndOfSeasonSummary {
         .find(|s| s.team_id == user_team_id)
         .cloned();
 
-    let champion_id = final_standings
-        .first()
-        .map(|s| s.team_id.clone())
-        .unwrap_or_default();
+    let playoff_champion_id = league
+        .fixtures
+        .iter()
+        .filter(|fixture| fixture.competition == FixtureCompetition::Playoffs)
+        .max_by_key(|fixture| fixture.matchday)
+        .and_then(|fixture| {
+            fixture.result.as_ref().and_then(|result| {
+                if result.home_wins > result.away_wins {
+                    Some(fixture.home_team_id.clone())
+                } else if result.away_wins > result.home_wins {
+                    Some(fixture.away_team_id.clone())
+                } else {
+                    None
+                }
+            })
+        });
+
+    let champion_id = playoff_champion_id.unwrap_or_else(|| {
+        final_standings
+            .first()
+            .map(|s| s.team_id.clone())
+            .unwrap_or_default()
+    });
     let champion_name = game
         .teams
         .iter()
@@ -291,11 +357,17 @@ pub fn process_end_of_season(game: &mut Game) -> EndOfSeasonSummary {
     game.news.clear();
 
     // 7. Generate next season schedule
-    let next_season = season + 1;
+    let (next_league_name, next_season, next_split, next_start, round_offsets) =
+        next_lec_split(&league_name, season);
     let team_ids: Vec<String> = game.teams.iter().map(|t| t.id.clone()).collect();
-    // Start date: roughly a year after current start, or a few weeks from now
-    let next_start = game.clock.current_date + Duration::days(28); // 4 weeks break
-    let mut new_league = generate_league(&league_name, next_season, &team_ids, next_start);
+    let mut new_league = generate_single_round_league_with_offsets_and_bo(
+        &next_league_name,
+        next_season,
+        &team_ids,
+        next_start,
+        Some(&round_offsets),
+        regular_best_of(next_split),
+    );
     if !user_team_id.is_empty() {
         let opponents: Vec<String> = team_ids
             .iter()

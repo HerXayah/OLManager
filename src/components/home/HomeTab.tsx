@@ -230,6 +230,7 @@ export default function HomeTab({
             isPreseason={isPreseason}
             phase={seasonContext.phase}
             seasonStartLabel={seasonStartLabel}
+            league={league}
             sortedStandings={sortedStandings}
             teams={gameState.teams}
             myTeamId={myTeam.id}
@@ -242,6 +243,7 @@ export default function HomeTab({
             isPreseason={isPreseason}
             phase={seasonContext.phase}
             seasonStartLabel={seasonStartLabel}
+            league={league}
             sortedStandings={sortedStandings}
             teams={gameState.teams}
             myTeamId={null}

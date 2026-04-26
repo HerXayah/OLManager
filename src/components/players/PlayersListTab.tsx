@@ -15,12 +15,11 @@ import {
   calcOvr,
   calcAge,
   formatVal,
-  positionBadgeVariant,
 } from "../../lib/helpers";
 import { useTranslation } from "react-i18next";
 import {
-  normalisePosition,
-  translatePositionAbbreviation,
+  getLolRoleForPlayer,
+  LolRole,
 } from "../squad/SquadTab.helpers";
 
 interface PlayersListTabProps {
@@ -38,7 +37,7 @@ export default function PlayersListTab({
 }: PlayersListTabProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
-  const [posFilter, setPosFilter] = useState<string | null>(null);
+  const [posFilter, setPosFilter] = useState<LolRole | null>(null);
   const [teamFilter, setTeamFilter] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("ovr");
   const [sortAsc, setSortAsc] = useState(false);
@@ -70,35 +69,29 @@ export default function PlayersListTab({
       )
         return false;
     }
-    if (
-      posFilter &&
-      normalisePosition(p.natural_position || p.position) !== posFilter
-    )
-      return false;
+    if (posFilter && getLolRoleForPlayer(p) !== posFilter) return false;
     if (teamFilter && p.team_id !== teamFilter) return false;
     if (statusFilter === "transfer" && !p.transfer_listed) return false;
     if (statusFilter === "loan" && !p.loan_listed) return false;
     return true;
   });
 
-  const posOrder: Record<string, number> = {
-    Goalkeeper: 1,
-    Defender: 2,
-    Midfielder: 3,
-    Forward: 4,
+  const posOrder: Record<LolRole, number> = {
+    TOP: 1,
+    JUNGLE: 2,
+    MID: 3,
+    ADC: 4,
+    SUPPORT: 5,
   };
 
   filtered.sort((a, b) => {
     let cmp = 0;
     switch (sortKey) {
       case "name":
-        cmp = a.full_name.localeCompare(b.full_name);
+        cmp = a.match_name.localeCompare(b.match_name);
         break;
       case "position":
-        cmp =
-          (posOrder[normalisePosition(a.natural_position || a.position)] ||
-            99) -
-          (posOrder[normalisePosition(b.natural_position || b.position)] || 99);
+        cmp = posOrder[getLolRoleForPlayer(a)] - posOrder[getLolRoleForPlayer(b)];
         break;
       case "age":
         cmp = calcAge(a.date_of_birth) - calcAge(b.date_of_birth);
@@ -120,7 +113,14 @@ export default function PlayersListTab({
     return sortAsc ? cmp : -cmp;
   });
 
-  const positions = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+  const positions: LolRole[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+  const roleBadgeVariant: Record<LolRole, "danger" | "success" | "accent" | "primary" | "neutral"> = {
+    TOP: "danger",
+    JUNGLE: "success",
+    MID: "accent",
+    ADC: "primary",
+    SUPPORT: "neutral",
+  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -158,7 +158,7 @@ export default function PlayersListTab({
                   : "bg-white dark:bg-navy-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-navy-600"
               }`}
             >
-              {t(`common.posAbbr.${pos}`)}
+              {pos === "JUNGLE" ? "JG" : pos}
             </button>
           ))}
         </div>
@@ -278,21 +278,23 @@ export default function PlayersListTab({
                       >
                         <td className="py-2.5 px-4">
                           <Badge
-                            variant={positionBadgeVariant(
-                              player.natural_position || player.position,
-                            )}
+                            variant={roleBadgeVariant[getLolRoleForPlayer(player)]}
                             size="sm"
                           >
-                            {translatePositionAbbreviation(
-                              t,
-                              player.natural_position || player.position,
-                            )}
+                            {getLolRoleForPlayer(player) === "JUNGLE"
+                              ? "JG"
+                              : getLolRoleForPlayer(player)}
                           </Badge>
                         </td>
                         <td className="py-2.5 px-4">
-                          <span className="font-semibold text-sm text-gray-800 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                            {player.full_name}
-                          </span>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-gray-800 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors truncate">
+                              {player.match_name}
+                            </p>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+                              {player.full_name}
+                            </p>
+                          </div>
                         </td>
                         <td className="py-2.5 px-4 text-sm text-gray-600 dark:text-gray-400 tabular-nums">
                           {age}
@@ -310,8 +312,9 @@ export default function PlayersListTab({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              onSelectTeam(player.team_id!);
+                              if (player.team_id) onSelectTeam(player.team_id);
                             }}
+                            disabled={!player.team_id}
                             className="text-sm text-gray-600 dark:text-gray-400 hover:text-primary-500 hover:underline transition-colors"
                           >
                             {getTeamName(gameState.teams, player.team_id)}

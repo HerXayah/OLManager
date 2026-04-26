@@ -267,6 +267,102 @@ describe("season helpers", () => {
     expect(hasFullLeagueSchedule(fullLeague)).toBe(true);
     expect(isSeasonComplete(fullLeague)).toBe(true);
   });
+
+  it("keeps season incomplete when playoffs exist but are not finished", () => {
+    const fixtures: FixtureData[] = [];
+    let fixtureCounter = 1;
+    for (const homeTeamId of ["team_1", "team_2", "team_3", "team_4"]) {
+      for (const awayTeamId of ["team_1", "team_2", "team_3", "team_4"]) {
+        if (homeTeamId === awayTeamId) {
+          continue;
+        }
+        fixtures.push(
+          makeFixture({
+            id: `f${fixtureCounter}`,
+            home_team_id: homeTeamId,
+            away_team_id: awayTeamId,
+            status: "Completed",
+            competition: "League",
+          }),
+        );
+        fixtureCounter += 1;
+      }
+    }
+
+    fixtures.push(
+      makeFixture({
+        id: "playoff-1",
+        competition: "Playoffs",
+        status: "Scheduled",
+        home_team_id: "team_1",
+        away_team_id: "team_4",
+      }),
+    );
+
+    const leagueWithPendingPlayoffs = {
+      id: "league-1",
+      name: "League",
+      season: 1,
+      fixtures,
+      standings: [
+        { team_id: "team_1", played: 6, won: 6, drawn: 0, lost: 0, goals_for: 12, goals_against: 2, points: 18 },
+        { team_id: "team_2", played: 6, won: 3, drawn: 0, lost: 3, goals_for: 8, goals_against: 8, points: 9 },
+        { team_id: "team_3", played: 6, won: 2, drawn: 0, lost: 4, goals_for: 6, goals_against: 10, points: 6 },
+        { team_id: "team_4", played: 6, won: 1, drawn: 0, lost: 5, goals_for: 4, goals_against: 10, points: 3 },
+      ],
+    };
+
+    expect(hasFullLeagueSchedule(leagueWithPendingPlayoffs)).toBe(true);
+    expect(isSeasonComplete(leagueWithPendingPlayoffs)).toBe(false);
+  });
+
+  it("marks season complete when playoffs exist and are completed", () => {
+    const fixtures: FixtureData[] = [];
+    let fixtureCounter = 1;
+    for (const homeTeamId of ["team_1", "team_2", "team_3", "team_4"]) {
+      for (const awayTeamId of ["team_1", "team_2", "team_3", "team_4"]) {
+        if (homeTeamId === awayTeamId) {
+          continue;
+        }
+        fixtures.push(
+          makeFixture({
+            id: `f${fixtureCounter}`,
+            home_team_id: homeTeamId,
+            away_team_id: awayTeamId,
+            status: "Completed",
+            competition: "League",
+          }),
+        );
+        fixtureCounter += 1;
+      }
+    }
+
+    fixtures.push(
+      makeFixture({
+        id: "playoff-1",
+        competition: "Playoffs",
+        status: "Completed",
+        home_team_id: "team_1",
+        away_team_id: "team_4",
+      }),
+    );
+
+    const leagueWithCompletedPlayoffs = {
+      id: "league-1",
+      name: "League",
+      season: 1,
+      fixtures,
+      standings: [
+        { team_id: "team_1", played: 6, won: 6, drawn: 0, lost: 0, goals_for: 12, goals_against: 2, points: 18 },
+        { team_id: "team_2", played: 6, won: 3, drawn: 0, lost: 3, goals_for: 8, goals_against: 8, points: 9 },
+        { team_id: "team_3", played: 6, won: 2, drawn: 0, lost: 4, goals_for: 6, goals_against: 10, points: 6 },
+        { team_id: "team_4", played: 6, won: 1, drawn: 0, lost: 5, goals_for: 4, goals_against: 10, points: 3 },
+      ],
+    };
+
+    expect(hasFullLeagueSchedule(leagueWithCompletedPlayoffs)).toBe(true);
+    expect(isSeasonComplete(leagueWithCompletedPlayoffs)).toBe(true);
+  });
 });
 
 describe("getLocale", () => {

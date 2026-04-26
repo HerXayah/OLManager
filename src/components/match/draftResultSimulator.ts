@@ -275,16 +275,22 @@ function teamSideData(snapshot: MatchSnapshot, gameState: GameStateData, side: S
   const stateTeam = gameState.teams.find(
     (item) => normalizeKey(item.name) === normalizeKey(team.name),
   );
+  const lineupPlayers =
+    side === "blue" ? snapshot.home_team.players : snapshot.away_team.players;
+  const resolvedPlayers =
+    lineupPlayers.length >= 5
+      ? lineupPlayers.slice(0, 5)
+      : resolvePlayersFromSeed(snapshot, gameState, side);
 
   return side === "blue"
     ? {
       team: snapshot.home_team,
-      players: resolvePlayersFromSeed(snapshot, gameState, "blue"),
+      players: resolvedPlayers,
       tactics: stateTeam?.lol_tactics ?? DEFAULT_LOL_TACTICS,
     }
     : {
       team: snapshot.away_team,
-      players: resolvePlayersFromSeed(snapshot, gameState, "red"),
+      players: resolvedPlayers,
       tactics: stateTeam?.lol_tactics ?? DEFAULT_LOL_TACTICS,
     };
 }

@@ -202,7 +202,7 @@ describe("PlayersListTab", () => {
     expect(screen.getByText("Alex Keeper")).toBeInTheDocument();
     expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Goalkeeper" }));
+    fireEvent.click(screen.getByRole("button", { name: "SUPPORT" }));
     fireEvent.click(screen.getByText("Alex Keeper"));
 
     expect(onSelectPlayer).toHaveBeenCalledWith("player-2");

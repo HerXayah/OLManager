@@ -61,11 +61,25 @@ export function hasFullLeagueSchedule(league: LeagueData): boolean {
 }
 
 export function isSeasonComplete(league: LeagueData | null | undefined): boolean {
-    if (!league || !hasFullLeagueSchedule(league)) {
+    if (!league) {
         return false;
     }
 
-    return getCompetitiveFixtures(league.fixtures).every(
-        (fixture) => fixture.status === "Completed",
+    const regularFixtures = getCompetitiveFixtures(league.fixtures);
+    const seasonHasStarted =
+        regularFixtures.some((fixture) => fixture.status === "Completed")
+        || league.standings.some((entry) => entry.played > 0);
+    const regularComplete =
+        seasonHasStarted
+        && hasFullLeagueSchedule(league)
+        && regularFixtures.every((fixture) => fixture.status === "Completed");
+
+    const playoffFixtures = league.fixtures.filter(
+        (fixture) => fixture.competition === "Playoffs",
     );
+    const playoffsComplete =
+        playoffFixtures.length === 0
+        || playoffFixtures.every((fixture) => fixture.status === "Completed");
+
+    return regularComplete && playoffsComplete;
 }

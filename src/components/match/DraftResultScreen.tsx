@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import teamsSeed from "../../../data/lec/draft/teams.json";
+import { resolvePlayerPhoto } from "../../lib/playerPhotos";
 import type { MatchSnapshot } from "./types";
 import type { DraftMatchResult, DraftTimelineEvent } from "./draftResultSimulator";
 
@@ -68,12 +69,6 @@ function teamTriCode(name: string): string {
   const words = cleaned.split(/\s+/).filter(Boolean);
   if (words.length >= 2) return words.map((word) => word[0]).join("").toUpperCase().slice(0, 4);
   return cleaned.slice(0, 4).toUpperCase();
-}
-
-function playerPhotoUrl(playerId: string): string | null {
-  const match = playerId.match(/^lec-player-(.+)$/);
-  if (!match) return null;
-  return `/player-photos/${match[1]}.png`;
 }
 
 function sideTeam(snapshot: MatchSnapshot, side: Side) {
@@ -161,7 +156,7 @@ export default function DraftResultScreen({
     })
     .join(" ");
 
-  const mvpPhoto = playerPhotoUrl(selectedResult.mvp.playerId);
+  const mvpPhoto = resolvePlayerPhoto(selectedResult.mvp.playerId, selectedResult.mvp.playerName);
   const nextGameLabel = `${Math.min(seriesLength, seriesGameIndex + 1)}/${seriesLength}`;
   const targetSeriesWins = seriesLength === 1 ? 1 : seriesLength === 3 ? 2 : 3;
   const isSeriesFinished =
@@ -262,7 +257,7 @@ export default function DraftResultScreen({
             <div className="space-y-1">
               <p className="text-sm font-bold text-cyan-300">{blueTri}</p>
               {blueRows.map((row) => {
-                const icon = playerPhotoUrl(row.playerId);
+                const icon = resolvePlayerPhoto(row.playerId, row.playerName);
                 const isMvp = row.playerId === selectedResult.mvp.playerId;
                 return (
                   <div
@@ -284,7 +279,7 @@ export default function DraftResultScreen({
             <div className="space-y-1 mt-4">
               <p className="text-sm font-bold text-orange-300">{redTri}</p>
               {redRows.map((row) => {
-                const icon = playerPhotoUrl(row.playerId);
+                const icon = resolvePlayerPhoto(row.playerId, row.playerName);
                 const isMvp = row.playerId === selectedResult.mvp.playerId;
                 return (
                   <div

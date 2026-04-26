@@ -1124,12 +1124,13 @@ pub async fn select_team(
     // 9 rounds in 3 superweeks (Sat/Sun/Mon, then +7 days)
     let winter_round_offsets: [i64; 9] = [0, 1, 2, 7, 8, 9, 14, 15, 16];
     let team_ids: Vec<String> = game.teams.iter().map(|t| t.id.clone()).collect();
-    let mut league = ofm_core::schedule::generate_single_round_league_with_offsets(
+    let mut league = ofm_core::schedule::generate_single_round_league_with_offsets_and_bo(
         "LEC Winter",
         season_year as u32,
         &team_ids,
         season_start,
         Some(&winter_round_offsets),
+        ofm_core::schedule::regular_best_of(ofm_core::schedule::LecSplit::Winter),
     );
 
     // IMPORTANT: playoffs are generated later from real standings.

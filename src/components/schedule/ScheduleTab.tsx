@@ -12,6 +12,7 @@ import { resolveSeasonContext } from "../../lib/seasonContext";
 import { useTranslation } from "react-i18next";
 import teamsSeed from "../../../data/lec/draft/teams.json";
 import DraftResultScreen from "../match/DraftResultScreen";
+import PlayoffBracketBoard from "../playoffs/PlayoffBracketBoard";
 import type { MatchSnapshot } from "../match/types";
 import type { DraftMatchResult } from "../match/draftResultSimulator";
 
@@ -69,6 +70,11 @@ function inferBestOf(
     friendlySeriesLengthById: Record<string, 1 | 3 | 5>;
   },
 ): 1 | 3 | 5 {
+  const explicitBestOf = toNonNegativeNumber(fixture.best_of);
+  if (explicitBestOf === 1 || explicitBestOf === 3 || explicitBestOf === 5) {
+    return explicitBestOf;
+  }
+
   if (fixture.competition === "Friendly") {
     return bestOfContext.friendlySeriesLengthById[fixture.id] ?? 1;
   }
@@ -208,7 +214,14 @@ export default function ScheduleTab({
     }
 
     if (fixture.competition === "Playoffs") {
-      return `${t("schedule.playoffs")} · ${t("schedule.round", { number: fixture.matchday - 9 })} — ${formatMatchDate(fixture.date)}`;
+      const playoffStart = league?.fixtures
+        .filter((candidate) => candidate.competition === "Playoffs")
+        .map((candidate) => candidate.matchday)
+        .reduce((min, value) => Math.min(min, value), Number.POSITIVE_INFINITY);
+      const round = Number.isFinite(playoffStart)
+        ? fixture.matchday - playoffStart + 1
+        : fixture.matchday;
+      return `${t("schedule.playoffs")} · ${t("schedule.round", { number: round })} — ${formatMatchDate(fixture.date)}`;
     }
 
     if (fixture.competition === "PreseasonTournament") {
@@ -347,6 +360,15 @@ export default function ScheduleTab({
 
       {view === "fixtures" && (
         <div className="flex flex-col gap-4">
+          {playoffFixtures.length > 0 ? (
+            <PlayoffBracketBoard
+              league={league}
+              teams={gameState.teams}
+              onSelectTeam={onSelectTeam}
+              title={`${t("schedule.playoffs")} · Bracket`}
+            />
+          ) : null}
+
           {sortedMatchdays.map(([groupKey, fixtures]) => (
             <Card key={groupKey}>
               <div className="px-5 py-3 border-b border-gray-100 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 rounded-t-xl">
@@ -471,6 +493,11 @@ export default function ScheduleTab({
                 {league.name} —{" "}
                 {t("schedule.season", { number: league.season })}
               </h3>
+              {playoffFixtures.length > 0 ? (
+                <p className="mt-1 text-xs text-gray-300">
+                  {t("season.standingsLocked")}
+                </p>
+              ) : null}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">

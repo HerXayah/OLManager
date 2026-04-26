@@ -27,8 +27,14 @@ pub struct Fixture {
     pub home_team_id: String,
     pub away_team_id: String,
     pub competition: FixtureCompetition,
+    #[serde(default = "default_best_of")]
+    pub best_of: u8,
     pub status: FixtureStatus,
     pub result: Option<MatchResult>,
+}
+
+fn default_best_of() -> u8 {
+    1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -176,6 +182,7 @@ impl Default for Fixture {
             home_team_id: String::new(),
             away_team_id: String::new(),
             competition: FixtureCompetition::League,
+            best_of: default_best_of(),
             status: FixtureStatus::Scheduled,
             result: None,
         }

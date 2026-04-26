@@ -233,4 +233,31 @@ describe("TournamentsTab", () => {
 
     expect(onSelectTeam).toHaveBeenCalledWith("team-2");
   });
+
+  it("shows playoff bracket and series score when playoffs have started", () => {
+    const gameState = createGameState(true);
+    gameState.league!.fixtures = [
+      createFixture({
+        id: "playoff-1",
+        competition: "Playoffs",
+        matchday: 12,
+        best_of: 3,
+        result: {
+          home_goals: 0,
+          away_goals: 0,
+          home_scorers: [],
+          away_scorers: [],
+          home_wins: 2,
+          away_wins: 1,
+        },
+      }),
+    ];
+
+    render(<TournamentsTab gameState={gameState} onSelectTeam={vi.fn()} />);
+
+    expect(screen.getByText("schedule.playoffs · Bracket")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
+    expect(screen.getAllByText("2 - 1").length).toBeGreaterThan(0);
+  });
 });

@@ -391,24 +391,65 @@ impl LiveMatchState {
         player_off_id: &str,
         player_on_id: &str,
     ) -> Result<(), String> {
-        let (team, bench) = match side {
-            Side::Home => (&mut self.home, &mut self.home_bench),
-            Side::Away => (&mut self.away, &mut self.away_bench),
+        let (off_idx, incoming_id, outgoing_id) = match side {
+            Side::Home => {
+                let on_idx = self
+                    .home_bench
+                    .iter()
+                    .position(|p| p.id == player_on_id)
+                    .ok_or_else(|| "Incoming player not in bench".to_string())?;
+                let off_idx = self
+                    .home
+                    .players
+                    .iter()
+                    .position(|p| p.id == player_off_id)
+                    .ok_or_else(|| "Outgoing player not in lineup".to_string())?;
+
+                let incoming = self.home_bench.remove(on_idx);
+                let incoming_id = incoming.id.clone();
+                let outgoing = std::mem::replace(&mut self.home.players[off_idx], incoming);
+                let outgoing_id = outgoing.id.clone();
+                self.home_bench.push(outgoing);
+                (off_idx, incoming_id, outgoing_id)
+            }
+            Side::Away => {
+                let on_idx = self
+                    .away_bench
+                    .iter()
+                    .position(|p| p.id == player_on_id)
+                    .ok_or_else(|| "Incoming player not in bench".to_string())?;
+                let off_idx = self
+                    .away
+                    .players
+                    .iter()
+                    .position(|p| p.id == player_off_id)
+                    .ok_or_else(|| "Outgoing player not in lineup".to_string())?;
+
+                let incoming = self.away_bench.remove(on_idx);
+                let incoming_id = incoming.id.clone();
+                let outgoing = std::mem::replace(&mut self.away.players[off_idx], incoming);
+                let outgoing_id = outgoing.id.clone();
+                self.away_bench.push(outgoing);
+                (off_idx, incoming_id, outgoing_id)
+            }
         };
 
-        let on_idx = bench
-            .iter()
-            .position(|p| p.id == player_on_id)
-            .ok_or_else(|| "Incoming player not in bench".to_string())?;
-        let off_idx = team
-            .players
-            .iter()
-            .position(|p| p.id == player_off_id)
-            .ok_or_else(|| "Outgoing player not in lineup".to_string())?;
+        if let Some(unit) = self
+            .lol_map
+            .units
+            .iter_mut()
+            .find(|unit| unit.side == side && usize::from(unit.spawn_slot) == off_idx)
+        {
+            unit.player_id = incoming_id;
+        } else if let Some(unit) = self
+            .lol_map
+            .units
+            .iter_mut()
+            .find(|unit| unit.side == side && unit.player_id == outgoing_id)
+        {
+            unit.player_id = incoming_id;
+        }
 
-        let incoming = bench.remove(on_idx);
-        let outgoing = std::mem::replace(&mut team.players[off_idx], incoming);
-        bench.push(outgoing);
         Ok(())
     }
 }

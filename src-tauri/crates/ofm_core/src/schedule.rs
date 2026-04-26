@@ -8,6 +8,7 @@ fn build_fixture(
     home_team_id: String,
     away_team_id: String,
     competition: FixtureCompetition,
+    best_of: u8,
 ) -> Fixture {
     Fixture {
         id: Uuid::new_v4().to_string(),
@@ -16,8 +17,49 @@ fn build_fixture(
         home_team_id,
         away_team_id,
         competition,
+        best_of,
         status: FixtureStatus::Scheduled,
         result: None,
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LecSplit {
+    Winter,
+    Spring,
+    Summer,
+}
+
+pub fn regular_best_of(split: LecSplit) -> u8 {
+    match split {
+        LecSplit::Winter => 1,
+        LecSplit::Spring | LecSplit::Summer => 3,
+    }
+}
+
+pub fn playoff_best_of(split: LecSplit, is_grand_final: bool) -> u8 {
+    match split {
+        LecSplit::Winter => {
+            if is_grand_final {
+                5
+            } else {
+                3
+            }
+        }
+        LecSplit::Spring | LecSplit::Summer => 5,
+    }
+}
+
+pub fn parse_lec_split(name: &str) -> Option<LecSplit> {
+    let key = name.to_lowercase();
+    if key.contains("winter") {
+        Some(LecSplit::Winter)
+    } else if key.contains("spring") {
+        Some(LecSplit::Spring)
+    } else if key.contains("summer") {
+        Some(LecSplit::Summer)
+    } else {
+        None
     }
 }
 
@@ -63,6 +105,7 @@ pub fn generate_league(
                 home_team_id: team_ids[home_idx].clone(),
                 away_team_id: team_ids[away_idx].clone(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status: FixtureStatus::Scheduled,
                 result: None,
             };
@@ -94,6 +137,7 @@ pub fn generate_league(
                 home_team_id: team_ids[home_idx].clone(),
                 away_team_id: team_ids[away_idx].clone(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status: FixtureStatus::Scheduled,
                 result: None,
             };
@@ -132,6 +176,24 @@ pub fn generate_single_round_league_with_offsets(
     team_ids: &[String],
     start_date: DateTime<Utc>,
     round_day_offsets: Option<&[i64]>,
+) -> League {
+    generate_single_round_league_with_offsets_and_bo(
+        name,
+        season,
+        team_ids,
+        start_date,
+        round_day_offsets,
+        1,
+    )
+}
+
+pub fn generate_single_round_league_with_offsets_and_bo(
+    name: &str,
+    season: u32,
+    team_ids: &[String],
+    start_date: DateTime<Utc>,
+    round_day_offsets: Option<&[i64]>,
+    best_of: u8,
 ) -> League {
     let n = team_ids.len();
     assert!(n >= 2, "Need at least 2 teams for a league");
@@ -178,6 +240,7 @@ pub fn generate_single_round_league_with_offsets(
                 home_team_id,
                 away_team_id,
                 FixtureCompetition::League,
+                best_of,
             ));
         }
 
@@ -237,6 +300,59 @@ pub fn generate_winter_playoffs(
                 home_team_id.clone(),
                 away_team_id.clone(),
                 FixtureCompetition::Playoffs,
+                playoff_best_of(LecSplit::Winter, round_index == rounds.len() - 1),
+            ));
+        }
+    }
+
+    fixtures
+}
+
+/// Spring/Summer playoffs bracket (Top 6, double elimination style).
+/// Seed order must be [1..6].
+pub fn generate_spring_summer_playoffs(
+    seeded_team_ids: &[String],
+    split: LecSplit,
+    start_date: DateTime<Utc>,
+    start_matchday: u32,
+) -> Vec<Fixture> {
+    assert!(
+        matches!(split, LecSplit::Spring | LecSplit::Summer),
+        "Spring/Summer playoff generator expects Spring or Summer split"
+    );
+    assert!(seeded_team_ids.len() >= 6, "Need at least 6 seeded teams");
+
+    let s = seeded_team_ids;
+    let rounds: Vec<Vec<(String, String)>> = vec![
+        // UB R1
+        vec![(s[0].clone(), s[3].clone()), (s[1].clone(), s[2].clone())],
+        // LB R1 (losers of UB R1 face 6/5 seeds)
+        vec![(s[3].clone(), s[5].clone()), (s[2].clone(), s[4].clone())],
+        // UB Final
+        vec![(s[0].clone(), s[1].clone())],
+        // LB R2
+        vec![(s[5].clone(), s[4].clone())],
+        // LB Final
+        vec![(s[3].clone(), s[5].clone())],
+        // Grand Final
+        vec![(s[0].clone(), s[3].clone())],
+    ];
+
+    let mut fixtures = Vec::new();
+    for (round_index, pairings) in rounds.iter().enumerate() {
+        let matchday = start_matchday + round_index as u32;
+        let round_date = start_date + Duration::days(round_index as i64 * 7);
+        let date_str = round_date.format("%Y-%m-%d").to_string();
+        let is_grand_final = round_index == rounds.len() - 1;
+
+        for (home_team_id, away_team_id) in pairings {
+            fixtures.push(build_fixture(
+                matchday,
+                date_str.clone(),
+                home_team_id.clone(),
+                away_team_id.clone(),
+                FixtureCompetition::Playoffs,
+                playoff_best_of(split, is_grand_final),
             ));
         }
     }
@@ -273,6 +389,7 @@ pub fn generate_preseason_friendlies(
                 home_team_id,
                 away_team_id,
                 competition: FixtureCompetition::Friendly,
+                best_of: 1,
                 status: FixtureStatus::Scheduled,
                 result: None,
             }
@@ -375,7 +492,40 @@ mod tests {
                 .all(|fixture| fixture.competition == FixtureCompetition::Friendly)
         );
         assert!(friendlies.iter().all(|fixture| fixture.matchday == 0));
+        assert!(friendlies.iter().all(|fixture| fixture.best_of == 1));
         assert_eq!(friendlies[0].date, "2026-07-11");
         assert_eq!(friendlies[2].date, "2026-07-25");
+    }
+
+    #[test]
+    fn winter_playoffs_use_bo3_except_final_bo5() {
+        let seeds: Vec<String> = (1..=8).map(|i| format!("team_{}", i)).collect();
+        let start = Utc.with_ymd_and_hms(2026, 3, 1, 0, 0, 0).unwrap();
+
+        let fixtures = generate_winter_playoffs(&seeds, start, 10);
+        assert!(!fixtures.is_empty());
+        let max_matchday = fixtures.iter().map(|fixture| fixture.matchday).max().unwrap();
+
+        for fixture in fixtures {
+            if fixture.matchday == max_matchday {
+                assert_eq!(fixture.best_of, 5);
+            } else {
+                assert_eq!(fixture.best_of, 3);
+            }
+        }
+    }
+
+    #[test]
+    fn spring_playoffs_use_bo5_and_expected_opening_matchups() {
+        let seeds: Vec<String> = (1..=6).map(|i| format!("team_{}", i)).collect();
+        let start = Utc.with_ymd_and_hms(2026, 4, 1, 0, 0, 0).unwrap();
+
+        let fixtures = generate_spring_summer_playoffs(&seeds, LecSplit::Spring, start, 20);
+        assert_eq!(fixtures.len(), 8);
+        assert!(fixtures.iter().all(|fixture| fixture.best_of == 5));
+        assert_eq!(fixtures[0].home_team_id, "team_1");
+        assert_eq!(fixtures[0].away_team_id, "team_4");
+        assert_eq!(fixtures[1].home_team_id, "team_2");
+        assert_eq!(fixtures[1].away_team_id, "team_3");
     }
 }

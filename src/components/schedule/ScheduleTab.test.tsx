@@ -203,7 +203,7 @@ describe("ScheduleTab", () => {
       />,
     );
 
-    expect(screen.getByText("2 - 1")).toBeInTheDocument();
+    expect(screen.getAllByText("2 - 1").length).toBeGreaterThan(0);
   });
 
   it("uses stored fixture series wins when available", () => {
@@ -277,8 +277,8 @@ describe("ScheduleTab", () => {
       />,
     );
 
-    expect(screen.getByText("BO3")).toBeInTheDocument();
-    expect(screen.getByText("BO5")).toBeInTheDocument();
+    expect(screen.getAllByText("BO3").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("BO5").length).toBeGreaterThan(0);
   });
 
   it("shows Bo3 and Bo5 on the first two preseason friendlies", () => {
@@ -312,8 +312,8 @@ describe("ScheduleTab", () => {
       />,
     );
 
-    expect(screen.getByText("BO3")).toBeInTheDocument();
-    expect(screen.getByText("BO5")).toBeInTheDocument();
+    expect(screen.getAllByText("BO3").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("BO5").length).toBeGreaterThan(0);
   });
 
   it("passes stored series games to calendar draft result view", () => {

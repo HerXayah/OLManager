@@ -859,8 +859,15 @@ export default function MatchSimulation() {
       ? Math.min(...playoffFixtures.map((fixture) => fixture.matchday))
       : null;
 
+  const explicitSeriesLength = (() => {
+    const raw = currentFixture?.best_of;
+    if (raw === 1 || raw === 3 || raw === 5) return raw;
+    return null;
+  })();
+
   const seriesLength: 1 | 3 | 5 =
-    currentFixture?.competition === "Friendly"
+    explicitSeriesLength ??
+    (currentFixture?.competition === "Friendly"
       ? currentFixture.id === firstFriendlyFixtureId
         ? 3
         : currentFixture.id === secondFriendlyFixtureId
@@ -874,7 +881,7 @@ export default function MatchSimulation() {
         : playoffFinalMatchday !== null &&
             currentFixture.matchday >= playoffFinalMatchday
         ? 5
-        : 3;
+        : 3);
 
   useEffect(() => {
     if (!currentFixture?.id) {

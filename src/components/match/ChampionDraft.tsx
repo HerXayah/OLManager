@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import type { MatchSnapshot } from "./types";
 import type { GameStateData } from "../../store/gameStore";
 import { getChampionTiming } from "../../lib/championTiming";
-import { formatStaffEffectPercent, getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
+import { getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
+import { resolvePlayerPhoto } from "../../lib/playerPhotos";
 import teamsSeed from "../../../data/lec/draft/teams.json";
 import playersSeed from "../../../data/lec/draft/players.json";
 import championsSeed from "../../../data/lec/draft/champions.json";
@@ -943,8 +944,14 @@ export default function ChampionDraft({
 
     if (currentStep.type === "pick") {
       const aiSide = currentStep.side;
-      const aiPickIndex = aiSide === "blue" ? bluePicks.length : redPicks.length;
+      const ownPicks = aiSide === "blue" ? bluePicks : redPicks;
       const enemyPicks = aiSide === "blue" ? redPicks : bluePicks;
+      const coveredRoles = new Set<Role>();
+      ownPicks.forEach((pick) => {
+        const champion = championById.get(pick.championId);
+        champion?.roleHints.forEach((role) => coveredRoles.add(role));
+      });
+      const missingRoles = ROLE_ORDER.filter((role) => !coveredRoles.has(role));
 
       const candidates = available;
 
@@ -954,8 +961,10 @@ export default function ChampionDraft({
       let bestScore = Number.NEGATIVE_INFINITY;
 
       candidates.forEach((champion) => {
-        const mastery = resolvePlayerMastery(aiSide, aiPickIndex, champion.id);
+        const mastery = resolveTeamChampionMastery(aiSide, champion.id);
         const meta = metaScoreForChampion(champion);
+        const roleNeedBonus =
+          missingRoles.length > 0 && champion.roleHints.some((role) => missingRoles.includes(role)) ? 12 : 0;
         let counter = 0;
 
         enemyPicks.forEach((enemyPick) => {
@@ -963,7 +972,11 @@ export default function ChampionDraft({
           counter -= counterValue(enemyPick.championId, champion.id) * AI_WEIGHTS.pick.counterRiskWeight;
         });
 
-        const score = mastery * AI_WEIGHTS.pick.masteryWeight + meta * AI_WEIGHTS.pick.metaWeight + counter;
+        const score =
+          mastery * AI_WEIGHTS.pick.masteryWeight +
+          meta * AI_WEIGHTS.pick.metaWeight +
+          counter +
+          roleNeedBonus;
         if (score > bestScore) {
           bestScore = score;
           bestChampion = champion;
@@ -1014,14 +1027,21 @@ export default function ChampionDraft({
         const side = step.side;
         const ownPicks = side === "blue" ? nextBluePicks : nextRedPicks;
         const enemyPicks = side === "blue" ? nextRedPicks : nextBluePicks;
-        const pickIndex = ownPicks.length;
+        const coveredRoles = new Set<Role>();
+        ownPicks.forEach((pick) => {
+          const champion = championById.get(pick.championId);
+          champion?.roleHints.forEach((role) => coveredRoles.add(role));
+        });
+        const missingRoles = ROLE_ORDER.filter((role) => !coveredRoles.has(role));
 
         let bestChampion: ChampionData | null = null;
         let bestScore = Number.NEGATIVE_INFINITY;
 
         available.forEach((champion) => {
-          const mastery = resolvePlayerMastery(side, pickIndex, champion.id);
+          const mastery = resolveTeamChampionMastery(side, champion.id);
           const meta = metaScoreForChampion(champion);
+          const roleNeedBonus =
+            missingRoles.length > 0 && champion.roleHints.some((role) => missingRoles.includes(role)) ? 12 : 0;
           let counter = 0;
 
           enemyPicks.forEach((enemyPick) => {
@@ -1029,7 +1049,11 @@ export default function ChampionDraft({
             counter -= counterValue(enemyPick.championId, champion.id) * AI_WEIGHTS.pick.counterRiskWeight;
           });
 
-          const score = mastery * AI_WEIGHTS.pick.masteryWeight + meta * AI_WEIGHTS.pick.metaWeight + counter;
+          const score =
+            mastery * AI_WEIGHTS.pick.masteryWeight +
+            meta * AI_WEIGHTS.pick.metaWeight +
+            counter +
+            roleNeedBonus;
           if (score > bestScore) {
             bestScore = score;
             bestChampion = champion;
@@ -1440,12 +1464,16 @@ export default function ChampionDraft({
     const userTeamId = controlledSide === "blue" ? snapshot.home_team.id : snapshot.away_team.id;
     const ownPicksList = controlledSide === "blue" ? bluePicks : redPicks;
     const enemyPicksList = controlledSide === "blue" ? redPicks : bluePicks;
+    const ownCoveredRoles = new Set<Role>();
+    ownPicksList.forEach((pick) => {
+      const champion = championById.get(pick.championId);
+      champion?.roleHints.forEach((role) => ownCoveredRoles.add(role));
+    });
     const availableChampions = champions.filter((champion) => !usedChampionIds.has(champion.id));
 
     const assistantCoach = gameState.staff.find(
       (staff) => staff.team_id === userTeamId && staff.role === "AssistantManager",
     );
-    const staffEffects = getLolStaffEffectsForTeam(gameState, userTeamId);
     const coachSkill = assistantCoach?.attributes?.coaching ?? 60;
     const coachName =
       assistantCoach && (assistantCoach.first_name || assistantCoach.last_name)
@@ -1463,13 +1491,6 @@ export default function ChampionDraft({
       champion,
       });
     };
-
-    if (staffEffects.tactics > 1.03 || staffEffects.analysis > 1.03) {
-      addCoachTip(
-        "pick",
-        `Preparación de staff: tácticas ${formatStaffEffectPercent(staffEffects.tactics)}, análisis ${formatStaffEffectPercent(staffEffects.analysis)}. Es ventaja chica, no magia: ejecutan los jugadores.`,
-      );
-    }
 
     const enemyPickedRoles = new Set<Role>();
     enemyPicksList.forEach((pick) => {
@@ -1537,13 +1558,14 @@ export default function ChampionDraft({
 
     const ownPlayers = controlledSide === "blue" ? bluePlayers : redPlayers;
     const ownTeamSeed = controlledSide === "blue" ? homeTeamSeed : awayTeamSeed;
+    const ownTeamSeedId = ownTeamSeed?.id ?? null;
     const ownTeamSeedPlayers = ownTeamSeed
       ? PLAYER_SEEDS.filter((seedPlayer) => seedPlayer.teamId === ownTeamSeed.id)
       : [];
     const usedSeedPlayerIgns = new Set<string>();
 
     ownPlayers.slice(0, 5).forEach((player, index) => {
-      const directPlayerKey = `${userTeamId}:${normalizeKey(player.name)}`;
+      const directPlayerKey = ownTeamSeedId ? `${ownTeamSeedId}:${normalizeKey(player.name)}` : "";
       let masteryMap = playerMasteryMap.get(directPlayerKey);
       let matchedSeedPlayer = ownTeamSeedPlayers.find(
         (seedPlayer) => normalizeKey(seedPlayer.ign) === normalizeKey(player.name),
@@ -1567,7 +1589,9 @@ export default function ChampionDraft({
         if (fallback) {
           usedSeedPlayerIgns.add(normalizeKey(fallback.ign));
           matchedSeedPlayer = fallback;
-          masteryMap = playerMasteryMap.get(`${userTeamId}:${normalizeKey(fallback.ign)}`);
+          masteryMap = ownTeamSeedId
+            ? playerMasteryMap.get(`${ownTeamSeedId}:${normalizeKey(fallback.ign)}`)
+            : undefined;
         }
       }
 
@@ -1575,7 +1599,9 @@ export default function ChampionDraft({
 
       const sourceRole = mapSeedRoleToDraftRole(String(matchedSeedPlayer?.role ?? "")) ?? ROLE_ORDER[index];
       const sourceImage =
-        playerSeedPhotoUrl(matchedSeedPlayer?.photo) ?? `/player-photos/${player.id}.png`;
+        resolvePlayerPhoto(player.id, player.name) ??
+        playerSeedPhotoUrl(matchedSeedPlayer?.photo) ??
+        `/player-photos/${player.id}.png`;
 
       const playerState = gameState.players.find((item) => item.id === player.id);
       const gameIq = playerState
@@ -1626,6 +1652,9 @@ export default function ChampionDraft({
         .sort((a, b) => b.value - a.value)[0];
 
       if (draftAdviceStage !== "ban" && bestChampion && bestMastery >= 50) {
+        if (sourceRole && ownCoveredRoles.has(sourceRole)) {
+          return;
+        }
         const pickPhraseText =
           strongCounterTarget && strongCounterTarget.value >= 2
             ? uniquePhrase(
@@ -1686,16 +1715,25 @@ export default function ChampionDraft({
 
     const hasPlayerPickTip = tips.some((tip) => tip.sourceType === "player" && tip.type === "pick");
     if (draftAdviceStage !== "ban" && !hasPlayerPickTip) {
-      const fallbackPlayer = ownPlayers[0];
+      const fallbackPlayerIndex = ownPlayers.findIndex((player, index) => {
+        const fallbackRole =
+          mapSeedRoleToDraftRole(String(ownTeamSeedPlayers[index]?.role ?? "")) ?? ROLE_ORDER[index] ?? null;
+        return fallbackRole ? !ownCoveredRoles.has(fallbackRole) : true;
+      });
+      const fallbackPlayer =
+        fallbackPlayerIndex >= 0 ? ownPlayers[fallbackPlayerIndex] : ownPlayers[0];
       const fallbackChampion = availableChampions[0];
-      const fallbackSeedPlayer = ownTeamSeedPlayers[0];
+      const fallbackSeedPlayer =
+        fallbackPlayerIndex >= 0 ? ownTeamSeedPlayers[fallbackPlayerIndex] : ownTeamSeedPlayers[0];
       if (fallbackPlayer && fallbackChampion) {
         tips.push({
           sourceType: "player",
           sourceName: fallbackPlayer.name,
           sourceRole: mapSeedRoleToDraftRole(String(fallbackSeedPlayer?.role ?? "")) ?? ROLE_ORDER[0],
           sourceImage:
-            playerSeedPhotoUrl(fallbackSeedPlayer?.photo) ?? `/player-photos/${fallbackPlayer.id}.png`,
+            resolvePlayerPhoto(fallbackPlayer.id, fallbackPlayer.name) ??
+            playerSeedPhotoUrl(fallbackSeedPlayer?.photo) ??
+            `/player-photos/${fallbackPlayer.id}.png`,
           type: "pick",
           text: uniquePhrase(
             PLAYER_COMFORT_PICK_PHRASES,
@@ -1709,6 +1747,12 @@ export default function ChampionDraft({
 
     const coachTips = tips.filter((tip) => tip.sourceType === "coach");
     const playerTips = tips.filter((tip) => tip.sourceType === "player");
+
+    if (draftAdviceStage === "pick") {
+      const playerPickTips = playerTips.filter((tip) => tip.type === "pick").slice(0, 5);
+      const coachWarnTips = coachTips.filter((tip) => tip.type !== "pick").slice(0, 1);
+      return [...playerPickTips, ...coachWarnTips].slice(0, 5);
+    }
 
     const mixed: DraftAdviceTip[] = [];
     let coachIdx = 0;
@@ -1748,6 +1792,15 @@ export default function ChampionDraft({
     usedChampionIds,
     rivalMasteryDisplay
   ]);
+
+  const patchLabel =
+    gameState?.champion_patch?.current_patch_label ??
+    (typeof gameState?.champion_patch?.patch_year === "number" &&
+    typeof gameState?.champion_patch?.patch_index_in_year === "number"
+      ? `${gameState.champion_patch.patch_year}.${gameState.champion_patch.patch_index_in_year}`
+      : typeof gameState?.champion_patch?.current_patch === "number"
+        ? String(gameState.champion_patch.current_patch)
+        : "--");
 
   const topBgChampion =
     draftHistory[draftHistory.length - 1] ??
@@ -1980,7 +2033,7 @@ export default function ChampionDraft({
                 alt="LEC"
                 className="w-10 h-10 object-contain opacity-100 mt-1"
               />
-              <p className="text-[11px] tracking-[0.15em] text-gray-300 uppercase mb-1">Patch 26.8</p>
+              <p className="text-[11px] tracking-[0.15em] text-gray-300 uppercase mb-1">Patch {patchLabel}</p>
             </div>
 
             {redOrderedPicks.map((pick, index) => (
@@ -2004,7 +2057,7 @@ export default function ChampionDraft({
 
         <section className="order-1 flex-1 min-h-0 rounded-md border border-cyan-400/25 bg-[#050608] p-3 overflow-hidden shadow-[0_0_28px_rgba(18,215,255,0.06)]">
           <div className="h-full grid grid-cols-1 xl:grid-cols-[270px_minmax(0,1fr)_270px] gap-3 items-start">
-            <aside className="hidden xl:flex flex-col gap-2 min-h-0">
+            <aside className="hidden xl:flex flex-col gap-2 min-h-0 overflow-y-auto scrollbar-draft pr-1">
               {assistantCoachTips.length > 0 ? (
                 <div className="rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-3 text-[12px] text-gray-200">
                   <p className="font-heading uppercase tracking-wide text-xs text-white mb-2">
@@ -2253,11 +2306,11 @@ export default function ChampionDraft({
               )}
             </div>
 
-            <aside className="hidden xl:flex flex-col rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-2 min-h-0">
+            <aside className="hidden xl:flex flex-col rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-2 min-h-0 overflow-y-auto scrollbar-draft pr-1">
               <p className="text-[11px] font-heading uppercase tracking-wide text-gray-200 mb-2 text-right">
                 {t("match.draft.enemyComfortTitle")}
               </p>
-              <div className="space-y-1 overflow-auto scrollbar-draft pr-1">
+              <div className="space-y-1">
                 {rivalMasteryDisplay.length === 0 ? (
                   <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
                     {t("match.draft.enemyComfortUnknown", "Sin maestrías rivales descubiertas")}

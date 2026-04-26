@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { GameStateData } from "../store/gameStore";
 import { useGameStore } from "../store/gameStore";
 import { Card, CardBody } from "./ui";
+import PlayoffBracketBoard from "./playoffs/PlayoffBracketBoard";
 import { Trophy, Award, Star, ArrowRight, Crown } from "lucide-react";
 
 interface EndOfSeasonSummary {
@@ -30,6 +31,19 @@ interface EndOfSeasonScreenProps {
   onGameUpdate: (g: GameStateData) => void;
 }
 
+function resolvePlayoffChampionTeamId(gameState: GameStateData): string | null {
+  const playoffFixtures = (gameState.league?.fixtures ?? [])
+    .filter((fixture) => fixture.competition === "Playoffs" && fixture.status === "Completed" && fixture.result)
+    .sort((left, right) => right.matchday - left.matchday);
+
+  const final = playoffFixtures[0];
+  if (!final || !final.result) return null;
+  const homeWins = typeof final.result.home_wins === "number" ? final.result.home_wins : 0;
+  const awayWins = typeof final.result.away_wins === "number" ? final.result.away_wins : 0;
+  if (homeWins === awayWins) return null;
+  return homeWins > awayWins ? final.home_team_id : final.away_team_id;
+}
+
 export default function EndOfSeasonScreen({ gameState, onGameUpdate }: EndOfSeasonScreenProps) {
   const { t } = useTranslation();
   const setShowFiredModal = useGameStore((s) => s.setShowFiredModal);
@@ -51,9 +65,12 @@ export default function EndOfSeasonScreen({ gameState, onGameUpdate }: EndOfSeas
   const userStandingIdx = standings.findIndex(s => s.team_id === userTeamId);
   const userStanding = standings[userStandingIdx];
   const userPosition = userStandingIdx + 1;
-  const champion = standings[0];
-  const championName = gameState.teams.find(t => t.id === champion?.team_id)?.name || "";
-  const isChampion = champion?.team_id === userTeamId;
+  const standingsChampionId = standings[0]?.team_id ?? null;
+  const playoffChampionId = resolvePlayoffChampionTeamId(gameState);
+  const championTeamId = playoffChampionId ?? standingsChampionId;
+  const hasPlayoffs = (league?.fixtures ?? []).some((fixture) => fixture.competition === "Playoffs");
+  const championName = gameState.teams.find(t => t.id === championTeamId)?.name || "";
+  const isChampion = championTeamId === userTeamId;
 
   const handleAdvance = async () => {
     if (loading) return;
@@ -137,30 +154,39 @@ export default function EndOfSeasonScreen({ gameState, onGameUpdate }: EndOfSeas
             </CardBody>
           </Card>
 
-          {/* Final top 5 standings */}
-          <Card className="mb-6">
-            <CardBody>
-              <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-accent-500" /> {t('endOfSeason.finalStandings')}
-              </h3>
-              <div className="divide-y divide-gray-100 dark:divide-navy-600">
-                {standings.slice(0, 5).map((entry, idx) => {
-                  const teamName = gameState.teams.find(t => t.id === entry.team_id)?.name || "";
-                  const isUser = entry.team_id === userTeamId;
-                  const gd = entry.goals_for - entry.goals_against;
-                  return (
-                    <div key={entry.team_id} className={`flex items-center py-2.5 gap-3 ${isUser ? "bg-primary-50/50 dark:bg-primary-500/5 -mx-2 px-2 rounded-lg" : ""}`}>
-                      <span className={`font-heading font-bold text-sm w-6 text-center ${idx === 0 ? "text-accent-500" : "text-gray-400"}`}>{idx + 1}</span>
-                      <span className={`flex-1 text-sm font-semibold ${isUser ? "text-primary-600 dark:text-primary-400" : "text-gray-800 dark:text-gray-200"}`}>{teamName}</span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums w-16 text-center">{entry.won}W {entry.drawn}D {entry.lost}L</span>
-                      <span className={`text-xs font-semibold tabular-nums w-8 text-center ${gd > 0 ? "text-primary-500" : gd < 0 ? "text-red-500" : "text-gray-500"}`}>{gd > 0 ? `+${gd}` : gd}</span>
-                      <span className="font-heading font-bold text-sm text-gray-800 dark:text-gray-100 tabular-nums w-8 text-right">{entry.points}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardBody>
-          </Card>
+          {hasPlayoffs ? (
+            <div className="mb-6">
+              <PlayoffBracketBoard
+                league={league!}
+                teams={gameState.teams}
+                title={`${t("schedule.playoffs")} · Bracket`}
+              />
+            </div>
+          ) : (
+            <Card className="mb-6">
+              <CardBody>
+                <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-accent-500" /> {t('endOfSeason.finalStandings')}
+                </h3>
+                <div className="divide-y divide-gray-100 dark:divide-navy-600">
+                  {standings.slice(0, 5).map((entry, idx) => {
+                    const teamName = gameState.teams.find(t => t.id === entry.team_id)?.name || "";
+                    const isUser = entry.team_id === userTeamId;
+                    const gd = entry.goals_for - entry.goals_against;
+                    return (
+                      <div key={entry.team_id} className={`flex items-center py-2.5 gap-3 ${isUser ? "bg-primary-50/50 dark:bg-primary-500/5 -mx-2 px-2 rounded-lg" : ""}`}>
+                        <span className={`font-heading font-bold text-sm w-6 text-center ${idx === 0 ? "text-accent-500" : "text-gray-400"}`}>{idx + 1}</span>
+                        <span className={`flex-1 text-sm font-semibold ${isUser ? "text-primary-600 dark:text-primary-400" : "text-gray-800 dark:text-gray-200"}`}>{teamName}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums w-16 text-center">{entry.won}W {entry.drawn}D {entry.lost}L</span>
+                        <span className={`text-xs font-semibold tabular-nums w-8 text-center ${gd > 0 ? "text-primary-500" : gd < 0 ? "text-red-500" : "text-gray-500"}`}>{gd > 0 ? `+${gd}` : gd}</span>
+                        <span className="font-heading font-bold text-sm text-gray-800 dark:text-gray-100 tabular-nums w-8 text-right">{entry.points}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardBody>
+            </Card>
+          )}
 
           {/* Champion + awards */}
           {!isChampion && (

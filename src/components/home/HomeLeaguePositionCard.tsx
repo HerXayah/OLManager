@@ -2,7 +2,7 @@ import { Trophy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge, Card, CardBody, CardHeader } from "../ui";
-import type { TeamData } from "../../store/gameStore";
+import type { LeagueData, TeamData } from "../../store/gameStore";
 
 interface LeagueStandingSnapshot {
   team_id: string;
@@ -19,6 +19,7 @@ interface HomeLeaguePositionCardProps {
   isPreseason: boolean;
   phase: string;
   seasonStartLabel: string | null;
+  league?: LeagueData | null;
   sortedStandings: LeagueStandingSnapshot[];
   teams: TeamData[];
   myTeamId: string | null;
@@ -40,16 +41,47 @@ function teamLogoUrl(team: TeamData | undefined): string | null {
   return `/team-logos/${file}.png`;
 }
 
+function getTeamLabel(teams: TeamData[], teamId: string): string {
+  const team = teams.find((item) => item.id === teamId);
+  return team?.short_name ?? team?.name ?? teamId;
+}
+
 export default function HomeLeaguePositionCard({
   isPreseason,
   phase,
   seasonStartLabel,
+  league,
   sortedStandings,
   teams,
   myTeamId,
   onNavigate,
 }: HomeLeaguePositionCardProps) {
   const { t } = useTranslation();
+  const hasPlayoffsStarted = Boolean(
+    league?.fixtures.some((fixture) => fixture.competition === "Playoffs"),
+  );
+  const playoffFixtures = league?.fixtures.filter(
+    (fixture) => fixture.competition === "Playoffs",
+  ) ?? [];
+  const myPlayoffFixtures = myTeamId
+    ? playoffFixtures.filter(
+        (fixture) =>
+          fixture.home_team_id === myTeamId || fixture.away_team_id === myTeamId,
+      )
+    : [];
+  myPlayoffFixtures.sort((left, right) => {
+    if (left.matchday !== right.matchday) {
+      return left.matchday - right.matchday;
+    }
+    return left.date.localeCompare(right.date);
+  });
+  const nextPlayoffFixture = myPlayoffFixtures.find(
+    (fixture) => fixture.status !== "Completed",
+  );
+  const latestCompletedPlayoffFixture = [...myPlayoffFixtures]
+    .reverse()
+    .find((fixture) => fixture.status === "Completed");
+  const spotlightFixture = nextPlayoffFixture ?? latestCompletedPlayoffFixture ?? null;
 
   return (
     <Card accent="accent">
@@ -59,11 +91,11 @@ export default function HomeLeaguePositionCard({
             onClick={() => onNavigate?.("Schedule")}
             className="text-primary-500 dark:text-primary-400 text-xs font-heading font-bold uppercase tracking-wider hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
           >
-            {t("home.standings")}
+            {hasPlayoffsStarted ? t("schedule.playoffs") : t("home.standings")}
           </button>
         }
       >
-        {t("home.leaguePosition")}
+        {hasPlayoffsStarted ? t("schedule.playoffs") : t("home.leaguePosition")}
       </CardHeader>
 
       <CardBody>
@@ -80,6 +112,47 @@ export default function HomeLeaguePositionCard({
             <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">
               {t("season.standingsLocked")}
             </p>
+          </div>
+        ) : hasPlayoffsStarted ? (
+          <div className="rounded-xl border border-cyan-300/20 bg-navy-900/40 px-3 py-3">
+            {spotlightFixture ? (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <Badge variant="accent" size="sm">
+                    {nextPlayoffFixture
+                      ? t("home.nextMatch", { defaultValue: "Next Match" })
+                      : t("schedule.lastResult", { defaultValue: "Last Result" })}
+                  </Badge>
+                  <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-cyan-300/90">
+                    {t("schedule.round", {
+                      number: spotlightFixture.matchday,
+                      defaultValue: `Round ${spotlightFixture.matchday}`,
+                    })}
+                    {` · BO${spotlightFixture.best_of ?? 3}`}
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm font-heading font-bold text-gray-100 uppercase tracking-wide">
+                  {getTeamLabel(teams, spotlightFixture.home_team_id)} vs {getTeamLabel(teams, spotlightFixture.away_team_id)}
+                </p>
+
+                {spotlightFixture.result ? (
+                  <p className="mt-1 text-xs text-gray-300 font-heading uppercase tracking-wider">
+                    {(spotlightFixture.result.home_wins ?? spotlightFixture.result.home_goals ?? 0)} - {(spotlightFixture.result.away_wins ?? spotlightFixture.result.away_goals ?? 0)}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400 font-heading uppercase tracking-wider">
+                    {spotlightFixture.date}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-xs text-gray-400 dark:text-gray-500">
+                {t("home.noUpcomingOpponent", {
+                  defaultValue: "No upcoming playoff match.",
+                })}
+              </p>
+            )}
           </div>
         ) : sortedStandings.length > 0 ? (
           <div className="space-y-1">

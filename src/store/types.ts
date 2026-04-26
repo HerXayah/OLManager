@@ -449,6 +449,7 @@ export interface FixtureData {
   home_team_id: string;
   away_team_id: string;
   competition: "League" | "Friendly" | "PreseasonTournament" | "Playoffs";
+  best_of?: number;
   status: "Scheduled" | "InProgress" | "Completed";
   result: MatchResult | null;
 }

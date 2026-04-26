@@ -19,6 +19,7 @@ import {
 } from "../../lib/helpers";
 import { resolveSeasonContext } from "../../lib/seasonContext";
 import { useTranslation } from "react-i18next";
+import PlayoffBracketBoard from "../playoffs/PlayoffBracketBoard";
 
 interface AwardEntry {
   player_id: string;
@@ -82,9 +83,14 @@ export default function TournamentsTab({
   );
 
   const competitiveFixtures = getCompetitiveFixtures(league.fixtures);
+  const playoffFixtures = league.fixtures.filter((fixture) => fixture.competition === "Playoffs");
+  const hasPlayoffsStarted = playoffFixtures.length > 0;
+  const tournamentFixtures = league.fixtures.filter(
+    (fixture) => fixture.competition === "League" || fixture.competition === "Playoffs",
+  );
 
   const matchdays = new Map<number, FixtureData[]>();
-  competitiveFixtures.forEach((f) => {
+  tournamentFixtures.forEach((f) => {
     const list = matchdays.get(f.matchday) || [];
     list.push(f);
     matchdays.set(f.matchday, list);
@@ -97,32 +103,33 @@ export default function TournamentsTab({
     fixtures.every((f) => f.status === "Completed"),
   ).length;
   const totalMatchdays = sortedMatchdays.length;
-  const totalGoals = competitiveFixtures
-    .filter((f) => f.result)
-    .reduce((s, f) => s + (f.result!.home_goals + f.result!.away_goals), 0);
-  const completedMatches = competitiveFixtures.filter(
+  const userStanding = standings.find((entry) => entry.team_id === userTeamId);
+  const userWins = userStanding?.won ?? 0;
+  const completedMatches = tournamentFixtures.filter(
     (f) => f.status === "Completed",
   ).length;
 
-  const topScorers = (() => {
-    const goals: Record<string, number> = {};
-    competitiveFixtures.forEach((f) => {
-      if (f.result) {
-        f.result.home_scorers.forEach((s) => {
-          goals[s.player_id] = (goals[s.player_id] || 0) + 1;
-        });
-        f.result.away_scorers.forEach((s) => {
-          goals[s.player_id] = (goals[s.player_id] || 0) + 1;
-        });
-      }
-    });
-    return Object.entries(goals)
-      .map(([pid, g]) => ({
-        player: gameState.players.find((p) => p.id === pid),
-        goals: g,
-      }))
-      .filter((e) => e.player)
-      .sort((a, b) => b.goals - a.goals)
+  const topKda = (() => {
+    const leagueTeamIds = new Set(league.standings.map((entry) => entry.team_id));
+    return gameState.players
+      .filter((player) => (player.team_id ? leagueTeamIds.has(player.team_id) : false))
+      .map((player) => {
+        const kills = Number(player.stats.kills ?? 0);
+        const deaths = Number(player.stats.deaths ?? 0);
+        const assists = Number(player.stats.assists ?? 0);
+        const gamesPlayed = Number(player.stats.games_played ?? player.stats.appearances ?? 0);
+        const kda = (kills + assists) / Math.max(1, deaths);
+        return {
+          player,
+          kills,
+          deaths,
+          assists,
+          gamesPlayed,
+          kda,
+        };
+      })
+      .filter((entry) => entry.gamesPlayed > 0 || entry.kills + entry.deaths + entry.assists > 0)
+      .sort((a, b) => b.kda - a.kda || (b.kills + b.assists) - (a.kills + a.assists))
       .slice(0, 10);
   })();
 
@@ -187,10 +194,10 @@ export default function TournamentsTab({
               </div>
               <div className="bg-white/5 rounded-xl px-4 py-2 text-center">
                 <p className="text-xs text-gray-400 font-heading uppercase tracking-wider">
-                  {t("tournaments.goals")}
+                  Victorias
                 </p>
                 <p className="font-heading font-bold text-lg text-accent-400">
-                  {totalGoals}
+                  {userWins}
                 </p>
               </div>
             </div>
@@ -237,7 +244,17 @@ export default function TournamentsTab({
 
       {/* Overview */}
       {view === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="space-y-5">
+          {hasPlayoffsStarted ? (
+            <PlayoffBracketBoard
+              league={league}
+              teams={gameState.teams}
+              onSelectTeam={onSelectTeam}
+              title={`${t("schedule.playoffs")} · Bracket`}
+            />
+          ) : null}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Mini standings */}
           <Card className="lg:col-span-2">
             <CardHeader>{t("tournaments.leagueTable")}</CardHeader>
@@ -269,16 +286,13 @@ export default function TournamentsTab({
                         {t("common.won")}
                       </th>
                       <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                        {t("common.drawn")}
+                        WR
                       </th>
                       <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
                         {t("common.lost")}
                       </th>
                       <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                        {t("common.gd")}
-                      </th>
-                      <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                        {t("common.pts")}
+                        +/-
                       </th>
                     </tr>
                   </thead>
@@ -286,6 +300,7 @@ export default function TournamentsTab({
                     {standings.map((entry, idx) => {
                       const isUser = entry.team_id === userTeamId;
                       const gd = entry.goals_for - entry.goals_against;
+                      const winRate = entry.played > 0 ? Math.round((entry.won / entry.played) * 100) : 0;
                       return (
                         <tr
                           key={entry.team_id}
@@ -307,7 +322,7 @@ export default function TournamentsTab({
                             {entry.won}
                           </td>
                           <td className="py-2 px-3 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
-                            {entry.drawn}
+                            {winRate}%
                           </td>
                           <td className="py-2 px-3 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
                             {entry.lost}
@@ -316,9 +331,6 @@ export default function TournamentsTab({
                             className={`py-2 px-3 text-center text-sm font-semibold tabular-nums ${gd > 0 ? "text-primary-500" : gd < 0 ? "text-red-500" : "text-gray-500"}`}
                           >
                             {gd > 0 ? `+${gd}` : gd}
-                          </td>
-                          <td className="py-2 px-3 text-center font-heading font-bold text-sm text-gray-800 dark:text-gray-100 tabular-nums">
-                            {entry.points}
                           </td>
                         </tr>
                       );
@@ -331,17 +343,17 @@ export default function TournamentsTab({
 
           {/* Top scorers */}
           <Card>
-            <CardHeader>{t("tournaments.topScorers")}</CardHeader>
+            <CardHeader>Top K/D/A</CardHeader>
             <CardBody className="p-0">
-              {topScorers.length === 0 ? (
+              {topKda.length === 0 ? (
                 <p className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-                  {t("tournaments.noGoals")}
+                  Sin datos de K/D/A todavía.
                 </p>
               ) : (
                 <div className="divide-y divide-gray-100 dark:divide-navy-600">
-                  {topScorers.map((entry, i) => (
+                  {topKda.map((entry, i) => (
                     <div
-                      key={entry.player!.id}
+                      key={entry.player.id}
                       className="flex items-center px-4 py-2.5 gap-3"
                     >
                       <span className="font-heading font-bold text-sm text-gray-400 dark:text-gray-500 w-5 text-center">
@@ -349,17 +361,20 @@ export default function TournamentsTab({
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
-                          {entry.player!.full_name}
+                          {entry.player.match_name}
                         </p>
                         <p className="text-xs text-gray-400 dark:text-gray-500">
                           {getTeamName(
                             gameState.teams,
-                            entry.player!.team_id ?? "",
+                            entry.player.team_id ?? "",
                           )}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">
+                          {entry.kills}/{entry.deaths}/{entry.assists}
                         </p>
                       </div>
                       <span className="font-heading font-bold text-lg text-accent-500 tabular-nums">
-                        {entry.goals}
+                        {entry.kda.toFixed(2)}
                       </span>
                     </div>
                   ))}
@@ -367,6 +382,7 @@ export default function TournamentsTab({
               )}
             </CardBody>
           </Card>
+          </div>
         </div>
       )}
 
@@ -385,7 +401,14 @@ export default function TournamentsTab({
                 </p>
               </div>
             </CardBody>
-          </Card>
+            </Card>
+        ) : hasPlayoffsStarted ? (
+          <PlayoffBracketBoard
+            league={league}
+            teams={gameState.teams}
+            onSelectTeam={onSelectTeam}
+            title={`${t("schedule.playoffs")} · Bracket`}
+          />
         ) : (
           <Card>
             <div className="p-5 border-b border-gray-100 dark:border-navy-600 bg-gradient-to-r from-navy-700 to-navy-800 rounded-t-xl">
@@ -411,23 +434,20 @@ export default function TournamentsTab({
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
                       {t("common.won")}
                     </th>
-                    <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      {t("common.drawn")}
-                    </th>
+                      <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
+                        WR
+                      </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
                       {t("common.lost")}
                     </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      {t("common.gf")}
+                      K
                     </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      {t("common.ga")}
+                      D
                     </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      {t("common.gd")}
-                    </th>
-                    <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      {t("common.pts")}
+                      +/-
                     </th>
                   </tr>
                 </thead>
@@ -435,6 +455,7 @@ export default function TournamentsTab({
                   {standings.map((entry, idx) => {
                     const isUser = entry.team_id === userTeamId;
                     const gd = entry.goals_for - entry.goals_against;
+                    const winRate = entry.played > 0 ? Math.round((entry.won / entry.played) * 100) : 0;
                     return (
                       <tr
                         key={entry.team_id}
@@ -456,7 +477,7 @@ export default function TournamentsTab({
                           {entry.won}
                         </td>
                         <td className="py-3 px-4 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
-                          {entry.drawn}
+                          {winRate}%
                         </td>
                         <td className="py-3 px-4 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
                           {entry.lost}
@@ -471,9 +492,6 @@ export default function TournamentsTab({
                           className={`py-3 px-4 text-center text-sm font-semibold tabular-nums ${gd > 0 ? "text-primary-500" : gd < 0 ? "text-red-500" : "text-gray-500"}`}
                         >
                           {gd > 0 ? `+${gd}` : gd}
-                        </td>
-                        <td className="py-3 px-4 text-center font-heading font-bold text-sm text-gray-800 dark:text-gray-100 tabular-nums">
-                          {entry.points}
                         </td>
                       </tr>
                     );
@@ -491,8 +509,9 @@ export default function TournamentsTab({
             <Card key={md}>
               <div className="px-5 py-3 border-b border-gray-100 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 rounded-t-xl">
                 <h4 className="font-heading font-bold text-sm uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                  {t("schedule.matchday", { number: md })} —{" "}
-                  {formatMatchDate(fixtures[0].date)}
+                  {fixtures[0].competition === "Playoffs"
+                    ? `${t("schedule.playoffs")} · ${t("schedule.round", { number: md })}`
+                    : t("schedule.matchday", { number: md })} — {formatMatchDate(fixtures[0].date)}
                 </h4>
               </div>
               <CardBody className="p-0">
@@ -516,7 +535,7 @@ export default function TournamentsTab({
                         <div className="w-24 text-center mx-3">
                           {completed && f.result ? (
                             <span className="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">
-                              {f.result.home_goals} - {f.result.away_goals}
+                              {(f.result.home_wins ?? f.result.home_goals ?? 0)} - {(f.result.away_wins ?? f.result.away_goals ?? 0)}
                             </span>
                           ) : (
                             <Badge variant="neutral" size="sm">
@@ -546,10 +565,10 @@ export default function TournamentsTab({
             <>
               <AwardCard
                 icon={<Zap className="w-5 h-5 text-accent-500" />}
-                title="Golden Boot"
-                subtitle="Top Scorers"
+                title="Kill Leader"
+                subtitle="Most Kills"
                 entries={awards.golden_boot}
-                unit="goals"
+                unit="kills"
               />
               <AwardCard
                 icon={<Star className="w-5 h-5 text-purple-500" />}
@@ -560,30 +579,30 @@ export default function TournamentsTab({
               />
               <AwardCard
                 icon={<Trophy className="w-5 h-5 text-primary-500" />}
-                title="Player of the Year"
-                subtitle="Best Avg Rating (min 5 apps)"
+                title="Split MVP"
+                subtitle="Best Avg Rating (min 5 games)"
                 entries={awards.player_of_year}
                 unit="rating"
                 decimal
               />
               <AwardCard
                 icon={<Shield className="w-5 h-5 text-blue-500" />}
-                title="Golden Glove"
-                subtitle="Most Clean Sheets (GKs)"
+                title="Untouchable"
+                subtitle="Most Deathless Games"
                 entries={awards.clean_sheet_king}
-                unit="clean sheets"
+                unit="games"
               />
               <AwardCard
                 icon={<Users className="w-5 h-5 text-green-500" />}
-                title="Ever Present"
-                subtitle="Most Appearances"
+                title="Grinder"
+                subtitle="Most Games"
                 entries={awards.most_appearances}
-                unit="apps"
+                unit="games"
               />
               <AwardCard
                 icon={<Star className="w-5 h-5 text-amber-500" />}
-                title="Young Player of the Year"
-                subtitle="Best U21 Avg Rating (min 3 apps)"
+                title="Rookie Star"
+                subtitle="Best U21 Avg Rating (min 3 games)"
                 entries={awards.young_player}
                 unit="rating"
                 decimal
