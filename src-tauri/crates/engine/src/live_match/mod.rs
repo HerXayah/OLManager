@@ -31,6 +31,11 @@ pub enum MatchPhase {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MatchCommand {
+    PreMatchSwap {
+        side: Side,
+        player_off_id: String,
+        player_on_id: String,
+    },
     Substitute {
         side: Side,
         player_off_id: String,
@@ -228,6 +233,16 @@ impl LiveMatchState {
     /// Apply a command (substitution, tactic change, set piece assignment).
     pub fn apply_command(&mut self, cmd: MatchCommand) -> Result<(), String> {
         match cmd {
+            MatchCommand::PreMatchSwap {
+                side,
+                player_off_id,
+                player_on_id,
+            } => {
+                if self.phase != MatchPhase::PreGame {
+                    return Err("Pre-match swap only allowed before kickoff".to_string());
+                }
+                self.apply_pre_match_swap(side, &player_off_id, &player_on_id)
+            }
             MatchCommand::Substitute {
                 side,
                 player_off_id,
@@ -367,6 +382,33 @@ impl LiveMatchState {
             player_off_id: player_off_id.to_string(),
             player_on_id: player_on_id.to_string(),
         });
+        Ok(())
+    }
+
+    fn apply_pre_match_swap(
+        &mut self,
+        side: Side,
+        player_off_id: &str,
+        player_on_id: &str,
+    ) -> Result<(), String> {
+        let (team, bench) = match side {
+            Side::Home => (&mut self.home, &mut self.home_bench),
+            Side::Away => (&mut self.away, &mut self.away_bench),
+        };
+
+        let on_idx = bench
+            .iter()
+            .position(|p| p.id == player_on_id)
+            .ok_or_else(|| "Incoming player not in bench".to_string())?;
+        let off_idx = team
+            .players
+            .iter()
+            .position(|p| p.id == player_off_id)
+            .ok_or_else(|| "Outgoing player not in lineup".to_string())?;
+
+        let incoming = bench.remove(on_idx);
+        let outgoing = std::mem::replace(&mut team.players[off_idx], incoming);
+        bench.push(outgoing);
         Ok(())
     }
 }

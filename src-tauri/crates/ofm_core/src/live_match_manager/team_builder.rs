@@ -1,47 +1,10 @@
 use crate::game::Game;
-use crate::player_rating::natural_ovr;
+use crate::potential::calculate_lol_ovr;
 use domain::player::Position as DomainPosition;
 use engine::{PlayStyle, PlayerData, Position, TeamData};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum LolRole {
-    Top,
-    Jungla,
-    Mid,
-    Adc,
-    Support,
-}
-
-const LOL_ROLE_ORDER: [LolRole; 5] = [
-    LolRole::Top,
-    LolRole::Jungla,
-    LolRole::Mid,
-    LolRole::Adc,
-    LolRole::Support,
-];
-
-fn role_from_player(player: &domain::player::Player) -> LolRole {
-    match player.natural_position {
-        DomainPosition::Defender
-        | DomainPosition::CenterBack
-        | DomainPosition::RightBack
-        | DomainPosition::LeftBack
-        | DomainPosition::RightWingBack
-        | DomainPosition::LeftWingBack => LolRole::Top,
-        DomainPosition::Midfielder | DomainPosition::CentralMidfielder => LolRole::Jungla,
-        DomainPosition::AttackingMidfielder
-        | DomainPosition::RightMidfielder
-        | DomainPosition::LeftMidfielder => LolRole::Mid,
-        DomainPosition::Forward
-        | DomainPosition::Striker
-        | DomainPosition::RightWinger
-        | DomainPosition::LeftWinger => LolRole::Adc,
-        DomainPosition::DefensiveMidfielder | DomainPosition::Goalkeeper => LolRole::Support,
-    }
-}
-
 // ---------------------------------------------------------------------------
-// Domain → Engine conversion (LoL: quinteto titular, sin banca)
+// Domain → Engine conversion (LoL: 5 titulares + banca)
 // ---------------------------------------------------------------------------
 
 pub(super) fn build_team_with_bench(game: &Game, team_id: &str) -> (TeamData, Vec<PlayerData>) {
@@ -70,69 +33,25 @@ pub(super) fn build_team_with_bench(game: &Game, team_id: &str) -> (TeamData, Ve
         .iter()
         .filter(|p| p.team_id.as_deref() == Some(team_id))
         .collect();
-    let mut used_ids = std::collections::HashSet::new();
-    let mut starting_xi = Vec::with_capacity(5);
+    let mut ordered_players = available_players;
+    ordered_players.sort_by(|left, right| {
+        calculate_lol_ovr(right)
+            .cmp(&calculate_lol_ovr(left))
+            .then_with(|| right.condition.cmp(&left.condition))
+    });
 
-    // Ensure first 5 starters are stable LoL core (Top/Jungla/Mid/ADC/Support)
-    // because several UI flows (draft/profile context) rely on `players[0..5]`.
-    let saved_starters = team.map(|t| t.starting_xi_ids.clone()).unwrap_or_default();
-    for starter_id in saved_starters.iter().take(5) {
-        if let Some(player) = available_players
-            .iter()
-            .copied()
-            .find(|player| player.id == *starter_id)
-        {
-            if used_ids.insert(player.id.clone()) {
-                starting_xi.push(to_engine_player(player));
-            }
-        }
-    }
+    let mut starters = ordered_players;
+    let bench_domain = if starters.len() > 5 {
+        starters.split_off(5)
+    } else {
+        Vec::new()
+    };
 
-    if starting_xi.len() < 5 {
-        for role in LOL_ROLE_ORDER {
-            if starting_xi.len() >= 5 {
-                break;
-            }
-
-            let candidate = available_players
-                .iter()
-                .copied()
-                .filter(|player| !used_ids.contains(&player.id) && role_from_player(player) == role)
-                .max_by(|left, right| {
-                    natural_ovr(left)
-                        .partial_cmp(&natural_ovr(right))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
-
-            if let Some(player) = candidate {
-                used_ids.insert(player.id.clone());
-                starting_xi.push(to_engine_player(player));
-            }
-        }
-    }
-
-    if starting_xi.len() < 5 {
-        let mut fallback = available_players
-            .iter()
-            .copied()
-            .filter(|player| !used_ids.contains(&player.id))
-            .collect::<Vec<_>>();
-        fallback.sort_by(|left, right| {
-            natural_ovr(right)
-                .partial_cmp(&natural_ovr(left))
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-
-        for player in fallback {
-            if starting_xi.len() >= 5 {
-                break;
-            }
-            used_ids.insert(player.id.clone());
-            starting_xi.push(to_engine_player(player));
-        }
-    }
-    starting_xi.truncate(5);
-    let bench = Vec::new();
+    let starting_xi = starters.into_iter().map(to_engine_player).collect::<Vec<_>>();
+    let bench = bench_domain
+        .into_iter()
+        .map(to_engine_player)
+        .collect::<Vec<_>>();
 
     let team_data = TeamData {
         id: team_id.to_string(),
@@ -158,6 +77,7 @@ fn to_engine_player(p: &domain::player::Player) -> PlayerData {
         id: p.id.clone(),
         name: p.match_name.clone(),
         position: pos,
+        lol_role: Some(map_position_to_lol_role(&p.natural_position).to_string()),
         condition: p.condition,
         fitness: p.fitness,
         pace: p.attributes.pace,
@@ -180,6 +100,26 @@ fn to_engine_player(p: &domain::player::Player) -> PlayerData {
         reflexes: p.attributes.reflexes,
         aerial: p.attributes.aerial,
         traits: p.traits.iter().map(|t| format!("{:?}", t)).collect(),
+    }
+}
+
+fn map_position_to_lol_role(position: &DomainPosition) -> &'static str {
+    match position {
+        DomainPosition::Defender
+        | DomainPosition::RightBack
+        | DomainPosition::CenterBack
+        | DomainPosition::LeftBack
+        | DomainPosition::RightWingBack
+        | DomainPosition::LeftWingBack => "TOP",
+        DomainPosition::AttackingMidfielder
+        | DomainPosition::RightMidfielder
+        | DomainPosition::LeftMidfielder => "MID",
+        DomainPosition::Forward
+        | DomainPosition::RightWinger
+        | DomainPosition::LeftWinger
+        | DomainPosition::Striker => "ADC",
+        DomainPosition::Goalkeeper | DomainPosition::DefensiveMidfielder => "SUPPORT",
+        DomainPosition::Midfielder | DomainPosition::CentralMidfielder => "JUNGLE",
     }
 }
 

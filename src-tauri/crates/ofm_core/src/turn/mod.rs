@@ -165,6 +165,7 @@ fn build_engine_team(game: &Game, team_id: &str) -> engine::TeamData {
                 id: p.id.clone(),
                 name: p.match_name.clone(),
                 position: pos,
+                lol_role: Some(lol_role_from_position(&p.natural_position).to_string()),
                 condition: p.condition,
                 fitness: p.fitness,
                 pace: p.attributes.pace,
@@ -197,6 +198,26 @@ fn build_engine_team(game: &Game, team_id: &str) -> engine::TeamData {
         formation,
         play_style,
         players,
+    }
+}
+
+fn lol_role_from_position(position: &DomainPosition) -> &'static str {
+    match position {
+        DomainPosition::Defender
+        | DomainPosition::RightBack
+        | DomainPosition::CenterBack
+        | DomainPosition::LeftBack
+        | DomainPosition::RightWingBack
+        | DomainPosition::LeftWingBack => "TOP",
+        DomainPosition::AttackingMidfielder
+        | DomainPosition::RightMidfielder
+        | DomainPosition::LeftMidfielder => "MID",
+        DomainPosition::Forward
+        | DomainPosition::RightWinger
+        | DomainPosition::LeftWinger
+        | DomainPosition::Striker => "ADC",
+        DomainPosition::Goalkeeper | DomainPosition::DefensiveMidfielder => "SUPPORT",
+        DomainPosition::Midfielder | DomainPosition::CentralMidfielder => "JUNGLE",
     }
 }
 

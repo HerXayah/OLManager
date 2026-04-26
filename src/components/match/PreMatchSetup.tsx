@@ -3,27 +3,36 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { FixtureData, GameStateData } from "../../store/gameStore";
 import { getFixtureDisplayLabel } from "../../lib/helpers";
-import { MatchSnapshot, FORMATIONS, PLAY_STYLES } from "./types";
+import { MatchSnapshot } from "./types";
 import PreMatchLineup, {
-  parseFormationNeeds,
   getPositionOvr,
 } from "./PreMatchLineup";
 import MatchScreenLayout from "./MatchScreenLayout";
-import SetPieceSelector from "./SetPieceSelector";
-import {
-  ChevronRight,
-  Shield,
-  Zap,
-  Target,
-  RefreshCw,
-  Crosshair,
-  Flag,
-  Crown,
-  Footprints,
-  CornerDownRight,
-  CircleDot,
-  Wand2,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
+function normalizeKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const TEAM_LOGO_BY_NAME: Record<string, string> = {
+  g2esports: "/team-logos/g2-esports.png",
+  fnatic: "/team-logos/fnatic.png",
+  giantx: "/team-logos/giantx-lec.png",
+  karminecorp: "/team-logos/karmine-corp.png",
+  movistarkoi: "/team-logos/mad-lions.png",
+  mkoi: "/team-logos/mad-lions.png",
+  koi: "/team-logos/mad-lions.png",
+  madlionskoi: "/team-logos/mad-lions.png",
+  natusvincere: "/team-logos/natus-vincere.png",
+  skgaming: "/team-logos/sk-gaming.png",
+  teamheretics: "/team-logos/team-heretics-lec.png",
+  teamvitality: "/team-logos/team-vitality.png",
+  teambds: "/team-logos/team-bds.png",
+  shifters: "/team-logos/team-bds.png",
+};
+
+function resolveTeamLogo(teamName: string): string | null {
+  return TEAM_LOGO_BY_NAME[normalizeKey(teamName)] ?? null;
+}
 
 interface PreMatchSetupProps {
   snapshot: MatchSnapshot;
@@ -34,15 +43,6 @@ interface PreMatchSetupProps {
   onUpdateSnapshot: (snap: MatchSnapshot) => void;
 }
 
-const PLAY_STYLE_ICONS: Record<string, React.ReactNode> = {
-  Balanced: <Target className="w-4 h-4" />,
-  Attacking: <Zap className="w-4 h-4" />,
-  Defensive: <Shield className="w-4 h-4" />,
-  Possession: <RefreshCw className="w-4 h-4" />,
-  Counter: <Crosshair className="w-4 h-4" />,
-  HighPress: <Flag className="w-4 h-4" />,
-};
-
 export default function PreMatchSetup({
   snapshot,
   gameState,
@@ -52,7 +52,6 @@ export default function PreMatchSetup({
   onUpdateSnapshot,
 }: PreMatchSetupProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"lineup" | "setpieces">("lineup");
   const [selectedStarterId, setSelectedStarterId] = useState<string | null>(
     null,
   );
@@ -61,8 +60,6 @@ export default function PreMatchSetup({
   const userTeam =
     userSide === "Home" ? snapshot.home_team : snapshot.away_team;
   const oppTeam = userSide === "Home" ? snapshot.away_team : snapshot.home_team;
-  const userSetPieces =
-    userSide === "Home" ? snapshot.home_set_pieces : snapshot.away_set_pieces;
 
   const homeTeamColor =
     gameState.teams.find((t) => t.id === snapshot.home_team.id)?.colors
@@ -74,51 +71,24 @@ export default function PreMatchSetup({
   const fixtureLabel = currentFixture
     ? getFixtureDisplayLabel(t, currentFixture)
     : t("match.matchDay");
+  const homeLogo = resolveTeamLogo(snapshot.home_team.name);
+  const awayLogo = resolveTeamLogo(snapshot.away_team.name);
 
-  // All squad players for this team
-  const allSquadPlayers = gameState.players.filter(
-    (p) => p.team_id === userTeam.id,
-  );
   // Use snapshot bench data (updated after swaps)
   const userBench =
     userSide === "Home" ? snapshot.home_bench || [] : snapshot.away_bench || [];
 
   console.info("[PreMatchSetup] render", {
-    activeTab,
-    allSquadCount: allSquadPlayers.length,
     awayTeam: snapshot.away_team.name,
     benchCount: userBench.length,
     homeTeam: snapshot.home_team.name,
     phase: snapshot.phase,
     playStyle: userTeam.play_style,
     selectedStarterId,
-    setPieces: userSetPieces,
     startingPlayerCount: userTeam.players.length,
     userSide,
     userTeam: userTeam.name,
   });
-
-  const handleFormationChange = async (formation: string) => {
-    try {
-      const snap = await invoke<MatchSnapshot>("apply_match_command", {
-        command: { ChangeFormation: { side: userSide, formation } },
-      });
-      onUpdateSnapshot(snap);
-    } catch (err) {
-      console.error("Formation change failed:", err);
-    }
-  };
-
-  const handlePlayStyleChange = async (playStyle: string) => {
-    try {
-      const snap = await invoke<MatchSnapshot>("apply_match_command", {
-        command: { ChangePlayStyle: { side: userSide, play_style: playStyle } },
-      });
-      onUpdateSnapshot(snap);
-    } catch (err) {
-      console.error("Play style change failed:", err);
-    }
-  };
 
   const handleSwap = async (benchPlayerId: string) => {
     if (!selectedStarterId) return;
@@ -139,61 +109,16 @@ export default function PreMatchSetup({
     setSelectedStarterId(null);
   };
 
-  const handleSetPieceTaker = async (role: string, playerId: string) => {
-    const commandMap: Record<string, string> = {
-      penalty: "SetPenaltyTaker",
-      freekick: "SetFreeKickTaker",
-      corner: "SetCornerTaker",
-      captain: "SetCaptain",
-    };
-    const cmdKey = commandMap[role];
-    if (!cmdKey) return;
-    try {
-      const snap = await invoke<MatchSnapshot>("apply_match_command", {
-        command: { [cmdKey]: { side: userSide, player_id: playerId } },
-      });
-      onUpdateSnapshot(snap);
-    } catch (err) {
-      console.error("Set piece taker change failed:", err);
-    }
-  };
-
-  const formationNeeds = parseFormationNeeds(userTeam.formation);
-
   const handleAutoSelect = async () => {
     setIsAutoSelecting(true);
     try {
       const pool = [...userTeam.players, ...userBench];
-      const idealIds = new Set<string>();
-
-      for (const pos of ["Goalkeeper", "Defender", "Midfielder", "Forward"]) {
-        const candidates = pool
-          .filter((p) => p.position === pos)
-          .sort(
-            (a, b) =>
-              getPositionOvr(b) * (b.condition / 100) -
-              getPositionOvr(a) * (a.condition / 100),
-          );
-        const needed = formationNeeds[pos] || 0;
-        for (let i = 0; i < Math.min(needed, candidates.length); i++) {
-          idealIds.add(candidates[i].id);
-        }
-      }
-
-      // Fill remaining slots if fewer than 11 (e.g. not enough of a position)
-      if (idealIds.size < 11) {
-        const rest = pool
-          .filter((p) => !idealIds.has(p.id))
-          .sort(
-            (a, b) =>
-              getPositionOvr(b) * (b.condition / 100) -
-              getPositionOvr(a) * (a.condition / 100),
-          );
-        for (const p of rest) {
-          if (idealIds.size >= 11) break;
-          idealIds.add(p.id);
-        }
-      }
+      const ranked = [...pool].sort(
+        (a, b) =>
+          getPositionOvr(b) * (b.condition / 100) -
+          getPositionOvr(a) * (a.condition / 100),
+      );
+      const idealIds = new Set(ranked.slice(0, 5).map((p) => p.id));
 
       const currentIds = new Set(userTeam.players.map((p) => p.id));
       const toAdd = [...idealIds].filter((id) => !currentIds.has(id));
@@ -237,15 +162,23 @@ export default function PreMatchSetup({
                   borderWidth: 2,
                 }}
               >
-                {snapshot.home_team.name.substring(0, 3).toUpperCase()}
+                {homeLogo ? (
+                  <img
+                    src={homeLogo}
+                    alt={snapshot.home_team.name}
+                    className="w-10 h-10 object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  snapshot.home_team.name.substring(0, 3).toUpperCase()
+                )}
               </div>
               <div>
                 <p className="font-heading font-bold text-lg text-gray-900 dark:text-white">
                   {snapshot.home_team.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t("match.home")} · {snapshot.home_team.formation} ·{" "}
-                  {t(`tactics.playStyles.${snapshot.home_team.play_style}`, snapshot.home_team.play_style)}
+                  {t("match.home")} · {t("match.lineup")} {snapshot.home_team.players.length}/5
                 </p>
               </div>
             </div>
@@ -265,8 +198,7 @@ export default function PreMatchSetup({
                   {snapshot.away_team.name}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {t("match.away")} · {snapshot.away_team.formation} ·{" "}
-                  {t(`tactics.playStyles.${snapshot.away_team.play_style}`, snapshot.away_team.play_style)}
+                  {t("match.away")} · {t("match.lineup")} {snapshot.away_team.players.length}/5
                 </p>
               </div>
               <div
@@ -277,7 +209,16 @@ export default function PreMatchSetup({
                   borderWidth: 2,
                 }}
               >
-                {snapshot.away_team.name.substring(0, 3).toUpperCase()}
+                {awayLogo ? (
+                  <img
+                    src={awayLogo}
+                    alt={snapshot.away_team.name}
+                    className="w-10 h-10 object-contain"
+                    loading="lazy"
+                  />
+                ) : (
+                  snapshot.away_team.name.substring(0, 3).toUpperCase()
+                )}
               </div>
             </div>
           </div>
@@ -295,169 +236,20 @@ export default function PreMatchSetup({
       }
     >
       <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col gap-6">
-          {/* Formation & Play Style */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Formation */}
-            <div className="bg-white dark:bg-navy-800 rounded-xl border border-gray-200 dark:border-navy-700 shadow-sm p-4 transition-colors duration-300">
-              <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
-                {t("match.formation")}
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {FORMATIONS.map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => handleFormationChange(f)}
-                    className={`py-2.5 rounded-lg text-sm font-heading font-bold transition-all ${userTeam.formation === f
-                        ? "bg-primary-500/20 text-primary-400 ring-2 ring-primary-500/50"
-                        : "bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200 dark:bg-navy-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-navy-600"
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Play Style */}
-            <div className="bg-white dark:bg-navy-800 rounded-xl border border-gray-200 dark:border-navy-700 shadow-sm p-4 transition-colors duration-300">
-              <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
-                {t("match.playStyle")}
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {PLAY_STYLES.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => handlePlayStyleChange(s.id)}
-                    className={`flex items-center gap-2 py-2.5 px-3 rounded-lg text-sm font-heading font-bold transition-all ${userTeam.play_style === s.id
-                        ? "bg-primary-500/20 text-primary-400 ring-2 ring-primary-500/50"
-                        : "bg-gray-100 text-gray-600 hover:text-gray-900 hover:bg-gray-200 dark:bg-navy-700 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-navy-600"
-                    }`}
-                  >
-                    {PLAY_STYLE_ICONS[s.id]}
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-1 bg-gray-200 dark:bg-navy-800 rounded-lg p-1 self-start transition-colors duration-300">
-            <button
-              onClick={() => setActiveTab("lineup")}
-              className={`px-4 py-2 rounded-md text-xs font-heading font-bold uppercase tracking-wider transition-colors ${
-                activeTab === "lineup"
-                  ? "bg-white text-gray-900 shadow-sm dark:bg-navy-600 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
-            >
-              {t("match.startingLineup")}
-            </button>
-            <button
-              onClick={() => setActiveTab("setpieces")}
-              className={`px-4 py-2 rounded-md text-xs font-heading font-bold uppercase tracking-wider transition-colors ${
-                activeTab === "setpieces"
-                  ? "bg-white text-gray-900 shadow-sm dark:bg-navy-600 dark:text-white"
-                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              }`}
-            >
-              {t("match.setPiecesCaptain")}
-            </button>
-          </div>
-
-          {/* Lineup Tab */}
-          {activeTab === "lineup" && (
-            <PreMatchLineup
-              userTeam={userTeam}
-              userBench={userBench}
-              oppTeam={oppTeam}
-              userColor={userColor}
-              homeTeamColor={homeTeamColor}
-              awayTeamColor={awayTeamColor}
-              userSide={userSide}
-              formationNeeds={formationNeeds}
-              selectedStarterId={selectedStarterId}
-              isAutoSelecting={isAutoSelecting}
-              onSelectStarter={setSelectedStarterId}
-              onSwap={handleSwap}
-              onAutoSelect={handleAutoSelect}
-            />
-          )}
-
-          {/* Set Pieces Tab */}
-          {activeTab === "setpieces" && (
-            <div className="bg-white dark:bg-navy-800 rounded-xl border border-gray-200 dark:border-navy-700 shadow-sm p-4 transition-colors duration-300">
-              <button
-                onClick={async () => {
-                  try {
-                    const ids = userTeam.players.map((p) => p.id);
-                    const result = await invoke<{
-                      captain: string | null;
-                      penalty_taker: string | null;
-                      free_kick_taker: string | null;
-                      corner_taker: string | null;
-                    }>("auto_select_set_pieces", { playerIds: ids });
-                    if (result.captain)
-                      await handleSetPieceTaker("captain", result.captain);
-                    if (result.penalty_taker)
-                      await handleSetPieceTaker(
-                        "penalty",
-                        result.penalty_taker,
-                      );
-                    if (result.free_kick_taker)
-                      await handleSetPieceTaker(
-                        "freekick",
-                        result.free_kick_taker,
-                      );
-                    if (result.corner_taker)
-                      await handleSetPieceTaker("corner", result.corner_taker);
-                  } catch (err) {
-                    console.error("Auto-select set pieces failed:", err);
-                  }
-                }}
-                className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-50 hover:bg-accent-100 text-accent-700 dark:bg-accent-500/10 dark:hover:bg-accent-500/20 dark:text-accent-400 rounded-lg font-heading font-bold text-xs uppercase tracking-wider transition-colors border border-accent-200 dark:border-accent-500/20"
-              >
-                <Wand2 className="w-3.5 h-3.5" />
-                {t("match.autoSelectTakers")}
-              </button>
-              <SetPieceSelector
-                label={t("match.captain")}
-                icon={<Crown className="w-4 h-4 text-accent-400" />}
-                role="captain"
-                currentId={userSetPieces.captain}
-                players={userTeam.players}
-                allSquad={allSquadPlayers}
-                onSelect={(id) => handleSetPieceTaker("captain", id)}
-              />
-              <SetPieceSelector
-                label={t("match.penaltyTaker")}
-                icon={<CircleDot className="w-4 h-4 text-accent-400" />}
-                role="penalty"
-                currentId={userSetPieces.penalty_taker}
-                players={userTeam.players}
-                allSquad={allSquadPlayers}
-                onSelect={(id) => handleSetPieceTaker("penalty", id)}
-              />
-              <SetPieceSelector
-                label={t("match.freeKickTaker")}
-                icon={<Footprints className="w-4 h-4 text-accent-400" />}
-                role="freekick"
-                currentId={userSetPieces.free_kick_taker}
-                players={userTeam.players}
-                allSquad={allSquadPlayers}
-                onSelect={(id) => handleSetPieceTaker("freekick", id)}
-              />
-              <SetPieceSelector
-                label={t("match.cornerTaker")}
-                icon={<CornerDownRight className="w-4 h-4 text-accent-400" />}
-                role="corner"
-                currentId={userSetPieces.corner_taker}
-                players={userTeam.players}
-                allSquad={allSquadPlayers}
-                onSelect={(id) => handleSetPieceTaker("corner", id)}
-              />
-            </div>
-          )}
+        <PreMatchLineup
+          userTeam={userTeam}
+          userBench={userBench}
+          oppTeam={oppTeam}
+          userColor={userColor}
+          homeTeamColor={homeTeamColor}
+          awayTeamColor={awayTeamColor}
+          userSide={userSide}
+          selectedStarterId={selectedStarterId}
+          isAutoSelecting={isAutoSelecting}
+          onSelectStarter={setSelectedStarterId}
+          onSwap={handleSwap}
+          onAutoSelect={handleAutoSelect}
+        />
       </div>
     </MatchScreenLayout>
   );
