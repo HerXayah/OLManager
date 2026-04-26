@@ -187,7 +187,7 @@ describe("TransferCounterOfferModal", () => {
       />,
     );
 
-    expect(screen.getByText("John Smith")).toBeInTheDocument();
+    expect(screen.getByText("J. Smith")).toBeInTheDocument();
     expect(screen.getByText(/Current offer/)).toBeInTheDocument();
     expect(screen.getByText("Talks are still live with this club.")).toBeInTheDocument();
     expect(screen.getByText("Recent exchange")).toBeInTheDocument();

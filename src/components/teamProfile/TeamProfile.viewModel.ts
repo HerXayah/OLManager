@@ -1,20 +1,25 @@
-import { calcOvr } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import type { GameStateData, PlayerData, TeamData } from "../../store/gameStore";
+import { getLolRoleForPlayer } from "../squad/SquadTab.helpers";
 
 import type { LeagueStanding, TeamProfileViewModel } from "./TeamProfile.types";
 
-const POSITION_ORDER: Record<string, number> = {
-  Goalkeeper: 1,
-  Defender: 2,
-  Midfielder: 3,
-  Forward: 4,
+const ROLE_ORDER: Record<string, number> = {
+  TOP: 1,
+  JUNGLE: 2,
+  MID: 3,
+  ADC: 4,
+  SUPPORT: 5,
 };
 
 function sortRoster(players: PlayerData[]): PlayerData[] {
   return [...players].sort((leftPlayer, rightPlayer) => {
+    const leftRole = getLolRoleForPlayer(leftPlayer);
+    const rightRole = getLolRoleForPlayer(rightPlayer);
     return (
-      (POSITION_ORDER[leftPlayer.position] || 99) -
-      (POSITION_ORDER[rightPlayer.position] || 99)
+      (ROLE_ORDER[leftRole] || 99) -
+      (ROLE_ORDER[rightRole] || 99) ||
+      leftPlayer.full_name.localeCompare(rightPlayer.full_name)
     );
   });
 }
@@ -26,7 +31,7 @@ function calculateAverageOvr(roster: PlayerData[]): number {
 
   return Math.round(
     roster.reduce((sum, player) => {
-      return sum + calcOvr(player, player.natural_position || player.position);
+      return sum + calculateLolOvr(player);
     }, 0) / roster.length,
   );
 }

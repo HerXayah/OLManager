@@ -1,8 +1,17 @@
 import { GameStateData } from "../../store/gameStore";
 import { Card, CardBody, Badge, TeamLocation } from "../ui";
-import { Users, Trophy } from "lucide-react";
-import { calcOvr as calcPlayerOvr, formatVal } from "../../lib/helpers";
+import { Building2, Trophy } from "lucide-react";
+import { formatVal } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { useTranslation } from "react-i18next";
+
+function teamLogoSrc(teamId: string): string {
+  const slug = teamId.replace(/^lec-/, "");
+  if (slug === "shifters") {
+    return "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png";
+  }
+  return `/team-logos/${slug}.png`;
+}
 
 interface TeamsListTabProps {
   gameState: GameStateData;
@@ -22,7 +31,7 @@ export default function TeamsListTab({ gameState, onSelectTeam }: TeamsListTabPr
   const teamsData = gameState.teams.map(team => {
     const roster = gameState.players.filter(p => p.team_id === team.id);
     const avgOvr = roster.length > 0
-      ? Math.round(roster.reduce((s, p) => s + calcPlayerOvr(p), 0) / roster.length)
+      ? Math.round(roster.reduce((s, p) => s + calculateLolOvr(p), 0) / roster.length)
       : 0;
     const totalValue = roster.reduce((s, p) => s + p.market_value, 0);
     const leaguePos = allStandings.findIndex(s => s.team_id === team.id) + 1;
@@ -36,6 +45,9 @@ export default function TeamsListTab({ gameState, onSelectTeam }: TeamsListTabPr
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {teamsData.map(({ team, roster, avgOvr, totalValue, leaguePos, standing }) => {
           const isUser = team.id === userTeamId;
+          const wr = standing && standing.played > 0
+            ? Math.round((standing.won / standing.played) * 100)
+            : null;
           return (
             <Card
               key={team.id}
@@ -54,7 +66,12 @@ export default function TeamsListTab({ gameState, onSelectTeam }: TeamsListTabPr
                     className="w-14 h-14 rounded-xl flex items-center justify-center font-heading font-bold text-xl text-white border-2 border-white/30"
                     style={{ backgroundColor: team.colors.primary }}
                   >
-                    {team.short_name}
+                    <img
+                      src={teamLogoSrc(team.id)}
+                      alt={`${team.name} logo`}
+                      className="w-10 h-10 object-contain"
+                      loading="lazy"
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-heading font-bold text-lg text-white uppercase tracking-wide truncate drop-shadow">
@@ -91,8 +108,8 @@ export default function TeamsListTab({ gameState, onSelectTeam }: TeamsListTabPr
                 <CardBody>
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />
-                      {team.formation} — {team.play_style}
+                      <Building2 className="w-3.5 h-3.5" />
+                      {t("teams.hq")} {team.city}
                     </span>
                     <span className="flex items-center gap-1">
                       <Trophy className="w-3.5 h-3.5" />
@@ -100,7 +117,7 @@ export default function TeamsListTab({ gameState, onSelectTeam }: TeamsListTabPr
                     </span>
                     {standing && (
                       <span className="tabular-nums">
-                        {standing.won}W {standing.drawn}D {standing.lost}L
+                        {standing.won}W {standing.lost}L{wr !== null ? ` · ${t("teams.winRateShort")} ${wr}%` : ""}
                       </span>
                     )}
                   </div>

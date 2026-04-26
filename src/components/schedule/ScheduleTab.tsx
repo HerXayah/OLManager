@@ -55,6 +55,7 @@ const TEAM_LOGO_BY_NORMALIZED_NAME: Record<string, string> = {
   [normalizeKey("Team Heretics")]: "/team-logos/team-heretics-lec.png",
   [normalizeKey("Team Vitality")]: "/team-logos/team-vitality.png",
   [normalizeKey("Team BDS")]: "/team-logos/team-bds.png",
+  [normalizeKey("Shifters")]: "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png",
 };
 
 function normalizeKey(value: string): string {

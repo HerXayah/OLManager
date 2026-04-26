@@ -18,7 +18,7 @@ import NegotiationFeedbackPanel, {
   type NegotiationFeedbackPanelData,
 } from "../NegotiationFeedbackPanel";
 import { Badge } from "../ui";
-import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer } from "../squad/SquadTab.helpers";
 import TransferNegotiationHistory from "./TransferNegotiationHistory";
 
 interface TransferBidModalProps {
@@ -57,6 +57,7 @@ export default function TransferBidModal({
   onClose,
 }: TransferBidModalProps) {
   const { t } = useTranslation();
+  const lolRole = getLolRoleForPlayer(bidTarget);
 
   return (
     <div
@@ -72,11 +73,11 @@ export default function TransferBidModal({
         </h3>
         <div className="flex items-center gap-3 mb-4">
           <Badge variant={positionBadgeVariant(bidTarget.position)} size="sm">
-            {translatePositionAbbreviation(t, bidTarget.position)}
+            {lolRole === "JUNGLE" ? "JG" : lolRole}
           </Badge>
           <div>
             <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">
-              {bidTarget.full_name}
+              {bidTarget.match_name || bidTarget.full_name}
             </p>
             <p className="text-xs text-gray-400">
               {getTeamName(teams, bidTarget.team_id)} •{" "}

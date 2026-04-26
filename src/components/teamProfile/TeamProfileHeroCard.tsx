@@ -6,6 +6,14 @@ import { QuickStat } from "./TeamProfile.primitives";
 import type { TeamProfileViewModel } from "./TeamProfile.types";
 import type { TeamData } from "../../store/gameStore";
 
+function teamLogoSrc(teamId: string): string {
+  const slug = teamId.replace(/^lec-/, "");
+  if (slug === "shifters") {
+    return "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png";
+  }
+  return `/team-logos/${slug}.png`;
+}
+
 interface TeamProfileHeroCardProps {
   team: TeamData;
   viewModel: TeamProfileViewModel;
@@ -32,7 +40,12 @@ export default function TeamProfileHeroCard({
             className="w-24 h-24 rounded-2xl flex items-center justify-center font-heading font-bold text-3xl text-white border-2 border-white/30"
             style={{ backgroundColor: team.colors.primary }}
           >
-            {team.short_name}
+            <img
+              src={teamLogoSrc(team.id)}
+              alt={`${team.name} logo`}
+              className="w-16 h-16 object-contain"
+              loading="lazy"
+            />
           </div>
           <div className="flex-1">
             <h2 className="text-3xl font-heading font-bold text-white uppercase tracking-wide drop-shadow">

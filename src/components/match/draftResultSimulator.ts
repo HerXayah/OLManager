@@ -30,8 +30,10 @@ interface PlayerSeed {
 }
 
 const TEAM_SEEDS: TeamSeed[] = ((teamsSeed as { data?: { teams?: TeamSeed[] } }).data?.teams ?? []) as TeamSeed[];
-const PLAYER_SEEDS: PlayerSeed[] =
-  ((playersSeed as { data?: { rostered_seeds?: PlayerSeed[] } }).data?.rostered_seeds ?? []) as PlayerSeed[];
+const PLAYER_SEEDS: PlayerSeed[] = [
+  ...(((playersSeed as { data?: { rostered_seeds?: PlayerSeed[] } }).data?.rostered_seeds ?? []) as PlayerSeed[]),
+  ...(((playersSeed as { data?: { free_agent_seeds?: PlayerSeed[] } }).data?.free_agent_seeds ?? []) as PlayerSeed[]),
+];
 
 const ATTRIBUTE_KEYS = [
   "pace",

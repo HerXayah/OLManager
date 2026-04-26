@@ -68,6 +68,9 @@ function lolPlayerOvr(player: PlayerData): number {
 
 function getTeamLogoPath(teamId: string): string {
   const slug = teamId.replace(/^lec-/, "");
+  if (slug === "shifters") {
+    return "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png";
+  }
   return `/team-logos/${slug}.png`;
 }
 

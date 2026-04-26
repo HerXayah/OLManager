@@ -1,6 +1,6 @@
 use crate::finances::calc_annual_wages;
 use crate::game::Game;
-use chrono::NaiveDate;
+use chrono::{Datelike, NaiveDate};
 use domain::negotiation::{NegotiationFeedback, NegotiationMood};
 use domain::player::TransferOfferStatus;
 use domain::season::TransferWindowStatus;
@@ -532,8 +532,6 @@ pub fn make_transfer_bid(
         return Err("Cannot bid on your own player".into());
     }
 
-    let owner_team_id = player.team_id.clone().ok_or("Player has no team")?;
-
     let my_team = game
         .teams
         .iter()
@@ -548,6 +546,52 @@ pub fn make_transfer_bid(
         return Err("Transfer budget too low".into());
     }
 
+    let date = game.clock.current_date.format("%Y-%m-%d").to_string();
+
+    if player.team_id.is_none() {
+        if let Some(p) = game.players.iter_mut().find(|p| p.id == player_id) {
+            upsert_transfer_offer(
+                p,
+                &user_team_id,
+                fee,
+                TransferOfferStatus::Accepted,
+                &date,
+                Some(fee),
+                1,
+                None,
+            );
+        }
+
+        execute_free_agent_signing(game, player_id, &user_team_id, fee)?;
+
+        let player_name = game
+            .players
+            .iter()
+            .find(|p| p.id == player_id)
+            .map(|p| p.full_name.clone())
+            .unwrap_or_default();
+
+        let msg = crate::messages::transfer_complete_message(&player_name, fee, &date);
+        game.messages.push(msg);
+
+        return Ok(transfer_outcome(
+            TransferNegotiationDecision::Accepted,
+            None,
+            true,
+            build_transfer_feedback(
+                "transfers.transferFeedbackAcceptedHeadline",
+                "transfers.transferFeedbackAcceptedDetail",
+                NegotiationMood::Positive,
+                24,
+                84,
+                1,
+                &[("fee", fee.to_string())],
+            ),
+        ));
+    }
+
+    let owner_team_id = player.team_id.clone().ok_or("Player has no team")?;
+
     let owner_team = game
         .teams
         .iter()
@@ -559,7 +603,6 @@ pub fn make_transfer_bid(
     let current_date = game.clock.current_date.date_naive();
 
     let threshold = minimum_acceptable_fee(current_date, player, owner_team, buyer_team);
-    let date = game.clock.current_date.format("%Y-%m-%d").to_string();
     let existing_offer = find_open_offer_from_club(player, &user_team_id);
     let previous_fee = existing_offer.map(|offer| offer.fee);
     let previous_counter_fee = existing_offer.and_then(|offer| offer.suggested_counter_fee);
@@ -703,6 +746,36 @@ pub fn make_transfer_bid(
             &[("fee", round_transfer_fee(adjusted_threshold).to_string())],
         ),
     ))
+}
+
+fn execute_free_agent_signing(
+    game: &mut Game,
+    player_id: &str,
+    to_team_id: &str,
+    fee: u64,
+) -> Result<(), String> {
+    if let Some(player) = game.players.iter_mut().find(|player| player.id == player_id) {
+        player.team_id = Some(to_team_id.to_string());
+        player.transfer_listed = false;
+        player.loan_listed = false;
+        player.transfer_offers
+            .retain(|offer| offer.status == TransferOfferStatus::Accepted);
+        if player.contract_end.is_none() {
+            let renewal_year = game.clock.current_date.year() + 2;
+            player.contract_end = Some(format!("{}-11-30", renewal_year));
+        }
+    } else {
+        return Err("Player not found".to_string());
+    }
+
+    if let Some(team) = game.teams.iter_mut().find(|team| team.id == to_team_id) {
+        team.finance -= fee as i64;
+        if let Some(pos) = team.starting_xi_ids.iter().position(|id| id == player_id) {
+            team.starting_xi_ids.remove(pos);
+        }
+    }
+
+    Ok(())
 }
 
 /// Respond to an incoming transfer offer on one of user's players.

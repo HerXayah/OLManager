@@ -238,11 +238,12 @@ describe("TransfersTab.model", () => {
     expect(getIds("offers")).toEqual(["offers"]);
   });
 
-  it("filters by position and search text", () => {
+  it("filters by LoL role and search text", () => {
     const players = [
       createPlayer({
         id: "goalkeeper",
         full_name: "Alan Keeper",
+        match_name: "Keeper",
         nationality: "Spain",
         natural_position: "Goalkeeper",
         position: "Goalkeeper",
@@ -250,17 +251,18 @@ describe("TransfersTab.model", () => {
       createPlayer({
         id: "forward",
         full_name: "Carlos Striker",
+        match_name: "Carx",
         nationality: "Brazil",
         natural_position: "Forward",
         position: "Forward",
       }),
     ];
 
-    expect(filterTransferPlayers(players, "", "Goalkeeper")).toHaveLength(1);
+    expect(filterTransferPlayers(players, "", "SUPPORT")).toHaveLength(1);
     expect(filterTransferPlayers(players, "bra", null).map((player) => player.id)).toEqual([
       "forward",
     ]);
-    expect(filterTransferPlayers(players, "ca", "Forward").map((player) => player.id)).toEqual([
+    expect(filterTransferPlayers(players, "carx", "ADC").map((player) => player.id)).toEqual([
       "forward",
     ]);
   });

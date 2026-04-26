@@ -31,7 +31,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { countryName } from "../../lib/countries";
 import {
-  translatePositionAbbreviation,
+  getLolRoleForPlayer,
 } from "../squad/SquadTab.helpers";
 import { resolveSeasonContext } from "../../lib/seasonContext";
 import { type NegotiationFeedbackPanelData } from "../NegotiationFeedbackPanel";
@@ -269,7 +269,7 @@ export default function TransfersTab({
     playersWithOffers,
   } = transferCollections;
 
-  const positions = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+  const positions = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"] as const;
 
   const tabs: {
     id: TransferTabView;
@@ -451,7 +451,7 @@ export default function TransfersTab({
               onClick={() => setPosFilter(posFilter === pos ? null : pos)}
               className={`px-3 py-1.5 rounded-lg text-xs font-heading font-bold uppercase tracking-wider transition-all ${posFilter === pos ? "bg-primary-500 text-white shadow-sm" : "bg-white dark:bg-navy-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-navy-600"}`}
             >
-              {t(`common.posAbbr.${pos}`)}
+              {pos === "JUNGLE" ? "JG" : pos}
             </button>
           ))}
         </div>
@@ -542,6 +542,7 @@ export default function TransfersTab({
                     );
                     const age = calcAge(player.date_of_birth);
                     const offersForThisPlayer = player.transfer_offers;
+                    const lolRole = getLolRoleForPlayer(player);
                     return (
                       <tr
                         key={player.id}
@@ -555,15 +556,12 @@ export default function TransfersTab({
                             )}
                             size="sm"
                           >
-                            {translatePositionAbbreviation(
-                              t,
-                              player.natural_position || player.position,
-                            )}
+                            {lolRole === "JUNGLE" ? "JG" : lolRole}
                           </Badge>
                         </td>
                         <td className="py-2.5 px-4">
                           <span className="font-semibold text-sm text-gray-800 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                            {player.full_name}
+                            {player.match_name || player.full_name}
                           </span>
                           <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 flex items-center gap-1">
                             <CountryFlag

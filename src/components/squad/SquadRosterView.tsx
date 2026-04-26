@@ -13,6 +13,7 @@ import ContextMenu from "../ContextMenu";
 import playersSeed from "../../../data/lec/draft/players.json";
 import { buildStartingXIIds, isPlayerOutOfPosition } from "./SquadTab.helpers";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
+import { resolvePlayerPhoto } from "../../lib/playerPhotos";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 type SortKey = "pos" | "ovr" | "condition" | "morale" | "age";
@@ -49,8 +50,10 @@ interface PlayerSeed {
   champions: Array<Array<string | number>>;
 }
 
-const PLAYER_SEEDS: PlayerSeed[] =
-  ((playersSeed as { data?: { rostered_seeds?: PlayerSeed[] } }).data?.rostered_seeds ?? []) as PlayerSeed[];
+const PLAYER_SEEDS: PlayerSeed[] = [
+  ...(((playersSeed as { data?: { rostered_seeds?: PlayerSeed[] } }).data?.rostered_seeds ?? []) as PlayerSeed[]),
+  ...(((playersSeed as { data?: { free_agent_seeds?: PlayerSeed[] } }).data?.free_agent_seeds ?? []) as PlayerSeed[]),
+];
 
 function normalizeKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/g, "");
@@ -98,12 +101,6 @@ function resolveRole(player: PlayerData): LolRole {
   const fromSeed = seedRoleToDraftRole(ROLE_BY_IGN.get(normalizeKey(player.match_name)) ?? "");
   if (fromSeed) return fromSeed;
   return roleFromPosition(player.natural_position || player.position);
-}
-
-function playerPhotoUrl(playerId: string): string | null {
-  const match = playerId.match(/^lec-player-(.+)$/);
-  if (!match) return null;
-  return `/player-photos/${match[1]}.png`;
 }
 
 function championIdFromName(name: string): string | null {
@@ -243,7 +240,7 @@ export default function SquadRosterView({
           {sortedRoster.map((player) => {
             const role = resolveRole(player);
             const ovr = calculateLolOvr(player);
-            const photo = playerPhotoUrl(player.id);
+            const photo = resolvePlayerPhoto(player.id, player.match_name);
             const championNames = TOP_3_CHAMPIONS_BY_IGN.get(normalizeKey(player.match_name)) ?? [];
             const inXI = xiIds.has(player.id);
             const currentPos = player.natural_position || player.position;

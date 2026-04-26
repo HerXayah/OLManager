@@ -166,9 +166,9 @@ describe("TeamProfile.viewModel", () => {
     const viewModel = buildTeamProfileViewModel(createTeam(), gameState);
 
     expect(viewModel.roster.map((player) => player.id)).toEqual([
-      "goalkeeper",
       "midfielder",
       "forward",
+      "goalkeeper",
     ]);
     expect(viewModel.avgOvr).toBeGreaterThan(0);
     expect(viewModel.totalWages).toBe(36000);

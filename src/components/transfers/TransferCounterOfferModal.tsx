@@ -11,7 +11,7 @@ import NegotiationFeedbackPanel, {
   type NegotiationFeedbackPanelData,
 } from "../NegotiationFeedbackPanel";
 import { Badge } from "../ui";
-import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer } from "../squad/SquadTab.helpers";
 import TransferNegotiationHistory from "./TransferNegotiationHistory";
 
 interface TransferCounterTarget {
@@ -49,6 +49,7 @@ export default function TransferCounterOfferModal({
   onClose,
 }: TransferCounterOfferModalProps) {
   const { t } = useTranslation();
+  const lolRole = getLolRoleForPlayer(counterTarget.player);
 
   return (
     <div
@@ -67,11 +68,11 @@ export default function TransferCounterOfferModal({
             variant={positionBadgeVariant(counterTarget.player.position)}
             size="sm"
           >
-            {translatePositionAbbreviation(t, counterTarget.player.position)}
+            {lolRole === "JUNGLE" ? "JG" : lolRole}
           </Badge>
           <div>
             <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">
-              {counterTarget.player.full_name}
+              {counterTarget.player.match_name || counterTarget.player.full_name}
             </p>
             <p className="text-xs text-gray-400">
               {getTeamName(teams, counterTarget.fromTeamId)} •

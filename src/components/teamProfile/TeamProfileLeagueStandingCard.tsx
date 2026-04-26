@@ -16,21 +16,21 @@ export default function TeamProfileLeagueStandingCard({
     return null;
   }
 
+  const decisiveGames = standings.won + standings.lost;
+  const winRate =
+    decisiveGames > 0
+      ? `${Math.round((standings.won / decisiveGames) * 100)}%`
+      : "0%";
+
   return (
     <Card>
       <CardHeader>{t("teamProfile.leagueStanding")}</CardHeader>
       <CardBody>
-        <div className="grid grid-cols-4 gap-2 text-center">
+        <div className="grid grid-cols-3 gap-2 text-center">
           <StatBox label={t("common.played")} value={standings.played} />
           <StatBox label={t("common.won")} value={standings.won} />
-          <StatBox label={t("common.drawn")} value={standings.drawn} />
           <StatBox label={t("common.lost")} value={standings.lost} />
-          <StatBox label={t("common.gf")} value={standings.goals_for} />
-          <StatBox label={t("common.ga")} value={standings.goals_against} />
-          <StatBox
-            label={t("common.gd")}
-            value={standings.goals_for - standings.goals_against}
-          />
+          <StatBox label={t("teamProfile.winRate")} value={winRate} />
           <StatBox label={t("common.pts")} value={standings.points} highlight />
         </div>
       </CardBody>

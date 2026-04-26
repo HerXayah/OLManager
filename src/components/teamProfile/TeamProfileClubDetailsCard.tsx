@@ -1,4 +1,4 @@
-import { Crosshair, Shield, Trophy, Users } from "lucide-react";
+import { Building2, Users } from "lucide-react";
 
 import { Card, CardBody, CardHeader } from "../ui";
 import type { TeamData } from "../../store/gameStore";
@@ -7,11 +7,13 @@ import { InfoRow } from "./TeamProfile.primitives";
 
 interface TeamProfileClubDetailsCardProps {
   team: TeamData;
+  rosterSize: number;
   t: TeamProfileTranslate;
 }
 
 export default function TeamProfileClubDetailsCard({
   team,
+  rosterSize,
   t,
 }: TeamProfileClubDetailsCardProps) {
   return (
@@ -20,24 +22,14 @@ export default function TeamProfileClubDetailsCard({
       <CardBody>
         <div className="flex flex-col gap-3">
           <InfoRow
-            icon={<Shield className="w-4 h-4" />}
-            label={t("teamProfile.stadium")}
-            value={team.stadium_name}
+            icon={<Building2 className="w-4 h-4" />}
+            label={t("teamProfile.hq")}
+            value={team.city}
           />
           <InfoRow
             icon={<Users className="w-4 h-4" />}
-            label={t("teamProfile.capacity")}
-            value={team.stadium_capacity.toLocaleString()}
-          />
-          <InfoRow
-            icon={<Crosshair className="w-4 h-4" />}
-            label={t("tactics.formation")}
-            value={team.formation}
-          />
-          <InfoRow
-            icon={<Trophy className="w-4 h-4" />}
-            label={t("tactics.playStyle")}
-            value={team.play_style}
+            label={t("teamProfile.activeRoster")}
+            value={String(rosterSize)}
           />
         </div>
       </CardBody>

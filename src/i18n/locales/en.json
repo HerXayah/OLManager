@@ -940,10 +940,17 @@
   },
   "teams": {
     "yourTeam": "Your Team",
+    "hq": "HQ:",
     "squad": "Squad",
     "avgOvr": "Avg OVR",
     "rep": "Rep",
-    "est": "Est."
+    "est": "Est.",
+    "roleSetupValue": "TOP · JG · MID · ADC · SUP",
+    "draftIdentity": "Draft",
+    "playStyleBalanced": "Balanced",
+    "playStyleCounter": "Scaling & counter",
+    "playStyleDirect": "Early skirmish",
+    "winRateShort": "WR"
   },
   "playersList": {
     "searchPlaceholder": "Search by name or nationality...",
@@ -1075,9 +1082,14 @@
     "renewalProjectionRunway": "Cash runway {{before}} → {{after}}"
   },
   "teamProfile": {
-    "clubInfo": "Club Information",
-    "stadium": "Stadium",
-    "capacity": "Capacity",
+    "clubInfo": "Team Information",
+    "hq": "HQ",
+    "activeRoster": "Active roster",
+    "roleSetup": "Core roles",
+    "draftIdentity": "Draft identity",
+    "playStyleBalanced": "Balanced",
+    "playStyleCounter": "Scaling & counter",
+    "playStyleDirect": "Early skirmish",
     "leaguePos": "League Pos",
     "leagueStanding": "League Standing",
     "squadOverview": "Squad Overview",
@@ -1087,6 +1099,7 @@
     "totalWages": "Total Wages",
     "managerLabel": "Head Coach:",
     "advancedStats": "Team Stats",
+    "winRate": "WR",
     "matchesPlayed": "Matches",
     "possession": "Possession",
     "goalDifference": "Goal Difference",

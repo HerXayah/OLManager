@@ -8,6 +8,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => {
       if (key === "teams.yourTeam") return "Your Team";
+      if (key === "teams.hq") return "HQ:";
       if (key === "common.position") return "Position";
       if (key === "teams.squad") return "Squad";
       if (key === "teams.avgOvr") return "Avg OVR";
@@ -15,6 +16,7 @@ vi.mock("react-i18next", () => ({
       if (key === "common.value") return "Value";
       if (key === "common.pts") return "Pts";
       if (key === "teams.est") return "Est";
+      if (key === "teams.winRateShort") return "WR";
       return key;
     },
     i18n: { language: "en" },
@@ -206,6 +208,8 @@ describe("TeamsListTab", () => {
     expect(headings[0]).toHaveTextContent("Beta FC");
     expect(headings[1]).toHaveTextContent("Alpha FC");
     expect(screen.getByText("Your Team")).toBeInTheDocument();
+    expect(screen.queryByText(/4-4-2/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/HQ:/i).length).toBeGreaterThan(0);
   });
 
   it("selects a team when its card is clicked", () => {

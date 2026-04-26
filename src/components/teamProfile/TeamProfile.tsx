@@ -45,7 +45,11 @@ export default function TeamProfile({
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <TeamProfileClubDetailsCard team={team} t={t} />
+        <TeamProfileClubDetailsCard
+          team={team}
+          rosterSize={viewModel.roster.length}
+          t={t}
+        />
         <TeamProfileSummaryCard
           team={team}
           isOwnTeam={isOwnTeam}

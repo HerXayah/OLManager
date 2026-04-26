@@ -1,13 +1,12 @@
 import { countryName } from "../../lib/countries";
 import {
   calcAge,
-  calcOvr,
   formatVal,
-  positionBadgeVariant,
 } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import type { PlayerData } from "../../store/gameStore";
 import { Badge, Card, CardBody, CardHeader, CountryFlag, ProgressBar } from "../ui";
-import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer, type LolRole } from "../squad/SquadTab.helpers";
 import type { TeamProfileTranslate } from "./TeamProfile.types";
 
 interface TeamProfileRosterCardProps {
@@ -25,6 +24,14 @@ export default function TeamProfileRosterCard({
   t,
   onSelectPlayer,
 }: TeamProfileRosterCardProps) {
+  const roleBadgeVariant: Record<LolRole, "primary" | "accent" | "success" | "danger" | "neutral"> = {
+    TOP: "danger",
+    JUNGLE: "success",
+    MID: "accent",
+    ADC: "primary",
+    SUPPORT: "neutral",
+  };
+
   return (
     <Card className="lg:col-span-3">
       <CardHeader>
@@ -62,11 +69,9 @@ export default function TeamProfileRosterCard({
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-navy-600">
               {roster.map((player) => {
-                const ovr = calcOvr(
-                  player,
-                  player.natural_position || player.position,
-                );
+                const ovr = calculateLolOvr(player);
                 const age = calcAge(player.date_of_birth);
+                const lolRole = getLolRoleForPlayer(player);
 
                 return (
                   <tr
@@ -76,19 +81,14 @@ export default function TeamProfileRosterCard({
                   >
                     <td className="py-3 px-5">
                       <Badge
-                        variant={positionBadgeVariant(
-                          player.natural_position || player.position,
-                        )}
+                        variant={roleBadgeVariant[lolRole]}
                       >
-                        {translatePositionAbbreviation(
-                          t,
-                          player.natural_position || player.position,
-                        )}
+                        {lolRole}
                       </Badge>
                     </td>
                     <td className="py-3 px-5">
                       <span className="font-semibold text-sm text-gray-800 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                        {player.full_name}
+                        {player.match_name || player.full_name}
                       </span>
                     </td>
                     <td className="py-3 px-5 text-sm text-gray-600 dark:text-gray-400 tabular-nums">

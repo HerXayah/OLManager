@@ -1,5 +1,5 @@
 import type { GameStateData, PlayerData } from "../../store/gameStore";
-import { normalisePosition } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer } from "../squad/SquadTab.helpers";
 
 export type TransferTabView = "my_list" | "market" | "loans" | "offers";
 
@@ -62,10 +62,7 @@ export function filterTransferPlayers(
   posFilter: string | null,
 ): PlayerData[] {
   return players.filter((player) => {
-    if (
-      posFilter &&
-      normalisePosition(player.natural_position || player.position) !== posFilter
-    ) {
+    if (posFilter && getLolRoleForPlayer(player) !== posFilter) {
       return false;
     }
 
@@ -73,6 +70,7 @@ export function filterTransferPlayers(
       const query = search.toLowerCase();
 
       if (
+        !player.match_name.toLowerCase().includes(query) &&
         !player.full_name.toLowerCase().includes(query) &&
         !player.nationality.toLowerCase().includes(query)
       ) {

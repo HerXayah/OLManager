@@ -67,11 +67,19 @@ const TEAM_BRAND_MAP: Record<string, { tricode: string; logo: string | null }> =
   mkoi: { tricode: "MKOI", logo: "/team-logos/mad-lions.png" },
   koi: { tricode: "MKOI", logo: "/team-logos/mad-lions.png" },
   madlionskoi: { tricode: "MKOI", logo: "/team-logos/mad-lions.png" },
-  teambds: { tricode: "BDS", logo: "/team-logos/team-bds.png" },
+  teambds: { tricode: "SHFT", logo: "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png" },
+  shifters: { tricode: "SHFT", logo: "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png" },
   giantx: { tricode: "GX", logo: "/team-logos/giantx-lec.png" },
   natusvincere: { tricode: "NAVI", logo: "/team-logos/natus-vincere.png" },
   karminecorp: { tricode: "KC", logo: "/team-logos/karmine-corp.png" },
 };
+
+function championIconUrl(championId: string): string {
+  if (normalizeChampionLookupKey(championId) === "yunara") {
+    return "https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/champion-icons/804.png";
+  }
+  return `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${championId}.png`;
+}
 
 function attackTypeFromStats(attackRange: number, tags: string[]) {
   if (attackRange >= 300) return "ranged" as const;
@@ -793,7 +801,7 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
       const mappedChampionId = championByPlayerId[champion.id] ?? championByPlayerId[champion.name] ?? "";
       const championId = runtimeChampionId || mappedChampionId;
       const iconUrl = championId
-        ? `https://ddragon.leagueoflegends.com/cdn/${DDRAGON_VERSION}/img/champion/${championId}.png`
+        ? championIconUrl(championId)
         : `/player-photos/${champion.id}.png`;
       const byName = normalizeChampionLookupKey(champion.name);
       if (byName) result[byName] = iconUrl;

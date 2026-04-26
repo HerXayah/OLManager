@@ -1,8 +1,8 @@
 use chrono::{Datelike, TimeZone};
-use domain::player::Player;
+use domain::player::{Player, PlayerAttributes, Position};
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 use tauri::State;
 
@@ -61,29 +61,138 @@ struct DraftSeedRoot {
 #[derive(Debug, Deserialize)]
 struct DraftSeedData {
     rostered_seeds: Vec<DraftPlayerSeed>,
+    #[serde(default)]
+    free_agent_seeds: Vec<DraftPlayerSeed>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct DraftPlayerSeed {
     ign: String,
-    potential: u8,
+    #[serde(default)]
+    #[serde(rename = "firstName")]
+    first_name: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "lastName")]
+    last_name: Option<String>,
+    #[serde(default)]
+    dob: Option<String>,
+    #[serde(default)]
+    nationality: Option<String>,
+    #[serde(default)]
+    role: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "teamId")]
+    team_id: Option<String>,
+    #[serde(default)]
+    rating: Option<u8>,
+    #[serde(default)]
+    potential: Option<u8>,
+    #[serde(default)]
+    salary: Option<u32>,
+    #[serde(default)]
+    #[serde(rename = "contractEnd")]
+    contract_end: Option<String>,
+    #[serde(default)]
+    #[serde(rename = "marketValue")]
+    market_value: Option<u64>,
+    #[serde(default)]
+    reputation: Option<u8>,
+}
+
+fn load_draft_seed_root() -> DraftSeedRoot {
+    let content = include_str!("../../../data/lec/draft/players.json");
+    let mut merged = serde_json::from_str::<DraftSeedRoot>(content).unwrap_or(DraftSeedRoot {
+        data: DraftSeedData {
+            rostered_seeds: vec![],
+            free_agent_seeds: vec![],
+        },
+    });
+
+    if let Some(external) = load_external_more_fa_seed() {
+        let mut seen = HashSet::new();
+        let mut combined = merged.data.free_agent_seeds;
+        combined.extend(external.data.free_agent_seeds);
+        combined.retain(|seed| {
+            let key = normalize_seed_name(&seed.ign);
+            if key.is_empty() || seen.contains(&key) {
+                return false;
+            }
+            seen.insert(key)
+        });
+        merged.data.free_agent_seeds = combined;
+    }
+
+    merged
+}
+
+fn load_external_more_fa_seed() -> Option<DraftSeedRoot> {
+    let mut candidates: Vec<std::path::PathBuf> = Vec::new();
+
+    if let Ok(user_profile) = std::env::var("USERPROFILE") {
+        candidates.push(
+            std::path::PathBuf::from(user_profile)
+                .join("Downloads")
+                .join("MoreFA_Players.json"),
+        );
+    }
+
+    if let Ok(home) = std::env::var("HOME") {
+        candidates.push(
+            std::path::PathBuf::from(home)
+                .join("Downloads")
+                .join("MoreFA_Players.json"),
+        );
+    }
+
+    if let Ok(cwd) = std::env::current_dir() {
+        candidates.push(cwd.join("MoreFA_Players.json"));
+        candidates.push(
+            cwd.join("data")
+                .join("lec")
+                .join("draft")
+                .join("MoreFA_Players.json"),
+        );
+    }
+
+    for path in candidates {
+        if !path.exists() {
+            continue;
+        }
+
+        let Ok(raw) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+
+        if let Ok(parsed) = serde_json::from_str::<DraftSeedRoot>(&raw) {
+            return Some(parsed);
+        }
+    }
+
+    None
+}
+
+fn draft_seed_root() -> &'static DraftSeedRoot {
+    static ROOT: OnceLock<DraftSeedRoot> = OnceLock::new();
+    ROOT.get_or_init(load_draft_seed_root)
 }
 
 fn draft_potential_map() -> &'static HashMap<String, u8> {
     static POTENTIALS: OnceLock<HashMap<String, u8>> = OnceLock::new();
     POTENTIALS.get_or_init(|| {
-        let content = include_str!("../../../data/lec/draft/players.json");
-        let parsed: DraftSeedRoot = serde_json::from_str(content).unwrap_or(DraftSeedRoot {
-            data: DraftSeedData {
-                rostered_seeds: vec![],
-            },
-        });
+        let parsed = draft_seed_root();
 
-        parsed
-            .data
-            .rostered_seeds
+        let mut all_seeds = parsed.data.rostered_seeds.clone();
+        all_seeds.extend(parsed.data.free_agent_seeds.clone());
+
+        all_seeds
             .into_iter()
-            .map(|seed| (normalize_seed_name(&seed.ign), seed.potential))
+            .filter_map(|seed| {
+                let key = normalize_seed_name(&seed.ign);
+                if key.is_empty() {
+                    return None;
+                }
+                Some((key, seed.potential.unwrap_or(99)))
+            })
             .collect()
     })
 }
@@ -696,6 +805,190 @@ fn apply_lol_seed_ratings(players: &mut [Player]) {
     }
 }
 
+fn seed_is_free_agent(seed: &DraftPlayerSeed) -> bool {
+    seed.team_id
+        .as_deref()
+        .map(normalize_seed_name)
+        .map(|team| team == "fa" || team == "freeagent")
+        .unwrap_or(true)
+}
+
+fn role_to_position(role: Option<&str>) -> Position {
+    let key = role.map(normalize_seed_name).unwrap_or_default();
+    match key.as_str() {
+        "top" => Position::Defender,
+        "jungle" => Position::Midfielder,
+        "mid" | "middle" => Position::AttackingMidfielder,
+        "bot" | "adc" | "bottom" => Position::Forward,
+        "support" | "sup" | "utility" => Position::DefensiveMidfielder,
+        _ => Position::Midfielder,
+    }
+}
+
+fn clamp_stat(value: i16) -> u8 {
+    value.clamp(25, 99) as u8
+}
+
+fn build_lol_stats_from_seed(seed: &DraftPlayerSeed) -> [u8; 9] {
+    let target = i16::from(seed.rating.unwrap_or(60).clamp(45, 95));
+    let role_key = normalize_seed_name(seed.role.as_deref().unwrap_or(""));
+    let role_bias: [i16; 9] = match role_key.as_str() {
+        "top" => [1, 0, 1, 0, 1, 1, 0, 1, 2],
+        "jungle" => [0, 0, 1, 2, 1, 2, 1, 1, 1],
+        "mid" | "middle" => [2, 2, 0, 1, 0, 1, 1, 0, 0],
+        "bot" | "adc" | "bottom" => [2, 2, 1, 0, 0, 0, 1, 0, 1],
+        "support" | "sup" | "utility" => [0, 0, 1, 2, 1, 2, 0, 1, 1],
+        _ => [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    };
+
+    let base_hash = normalize_seed_name(&seed.ign)
+        .chars()
+        .fold(0_i16, |acc, ch| acc.wrapping_add(ch as i16));
+
+    let mut values = [target; 9];
+    for index in 0..9 {
+        let jitter = ((base_hash + (index as i16 * 7)) % 5) - 2;
+        values[index] = target + role_bias[index] + jitter;
+    }
+
+    let current_avg = values.iter().sum::<i16>() / 9;
+    let mut delta = target - current_avg;
+    let mut cursor = 0_usize;
+    while delta != 0 {
+        let direction = if delta > 0 { 1 } else { -1 };
+        let candidate = values[cursor] + direction;
+        if (25..=99).contains(&candidate) {
+            values[cursor] = candidate;
+            delta -= direction;
+        }
+        cursor = (cursor + 1) % 9;
+    }
+
+    [
+        clamp_stat(values[0]),
+        clamp_stat(values[1]),
+        clamp_stat(values[2]),
+        clamp_stat(values[3]),
+        clamp_stat(values[4]),
+        clamp_stat(values[5]),
+        clamp_stat(values[6]),
+        clamp_stat(values[7]),
+        clamp_stat(values[8]),
+    ]
+}
+
+fn build_attributes_from_seed(seed: &DraftPlayerSeed) -> PlayerAttributes {
+    let [mechanics, laning, teamfighting, macro_play, consistency, shotcalling, champion_pool, discipline, mental_resilience] =
+        build_lol_stats_from_seed(seed);
+
+    let role_key = normalize_seed_name(seed.role.as_deref().unwrap_or(""));
+
+    let defending = if role_key == "top" || role_key == "support" {
+        clamp_stat(((i16::from(teamfighting) + i16::from(discipline)) / 2) + 4)
+    } else {
+        clamp_stat((i16::from(teamfighting) + i16::from(discipline)) / 2)
+    };
+
+    PlayerAttributes {
+        pace: clamp_stat((i16::from(mechanics) + i16::from(laning)) / 2),
+        stamina: mental_resilience,
+        strength: clamp_stat((i16::from(teamfighting) + i16::from(discipline)) / 2),
+        agility: champion_pool,
+        passing: clamp_stat((i16::from(macro_play) + i16::from(shotcalling)) / 2),
+        shooting: laning,
+        tackling: clamp_stat((i16::from(discipline) + i16::from(teamfighting)) / 2),
+        dribbling: mechanics,
+        defending,
+        positioning: clamp_stat((i16::from(macro_play) + i16::from(consistency)) / 2),
+        vision: macro_play,
+        decisions: consistency,
+        composure: discipline,
+        aggression: clamp_stat((i16::from(teamfighting) + i16::from(mental_resilience)) / 2 - 4),
+        teamwork: teamfighting,
+        leadership: shotcalling,
+        handling: 20,
+        reflexes: 22,
+        aerial: if role_key == "top" {
+            68
+        } else if role_key == "support" {
+            64
+        } else {
+            52
+        },
+    }
+}
+
+fn build_free_agent_player(seed: &DraftPlayerSeed, index: usize) -> Option<Player> {
+    let ign = seed.ign.trim();
+    if ign.is_empty() {
+        return None;
+    }
+
+    let first_name = seed.first_name.as_deref().unwrap_or(ign).trim().to_string();
+    let last_name = seed.last_name.as_deref().unwrap_or("").trim().to_string();
+    let full_name = if last_name.is_empty() {
+        first_name.clone()
+    } else {
+        format!("{} {}", first_name, last_name)
+    };
+
+    let dob = seed.dob.clone().unwrap_or_else(|| "2002-01-01".to_string());
+    let nationality = seed.nationality.clone().unwrap_or_else(|| "KR".to_string());
+    let position = role_to_position(seed.role.as_deref());
+    let attributes = build_attributes_from_seed(seed);
+
+    let seed_key = normalize_seed_name(ign);
+    let id = format!("lec-fa-{}-{}", seed_key, index + 1);
+
+    let mut player = Player::new(
+        id,
+        ign.to_string(),
+        full_name,
+        dob,
+        nationality,
+        position,
+        attributes,
+    );
+    player.team_id = None;
+    player.transfer_listed = true;
+    player.loan_listed = false;
+    player.market_value = seed.market_value.unwrap_or(300_000);
+    player.wage = seed.salary.unwrap_or(40_000);
+    player.contract_end = seed.contract_end.clone();
+    player.condition = 100;
+    player.morale = seed.reputation.unwrap_or(68).clamp(35, 95);
+    player.potential_base = seed
+        .potential
+        .unwrap_or(seed.rating.unwrap_or(70))
+        .clamp(45, 99);
+
+    Some(player)
+}
+
+fn inject_seed_free_agents(players: &mut Vec<Player>) {
+    let existing_ids: HashSet<String> = players
+        .iter()
+        .map(|player| normalize_seed_name(&player.match_name))
+        .collect();
+    let mut existing_ids = existing_ids;
+
+    for (index, seed) in draft_seed_root().data.free_agent_seeds.iter().enumerate() {
+        if !seed_is_free_agent(seed) {
+            continue;
+        }
+
+        let seed_key = normalize_seed_name(&seed.ign);
+        if seed_key.is_empty() || existing_ids.contains(&seed_key) {
+            continue;
+        }
+
+        if let Some(player) = build_free_agent_player(seed, index) {
+            players.push(player);
+            existing_ids.insert(seed_key);
+        }
+    }
+}
+
 /// Step 1: Create manager + generate world. No team assigned yet.
 /// Returns the Game object so the frontend can show team selection.
 /// world_source: "random" (default) or a file path to a JSON world database.
@@ -772,6 +1065,7 @@ pub async fn start_new_game(
         (world.teams, world.players, world.staff)
     };
 
+    inject_seed_free_agents(&mut players);
     apply_lol_seed_ratings(&mut players);
 
     let new_game = Game::new(clock, manager, teams, players, staff, vec![]);
@@ -930,6 +1224,7 @@ pub async fn load_game(
         .lock()
         .map_err(|e| format!("Lock error: {}", e))?;
     let mut game = sm.load_game(&save_id)?;
+    inject_seed_free_agents(&mut game.players);
     apply_lol_seed_ratings(&mut game.players);
     ofm_core::champions::bootstrap_champion_state(&mut game);
     let stats_state = sm.load_stats_state(&save_id)?;

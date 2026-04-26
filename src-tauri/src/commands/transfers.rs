@@ -378,6 +378,43 @@ mod tests {
         game
     }
 
+    fn make_free_agent_bid_game() -> Game {
+        let clock = GameClock::new(Utc.with_ymd_and_hms(2026, 8, 1, 12, 0, 0).unwrap());
+        let mut manager = Manager::new(
+            "manager-1".to_string(),
+            "Test".to_string(),
+            "Manager".to_string(),
+            "1980-01-01".to_string(),
+            "England".to_string(),
+        );
+        manager.hire("team-1".to_string());
+
+        let mut free_agent = Player::new(
+            "player-fa-1".to_string(),
+            "FA One".to_string(),
+            "Free Agent One".to_string(),
+            "2001-02-10".to_string(),
+            "England".to_string(),
+            Position::Forward,
+            default_attrs(),
+        );
+        free_agent.team_id = None;
+        free_agent.transfer_listed = true;
+        free_agent.market_value = 700_000;
+        free_agent.wage = 90_000;
+
+        let mut game = Game::new(
+            clock,
+            manager,
+            vec![make_user_team(), make_buyer_team()],
+            vec![free_agent],
+            vec![],
+            vec![],
+        );
+        game.season_context.transfer_window.status = TransferWindowStatus::Open;
+        game
+    }
+
     #[test]
     fn counter_offer_internal_returns_payload_and_updates_state() {
         let state = StateManager::new();
@@ -469,6 +506,19 @@ mod tests {
         assert_eq!(second.decision, TransferNegotiationDecision::Accepted);
         assert_eq!(second.feedback.round, 2);
         assert_eq!(second.game.players[0].team_id.as_deref(), Some("team-1"));
+    }
+
+    #[test]
+    fn make_transfer_bid_internal_accepts_free_agent_signing() {
+        let state = StateManager::new();
+        state.set_game(make_free_agent_bid_game());
+
+        let response =
+            make_transfer_bid_internal(&state, "player-fa-1", 450_000).expect("response");
+
+        assert_eq!(response.decision, TransferNegotiationDecision::Accepted);
+        assert_eq!(response.game.players[0].team_id.as_deref(), Some("team-1"));
+        assert!(!response.game.players[0].transfer_listed);
     }
 
     #[test]

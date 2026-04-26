@@ -35,21 +35,24 @@ export default function TeamProfileHistoryCard({
                 {t("common.won")}
               </th>
               <th className="py-3 px-5 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                {t("common.drawn")}
-              </th>
-              <th className="py-3 px-5 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
                 {t("common.lost")}
               </th>
               <th className="py-3 px-5 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                {t("common.gf")}
+                {t("teamProfile.winRate")}
               </th>
               <th className="py-3 px-5 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                {t("common.ga")}
+                {t("common.pts")}
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-navy-600">
-            {history.map((record, index) => (
+            {history.map((record, index) => {
+              const decisiveGames = record.won + record.lost;
+              const winRate = decisiveGames > 0
+                ? `${Math.round((record.won / decisiveGames) * 100)}%`
+                : "0%";
+
+              return (
               <tr key={index}>
                 <td className="py-3 px-5 font-semibold text-sm text-gray-800 dark:text-gray-200">
                   {record.season}/{record.season + 1}
@@ -64,19 +67,16 @@ export default function TeamProfileHistoryCard({
                   {record.won}
                 </td>
                 <td className="py-3 px-5 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
-                  {record.drawn}
-                </td>
-                <td className="py-3 px-5 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
                   {record.lost}
                 </td>
                 <td className="py-3 px-5 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
-                  {record.goals_for}
+                  {winRate}
                 </td>
                 <td className="py-3 px-5 text-center text-sm text-gray-600 dark:text-gray-400 tabular-nums">
-                  {record.goals_against}
+                  {record.points}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </CardBody>

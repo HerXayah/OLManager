@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { Pencil, Shield, User } from "lucide-react";
 import type { PlayerData } from "../../store/gameStore";
 import { formatPlayerMarketValue, formatPlayerWage } from "./PlayerProfile.helpers";
+import { resolvePlayerPhoto } from "../../lib/playerPhotos";
 import type {
   PlayerProfileScoutStatus,
   ScoutAvailability,
 } from "./PlayerProfile.scouting";
 import PlayerProfileScoutAction from "./PlayerProfileScoutAction";
-import { TraitList } from "../TraitBadge";
 import { Badge, Card } from "../ui";
 
 type TranslateFn = (
@@ -61,7 +61,7 @@ export default function PlayerProfileHeroCard({
 }: PlayerProfileHeroCardProps) {
   const role = getLolRoleLabel(primaryPosition);
   const roleVariant = getLolRoleBadgeVariant(role);
-  const playerPhoto = getPlayerPhotoPath(player.id);
+  const playerPhoto = resolvePlayerPhoto(player.id, player.match_name);
   const [insigniaBackground, setInsigniaBackground] = useState<string | null>(null);
   const [editingRole, setEditingRole] = useState(false);
   const potentialRevealed = player.potential_revealed ?? null;
@@ -256,12 +256,6 @@ export default function PlayerProfileHeroCard({
                 <span>{teamName}</span>
               )}
             </p>
-            {player.traits && player.traits.length > 0 ? (
-              <div className="mt-3">
-                <TraitList traits={player.traits} size="sm" />
-              </div>
-            ) : null}
-
           </div>
 
           {!isOwnClub ? (
@@ -376,12 +370,6 @@ export default function PlayerProfileHeroCard({
       </div>
     </Card>
   );
-}
-
-function getPlayerPhotoPath(playerId: string): string | null {
-  const match = playerId.match(/^lec-player-(.+)$/);
-  if (!match) return null;
-  return `/player-photos/${match[1]}.png`;
 }
 
 function getChampionSplashPath(championId: string | null | undefined, skinNum: number): string | null {

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "kind": "players",
+  "data": {
+    "rostered_seeds": [],
+    "free_agent_seeds": [
+      {
+        "ign": "Skain",
+        "firstName": "David",
+        "lastName": "Carbó Ferrer",
+        "dob": "1997-03-10",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 66,
+        "potential": 69,
+        "salary": 70000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 105000,
+        "reputation": 62,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Thresh",
+            100
+          ],
+          [
+            "Soraka",
+            100
+          ],
+          [
+            "Alistar",
+            85
+          ],
+          [
+            "Lulu",
+            70
+          ],
+          [
+            "Nami",
+            70
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/08/Skain_g2v.jpeg/revision/latest?cb=20170802132525",
+        "found": true
+      }
+    ]
+  }
+}

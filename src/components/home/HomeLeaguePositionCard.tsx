@@ -30,8 +30,11 @@ function teamLogoUrl(team: TeamData | undefined): string | null {
   const slug = team.id.replace(/^lec-/, "");
 
   const aliases: Record<string, string> = {
-    shifters: "team-bds",
   };
+
+  if (slug === "shifters") {
+    return "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png";
+  }
 
   const file = aliases[slug] ?? slug;
   return `/team-logos/${file}.png`;

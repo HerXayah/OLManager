@@ -946,10 +946,17 @@
   },
   "teams": {
     "yourTeam": "Tu Equipo",
+    "hq": "Base:",
     "squad": "Plantilla",
     "avgOvr": "Media OVR",
     "rep": "Rep",
-    "est": "Fund."
+    "est": "Fund.",
+    "roleSetupValue": "TOP · JG · MID · ADC · SUP",
+    "draftIdentity": "Draft",
+    "playStyleBalanced": "Equilibrado",
+    "playStyleCounter": "Escalado y contra",
+    "playStyleDirect": "Skirmish temprano",
+    "winRateShort": "WR"
   },
   "playersList": {
     "searchPlaceholder": "Buscar por nombre o nacionalidad...",
@@ -1081,9 +1088,14 @@
     "renewalProjectionRunway": "Reserva de caja {{before}} → {{after}}"
   },
   "teamProfile": {
-    "clubInfo": "Información del Club",
-    "stadium": "Estadio",
-    "capacity": "Capacidad",
+    "clubInfo": "Información del Equipo",
+    "hq": "Base de operaciones",
+    "activeRoster": "Roster activo",
+    "roleSetup": "Roles base",
+    "draftIdentity": "Identidad de draft",
+    "playStyleBalanced": "Equilibrado",
+    "playStyleCounter": "Escalado y contra",
+    "playStyleDirect": "Skirmish temprano",
     "leaguePos": "Pos en Liga",
     "leagueStanding": "Clasificación en Liga",
     "squadOverview": "Resumen de Plantilla",
@@ -1093,6 +1105,7 @@
     "totalWages": "Total de Salarios",
     "managerLabel": "Head Coach:",
     "advancedStats": "Estadísticas del equipo",
+    "winRate": "WR",
     "matchesPlayed": "Partidos",
     "possession": "Posesión",
     "goalDifference": "Diferencia de goles",

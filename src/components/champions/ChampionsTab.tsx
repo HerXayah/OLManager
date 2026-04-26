@@ -56,9 +56,12 @@ type PlayerSeedLite = {
   role?: string;
 };
 
-const PLAYER_SEEDS: PlayerSeedLite[] =
-  ((playersSeed as { data?: { rostered_seeds?: PlayerSeedLite[] } }).data
-    ?.rostered_seeds ?? []) as PlayerSeedLite[];
+const PLAYER_SEEDS: PlayerSeedLite[] = [
+  ...(((playersSeed as { data?: { rostered_seeds?: PlayerSeedLite[] } }).data
+    ?.rostered_seeds ?? []) as PlayerSeedLite[]),
+  ...(((playersSeed as { data?: { free_agent_seeds?: PlayerSeedLite[] } }).data
+    ?.free_agent_seeds ?? []) as PlayerSeedLite[]),
+];
 
 const PLAYER_SEED_BY_IGN = new Map<string, PlayerSeedLite>(
   PLAYER_SEEDS.map((entry) => [normalizeKey(entry.ign), entry]),

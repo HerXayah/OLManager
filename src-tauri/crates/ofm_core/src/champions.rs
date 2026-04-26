@@ -98,6 +98,8 @@ struct SeedRoot {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SeedData {
     rostered_seeds: Vec<SeedPlayer>,
+    #[serde(default)]
+    free_agent_seeds: Vec<SeedPlayer>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -328,7 +330,11 @@ fn seed_players() -> &'static Vec<SeedPlayer> {
     PLAYER_MASTERY_SEED.get_or_init(|| {
         let raw = include_str!("../../../../data/lec/draft/players.json");
         serde_json::from_str::<SeedRoot>(raw)
-            .map(|root| root.data.rostered_seeds)
+            .map(|root| {
+                let mut all = root.data.rostered_seeds;
+                all.extend(root.data.free_agent_seeds);
+                all
+            })
             .unwrap_or_default()
     })
 }

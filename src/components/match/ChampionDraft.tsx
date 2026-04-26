@@ -373,19 +373,24 @@ const TEAM_BRAND_MAP: Record<string, { tricode: string; logo: string | null }> =
   "sk gaming": { tricode: "SK", logo: "/team-logos/sk-gaming.png" },
   "movistar koi": { tricode: "MKOI", logo: "/team-logos/mad-lions.png" },
   "mad lions koi": { tricode: "MKOI", logo: "/team-logos/mad-lions.png" },
-  "team bds": { tricode: "SHFT", logo: "/team-logos/team-bds.png" },
+  "team bds": { tricode: "SHFT", logo: "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png" },
   giantx: { tricode: "GX", logo: "/team-logos/giantx-lec.png" },
   heretics: { tricode: "HRTS", logo: "/team-logos/team-heretics-lec.png" },
-  shifters: { tricode: "SHFT", logo: "/team-logos/team-bds.png" },
+  shifters: { tricode: "SHFT", logo: "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png" },
   "natus vincere": { tricode: "NAVI", logo: "/team-logos/natus-vincere.png" },
   "karmine corp": { tricode: "KC", logo: "/team-logos/karmine-corp.png" },
 };
 
 const TEAM_SEEDS: TeamSeed[] = ((teamsSeed as { data?: { teams?: TeamSeed[] } })
   .data?.teams ?? []) as TeamSeed[];
-const PLAYER_SEEDS: PlayerSeed[] = ((playersSeed as unknown as {
-  data?: { rostered_seeds?: PlayerSeed[] };
-}).data?.rostered_seeds ?? []) as PlayerSeed[];
+const PLAYER_SEEDS: PlayerSeed[] = [
+  ...(((playersSeed as unknown as {
+    data?: { rostered_seeds?: PlayerSeed[] };
+  }).data?.rostered_seeds ?? []) as PlayerSeed[]),
+  ...(((playersSeed as unknown as {
+    data?: { free_agent_seeds?: PlayerSeed[] };
+  }).data?.free_agent_seeds ?? []) as PlayerSeed[]),
+];
 const CHAMPIONS_SEED: ChampionsSeed = championsSeed as ChampionsSeed;
 const AI_CONFIG_SEED: DraftAiConfigSeed = aiConfigSeed as DraftAiConfigSeed;
 

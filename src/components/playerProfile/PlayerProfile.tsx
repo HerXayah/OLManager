@@ -54,8 +54,10 @@ interface PlayerSeed {
   champions: Array<Array<string | number>>;
 }
 
-const PLAYER_SEEDS: PlayerSeed[] =
-  ((playersSeed as { data?: { rostered_seeds?: PlayerSeed[] } }).data?.rostered_seeds ?? []) as PlayerSeed[];
+const PLAYER_SEEDS: PlayerSeed[] = [
+  ...(((playersSeed as { data?: { rostered_seeds?: PlayerSeed[] } }).data?.rostered_seeds ?? []) as PlayerSeed[]),
+  ...(((playersSeed as { data?: { free_agent_seeds?: PlayerSeed[] } }).data?.free_agent_seeds ?? []) as PlayerSeed[]),
+];
 
 const CHAMPION_ALIASES = (
   championsSeed as { data?: { display_aliases?: Record<string, string>; roles?: Record<string, unknown> } }
