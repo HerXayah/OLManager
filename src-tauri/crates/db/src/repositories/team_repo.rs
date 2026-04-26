@@ -1,6 +1,6 @@
 use domain::team::{
-    Facilities, FinancialTransaction, LolTactics, PlayStyle, Sponsorship, Team, TeamColors,
-    TrainingFocus, TrainingIntensity, TrainingSchedule,
+    AcademyMetadata, Facilities, FinancialTransaction, LolTactics, PlayStyle, Sponsorship, Team,
+    TeamColors, TeamKind, TrainingFocus, TrainingIntensity, TrainingSchedule,
 };
 use rusqlite::{Connection, params};
 
@@ -31,16 +31,24 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
     let training_focus_str = t.training_focus.as_id().to_string();
     let training_intensity_str = format!("{:?}", t.training_intensity);
     let training_schedule_str = format!("{:?}", t.training_schedule);
+    let team_kind_str = format!("{:?}", t.team_kind);
+    let academy_metadata_json = t
+        .academy
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(|e| format!("JSON error: {}", e))?;
 
     conn.execute(
         "INSERT OR REPLACE INTO teams
          (id, name, short_name, country, football_nation, city, stadium_name, stadium_capacity,
-          finance, manager_id, reputation, wage_budget, transfer_budget,
-         season_income, season_expenses, formation, play_style,
-         training_focus, training_intensity, training_schedule,
-         founded_year, colors_primary, colors_secondary,
-         starting_xi_ids, match_roles, form, history, training_groups, weekly_scrim_opponent_ids, scrim_loss_streak, scrim_weekly_played, scrim_weekly_wins, scrim_weekly_losses, scrim_slot_results, financial_ledger, sponsorship, facilities)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37)",
+           finance, manager_id, reputation, wage_budget, transfer_budget,
+          season_income, season_expenses, formation, play_style,
+          training_focus, training_intensity, training_schedule,
+          founded_year, colors_primary, colors_secondary,
+          starting_xi_ids, match_roles, form, history, training_groups, weekly_scrim_opponent_ids, scrim_loss_streak, scrim_weekly_played, scrim_weekly_wins, scrim_weekly_losses, scrim_slot_results, financial_ledger, sponsorship, facilities,
+          team_kind, parent_team_id, academy_team_id, academy_metadata)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34, ?35, ?36, ?37, ?38, ?39, ?40, ?41)",
         params![
             t.id,
             t.name,
@@ -79,6 +87,10 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
             financial_ledger_json,
             sponsorship_json,
             facilities_json,
+            team_kind_str,
+            t.parent_team_id,
+            t.academy_team_id,
+            academy_metadata_json,
         ],
     )
     .map_err(|e| format!("Failed to upsert team: {}", e))?;
@@ -124,6 +136,17 @@ fn parse_training_schedule(s: &str) -> TrainingSchedule {
     }
 }
 
+fn parse_team_kind(s: &str) -> TeamKind {
+    match s {
+        "Academy" => TeamKind::Academy,
+        _ => TeamKind::Main,
+    }
+}
+
+fn parse_academy_metadata(json: Option<String>) -> Option<AcademyMetadata> {
+    json.and_then(|value| serde_json::from_str::<AcademyMetadata>(&value).ok())
+}
+
 fn row_to_team(row: &rusqlite::Row) -> rusqlite::Result<Team> {
     let starting_xi_json: String = row.get(23)?;
     let match_roles_json: String = row.get(24)?;
@@ -143,6 +166,10 @@ fn row_to_team(row: &rusqlite::Row) -> rusqlite::Result<Team> {
     let training_focus_str: String = row.get(17)?;
     let training_intensity_str: String = row.get(18)?;
     let training_schedule_str: String = row.get(19)?;
+    let team_kind_str: String = row.get(37)?;
+    let parent_team_id: Option<String> = row.get(38)?;
+    let academy_team_id: Option<String> = row.get(39)?;
+    let academy_metadata_json: Option<String> = row.get(40)?;
 
     Ok(Team {
         id: row.get(0)?,
@@ -156,6 +183,10 @@ fn row_to_team(row: &rusqlite::Row) -> rusqlite::Result<Team> {
         finance: row.get(8)?,
         manager_id: row.get(9)?,
         reputation: row.get(10)?,
+        team_kind: parse_team_kind(&team_kind_str),
+        parent_team_id,
+        academy_team_id,
+        academy: parse_academy_metadata(academy_metadata_json),
         wage_budget: row.get(11)?,
         transfer_budget: row.get(12)?,
         season_income: row.get(13)?,
@@ -199,7 +230,8 @@ pub fn load_all_teams(conn: &Connection) -> Result<Vec<Team>, String> {
                     season_income, season_expenses, formation, play_style,
                     training_focus, training_intensity, training_schedule,
                     founded_year, colors_primary, colors_secondary,
-                    starting_xi_ids, match_roles, form, history, training_groups, weekly_scrim_opponent_ids, scrim_loss_streak, scrim_weekly_played, scrim_weekly_wins, scrim_weekly_losses, scrim_slot_results, financial_ledger, sponsorship, facilities
+                    starting_xi_ids, match_roles, form, history, training_groups, weekly_scrim_opponent_ids, scrim_loss_streak, scrim_weekly_played, scrim_weekly_wins, scrim_weekly_losses, scrim_slot_results, financial_ledger, sponsorship, facilities,
+                    team_kind, parent_team_id, academy_team_id, academy_metadata
              FROM teams",
         )
         .map_err(|e| format!("Failed to prepare teams query: {}", e))?;
@@ -224,7 +256,8 @@ pub fn load_team(conn: &Connection, id: &str) -> Result<Option<Team>, String> {
                     season_income, season_expenses, formation, play_style,
                     training_focus, training_intensity, training_schedule,
                     founded_year, colors_primary, colors_secondary,
-                    starting_xi_ids, match_roles, form, history, training_groups, weekly_scrim_opponent_ids, scrim_loss_streak, scrim_weekly_played, scrim_weekly_wins, scrim_weekly_losses, scrim_slot_results, financial_ledger, sponsorship, facilities
+                    starting_xi_ids, match_roles, form, history, training_groups, weekly_scrim_opponent_ids, scrim_loss_streak, scrim_weekly_played, scrim_weekly_wins, scrim_weekly_losses, scrim_slot_results, financial_ledger, sponsorship, facilities,
+                    team_kind, parent_team_id, academy_team_id, academy_metadata
              FROM teams WHERE id = ?1",
         )
         .map_err(|e| format!("Failed to prepare team query: {}", e))?;

@@ -1,0 +1,159 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
+
+import {
+  acquireAcademyTeam,
+  createAcademy,
+  getAcademyAcquisitionOptions,
+  getAcademyCreationOptions,
+} from "./academyService";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
+
+const mockedInvoke = vi.mocked(invoke);
+
+describe("academyService", () => {
+  beforeEach(() => {
+    mockedInvoke.mockReset();
+  });
+
+  it("loads academy acquisition options from the backend authority", async () => {
+    const response = {
+      parent_team_id: "team-1",
+      acquisition_allowed: true,
+      blocked_reason: null,
+      options: [
+        {
+          source_team_id: "mkoi-fenix",
+          source_team_name: "Movistar KOI Fénix",
+          source_team_short_name: "MKOI F",
+          source_team_logo_url: "https://cdn.example/logo.png",
+          source_identity: {
+            source_team_id: "mkoi-fenix",
+            original_name: "Movistar KOI Fénix",
+            original_short_name: "MKOI F",
+            original_logo_url: "https://cdn.example/logo.png",
+          },
+          erl_league_id: "nlc",
+          assignment_rule: "Domestic",
+          fallback_reason: null,
+          reputation: 4,
+          acquisition_cost: 260000,
+          rebrand_allowed: true,
+        },
+      ],
+    };
+    mockedInvoke.mockResolvedValueOnce(response);
+
+    await expect(getAcademyAcquisitionOptions("team-1")).resolves.toMatchObject(response);
+    expect(mockedInvoke).toHaveBeenCalledWith("get_academy_acquisition_options", {
+      parentTeamId: "team-1",
+    });
+  });
+
+  it("normalizes missing acquisition option arrays to an empty list", async () => {
+    mockedInvoke.mockResolvedValueOnce({
+      parent_team_id: "team-1",
+      acquisition_allowed: true,
+      blocked_reason: null,
+    });
+
+    await expect(getAcademyAcquisitionOptions("team-1")).resolves.toMatchObject({
+      options: [],
+      blocked_reason: null,
+    });
+  });
+
+  it("keeps blocked reasons from the backend instead of computing rules locally", async () => {
+    const response = {
+      parent_team_id: "team-2",
+      acquisition_allowed: false,
+      blocked_reason: "Insufficient funds for all eligible academy options",
+      options: [
+        {
+          source_team_id: "kcool",
+          source_team_name: "Karmine Corp Blue",
+          source_team_short_name: "KCB",
+          source_team_logo_url: null,
+          source_identity: {
+            source_team_id: "kcool",
+            original_name: "Karmine Corp Blue",
+            original_short_name: "KCB",
+            original_logo_url: null,
+          },
+          erl_league_id: "lfl",
+          assignment_rule: "Fallback",
+          fallback_reason: "BE has no domestic ERL; lfl is configured as nearby",
+          reputation: 5,
+          acquisition_cost: 300000,
+          rebrand_allowed: false,
+        },
+      ],
+    };
+    mockedInvoke.mockResolvedValueOnce(response);
+
+    await expect(getAcademyAcquisitionOptions("team-2")).resolves.toMatchObject({
+      acquisition_allowed: false,
+      blocked_reason: "Insufficient funds for all eligible academy options",
+      options: [
+        expect.objectContaining({
+          assignment_rule: "Fallback",
+          fallback_reason: "BE has no domestic ERL; lfl is configured as nearby",
+        }),
+      ],
+    });
+    expect(mockedInvoke).toHaveBeenCalledWith("get_academy_acquisition_options", {
+      parentTeamId: "team-2",
+    });
+  });
+
+  it("acquires an academy through the backend command with the selected source team", async () => {
+    const updatedGame = { teams: [{ id: "mkoi-fenix" }] };
+    mockedInvoke.mockResolvedValueOnce(updatedGame);
+
+    await expect(
+      acquireAcademyTeam({
+        parent_team_id: "team-1",
+        source_team_id: "mkoi-fenix",
+        custom_name: "Movistar KOI Fénix Academy",
+        custom_short_name: "MKOI F",
+        custom_logo_url: "https://cdn.example/custom-logo.png",
+      }),
+    ).resolves.toBe(updatedGame);
+    expect(mockedInvoke).toHaveBeenCalledWith("acquire_academy_team", {
+      parentTeamId: "team-1",
+      sourceTeamId: "mkoi-fenix",
+      customName: "Movistar KOI Fénix Academy",
+      customShortName: "MKOI F",
+      customLogoUrl: "https://cdn.example/custom-logo.png",
+    });
+  });
+
+  it("keeps deprecated creation wrappers mapped to acquisition commands for compatibility", async () => {
+    const updatedGame = { teams: [{ id: "legacy-source" }] };
+    mockedInvoke.mockResolvedValueOnce(updatedGame);
+
+    await expect(getAcademyCreationOptions("team-legacy")).resolves.toMatchObject({
+      parent_team_id: undefined,
+      acquisition_allowed: false,
+      blocked_reason: null,
+      options: [],
+    });
+    expect(mockedInvoke).toHaveBeenCalledWith("get_academy_acquisition_options", {
+      parentTeamId: "team-legacy",
+    });
+
+    mockedInvoke.mockResolvedValueOnce(updatedGame);
+
+    await expect(createAcademy("team-legacy", "legacy-source")).resolves.toBe(updatedGame);
+    expect(mockedInvoke).toHaveBeenCalledWith("acquire_academy_team", {
+      parentTeamId: "team-legacy",
+      sourceTeamId: "legacy-source",
+      customName: undefined,
+      customShortName: undefined,
+      customLogoUrl: undefined,
+    });
+  });
+});

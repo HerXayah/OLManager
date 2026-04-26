@@ -49,8 +49,8 @@ describe("dashboardTabContentModel", function (): void {
         const onGameUpdate = vi.fn();
         const onNavigate = vi.fn();
 
-        const model = createDashboardTabContentModel({
-            activeTab: "Squad",
+    const model = createDashboardTabContentModel({
+        activeTab: "Squad",
             gameState: createGameState(),
             seasonComplete: false,
             visitedOnboardingTabs: new Set<string>(["Squad"]),
@@ -71,5 +71,23 @@ describe("dashboardTabContentModel", function (): void {
         expect(model.handlers.onSelectTeam).toBe(onSelectTeam);
         expect(model.handlers.onGameUpdate).toBe(onGameUpdate);
         expect(model.handlers.onNavigate).toBe(onNavigate);
+    });
+
+    it("preserves the active tab string for youth academy navigation compatibility", function (): void {
+        const model = createDashboardTabContentModel({
+            activeTab: "YouthAcademy",
+            gameState: createGameState(),
+            seasonComplete: false,
+            visitedOnboardingTabs: new Set<string>(),
+            initialMessageId: null,
+            handlers: {
+                onSelectPlayer: vi.fn(),
+                onSelectTeam: vi.fn(),
+                onGameUpdate: vi.fn(),
+                onNavigate: vi.fn(),
+            },
+        });
+
+        expect(model.activeTab).toBe("YouthAcademy");
     });
 });

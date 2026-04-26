@@ -17,6 +17,16 @@ pub struct Team {
     pub manager_id: Option<String>,
     pub reputation: u32,
 
+    // Academy affiliation metadata. Defaults keep legacy saves and existing teams as main clubs.
+    #[serde(default)]
+    pub team_kind: TeamKind,
+    #[serde(default)]
+    pub parent_team_id: Option<String>,
+    #[serde(default)]
+    pub academy_team_id: Option<String>,
+    #[serde(default)]
+    pub academy: Option<AcademyMetadata>,
+
     // Financial breakdown
     pub wage_budget: i64,
     pub transfer_budget: i64,
@@ -79,6 +89,67 @@ pub struct Team {
 
     // History
     pub history: Vec<TeamSeasonRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum TeamKind {
+    #[default]
+    Main,
+    Academy,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AcademyMetadata {
+    pub lifecycle: AcademyLifecycle,
+    pub erl_assignment: ErlAssignment,
+    #[serde(default)]
+    pub source_team_id: String,
+    #[serde(default)]
+    pub original_name: String,
+    #[serde(default)]
+    pub original_short_name: String,
+    #[serde(default)]
+    pub original_logo_url: Option<String>,
+    #[serde(default)]
+    pub current_logo_url: Option<String>,
+    #[serde(default)]
+    pub acquisition_cost: i64,
+    #[serde(default)]
+    pub acquired_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum AcademyLifecycle {
+    Planned,
+    #[default]
+    Active,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ErlAssignment {
+    pub erl_league_id: String,
+    pub country_rule: ErlAssignmentRule,
+    #[serde(default)]
+    pub fallback_reason: Option<String>,
+    pub reputation: u8,
+    #[serde(default)]
+    pub acquisition_cost: i64,
+    #[serde(default)]
+    pub acquired_at: String,
+    #[serde(default, skip_serializing_if = "is_zero_i64")]
+    pub creation_cost: i64,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub created_at: String,
+}
+
+fn is_zero_i64(value: &i64) -> bool {
+    *value == 0
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ErlAssignmentRule {
+    Domestic,
+    Fallback,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -237,6 +308,93 @@ mod training_focus_tests {
     fn serde_aliases_support_old_save_values() {
         let focus: TrainingFocus = serde_json::from_str("\"Technical\"").unwrap();
         assert_eq!(focus, TrainingFocus::ChampionPoolPractice);
+    }
+}
+
+#[cfg(test)]
+mod academy_team_metadata_tests {
+    use super::{AcademyLifecycle, AcademyMetadata, ErlAssignment, ErlAssignmentRule, Team, TeamKind};
+
+    #[test]
+    fn new_teams_default_to_main_without_academy_links() {
+        let team = Team::new(
+            "g2".to_string(),
+            "G2 Esports".to_string(),
+            "G2".to_string(),
+            "DE".to_string(),
+            "Berlin".to_string(),
+            "G2 Arena".to_string(),
+            10_000,
+        );
+
+        assert_eq!(team.team_kind, TeamKind::Main);
+        assert!(team.is_main());
+        assert!(!team.is_academy());
+        assert_eq!(team.parent_team_id, None);
+        assert_eq!(team.academy_team_id, None);
+        assert_eq!(team.academy, None);
+    }
+
+    #[test]
+    fn old_save_without_academy_fields_deserializes_as_main_team() {
+        let team: Team = serde_json::from_value(serde_json::json!({
+            "id": "fnc",
+            "name": "Fnatic",
+            "short_name": "FNC",
+            "country": "GB",
+            "city": "London",
+            "stadium_name": "Fnatic HQ",
+            "stadium_capacity": 5000,
+            "finance": 1000000,
+            "manager_id": null,
+            "reputation": 500,
+            "wage_budget": 200000,
+            "transfer_budget": 500000,
+            "season_income": 0,
+            "season_expenses": 0,
+            "formation": "4-4-2",
+            "play_style": "Balanced",
+            "founded_year": 1900,
+            "colors": { "primary": "#000000", "secondary": "#ffffff" },
+            "history": []
+        }))
+        .unwrap();
+
+        assert_eq!(team.team_kind, TeamKind::Main);
+        assert_eq!(team.parent_team_id, None);
+        assert_eq!(team.academy_team_id, None);
+        assert_eq!(team.academy, None);
+    }
+
+    #[test]
+    fn academy_team_metadata_carries_parent_link_and_erl_assignment() {
+        let assignment = ErlAssignment {
+            erl_league_id: "lfl".to_string(),
+            country_rule: ErlAssignmentRule::Domestic,
+            fallback_reason: None,
+            reputation: 5,
+            acquisition_cost: 300_000,
+            acquired_at: "2026-04-26".to_string(),
+            creation_cost: 300_000,
+            created_at: "2026-04-26".to_string(),
+        };
+
+        let metadata = AcademyMetadata {
+            lifecycle: AcademyLifecycle::Active,
+            erl_assignment: assignment.clone(),
+            source_team_id: "karmine-corp-blue".to_string(),
+            original_name: "Karmine Corp Blue".to_string(),
+            original_short_name: "KCB".to_string(),
+            original_logo_url: Some("logos/kcb.svg".to_string()),
+            current_logo_url: None,
+            acquisition_cost: 300_000,
+            acquired_at: "2026-04-26".to_string(),
+        };
+
+        assert_eq!(metadata.lifecycle, AcademyLifecycle::Active);
+        assert_eq!(metadata.erl_assignment, assignment);
+        assert_eq!(metadata.source_team_id, "karmine-corp-blue");
+        assert_eq!(metadata.original_name, "Karmine Corp Blue");
     }
 }
 
@@ -721,6 +879,14 @@ mod facility_compatibility_tests {
 }
 
 impl Team {
+    pub fn is_main(&self) -> bool {
+        self.team_kind == TeamKind::Main
+    }
+
+    pub fn is_academy(&self) -> bool {
+        self.team_kind == TeamKind::Academy
+    }
+
     pub fn new(
         id: String,
         name: String,
@@ -743,6 +909,10 @@ impl Team {
             finance: 1_000_000,
             manager_id: None,
             reputation: 500,
+            team_kind: TeamKind::Main,
+            parent_team_id: None,
+            academy_team_id: None,
+            academy: None,
             wage_budget: 200_000,
             transfer_budget: 500_000,
             season_income: 0,

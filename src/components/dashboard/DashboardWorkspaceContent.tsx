@@ -8,6 +8,7 @@ import DashboardTabContent from "./DashboardTabContent";
 import type { DashboardTabContentModel } from "./dashboardTabContentModel";
 import { ShieldX } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Card, CardBody } from "../ui";
 
 interface DashboardWorkspaceContentProps {
   dashboardAlerts: DashboardAlert[];
@@ -85,7 +86,38 @@ export default function DashboardWorkspaceContent({
       ) : null}
 
       {!selectedPlayer && !selectedTeam ? (
-        <DashboardTabContent viewModel={dashboardTabContentModel} />
+        <div className="flex flex-col gap-4">
+          <DashboardTabContent viewModel={dashboardTabContentModel} />
+          {dashboardTabContentModel.activeTab &&
+          ![
+            "Home",
+            "Squad",
+            "Tactics",
+            "Training",
+            "Champions",
+            "Schedule",
+            "Finances",
+            "Transfers",
+            "Players",
+            "Teams",
+            "Tournaments",
+            "Staff",
+            "Scouting",
+            "Youth",
+            "YouthAcademy",
+            "Inbox",
+            "Manager",
+            "News",
+          ].includes(dashboardTabContentModel.activeTab) ? (
+            <Card>
+              <CardBody>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  View unavailable
+                </p>
+              </CardBody>
+            </Card>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

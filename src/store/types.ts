@@ -36,6 +36,88 @@ export interface TeamMatchRolesData {
   corner_taker: string | null;
 }
 
+export type TeamKind = "Main" | "Academy";
+
+export type AcademyLifecycle = "Planned" | "Active";
+
+export type ErlAssignmentRule = "Domestic" | "Fallback";
+
+export interface ErlAssignmentData {
+  erl_league_id: string;
+  country_rule: ErlAssignmentRule;
+  fallback_reason: string | null;
+  reputation: number;
+  creation_cost: number;
+  created_at: string;
+}
+
+export interface AcademyMetadataData {
+  lifecycle: AcademyLifecycle;
+  erl_assignment: ErlAssignmentData;
+  source_identity?: AcademySourceIdentityData;
+  branding?: {
+    current_name: string;
+    current_short_name: string;
+    current_logo_url: string | null;
+  };
+  acquisition?: {
+    source_team_id: string;
+    original_name: string;
+    original_short_name: string;
+    original_logo_url: string | null;
+    acquisition_cost: number;
+    acquired_at: string;
+  };
+}
+
+export interface AcademySourceIdentityData {
+  source_team_id: string;
+  original_name: string;
+  original_short_name: string;
+  original_logo_url: string | null;
+}
+
+export interface AcademyAcquisitionOptionData {
+  source_team_id: string;
+  source_team_name: string;
+  source_team_short_name: string;
+  source_team_logo_url: string | null;
+  erl_league_id: string;
+  league_name: string;
+  country: string;
+  region: string;
+  assignment_rule: ErlAssignmentRule;
+  fallback_reason: string | null;
+  reputation: number;
+  development_level: number;
+  acquisition_cost: number;
+  rebrand_allowed: boolean;
+  source_identity: AcademySourceIdentityData;
+}
+
+export interface AcademyAcquisitionOptionsResponseData {
+  parent_team_id: string;
+  acquisition_allowed: boolean;
+  blocked_reason: string | null;
+  options: AcademyAcquisitionOptionData[];
+}
+
+export interface AcquireAcademyTeamRequestData {
+  parent_team_id: string;
+  source_team_id: string;
+  custom_name?: string | null;
+  custom_short_name?: string | null;
+  custom_logo_url?: string | null;
+}
+
+export type AcademyCreationOptionData = AcademyAcquisitionOptionData;
+
+export type AcademyCreationOptionsResponseData = AcademyAcquisitionOptionsResponseData;
+
+export interface CreateAcademyRequestData extends AcquireAcademyTeamRequestData {
+  erl_league_id: string;
+}
+
 export interface LolTacticsData {
   strong_side: "Top" | "Mid" | "Bot";
   game_timing: "Early" | "Mid" | "Late";
@@ -81,6 +163,10 @@ export interface TeamData {
   match_roles?: TeamMatchRolesData;
   form: string[];
   history: TeamSeasonRecord[];
+  team_kind?: TeamKind;
+  parent_team_id?: string | null;
+  academy_team_id?: string | null;
+  academy?: AcademyMetadataData | null;
 }
 
 export type MatchOutcome = "Win" | "Loss";

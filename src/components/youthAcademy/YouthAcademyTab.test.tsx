@@ -1,8 +1,16 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { GameStateData, PlayerData, TeamData } from "../../store/gameStore";
+import type { GameStateData, TeamData } from "../../store/gameStore";
 import YouthAcademyTab from "./YouthAcademyTab";
+
+const getAcademyAcquisitionOptions = vi.fn();
+const acquireAcademyTeam = vi.fn();
+
+vi.mock("../../services/academyService", () => ({
+  getAcademyAcquisitionOptions: (...args: unknown[]) => getAcademyAcquisitionOptions(...args),
+  acquireAcademyTeam: (...args: unknown[]) => acquireAcademyTeam(...args),
+}));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -14,7 +22,6 @@ vi.mock("react-i18next", () => ({
       if (key === "youthAcademy.avgPotential") return "Avg Potential";
       if (key === "youthAcademy.highPotential") return "High Potential";
       if (key === "youthAcademy.youthCoach") return "Youth Coach";
-      if (key === "youthAcademy.youthProspects") return "Youth Prospects";
       if (key === "youthAcademy.noYouthPlayers") return "No youth players";
       if (key === "youthAcademy.player") return "Player";
       if (key === "youthAcademy.pos") return "Pos";
@@ -24,7 +31,6 @@ vi.mock("react-i18next", () => ({
       if (key === "youthAcademy.growth") return "Growth";
       if (key === "youthAcademy.traits") return "Traits";
       if (key === "youthAcademy.condition") return "Condition";
-      if (key.startsWith("youthAcademy.pot")) return key.replace("youthAcademy.", "");
       if (key.startsWith("common.posAbbr.")) return key.replace("common.posAbbr.", "");
       return key;
     },
@@ -35,6 +41,11 @@ vi.mock("react-i18next", () => ({
 vi.mock("../TraitBadge", () => ({
   TraitList: () => <span>Traits</span>,
 }));
+
+beforeEach(() => {
+  getAcademyAcquisitionOptions.mockReset();
+  acquireAcademyTeam.mockReset();
+});
 
 function createTeam(overrides: Partial<TeamData> = {}): TeamData {
   return {
@@ -59,77 +70,18 @@ function createTeam(overrides: Partial<TeamData> = {}): TeamData {
     training_schedule: "Balanced",
     founded_year: 1900,
     colors: { primary: "#000000", secondary: "#ffffff" },
-    starting_xi_ids: [],
+    starting_xi_ids: [] as string[],
     form: [],
     history: [],
     ...overrides,
   };
 }
 
-function createPlayer(overrides: Partial<PlayerData> = {}): PlayerData {
-  return {
-    id: "player-1",
-    match_name: "J. Smith",
-    full_name: "John Smith",
-    date_of_birth: "2008-01-01",
-    nationality: "GB",
-    position: "Forward",
-    natural_position: "Forward",
-    alternate_positions: [],
-    training_focus: null,
-    attributes: {
-      pace: 65,
-      stamina: 65,
-      strength: 65,
-      agility: 65,
-      passing: 65,
-      shooting: 65,
-      tackling: 40,
-      dribbling: 65,
-      defending: 40,
-      positioning: 60,
-      vision: 60,
-      decisions: 60,
-      composure: 60,
-      aggression: 50,
-      teamwork: 60,
-      leadership: 45,
-      handling: 20,
-      reflexes: 20,
-      aerial: 55,
-    },
-    condition: 80,
-    morale: 75,
-    injury: null,
-    team_id: "team-1",
-    contract_end: "2027-06-30",
-    wage: 12000,
-    market_value: 350000,
-    stats: {
-      appearances: 0,
-      goals: 0,
-      assists: 0,
-      clean_sheets: 0,
-      yellow_cards: 0,
-      red_cards: 0,
-      avg_rating: 0,
-      minutes_played: 0,
-    },
-    career: [],
-    transfer_listed: false,
-    loan_listed: false,
-    transfer_offers: [],
-    traits: [],
-    ...overrides,
-  };
-}
+function createGameState(teamOverrides: Partial<TeamData> = {}): GameStateData {
+  const team = createTeam(teamOverrides);
 
-function createGameState(players: PlayerData[]): GameStateData {
   return {
-    clock: {
-      current_date: "2026-08-10T00:00:00Z",
-      start_date: "2026-07-01T00:00:00Z",
-    },
+    clock: { current_date: "2026-08-10T00:00:00Z", start_date: "2026-07-01T00:00:00Z" },
     manager: {
       id: "manager-1",
       first_name: "Jane",
@@ -139,19 +91,12 @@ function createGameState(players: PlayerData[]): GameStateData {
       reputation: 50,
       satisfaction: 50,
       fan_approval: 50,
-      team_id: "team-1",
-      career_stats: {
-        matches_managed: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        trophies: 0,
-        best_finish: null,
-      },
+      team_id: team.id,
+      career_stats: { matches_managed: 0, wins: 0, draws: 0, losses: 0, trophies: 0, best_finish: null },
       career_history: [],
     },
-    teams: [createTeam()],
-    players,
+    teams: [team],
+    players: [],
     staff: [],
     messages: [],
     news: [],
@@ -161,100 +106,115 @@ function createGameState(players: PlayerData[]): GameStateData {
   };
 }
 
-function createGameStateForTeam(team: TeamData, players: PlayerData[] = []): GameStateData {
-  const baseGameState = createGameState(players);
-
-  return {
-    ...baseGameState,
-    manager: {
-      ...baseGameState.manager,
-      team_id: team.id,
-    },
-    teams: [team],
-  };
-}
-
 describe("YouthAcademyTab", () => {
-  it("renders the empty state when the squad has no youth players", () => {
-    render(
-      <YouthAcademyTab
-        gameState={createGameState([
-          createPlayer({ id: "player-older", full_name: "Senior Pro", date_of_birth: "1998-01-01" }),
-        ])}
-        onSelectPlayer={vi.fn()}
-      />,
+  it("renders acquisition options from the backend service", async () => {
+    getAcademyAcquisitionOptions.mockResolvedValueOnce({
+      parent_team_id: "team-1",
+      acquisition_allowed: true,
+      blocked_reason: null,
+      options: [
+        {
+          source_team_id: "mkoi-fenix",
+          source_team_name: "Movistar KOI Fénix",
+          source_team_short_name: "MKOI F",
+          source_team_logo_url: "https://cdn.example/logo.png",
+          source_identity: {
+            source_team_id: "mkoi-fenix",
+            original_name: "Movistar KOI Fénix",
+            original_short_name: "MKOI F",
+            original_logo_url: "https://cdn.example/logo.png",
+          },
+          erl_league_id: "nlc",
+          league_name: "NLC",
+          country: "GB",
+          region: "UK",
+          assignment_rule: "Domestic",
+          fallback_reason: null,
+          reputation: 4,
+          development_level: 5,
+          acquisition_cost: 260000,
+          rebrand_allowed: true,
+        },
+      ],
+    });
+
+    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} />);
+
+    expect(getAcademyAcquisitionOptions).toHaveBeenCalledWith("team-1");
+    await waitFor(() => expect(screen.getByText("Movistar KOI Fénix")).toBeInTheDocument());
+    expect(screen.getByText("260000")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adquirir" })).toBeInTheDocument();
+  });
+
+  it("invokes the acquisition action for the selected backend option", async () => {
+    getAcademyAcquisitionOptions.mockResolvedValueOnce({
+      parent_team_id: "team-1",
+      acquisition_allowed: true,
+      blocked_reason: null,
+      options: [
+        {
+          source_team_id: "solary",
+          source_team_name: "Solary",
+          source_team_short_name: "SOL",
+          source_team_logo_url: null,
+          source_identity: {
+            source_team_id: "solary",
+            original_name: "Solary",
+            original_short_name: "SOL",
+            original_logo_url: null,
+          },
+          erl_league_id: "lfl",
+          league_name: "LFL",
+          country: "FR",
+          region: "France",
+          assignment_rule: "Fallback",
+          fallback_reason: "Nearby ERL fallback",
+          reputation: 5,
+          development_level: 4,
+          acquisition_cost: 300000,
+          rebrand_allowed: false,
+        },
+      ],
+    });
+
+    acquireAcademyTeam.mockResolvedValueOnce(createGameState());
+
+    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText("Solary")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Adquirir" }));
+
+    await waitFor(() =>
+      expect(acquireAcademyTeam).toHaveBeenCalledWith({
+        parent_team_id: "team-1",
+        source_team_id: "solary",
+        custom_name: undefined,
+        custom_short_name: undefined,
+        custom_logo_url: undefined,
+      }),
     );
+  });
+
+  it("shows a backend blocked state when acquisition is not available", async () => {
+    getAcademyAcquisitionOptions.mockResolvedValueOnce({
+      parent_team_id: "team-1",
+      acquisition_allowed: false,
+      blocked_reason: "No eligible ERL teams within budget",
+      options: [],
+    });
+
+    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText("No eligible ERL teams within budget")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Adquirir" })).not.toBeInTheDocument();
+  });
+
+  it("does not crash when the current team cannot be resolved in state", () => {
+    const gameState = createGameState();
+    gameState.manager.team_id = "missing-team";
+
+    render(<YouthAcademyTab gameState={gameState} onSelectPlayer={vi.fn()} />);
 
     expect(screen.getByText("No youth players")).toBeInTheDocument();
-  });
-
-  it("shows youth prospects only and routes row selection", () => {
-    const onSelectPlayer = vi.fn();
-
-    render(
-      <YouthAcademyTab
-        gameState={createGameState([
-          createPlayer({ id: "player-young", full_name: "Rising Star", date_of_birth: "2008-01-01" }),
-          createPlayer({ id: "player-older", full_name: "Senior Pro", date_of_birth: "1998-01-01" }),
-        ])}
-        onSelectPlayer={onSelectPlayer}
-      />,
-    );
-
-    expect(screen.getByText("Rising Star")).toBeInTheDocument();
-    expect(screen.queryByText("Senior Pro")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Rising Star"));
-
-    expect(onSelectPlayer).toHaveBeenCalledWith("player-young");
-  });
-
-  it("shows the affiliated ERL academy panel for a mapped LEC team", () => {
-    render(
-      <YouthAcademyTab
-        gameState={createGameStateForTeam(
-          createTeam({ id: "mkoi", name: "Movistar KOI", short_name: "MKOI" }),
-        )}
-        onSelectPlayer={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Equipo ERL afiliado")).toBeInTheDocument();
-    expect(screen.getByText("MKOI Academy")).toBeInTheDocument();
-    expect(screen.getByText("Roster ERL / prospectos")).toBeInTheDocument();
-    expect(screen.getByText("MKOIA Mid")).toBeInTheDocument();
-    expect(screen.getByText(/Afiliación configurable para MVP/)).toBeInTheDocument();
-    expect(screen.getByText(/Seed local · importación Leaguepedia pendiente/)).toBeInTheDocument();
-    expect(screen.getByText(/11 ligas ERL rastreadas/)).toBeInTheDocument();
-  });
-
-  it("maps G2 to G2 Nord without claiming imported roster data", () => {
-    render(
-      <YouthAcademyTab
-        gameState={createGameStateForTeam(
-          createTeam({ id: "g2", name: "G2 Esports", short_name: "G2" }),
-        )}
-        onSelectPlayer={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("G2 Nord")).toBeInTheDocument();
-    expect(screen.getByText("G2N Support")).toBeInTheDocument();
-    expect(screen.getByText(/seed local pendiente de importador Leaguepedia/)).toBeInTheDocument();
-  });
-
-  it("shows ERL funding and affiliation opportunities when no academy is mapped", () => {
-    render(
-      <YouthAcademyTab
-        gameState={createGameStateForTeam(createTeam({ id: "alpha-fc", name: "Alpha FC", short_name: "ALP" }))}
-        onSelectPlayer={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText("Sin academia ERL afiliada")).toBeInTheDocument();
-    expect(screen.getByText("Financiar proyecto ERL")).toBeInTheDocument();
-    expect(screen.getByText("Afiliarse a equipo ERL libre")).toBeInTheDocument();
-    expect(screen.getByText("Equipos ERL libres")).toBeInTheDocument();
-    expect(screen.getByText("Solary")).toBeInTheDocument();
   });
 });

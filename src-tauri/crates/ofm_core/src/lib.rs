@@ -1,3 +1,4 @@
+pub mod academy;
 pub mod board_objectives;
 pub mod champions;
 pub mod clock;

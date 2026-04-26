@@ -166,6 +166,7 @@ function createGameState(options?: {
   scouts?: StaffData[];
   assignments?: ScoutingAssignment[];
   players?: PlayerData[];
+  teams?: TeamData[];
 }): GameStateData {
   return {
     clock: {
@@ -192,7 +193,7 @@ function createGameState(options?: {
       },
       career_history: [],
     },
-    teams: [
+    teams: options?.teams ?? [
       createTeam(),
       createTeam({ id: "team-2", name: "Beta FC", short_name: "BET", manager_id: "manager-2" }),
     ],
@@ -241,5 +242,52 @@ describe("ScoutingTab", () => {
       });
       expect(onGameUpdate).toHaveBeenCalledWith(updatedState);
     });
+  });
+
+  it("routes managers without academy to the backend-owned academy acquisition flow", () => {
+    const onNavigate = vi.fn();
+
+    render(
+      <ScoutingTab
+        gameState={createGameState({ scouts: [createScout()] })}
+        onGameUpdate={vi.fn()}
+        onNavigate={onNavigate}
+      />,
+    );
+
+    expect(screen.getByText("Academia y scouting")).toBeInTheDocument();
+    expect(screen.getByText("Compra un equipo ERL existente desde Academia para abrir el pipeline."))
+      .toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver opciones de adquisición" }));
+
+    expect(onNavigate).toHaveBeenCalledWith("YouthAcademy");
+  });
+
+  it("summarizes acquired academy roster without duplicating acquisition rules", () => {
+    render(
+      <ScoutingTab
+        gameState={createGameState({
+          scouts: [createScout()],
+          teams: [
+            createTeam({ academy_team_id: "academy-1" }),
+            createTeam({ id: "academy-1", name: "Alpha Academy", short_name: "ALPA", manager_id: null, team_kind: "Academy", parent_team_id: "team-1" }),
+            createTeam({ id: "team-2", name: "Beta FC", short_name: "BET", manager_id: "manager-2" }),
+          ],
+          players: [
+            createPlayer({ id: "academy-player-1", team_id: "academy-1", full_name: "Academy Prospect" }),
+            createPlayer({ id: "rival-player", team_id: "team-2", full_name: "Rival Prospect" }),
+          ],
+        })}
+        onGameUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Academia adquirida")).toBeInTheDocument();
+    expect(screen.getAllByText("Alpha Academy")).not.toHaveLength(0);
+    expect(screen.getByText("1 jugadores en la plantilla adquirida"))
+      .toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ver opciones de adquisición" }))
+      .not.toBeInTheDocument();
   });
 });

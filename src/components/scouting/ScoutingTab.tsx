@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GameStateData } from "../../store/gameStore";
 import {
+  Button,
   Card,
   CardBody,
 } from "../ui";
 import {
   Eye,
+  GraduationCap,
   ScanSearch,
 } from "lucide-react";
 import { sendScout } from "../../services/scoutingService";
@@ -28,6 +30,7 @@ interface ScoutingTabProps {
   gameState: GameStateData;
   onGameUpdate: (state: GameStateData) => void;
   onSelectPlayer?: (id: string) => void;
+  onNavigate?: (tab: string) => void;
 }
 
 const SCOUTING_PAGE_SIZE = 20;
@@ -36,6 +39,7 @@ export default function ScoutingTab({
   gameState,
   onGameUpdate,
   onSelectPlayer,
+  onNavigate,
 }: ScoutingTabProps) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,6 +48,15 @@ export default function ScoutingTab({
   const [page, setPage] = useState(0);
 
   const myTeamId = gameState.manager.team_id ?? "";
+  const myTeam = gameState.teams.find((team) => team.id === myTeamId);
+  const academyTeam = myTeam?.academy_team_id
+    ? gameState.teams.find((team) => team.id === myTeam.academy_team_id)
+    : gameState.teams.find(
+        (team) => team.team_kind === "Academy" && team.parent_team_id === myTeamId,
+      );
+  const academyRosterCount = academyTeam
+    ? gameState.players.filter((player) => player.team_id === academyTeam.id).length
+    : 0;
   const scouts = gameState.staff.filter(
     (s) => s.role === "Scout" && s.team_id === myTeamId,
   );
@@ -100,6 +113,41 @@ export default function ScoutingTab({
           freeSlots: t("scouting.freeSlots"),
         }}
       />
+
+      <Card accent={academyTeam ? "primary" : "accent"}>
+        <CardBody>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary-500/10 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-5 h-5 text-primary-500" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-heading uppercase tracking-wider">
+                  Academia y scouting
+                </p>
+                {academyTeam && (
+                  <p className="text-xs text-primary-500 dark:text-primary-300 mt-1">
+                    Academia adquirida
+                  </p>
+                )}
+                <p className="font-heading font-bold text-gray-800 dark:text-gray-100 mt-1">
+                  {academyTeam?.name ?? "Adquisición de academia pendiente"}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {academyTeam
+                    ? `${academyRosterCount} jugadores en la plantilla adquirida`
+                    : "Compra un equipo ERL existente desde Academia para abrir el pipeline."}
+                </p>
+              </div>
+            </div>
+            {!academyTeam && onNavigate && (
+              <Button size="sm" variant="outline" onClick={() => onNavigate("YouthAcademy")}>
+                Ver opciones de adquisición
+              </Button>
+            )}
+          </div>
+        </CardBody>
+      </Card>
 
       <ScoutingAssignmentsList
         assignments={assignments}

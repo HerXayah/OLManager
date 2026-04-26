@@ -16,6 +16,7 @@ import ManagerTab from "../manager/ManagerTab";
 import NewsTab from "../news/NewsTab";
 import ChampionsTab from "../champions/ChampionsTab";
 import EndOfSeasonScreen from "../EndOfSeasonScreen";
+import { Card, CardBody } from "../ui";
 import type { DashboardTabContentModel } from "./dashboardTabContentModel";
 
 interface DashboardTabContentProps {
@@ -127,10 +128,11 @@ export default function DashboardTabContent({
           gameState={gameState}
           onGameUpdate={onGameUpdate}
           onSelectPlayer={onSelectPlayer}
+          onNavigate={onNavigate}
         />
       )}
 
-      {activeTab === "Youth" && (
+      {(activeTab === "Youth" || activeTab === "YouthAcademy") && (
         <YouthAcademyTab
           gameState={gameState}
           onSelectPlayer={onSelectPlayer}
@@ -150,6 +152,35 @@ export default function DashboardTabContent({
 
       {activeTab === "News" && (
         <NewsTab gameState={gameState} onSelectTeam={onSelectTeam} />
+      )}
+
+      {![
+        "Home",
+        "Squad",
+        "Tactics",
+        "Training",
+        "Champions",
+        "Schedule",
+        "Finances",
+        "Transfers",
+        "Players",
+        "Teams",
+        "Tournaments",
+        "Staff",
+        "Scouting",
+        "Youth",
+        "YouthAcademy",
+        "Inbox",
+        "Manager",
+        "News",
+      ].includes(activeTab) && (
+        <Card>
+          <CardBody>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              View unavailable
+            </p>
+          </CardBody>
+        </Card>
       )}
     </>
   );

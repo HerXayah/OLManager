@@ -128,8 +128,8 @@ function normaliseKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/g, "");
 }
 
-export function canonicalPosition(position: string): string {
-  const trimmed = position.trim();
+export function canonicalPosition(position?: string | null): string {
+  const trimmed = (position ?? "").trim();
   if (!trimmed) return trimmed;
 
   return CANONICAL_POSITION_MAP[normaliseKey(trimmed)] || trimmed;
@@ -150,12 +150,12 @@ export function parseFormationSlots(formation: string): {
   return { def: 4, mid: 4, fwd: 2 };
 }
 
-export function normalisePosition(position: string): string {
+export function normalisePosition(position?: string | null): string {
   const canonical = canonicalPosition(position);
   return POSITION_GROUPS[canonical] || canonical;
 }
 
-export function positionCode(position: string): string {
+export function positionCode(position?: string | null): string {
   const normalized = canonicalPosition(position);
   return (
     POSITION_CODES[normalized] || normalized.substring(0, 3).toUpperCase()
@@ -163,28 +163,59 @@ export function positionCode(position: string): string {
 }
 
 export function translatePositionLabel(
-  translate: (key: string, options?: { defaultValue?: string }) => string,
-  position: string,
+  translateFnOrPosition: string | ((key: string, options?: { defaultValue?: string }) => string),
+  positionOrTranslateFn?: string | ((key: string, options?: { defaultValue?: string }) => string),
 ): string {
+  // Defensive: detect inverted arguments
+  let translateFn: (key: string, options?: { defaultValue?: string }) => string;
+  let position: string | null | undefined;
+
+  if (typeof translateFnOrPosition === "function") {
+    translateFn = translateFnOrPosition;
+    position = positionOrTranslateFn as string | null | undefined;
+  } else if (typeof positionOrTranslateFn === "function") {
+    // Arguments are inverted — position passed as first argument
+    translateFn = positionOrTranslateFn;
+    position = translateFnOrPosition;
+  } else {
+    // Fallback: return position as-is if neither is a function
+    return translateFnOrPosition ?? "";
+  }
+
   const canonical = canonicalPosition(position);
 
-  return translate(`common.positions.${canonical}`, {
+  return translateFn(`common.positions.${canonical}`, {
     defaultValue: POSITION_LABELS[canonical] || canonical,
   });
 }
 
 export function translatePositionAbbreviation(
-  translate: (key: string, options?: { defaultValue?: string }) => string,
-  position: string,
+  translateFnOrPosition: string | ((key: string, options?: { defaultValue?: string }) => string),
+  positionOrTranslateFn?: string | ((key: string, options?: { defaultValue?: string }) => string),
 ): string {
+  // Defensive: detect inverted arguments
+  let translateFn: (key: string, options?: { defaultValue?: string }) => string;
+  let position: string | null | undefined;
+
+  if (typeof translateFnOrPosition === "function") {
+    translateFn = translateFnOrPosition;
+    position = positionOrTranslateFn as string | null | undefined;
+  } else if (typeof positionOrTranslateFn === "function") {
+    translateFn = positionOrTranslateFn;
+    position = translateFnOrPosition;
+  } else {
+    // Fallback: return position as-is if neither is a function
+    return translateFnOrPosition ?? "";
+  }
+
   const normalized = canonicalPosition(position);
 
-  return translate(`common.posAbbr.${normalized}`, {
+  return translateFn(`common.posAbbr.${normalized}`, {
     defaultValue: positionCode(position),
   });
 }
 
-export function getLolRoleFromPosition(position: string): LolRole {
+export function getLolRoleFromPosition(position?: string | null): LolRole {
   const pos = canonicalPosition(position);
   if (
     pos === "Defender" ||
@@ -382,14 +413,14 @@ export function buildStartingXIIds(
 
   for (const id of savedIds) {
     const player = byId.get(id);
-    if (player && !used.has(id) && xi.length < 5) {
+    if (player && !used.has(id) && xi.length < 11) {
       xi.push(id);
       used.add(id);
     }
   }
 
   for (const role of roleOrder) {
-    if (xi.length >= 5) break;
+    if (xi.length >= 11) break;
 
     const roleCandidates = available
       .filter((player) => !used.has(player.id) && roleFromPlayer(player) === role)
@@ -406,7 +437,7 @@ export function buildStartingXIIds(
     }
   }
 
-  while (xi.length < 5) {
+  while (xi.length < 11) {
     const candidates = available
       .filter((player) => !used.has(player.id))
       .sort((a, b) => calcOvr(b, b.natural_position || b.position) - calcOvr(a, a.natural_position || a.position));
@@ -417,7 +448,7 @@ export function buildStartingXIIds(
     used.add(bestPlayer.id);
   }
 
-  return xi.slice(0, 5);
+  return xi.slice(0, 11);
 }
 
 export function buildPitchSlotRows(
