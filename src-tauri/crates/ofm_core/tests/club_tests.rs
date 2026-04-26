@@ -1,6 +1,6 @@
 use chrono::{TimeZone, Utc};
 use domain::manager::Manager;
-use domain::team::{Facilities, FacilityType, Team};
+use domain::team::{Facilities, FacilityType, MainFacilityModuleKind, Team};
 use ofm_core::clock::GameClock;
 use ofm_core::club;
 use ofm_core::game::Game;
@@ -53,6 +53,7 @@ fn upgrade_facility_rejects_when_funds_are_insufficient() {
     let mut game = make_game();
     game.teams[0].finance = 100_000;
     game.teams[0].facilities = Facilities {
+        main_hub_level: 1,
         training: 1,
         medical: 1,
         scouting: 1,
@@ -63,4 +64,45 @@ fn upgrade_facility_rejects_when_funds_are_insufficient() {
     assert!(result.is_err());
     assert_eq!(game.teams[0].finance, 100_000);
     assert_eq!(game.teams[0].facilities.training, 1);
+}
+
+#[test]
+fn expand_main_facility_hub_deducts_funds_and_unlocks_next_module_level() {
+    let mut game = make_game();
+    let initial_finance = game.teams[0].finance;
+
+    let cost = club::expand_main_facility_hub(&mut game.teams[0]).unwrap();
+
+    assert_eq!(cost, 500_000);
+    assert_eq!(game.teams[0].finance, initial_finance - cost);
+    assert_eq!(game.teams[0].facilities.as_main_facility_hub().level, 2);
+    assert_eq!(game.teams[0].facilities.training, 1);
+    assert!(game.teams[0]
+        .facilities
+        .can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+}
+
+#[test]
+fn upgrade_main_facility_module_requires_the_next_hub_level_to_be_unlocked() {
+    let mut game = make_game();
+
+    let result = club::upgrade_main_facility_module(
+        &mut game.teams[0],
+        MainFacilityModuleKind::ScoutingLab,
+    );
+
+    assert!(result.is_err());
+    assert_eq!(game.teams[0].finance, 2_000_000);
+    assert_eq!(game.teams[0].facilities.scouting, 1);
+}
+
+#[test]
+fn legacy_facility_upgrade_entry_point_expands_the_hub_cap_safely() {
+    let mut game = make_game();
+
+    let cost = club::upgrade_facility(&mut game.teams[0], FacilityType::Scouting).unwrap();
+
+    assert_eq!(cost, 250_000);
+    assert_eq!(game.teams[0].facilities.as_main_facility_hub().level, 2);
+    assert_eq!(game.teams[0].facilities.scouting, 2);
 }

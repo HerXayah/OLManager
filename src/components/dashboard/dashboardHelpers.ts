@@ -6,6 +6,10 @@ import type {
 } from "../../store/gameStore";
 import { formatVal } from "../../lib/helpers";
 import { getTeamFinanceSnapshot } from "../../lib/finance";
+import {
+  getClubInstallationContract,
+  getSponsorshipContractView,
+} from "../../lib/lolFinanceContracts";
 import { buildStartingXIIds } from "../squad/SquadTab.helpers";
 
 export interface DashboardAlert {
@@ -13,6 +17,11 @@ export interface DashboardAlert {
   text: string;
   tab: string;
   severity: "warn" | "info";
+}
+
+export interface FinanceSnapshotAlertData {
+  installationWarnings: DashboardAlert[];
+  sponsorWarnings: DashboardAlert[];
 }
 
 export interface DashboardSearchResults {
@@ -184,6 +193,9 @@ export function getDashboardAlerts(
   }
 
   if (myTeam && financeSnapshot) {
+    const installationContract = getClubInstallationContract(myTeam);
+    const sponsorshipContract = getSponsorshipContractView(myTeam.sponsorship);
+
     if (myTeam.finance < 0 || financeSnapshot.runwayStatus === "critical") {
       alerts.push({
         id: "finance_crisis",
@@ -205,6 +217,34 @@ export function getDashboardAlerts(
         }),
         tab: "Finances",
         severity: "warn",
+      });
+    }
+
+    installationContract
+      .filter((installation) => installation.monthlyUpkeep > 0)
+      .forEach((installation) => {
+        alerts.push({
+          id: `installation_${installation.key}`,
+          text: t("dashboard.alerts.installationUpkeep", {
+            label: installation.label,
+            amount: formatVal(installation.monthlyUpkeep),
+            defaultValue:
+              "{{label}} upkeep now costs {{amount}} per month",
+          }),
+          tab: "Finances",
+          severity: "info",
+        });
+      });
+
+    if (sponsorshipContract?.theme === "esports") {
+      alerts.push({
+        id: "sponsor_theme_esports",
+        text: t("dashboard.alerts.esportsSponsor", {
+          sponsorName: sponsorshipContract.sponsorName,
+          defaultValue: "{{sponsorName}} is an esports sponsor",
+        }),
+        tab: "Finances",
+        severity: "info",
       });
     }
 

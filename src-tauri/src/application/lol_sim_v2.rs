@@ -3036,7 +3036,10 @@ fn seed_team(
         champion_obj.insert("attackDamage".to_string(), Value::from(attack_damage));
         champion_obj.insert("targetPath".to_string(), Value::Array(initial_target_path));
         champion_obj.insert("targetPathIndex".to_string(), Value::from(0));
-        champion_obj.insert("nextDecisionAt".to_string(), Value::from(initial_next_decision_at));
+        champion_obj.insert(
+            "nextDecisionAt".to_string(),
+            Value::from(initial_next_decision_at),
+        );
         champion_obj.insert("kills".to_string(), Value::from(0));
         champion_obj.insert("deaths".to_string(), Value::from(0));
         champion_obj.insert("assists".to_string(), Value::from(0));
@@ -3050,7 +3053,10 @@ fn seed_team(
         champion_obj.insert("items".to_string(), Value::Array(Vec::new()));
         champion_obj.insert("gameplayScore".to_string(), Value::from(gameplay_score));
         champion_obj.insert("iqScore".to_string(), Value::from(iq_score));
-        champion_obj.insert("competitiveScore".to_string(), Value::from(competitive_score));
+        champion_obj.insert(
+            "competitiveScore".to_string(),
+            Value::from(competitive_score),
+        );
         champion_obj.insert("staffExecution".to_string(), Value::from(staff_execution));
         champion_obj.insert("summonerSpells".to_string(), Value::Array(summoner_spells));
         champion_obj.insert("igniteDotUntil".to_string(), Value::from(0.0));

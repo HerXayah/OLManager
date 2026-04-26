@@ -407,7 +407,7 @@ mod tests {
     use domain::stats::{
         LolRole, MatchOutcome, PlayerMatchStatsRecord, StatsState, TeamMatchStatsRecord, TeamSide,
     };
-    use domain::team::Team;
+    use domain::team::{Facilities, Sponsorship, SponsorshipBonusCriterion, Team};
     use ofm_core::clock::GameClock;
     use ofm_core::game::{BoardObjective, ObjectiveType, ScoutingAssignment};
     use rusqlite::params;
@@ -492,6 +492,9 @@ mod tests {
             scouting_assignments: vec![],
             board_objectives: vec![],
             season_context: domain::season::SeasonContext::default(),
+            days_since_last_job_offer: None,
+            champion_masteries: vec![],
+            champion_patch: Default::default(),
         }
     }
 
@@ -1174,5 +1177,64 @@ mod tests {
 
         assert_eq!(league_count, 1);
         assert_eq!(fixture_count, 1);
+    }
+
+    #[test]
+    fn test_save_and_new_game_from_save_preserve_finance_model_state() {
+        let dir = tempfile::tempdir().unwrap();
+        let saves_dir = dir.path().join("saves");
+
+        let mut sm = SaveManager::init(&saves_dir).unwrap();
+        let mut game = sample_game();
+        game.teams[0].facilities = Facilities {
+            training: 3,
+            medical: 2,
+            scouting: 4,
+            ..Facilities::default()
+        };
+        game.teams[0].sponsorship = Some(Sponsorship {
+            sponsor_name: "PixelForge PCs".to_string(),
+            base_value: 140_000,
+            remaining_weeks: 9,
+            bonus_criteria: vec![SponsorshipBonusCriterion::UnbeatenRun {
+                required_matches: 4,
+                bonus_amount: 25_000,
+            }],
+        });
+        game.messages
+            .push(domain::message::InboxMessage::new(
+                "finance-note".to_string(),
+                "Finance note".to_string(),
+                "Keep the books tidy.".to_string(),
+                "Board".to_string(),
+                "2026-08-15".to_string(),
+            ));
+
+        let save_id = sm.create_save(&game, "Finance Career").unwrap();
+
+        let loaded = sm.load_game(&save_id).unwrap();
+        let team = &loaded.teams[0];
+        assert_eq!(team.facilities.training, 3);
+        assert_eq!(team.facilities.medical, 2);
+        assert_eq!(team.facilities.scouting, 4);
+        let sponsorship = team.sponsorship.as_ref().expect("sponsorship should load");
+        assert_eq!(sponsorship.sponsor_name, "PixelForge PCs");
+        assert_eq!(sponsorship.base_value, 140_000);
+        assert_eq!(sponsorship.remaining_weeks, 9);
+
+        let template = sm.new_game_from_save(&save_id).unwrap();
+        let template_team = &template.teams[0];
+        assert_eq!(template_team.facilities.training, 3);
+        assert_eq!(template_team.facilities.medical, 2);
+        assert_eq!(template_team.facilities.scouting, 4);
+        assert_eq!(
+            template_team
+                .sponsorship
+                .as_ref()
+                .expect("sponsorship should survive template creation")
+                .sponsor_name,
+            "PixelForge PCs"
+        );
+        assert!(template.messages.is_empty());
     }
 }

@@ -1,8 +1,20 @@
 use crate::game::Game;
 use chrono::Datelike;
 use domain::message::*;
-use domain::team::{Sponsorship, SponsorshipBonusCriterion, Team};
+use domain::team::{
+    main_facility_module_catalog, Facilities, MainFacilityModuleKind, Sponsorship,
+    SponsorshipBonusCriterion, Team,
+};
 use rand::RngExt;
+
+const MAIN_HUB_UPKEEP_PER_EXTRA_LEVEL: i64 = 20_000;
+const ESPORTS_SPONSOR_THEME_MULTIPLIER: f64 = 1.15;
+
+pub struct FacilityUpkeepBreakdown {
+    pub monthly_total: i64,
+    pub hub_extra_level_total: i64,
+    pub module_extra_level_total: i64,
+}
 
 fn action(id: &str, label: &str, label_key: &str, action_type: ActionType) -> MessageAction {
     MessageAction {
@@ -69,8 +81,70 @@ pub fn calc_matchday(
     revenue_per_match * home_match_count
 }
 
-pub fn calc_upkeep(_team: &Team) -> i64 {
-    0
+pub fn calc_upkeep(team: &Team) -> i64 {
+    facility_upkeep_breakdown(&team.facilities).monthly_total
+}
+
+pub fn facility_upkeep_breakdown(facilities: &Facilities) -> FacilityUpkeepBreakdown {
+    let hub_level = facilities.as_main_facility_hub().level;
+    let hub_extra_level_total = i64::from(hub_level.saturating_sub(1))
+        * MAIN_HUB_UPKEEP_PER_EXTRA_LEVEL;
+    let module_extra_level_total = main_facility_module_catalog()
+        .iter()
+        .map(|definition| canonical_module_upkeep(facilities, definition.kind))
+        .sum();
+
+    FacilityUpkeepBreakdown {
+        monthly_total: hub_extra_level_total + module_extra_level_total,
+        hub_extra_level_total,
+        module_extra_level_total,
+    }
+}
+
+fn canonical_module_upkeep(facilities: &Facilities, module: MainFacilityModuleKind) -> i64 {
+    let extra_levels = i64::from(facilities.module_level(module).saturating_sub(1));
+    let per_level = match module {
+        MainFacilityModuleKind::ScrimsRoom => 20_000,
+        MainFacilityModuleKind::AnalysisRoom => 15_000,
+        MainFacilityModuleKind::BootcampArea => 15_000,
+        MainFacilityModuleKind::RecoverySuite => 10_000,
+        MainFacilityModuleKind::ScoutingLab => 10_000,
+        MainFacilityModuleKind::ContentStudio => 0,
+    };
+
+    extra_levels * per_level
+}
+
+pub fn facility_module_sponsorship_multiplier(facilities: &Facilities) -> f64 {
+    let extra_content_levels = facilities
+        .module_level(MainFacilityModuleKind::ContentStudio)
+        .saturating_sub(1);
+
+    1.0 + f64::from(extra_content_levels) * 0.02
+}
+
+fn sponsorship_theme_multiplier(sponsor_name: &str) -> f64 {
+    let normalized = sponsor_name.to_lowercase();
+    if normalized.contains("esport")
+        || normalized.contains("gaming")
+        || normalized.contains("pc")
+        || normalized.contains("hardware")
+        || normalized.contains("tech")
+    {
+        ESPORTS_SPONSOR_THEME_MULTIPLIER
+    } else {
+        1.0
+    }
+}
+
+pub fn calc_sponsorship_income(
+    current_position: Option<u32>,
+    recent_form: &[String],
+    sponsorship: &Sponsorship,
+) -> i64 {
+    let theme_multiplier = sponsorship_theme_multiplier(&sponsorship.sponsor_name);
+    let base_income = (sponsorship.base_value as f64 * theme_multiplier).round() as i64;
+    base_income + evaluate_sponsorship_bonus(current_position, recent_form, sponsorship)
 }
 
 pub fn evaluate_sponsorship_bonus(
@@ -148,6 +222,11 @@ fn count_recent_home_matches(game: &Game, team_id: &str) -> i64 {
         .count() as i64
 }
 
+fn should_apply_monthly_upkeep(game: &Game) -> bool {
+    let date = game.clock.current_date.date_naive();
+    game.clock.current_date.weekday().num_days_from_monday() == 0 && date.day() <= 7
+}
+
 /// Process weekly financial operations (called every Monday = weekday 0).
 /// - Deduct player wages (weekly = annual / 52)
 /// - Deduct staff wages
@@ -165,7 +244,11 @@ pub fn process_weekly_finances(game: &mut Game) {
         .iter()
         .map(|team| {
             let wages = calc_wages(game, &team.id);
-            let upkeep = calc_upkeep(team);
+            let upkeep = if should_apply_monthly_upkeep(game) {
+                calc_upkeep(team)
+            } else {
+                0
+            };
 
             (team.id.clone(), wages + upkeep)
         })
@@ -194,10 +277,7 @@ pub fn process_weekly_finances(game: &mut Game) {
         let sponsorship_income = team
             .sponsorship
             .as_ref()
-            .map(|sponsorship| {
-                sponsorship.base_value
-                    + evaluate_sponsorship_bonus(current_position, &team.form, sponsorship)
-            })
+            .map(|sponsorship| calc_sponsorship_income(current_position, &team.form, sponsorship))
             .unwrap_or(0);
 
         if sponsorship_income > 0 {
@@ -268,7 +348,12 @@ fn generate_financial_warnings(game: &mut Game, today: &str) {
 
     let weekly_wages = calc_wages(game, &user_team_id);
     let annual_wages = calc_annual_wages(game, &user_team_id);
-    let weekly_sponsorship_income = team.sponsorship.as_ref().map(|s| s.base_value).unwrap_or(0);
+    let current_position = current_league_position(game, &user_team_id);
+    let weekly_sponsorship_income = team
+        .sponsorship
+        .as_ref()
+        .map(|s| calc_sponsorship_income(current_position, &team.form, s))
+        .unwrap_or(0);
     let projected_weekly_net = weekly_sponsorship_income - weekly_wages;
     let weeks_left = calc_cash_runway_weeks(team.finance, projected_weekly_net).unwrap_or(999);
 

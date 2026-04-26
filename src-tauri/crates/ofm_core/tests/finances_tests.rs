@@ -5,7 +5,7 @@ use domain::league::{
 use domain::manager::Manager;
 use domain::player::{Player, PlayerAttributes, Position};
 use domain::staff::{Staff, StaffAttributes, StaffRole};
-use domain::team::{Sponsorship, SponsorshipBonusCriterion, Team};
+use domain::team::{Facilities, MainFacilityModuleKind, Sponsorship, SponsorshipBonusCriterion, Team};
 use ofm_core::clock::GameClock;
 use ofm_core::finances;
 use ofm_core::game::Game;
@@ -87,9 +87,8 @@ fn make_staff(id: &str, team_id: &str, wage: u32) -> Staff {
 }
 
 /// Create a game set on a Monday (weekday 0) so process_weekly_finances runs.
-fn make_monday_game() -> Game {
-    // 2025-06-16 is a Monday
-    let date = Utc.with_ymd_and_hms(2025, 6, 16, 12, 0, 0).unwrap();
+fn make_game_on(year: i32, month: u32, day: u32) -> Game {
+    let date = Utc.with_ymd_and_hms(year, month, day, 12, 0, 0).unwrap();
     let clock = GameClock::new(date);
     let mut manager = Manager::new(
         "mgr1".to_string(),
@@ -106,6 +105,11 @@ fn make_monday_game() -> Game {
     let s1 = make_staff("s1", "team1", 10_400); // 10400/52 = 200/week
 
     Game::new(clock, manager, vec![team1], vec![p1, p2], vec![s1], vec![])
+}
+
+fn make_monday_game() -> Game {
+    // 2025-06-16 is a Monday
+    make_game_on(2025, 6, 16)
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +157,66 @@ fn calc_upkeep_defaults_to_zero_for_now() {
 }
 
 #[test]
+fn calc_upkeep_stays_zero_for_legacy_default_facilities() {
+    let game = make_monday_game();
+
+    assert_eq!(finances::calc_upkeep(&game.teams[0]), 0);
+}
+
+#[test]
+fn calc_upkeep_scales_with_upgraded_facilities() {
+    let mut game = make_monday_game();
+    game.teams[0].facilities = Facilities {
+        training: 3,
+        medical: 2,
+        scouting: 1,
+        ..Facilities::default()
+    };
+
+    assert_eq!(finances::calc_upkeep(&game.teams[0]), 135_000);
+}
+
+#[test]
+fn calc_upkeep_uses_canonical_modular_hub_contract() {
+    let mut game = make_monday_game();
+    game.teams[0].facilities = Facilities {
+        main_hub_level: 4,
+        training: 3,
+        medical: 2,
+        scouting: 1,
+    };
+
+    let breakdown = finances::facility_upkeep_breakdown(&game.teams[0].facilities);
+
+    assert_eq!(breakdown.monthly_total, 155_000);
+    assert_eq!(breakdown.hub_extra_level_total, 60_000);
+    assert_eq!(breakdown.module_extra_level_total, 95_000);
+    assert_eq!(finances::calc_upkeep(&game.teams[0]), 155_000);
+}
+
+#[test]
+fn content_studio_finance_effect_is_gated_behind_canonical_module_helper() {
+    let default_facilities = Facilities::default();
+    let expanded_facilities = Facilities {
+        main_hub_level: 3,
+        ..Facilities::default()
+    };
+
+    assert_eq!(
+        finances::facility_module_sponsorship_multiplier(&default_facilities),
+        1.0
+    );
+    assert_eq!(
+        default_facilities.module_level(MainFacilityModuleKind::ContentStudio),
+        1
+    );
+    assert_eq!(
+        finances::facility_module_sponsorship_multiplier(&expanded_facilities),
+        1.04
+    );
+}
+
+#[test]
 fn evaluate_sponsorship_bonus_sums_met_criteria_for_team_context() {
     let sponsorship = Sponsorship {
         sponsor_name: "Acme Corp".to_string(),
@@ -177,6 +241,48 @@ fn evaluate_sponsorship_bonus_sums_met_criteria_for_team_context() {
     );
 
     assert_eq!(bonus, 75_000);
+}
+
+#[test]
+fn calc_sponsorship_income_applies_esports_or_pc_theme_bonus() {
+    let sponsorship = Sponsorship {
+        sponsor_name: "Nexus eSports".to_string(),
+        base_value: 100_000,
+        remaining_weeks: 8,
+        bonus_criteria: vec![SponsorshipBonusCriterion::UnbeatenRun {
+            required_matches: 3,
+            bonus_amount: 25_000,
+        }],
+    };
+
+    let income = finances::calc_sponsorship_income(
+        Some(1),
+        &["W".to_string(), "D".to_string(), "W".to_string()],
+        &sponsorship,
+    );
+
+    assert_eq!(income, 140_000);
+}
+
+#[test]
+fn calc_sponsorship_income_leaves_generic_brands_unmodified() {
+    let sponsorship = Sponsorship {
+        sponsor_name: "Acme Corp".to_string(),
+        base_value: 100_000,
+        remaining_weeks: 8,
+        bonus_criteria: vec![SponsorshipBonusCriterion::UnbeatenRun {
+            required_matches: 3,
+            bonus_amount: 25_000,
+        }],
+    };
+
+    let income = finances::calc_sponsorship_income(
+        Some(1),
+        &["W".to_string(), "D".to_string(), "W".to_string()],
+        &sponsorship,
+    );
+
+    assert_eq!(income, 125_000);
 }
 
 #[test]
@@ -207,6 +313,43 @@ fn weekly_sponsorship_payout_is_applied_and_duration_decrements_on_monday() {
         game.teams[0].sponsorship.as_ref().unwrap().remaining_weeks,
         1
     );
+}
+
+#[test]
+fn monthly_upkeep_is_deducted_on_first_monday_of_the_month() {
+    let mut game = make_game_on(2025, 6, 2);
+    game.teams[0].facilities = Facilities {
+        main_hub_level: 4,
+        training: 3,
+        medical: 2,
+        scouting: 1,
+    };
+    let initial_finance = game.teams[0].finance;
+
+    finances::process_weekly_finances(&mut game);
+
+    let wages = (52_000 + 26_000 + 10_400) / 52;
+    let upkeep = 155_000;
+    assert_eq!(game.teams[0].finance, initial_finance - wages - upkeep);
+    assert_eq!(game.teams[0].season_expenses, wages + upkeep);
+}
+
+#[test]
+fn monthly_upkeep_is_skipped_on_mid_month_mondays() {
+    let mut game = make_monday_game();
+    game.teams[0].facilities = Facilities {
+        training: 3,
+        medical: 2,
+        scouting: 1,
+        ..Facilities::default()
+    };
+    let initial_finance = game.teams[0].finance;
+
+    finances::process_weekly_finances(&mut game);
+
+    let wages = (52_000 + 26_000 + 10_400) / 52;
+    assert_eq!(game.teams[0].finance, initial_finance - wages);
+    assert_eq!(game.teams[0].season_expenses, wages);
 }
 
 #[test]
@@ -334,8 +477,8 @@ fn sponsorship_income_prevents_false_low_runway_warning() {
     let mut game = make_monday_game();
     game.teams[0].finance = 3_400;
     game.teams[0].sponsorship = Some(Sponsorship {
-        sponsor_name: "Acme Corp".to_string(),
-        base_value: 2_000,
+        sponsor_name: "PixelForge PCs".to_string(),
+        base_value: 1_600,
         remaining_weeks: 8,
         bonus_criteria: vec![],
     });
@@ -436,10 +579,10 @@ fn home_match_generates_income() {
             competition: FixtureCompetition::League,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
-                home_goals: 2,
-                away_goals: 1,
-                home_scorers: vec![],
-                away_scorers: vec![],
+                home_wins: 1,
+                away_wins: 0,
+                ended_by: Default::default(),
+                game_duration_seconds: 1800,
                 report: None,
             }),
         }],
@@ -482,10 +625,10 @@ fn away_match_no_income() {
             competition: FixtureCompetition::League,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
-                home_goals: 0,
-                away_goals: 1,
-                home_scorers: vec![],
-                away_scorers: vec![],
+                home_wins: 0,
+                away_wins: 1,
+                ended_by: Default::default(),
+                game_duration_seconds: 1800,
                 report: None,
             }),
         }],

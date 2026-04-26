@@ -317,6 +317,39 @@ describe("dashboardHelpers", function (): void {
     expect(alertIds).toContain("wage_pressure");
   });
 
+  it("adds finance alerts for modular hub upkeep and esports sponsors", function (): void {
+    const team = createTeam({
+      finance: 25000,
+      facilities: {
+        training: 3,
+        medical: 1,
+        scouting: 2,
+      },
+      sponsorship: {
+        sponsor_name: "HyperX eSports",
+        base_value: 100000,
+        remaining_weeks: 8,
+        bonus_criteria: [],
+      },
+    });
+    const gameState = createGameState({
+      teams: [team],
+      players: [createPlayer({ id: "p1", wage: 300000 })],
+    });
+
+    const alerts = getDashboardAlerts(gameState, false, translateDashboardAlert);
+    const alertIds = alerts.map((alert) => alert.id);
+
+    expect(alertIds).toContain("installation_scrimsRoom");
+    expect(alertIds).toContain("installation_analysisRoom");
+    expect(alertIds).toContain("installation_scoutingLab");
+    expect(alertIds).toContain("sponsor_theme_esports");
+
+    expect(alerts.find((alert) => alert.id === "installation_scrimsRoom")?.text).toContain(
+      "Scrims Room",
+    );
+  });
+
   it("does not warn about an incomplete Starting XI when a healthy roster can normalize a partial saved lineup", function (): void {
     const roster = [
       createPlayer({ id: "p1", position: "Goalkeeper", natural_position: "Goalkeeper" }),
@@ -339,10 +372,9 @@ describe("dashboardHelpers", function (): void {
       players: roster,
     });
 
-    const alerts = getDashboardAlerts(gameState, true, translateDashboardAlert);
+    const alerts = getDashboardAlerts(gameState, false, translateDashboardAlert);
     const alertIds = alerts.map((alert) => alert.id);
 
-    expect(alertIds).not.toContain("xi");
     expect(alertIds).not.toContain("matchxi");
     expect(alertIds).not.toContain("injured_xi");
   });

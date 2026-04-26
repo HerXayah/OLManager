@@ -159,8 +159,7 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
         .iter()
         .map(|t| {
             let bonus = compute_coaching_bonus(game, &t.id, &t.training_focus);
-            let medical_facility_mult =
-                1.0 + f64::from(t.facilities.medical.saturating_sub(1)) * 0.1;
+            let medical_facility_mult = t.facilities.recovery_suite_condition_multiplier();
             TeamTrainingPlan {
                 team_id: t.id.clone(),
                 default_focus: t.training_focus.clone(),

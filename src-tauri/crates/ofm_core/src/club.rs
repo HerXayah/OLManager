@@ -1,6 +1,7 @@
-use domain::team::{Facilities, FacilityType, Team};
+use domain::team::{Facilities, FacilityType, MainFacilityModuleKind, Team};
 
 pub const BASE_FACILITY_UPGRADE_COST: i64 = 250_000;
+pub const BASE_MAIN_HUB_EXPANSION_COST: i64 = 500_000;
 
 fn facility_level(facilities: &Facilities, facility_type: &FacilityType) -> u8 {
     match facility_type {
@@ -14,6 +15,71 @@ pub fn next_upgrade_cost(team: &Team, facility_type: &FacilityType) -> i64 {
     i64::from(facility_level(&team.facilities, facility_type)) * BASE_FACILITY_UPGRADE_COST
 }
 
+fn module_from_facility_type(facility_type: &FacilityType) -> MainFacilityModuleKind {
+    match facility_type {
+        FacilityType::Training => MainFacilityModuleKind::ScrimsRoom,
+        FacilityType::Medical => MainFacilityModuleKind::RecoverySuite,
+        FacilityType::Scouting => MainFacilityModuleKind::ScoutingLab,
+    }
+}
+
+fn set_module_level(facilities: &mut Facilities, module: MainFacilityModuleKind, level: u8) {
+    match module {
+        MainFacilityModuleKind::ScrimsRoom | MainFacilityModuleKind::AnalysisRoom => {
+            facilities.training = level
+        }
+        MainFacilityModuleKind::BootcampArea | MainFacilityModuleKind::RecoverySuite => {
+            facilities.medical = level
+        }
+        MainFacilityModuleKind::ContentStudio => facilities.main_hub_level = level,
+        MainFacilityModuleKind::ScoutingLab => facilities.scouting = level,
+    }
+}
+
+pub fn next_main_hub_expansion_cost(team: &Team) -> i64 {
+    i64::from(team.facilities.as_main_facility_hub().level) * BASE_MAIN_HUB_EXPANSION_COST
+}
+
+pub fn expand_main_facility_hub(team: &mut Team) -> Result<i64, String> {
+    let cost = next_main_hub_expansion_cost(team);
+    if team.finance < cost {
+        return Err(format!(
+            "Insufficient funds for main facility expansion: need €{}",
+            cost
+        ));
+    }
+
+    team.finance -= cost;
+    team.season_expenses += cost;
+    team.facilities.main_hub_level = team.facilities.as_main_facility_hub().level.saturating_add(1);
+
+    Ok(cost)
+}
+
+pub fn upgrade_main_facility_module(
+    team: &mut Team,
+    module: MainFacilityModuleKind,
+) -> Result<i64, String> {
+    if !team.facilities.can_upgrade_main_facility_module(module) {
+        return Err("Main facility hub must be expanded before upgrading this module".to_string());
+    }
+
+    let current_level = team.facilities.module_level(module);
+    let cost = i64::from(current_level) * BASE_FACILITY_UPGRADE_COST;
+    if team.finance < cost {
+        return Err(format!(
+            "Insufficient funds for facility module upgrade: need €{}",
+            cost
+        ));
+    }
+
+    team.finance -= cost;
+    team.season_expenses += cost;
+    set_module_level(&mut team.facilities, module, current_level.saturating_add(1));
+
+    Ok(cost)
+}
+
 pub fn upgrade_facility(team: &mut Team, facility_type: FacilityType) -> Result<i64, String> {
     let cost = next_upgrade_cost(team, &facility_type);
     if team.finance < cost {
@@ -21,6 +87,12 @@ pub fn upgrade_facility(team: &mut Team, facility_type: FacilityType) -> Result<
             "Insufficient funds for facility upgrade: need €{}",
             cost
         ));
+    }
+
+    let module = module_from_facility_type(&facility_type);
+    let target_level = team.facilities.module_level(module).saturating_add(1);
+    if target_level > team.facilities.as_main_facility_hub().level {
+        team.facilities.main_hub_level = target_level;
     }
 
     team.finance -= cost;

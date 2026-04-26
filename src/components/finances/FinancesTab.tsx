@@ -20,46 +20,15 @@ import {
   annualAmountToWeeklyCommitment,
   getTeamFinanceSnapshot,
 } from "../../lib/finance";
+import type { FacilityUpgradeId } from "../../lib/lolFinanceContracts";
+import {
+  getClubInstallationContract,
+  getSponsorshipContractView,
+} from "../../lib/lolFinanceContracts";
 import { useTranslation } from "react-i18next";
 import ContextMenu from "../ContextMenu";
 import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
 import { resolveMessage } from "../../utils/backendI18n";
-
-type FacilityId = "Training" | "Medical" | "Scouting";
-
-interface FacilityDefinition {
-  effectKey: string;
-  id: FacilityId;
-  levelKey: "training" | "medical" | "scouting";
-  titleKey: string;
-}
-
-const DEFAULT_FACILITIES = {
-  training: 1,
-  medical: 1,
-  scouting: 1,
-};
-
-const FACILITY_DEFINITIONS: FacilityDefinition[] = [
-  {
-    id: "Training",
-    levelKey: "training",
-    titleKey: "finances.facilityTraining",
-    effectKey: "finances.facilityTrainingEffect",
-  },
-  {
-    id: "Medical",
-    levelKey: "medical",
-    titleKey: "finances.facilityMedical",
-    effectKey: "finances.facilityMedicalEffect",
-  },
-  {
-    id: "Scouting",
-    levelKey: "scouting",
-    titleKey: "finances.facilityScouting",
-    effectKey: "finances.facilityScoutingEffect",
-  },
-];
 
 function getFacilityUpgradeCost(level: number): number {
   return level * 250_000;
@@ -68,6 +37,10 @@ function getFacilityUpgradeCost(level: number): number {
 function formatSignedAmount(value: number): string {
   const formatted = formatVal(Math.abs(value));
   return value < 0 ? `-${formatted}` : formatted;
+}
+
+function formatCurrencyAmountParam(value: number): string {
+  return formatVal(value).replace(/^€/, "");
 }
 
 interface ResolveMessageActionResult {
@@ -141,8 +114,8 @@ export default function FinancesTab({
   const financeSnapshot = getTeamFinanceSnapshot(myTeam, roster, teamStaff);
   const totalWages = financeSnapshot.weeklyWageSpend;
   const totalValue = roster.reduce((s, p) => s + p.market_value, 0);
-  const facilities = myTeam.facilities ?? DEFAULT_FACILITIES;
-  const activeSponsorship = myTeam.sponsorship ?? null;
+  const installationContract = getClubInstallationContract(myTeam);
+  const activeSponsorship = getSponsorshipContractView(myTeam.sponsorship);
   const weeklySponsorIncome = financeSnapshot.weeklySponsorIncome;
   const projectedWeeklyNet = financeSnapshot.projectedWeeklyNet;
   const cashRunwayWeeks = financeSnapshot.cashRunwayWeeks;
@@ -215,7 +188,7 @@ export default function FinancesTab({
     });
   }
 
-  async function handleUpgradeFacility(facility: FacilityId): Promise<void> {
+  async function handleUpgradeFacility(facility: FacilityUpgradeId): Promise<void> {
     setActionLoading(facility);
     try {
       const updated = await invoke<GameStateData>("upgrade_facility", {
@@ -580,18 +553,21 @@ export default function FinancesTab({
               {activeSponsorship ? (
                 <>
                   <h3 className="font-heading font-bold text-base text-gray-900 dark:text-gray-100 uppercase tracking-wide">
-                    {activeSponsorship.sponsor_name}
+                    {activeSponsorship.sponsorName}
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {t("finances.sponsorWeeklyValue", {
-                      amount: activeSponsorship.base_value,
+                      amount: activeSponsorship.baseValue,
                     })}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {t("finances.sponsorRemainingWeeks", {
-                      count: activeSponsorship.remaining_weeks,
+                      count: activeSponsorship.remainingWeeks,
                     })}
                   </p>
+                  <Badge variant={activeSponsorship.theme === "esports" ? "accent" : "neutral"}>
+                    {activeSponsorship.themeLabel}
+                  </Badge>
                 </>
               ) : (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -687,26 +663,33 @@ export default function FinancesTab({
         <CardHeader>{t("finances.facilities")}</CardHeader>
         <CardBody>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {FACILITY_DEFINITIONS.map((facility) => {
-              const level = facilities[facility.levelKey];
+            {installationContract.map((facility) => {
+              const level = facility.level;
               const nextUpgradeCost = getFacilityUpgradeCost(level);
-              const canUpgrade = myTeam.finance >= nextUpgradeCost;
-              const isLoading = actionLoading === facility.id;
+              const canUpgrade = Boolean(facility.upgradeFacility) && myTeam.finance >= nextUpgradeCost;
+              const isLoading = actionLoading === facility.upgradeFacility;
+              const label = t(facility.labelKey, facility.label);
 
               return (
                 <div
-                  key={facility.id}
+                  key={facility.key}
                   className="rounded-xl border border-gray-200 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 p-4 flex flex-col gap-4"
                 >
                   <div className="space-y-1">
                     <h3 className="font-heading font-bold text-base text-gray-900 dark:text-gray-100 uppercase tracking-wide">
-                      {t(facility.titleKey)}
+                      {label}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {t("finances.facilityLevel", { level })}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {t(facility.effectKey)}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {t("finances.monthlyUpkeep", {
+                        amount: formatCurrencyAmountParam(facility.monthlyUpkeep),
+                        defaultValue: `Monthly upkeep: ${formatVal(facility.monthlyUpkeep)}`,
+                      })}
                     </p>
                   </div>
 
@@ -718,16 +701,25 @@ export default function FinancesTab({
                     </p>
                     <Button
                       disabled={!canUpgrade || isLoading}
-                      onClick={() => void handleUpgradeFacility(facility.id)}
+                      aria-label={`${t("finances.upgradeFacility")} ${label}`}
+                      onClick={() => {
+                        if (facility.upgradeFacility) {
+                          void handleUpgradeFacility(facility.upgradeFacility);
+                        }
+                      }}
                       size="sm"
                     >
                       {t("finances.upgradeFacility")}
                     </Button>
-                    {!canUpgrade && (
+                    {!facility.upgradeFacility ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t("finances.hubExpansionRequired")}
+                      </p>
+                    ) : !canUpgrade ? (
                       <p className="text-xs text-red-500">
                         {t("finances.insufficientFunds")}
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               );

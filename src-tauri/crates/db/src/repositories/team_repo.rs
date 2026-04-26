@@ -23,8 +23,10 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
         serde_json::to_string(&t.financial_ledger).map_err(|e| format!("JSON error: {}", e))?;
     let sponsorship_json =
         serde_json::to_string(&t.sponsorship).map_err(|e| format!("JSON error: {}", e))?;
-    let facilities_json =
-        serde_json::to_string(&t.facilities).map_err(|e| format!("JSON error: {}", e))?;
+    let facilities_json = t
+        .facilities
+        .to_persisted_json_string()
+        .map_err(|e| format!("JSON error: {}", e))?;
     let play_style_str = format!("{:?}", t.play_style);
     let training_focus_str = t.training_focus.as_id().to_string();
     let training_intensity_str = format!("{:?}", t.training_intensity);
@@ -162,7 +164,7 @@ fn row_to_team(row: &rusqlite::Row) -> rusqlite::Result<Team> {
             .unwrap_or_default(),
         sponsorship: serde_json::from_str::<Option<Sponsorship>>(&sponsorship_json)
             .unwrap_or_default(),
-        facilities: serde_json::from_str::<Facilities>(&facilities_json).unwrap_or_default(),
+        facilities: Facilities::from_persisted_json(&facilities_json),
         formation: row.get(15)?,
         play_style: parse_play_style(&play_style_str),
         lol_tactics: LolTactics::default(),
@@ -466,6 +468,7 @@ mod tests {
             training: 2,
             medical: 3,
             scouting: 4,
+            ..Facilities::default()
         };
 
         upsert_team(db.conn(), &team).unwrap();

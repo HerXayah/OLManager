@@ -4,6 +4,7 @@ export interface TeamColors {
 }
 
 export interface FacilitiesData {
+  main_hub_level?: number;
   training: number;
   medical: number;
   scouting: number;
@@ -59,6 +60,7 @@ export interface TeamData {
   transfer_budget: number;
   season_income: number;
   season_expenses: number;
+  installations?: FacilitiesData;
   formation: string;
   play_style: string;
   lol_tactics?: LolTacticsData;

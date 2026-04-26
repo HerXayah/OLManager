@@ -388,18 +388,335 @@ pub enum FacilityType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct Facilities {
+    #[serde(default = "default_main_hub_level", skip_serializing_if = "is_default_main_hub_level")]
+    pub main_hub_level: u8,
     pub training: u8,
     pub medical: u8,
     pub scouting: u8,
 }
 
+fn default_main_hub_level() -> u8 {
+    1
+}
+
+fn is_default_main_hub_level(level: &u8) -> bool {
+    *level == default_main_hub_level()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MainFacilityModuleKind {
+    ScrimsRoom,
+    AnalysisRoom,
+    BootcampArea,
+    RecoverySuite,
+    ContentStudio,
+    ScoutingLab,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MainFacilityModuleLevelSource {
+    Training,
+    Medical,
+    Hub,
+    Scouting,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MainFacilityModuleDefinition {
+    pub kind: MainFacilityModuleKind,
+    pub level_source: MainFacilityModuleLevelSource,
+}
+
+impl MainFacilityModuleDefinition {
+    pub fn level_for(&self, facilities: &Facilities) -> u8 {
+        match self.level_source {
+            MainFacilityModuleLevelSource::Training => facilities.training,
+            MainFacilityModuleLevelSource::Medical => facilities.medical,
+            MainFacilityModuleLevelSource::Hub => facilities.effective_main_hub_level(),
+            MainFacilityModuleLevelSource::Scouting => facilities.scouting,
+        }
+    }
+}
+
+const MAIN_FACILITY_MODULE_CATALOG: [MainFacilityModuleDefinition; 6] = [
+    MainFacilityModuleDefinition {
+        kind: MainFacilityModuleKind::ScrimsRoom,
+        level_source: MainFacilityModuleLevelSource::Training,
+    },
+    MainFacilityModuleDefinition {
+        kind: MainFacilityModuleKind::AnalysisRoom,
+        level_source: MainFacilityModuleLevelSource::Training,
+    },
+    MainFacilityModuleDefinition {
+        kind: MainFacilityModuleKind::BootcampArea,
+        level_source: MainFacilityModuleLevelSource::Medical,
+    },
+    MainFacilityModuleDefinition {
+        kind: MainFacilityModuleKind::RecoverySuite,
+        level_source: MainFacilityModuleLevelSource::Medical,
+    },
+    MainFacilityModuleDefinition {
+        kind: MainFacilityModuleKind::ContentStudio,
+        level_source: MainFacilityModuleLevelSource::Hub,
+    },
+    MainFacilityModuleDefinition {
+        kind: MainFacilityModuleKind::ScoutingLab,
+        level_source: MainFacilityModuleLevelSource::Scouting,
+    },
+];
+
+pub fn main_facility_module_catalog() -> &'static [MainFacilityModuleDefinition] {
+    &MAIN_FACILITY_MODULE_CATALOG
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MainFacilityModuleView {
+    pub kind: MainFacilityModuleKind,
+    pub level: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MainFacilityHubView {
+    pub level: u8,
+    pub modules: Vec<MainFacilityModuleView>,
+}
+
 impl Default for Facilities {
     fn default() -> Self {
         Self {
+            main_hub_level: default_main_hub_level(),
             training: 1,
             medical: 1,
             scouting: 1,
         }
+    }
+}
+
+impl Facilities {
+    fn effective_main_hub_level(&self) -> u8 {
+        self.main_hub_level
+            .max(self.training)
+            .max(self.medical)
+            .max(self.scouting)
+    }
+
+    pub fn from_persisted_json(value: &str) -> Self {
+        serde_json::from_str::<Self>(value).unwrap_or_default()
+    }
+
+    pub fn to_persisted_json_value(&self) -> Result<serde_json::Value, serde_json::Error> {
+        serde_json::to_value(self)
+    }
+
+    pub fn to_persisted_json_string(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
+    }
+
+    pub fn as_main_facility_hub(&self) -> MainFacilityHubView {
+        let level = self.effective_main_hub_level();
+
+        MainFacilityHubView {
+            level,
+            modules: main_facility_module_catalog()
+                .iter()
+                .map(|definition| MainFacilityModuleView {
+                    kind: definition.kind,
+                    level: definition.level_for(self),
+                })
+                .collect(),
+        }
+    }
+
+    pub fn module_level(&self, module: MainFacilityModuleKind) -> u8 {
+        main_facility_module_catalog()
+            .iter()
+            .find(|definition| definition.kind == module)
+            .map(|definition| definition.level_for(self))
+            .unwrap_or(default_main_hub_level())
+    }
+
+    pub fn can_upgrade_main_facility_module(&self, module: MainFacilityModuleKind) -> bool {
+        self.module_level(module).saturating_add(1) <= self.as_main_facility_hub().level
+    }
+
+    pub fn recovery_suite_condition_multiplier(&self) -> f64 {
+        1.0 + f64::from(
+            self.module_level(MainFacilityModuleKind::RecoverySuite)
+                .saturating_sub(1),
+        ) * 0.1
+    }
+}
+
+#[cfg(test)]
+mod facility_compatibility_tests {
+    use super::{main_facility_module_catalog, Facilities, MainFacilityModuleKind};
+
+    #[test]
+    fn canonical_module_catalog_is_the_single_source_for_hub_order_and_levels() {
+        let facilities = Facilities {
+            main_hub_level: 4,
+            training: 3,
+            medical: 2,
+            scouting: 1,
+        };
+
+        let catalog = main_facility_module_catalog();
+        let hub = facilities.as_main_facility_hub();
+
+        assert_eq!(catalog.len(), 6);
+        assert_eq!(hub.modules.len(), catalog.len());
+        assert_eq!(catalog[0].kind, MainFacilityModuleKind::ScrimsRoom);
+        assert_eq!(catalog[1].kind, MainFacilityModuleKind::AnalysisRoom);
+        assert_eq!(catalog[2].kind, MainFacilityModuleKind::BootcampArea);
+        assert_eq!(catalog[3].kind, MainFacilityModuleKind::RecoverySuite);
+        assert_eq!(catalog[4].kind, MainFacilityModuleKind::ContentStudio);
+        assert_eq!(catalog[5].kind, MainFacilityModuleKind::ScoutingLab);
+        assert_eq!(
+            hub.modules
+                .iter()
+                .map(|module| (module.kind, module.level))
+                .collect::<Vec<_>>(),
+            catalog
+                .iter()
+                .map(|definition| (definition.kind, definition.level_for(&facilities)))
+                .collect::<Vec<_>>(),
+        );
+    }
+
+    #[test]
+    fn legacy_facilities_are_interpreted_as_one_main_facility_with_modules() {
+        let facilities = Facilities {
+            main_hub_level: 1,
+            training: 3,
+            medical: 1,
+            scouting: 2,
+        };
+
+        let hub = facilities.as_main_facility_hub();
+
+        assert_eq!(hub.level, 3);
+        assert_eq!(hub.modules.len(), 6);
+        assert_eq!(hub.modules[0].kind, MainFacilityModuleKind::ScrimsRoom);
+        assert_eq!(hub.modules[0].level, 3);
+        assert_eq!(hub.modules[1].kind, MainFacilityModuleKind::AnalysisRoom);
+        assert_eq!(hub.modules[1].level, 3);
+        assert_eq!(hub.modules[2].kind, MainFacilityModuleKind::BootcampArea);
+        assert_eq!(hub.modules[2].level, 1);
+        assert_eq!(hub.modules[3].kind, MainFacilityModuleKind::RecoverySuite);
+        assert_eq!(hub.modules[3].level, 1);
+        assert_eq!(hub.modules[4].kind, MainFacilityModuleKind::ContentStudio);
+        assert_eq!(hub.modules[4].level, 3);
+        assert_eq!(hub.modules[5].kind, MainFacilityModuleKind::ScoutingLab);
+        assert_eq!(hub.modules[5].level, 2);
+    }
+
+    #[test]
+    fn canonical_module_effect_levels_are_derived_from_legacy_storage() {
+        let facilities = Facilities {
+            main_hub_level: 4,
+            training: 3,
+            medical: 2,
+            scouting: 1,
+        };
+
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScrimsRoom), 3);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::AnalysisRoom), 3);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::BootcampArea), 2);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::RecoverySuite), 2);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ContentStudio), 4);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScoutingLab), 1);
+    }
+
+    #[test]
+    fn recovery_suite_condition_multiplier_is_a_canonical_gameplay_helper() {
+        let default_facilities = Facilities::default();
+        let upgraded_facilities = Facilities {
+            medical: 4,
+            ..Facilities::default()
+        };
+
+        assert_eq!(default_facilities.recovery_suite_condition_multiplier(), 1.0);
+        assert_eq!(upgraded_facilities.recovery_suite_condition_multiplier(), 1.3);
+    }
+
+    #[test]
+    fn partial_legacy_facilities_deserialize_to_safe_default_modules() {
+        let facilities: Facilities = serde_json::from_str(r#"{"training":4}"#).unwrap();
+
+        let hub = facilities.as_main_facility_hub();
+
+        assert_eq!(hub.level, 4);
+        assert_eq!(hub.modules[0].level, 4);
+        assert_eq!(hub.modules[1].level, 4);
+        assert_eq!(hub.modules[2].level, 1);
+        assert_eq!(hub.modules[3].level, 1);
+        assert_eq!(hub.modules[4].level, 4);
+        assert_eq!(hub.modules[5].level, 1);
+        assert_eq!(
+            serde_json::to_value(&facilities).unwrap(),
+            serde_json::json!({ "training": 4, "medical": 1, "scouting": 1 }),
+        );
+    }
+
+    #[test]
+    fn explicit_hub_expansion_level_controls_next_module_unlocks() {
+        let mut facilities = Facilities::default();
+
+        assert_eq!(facilities.as_main_facility_hub().level, 1);
+        assert!(!facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+
+        facilities.main_hub_level = 2;
+        let hub = facilities.as_main_facility_hub();
+
+        assert_eq!(hub.level, 2);
+        assert!(facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+        assert!(facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::ScoutingLab));
+    }
+
+    #[test]
+    fn legacy_module_levels_still_expand_the_hub_for_old_saves() {
+        let facilities: Facilities = serde_json::from_str(r#"{"medical":3,"scouting":1}"#).unwrap();
+
+        assert_eq!(facilities.as_main_facility_hub().level, 3);
+        assert!(facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::ScoutingLab));
+        assert!(!facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+    }
+
+    #[test]
+    fn persisted_old_facilities_blob_loads_as_hub_contract() {
+        let facilities = Facilities::from_persisted_json(r#"{"training":5,"medical":2}"#);
+        let hub = facilities.as_main_facility_hub();
+
+        assert_eq!(facilities.training, 5);
+        assert_eq!(facilities.medical, 2);
+        assert_eq!(facilities.scouting, 1);
+        assert_eq!(hub.level, 5);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScrimsRoom), 5);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::AnalysisRoom), 5);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::BootcampArea), 2);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::RecoverySuite), 2);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ContentStudio), 5);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScoutingLab), 1);
+    }
+
+    #[test]
+    fn persisted_hub_contract_blob_roundtrips_without_losing_legacy_keys() {
+        let facilities = Facilities::from_persisted_json(
+            r#"{"main_hub_level":4,"training":2,"medical":3,"scouting":1}"#,
+        );
+
+        assert_eq!(facilities.as_main_facility_hub().level, 4);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::ContentStudio), 4);
+        assert_eq!(facilities.module_level(MainFacilityModuleKind::RecoverySuite), 3);
+        assert_eq!(
+            facilities.to_persisted_json_value().unwrap(),
+            serde_json::json!({
+                "main_hub_level": 4,
+                "training": 2,
+                "medical": 3,
+                "scouting": 1,
+            }),
+        );
     }
 }
 

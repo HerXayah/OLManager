@@ -20,10 +20,11 @@ vi.mock("react-i18next", () => ({
   },
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) => {
-      if (key === "finances.facilities") return "Facilities";
+      if (key === "finances.facilities") return "Facility Hub";
       if (key === "finances.sponsors") return "Sponsors";
       if (key === "finances.activeSponsor") return "Active Sponsor";
       if (key === "finances.noActiveSponsor") return "No active sponsor";
+      if (key === "finances.esportsSponsor") return "Esports sponsor";
       if (key === "finances.sponsorWeeklyValue")
         return `Weekly value: €${params?.amount}`;
       if (key === "finances.sponsorRemainingWeeks")
@@ -61,18 +62,32 @@ vi.mock("react-i18next", () => ({
       if (key === "finances.noContractRisks")
         return "No imminent contract risks";
       if (key === "common.renewContract") return "Renew Contract";
-      if (key === "finances.facilityTraining") return "Training Facility";
-      if (key === "finances.facilityMedical") return "Medical Facility";
-      if (key === "finances.facilityScouting") return "Scouting Facility";
+      if (key === "finances.facilityScrimsRoom") return "Scrims Room";
+      if (key === "finances.facilityAnalysisRoom") return "Analysis Room";
+      if (key === "finances.facilityBootcampArea") return "Bootcamp Area";
+      if (key === "finances.facilityRecoverySuite") return "Recovery Suite";
+      if (key === "finances.facilityContentStudio") return "Content Studio";
+      if (key === "finances.facilityScoutingLab") return "Scouting Lab";
       if (key === "finances.facilityLevel") return `Level ${params?.level}`;
       if (key === "finances.upgradeFacility") return "Upgrade";
+      if (key === "finances.hubExpansionRequired") return "Expand hub first";
       if (key === "finances.insufficientFunds") return "Insufficient funds";
+      if (key === "finances.monthlyUpkeep")
+        return `Monthly upkeep: €${params?.amount}`;
+      if (key === "finances.esportsSponsor") return "Esports sponsor";
       if (key === "finances.nextUpgradeCost")
         return `Next upgrade: €${params?.amount}`;
-      if (key === "finances.facilityTrainingEffect")
-        return "Improves training quality";
-      if (key === "finances.facilityMedicalEffect") return "Improves recovery";
-      if (key === "finances.facilityScoutingEffect")
+      if (key === "finances.facilityScrimsRoomEffect")
+        return "Improves scrim quality";
+      if (key === "finances.facilityAnalysisRoomEffect")
+        return "Improves review quality";
+      if (key === "finances.facilityBootcampAreaEffect")
+        return "Improves bootcamp preparation";
+      if (key === "finances.facilityRecoverySuiteEffect")
+        return "Improves player recovery";
+      if (key === "finances.facilityContentStudioEffect")
+        return "Improves sponsor activation";
+      if (key === "finances.facilityScoutingLabEffect")
         return "Improves scouting reports";
       if (key === "finances.overview") return "Overview";
       if (key === "finances.wageBill") return "Wage Bill";
@@ -309,20 +324,22 @@ describe("FinancesTab facilities", () => {
 
     render(<FinancesTab gameState={gameState} />);
 
-    expect(screen.getByText("Facilities")).toBeInTheDocument();
-    expect(screen.getByText("Training Facility")).toBeInTheDocument();
-    expect(screen.getByText("Medical Facility")).toBeInTheDocument();
-    expect(screen.getByText("Scouting Facility")).toBeInTheDocument();
-    expect(screen.getByText("Level 2")).toBeInTheDocument();
-    expect(screen.getByText("Level 1")).toBeInTheDocument();
-    expect(screen.getByText("Level 3")).toBeInTheDocument();
+    expect(screen.getByText("Facility Hub")).toBeInTheDocument();
+    expect(screen.getByText("Scrims Room")).toBeInTheDocument();
+    expect(screen.getByText("Analysis Room")).toBeInTheDocument();
+    expect(screen.getByText("Bootcamp Area")).toBeInTheDocument();
+    expect(screen.getByText("Recovery Suite")).toBeInTheDocument();
+    expect(screen.getByText("Content Studio")).toBeInTheDocument();
+    expect(screen.getByText("Scouting Lab")).toBeInTheDocument();
+    expect(screen.getAllByText("Level 2")).toHaveLength(2);
+    expect(screen.getAllByText("Level 1")).toHaveLength(2);
+    expect(screen.getAllByText("Level 3")).toHaveLength(2);
 
-    const upgradeButtons = screen.getAllByRole("button", { name: "Upgrade" });
-    expect(upgradeButtons).toHaveLength(3);
-    expect(upgradeButtons[0]).toBeDisabled();
-    expect(upgradeButtons[1]).toBeDisabled();
-    expect(upgradeButtons[2]).toBeDisabled();
-    expect(screen.getAllByText("Insufficient funds")).toHaveLength(3);
+    const upgradeButtons = screen.getAllByRole("button", { name: /Upgrade/ });
+    expect(upgradeButtons).toHaveLength(6);
+    expect(upgradeButtons.every((button) => button.hasAttribute("disabled"))).toBe(true);
+    expect(screen.getAllByText("Insufficient funds")).toHaveLength(5);
+    expect(screen.getByText("Expand hub first")).toBeInTheDocument();
   });
 
   it("invokes facility upgrade and publishes the updated game state", async () => {
@@ -343,8 +360,7 @@ describe("FinancesTab facilities", () => {
       <FinancesTab gameState={initialState} onGameUpdate={onGameUpdate} />,
     );
 
-    const upgradeButtons = screen.getAllByRole("button", { name: "Upgrade" });
-    fireEvent.click(upgradeButtons[1]);
+    fireEvent.click(screen.getByRole("button", { name: /Upgrade Recovery Suite/i }));
 
     await waitFor(() => {
       expect(mockedInvoke).toHaveBeenCalledWith("upgrade_facility", {
@@ -358,7 +374,7 @@ describe("FinancesTab facilities", () => {
     const gameState = createGameState(
       {
         sponsorship: {
-          sponsor_name: "Acme Corp",
+          sponsor_name: "Acme eSports",
           base_value: 125000,
           remaining_weeks: 8,
           bonus_criteria: [],
@@ -371,9 +387,10 @@ describe("FinancesTab facilities", () => {
 
     expect(screen.getByText("Sponsors")).toBeInTheDocument();
     expect(screen.getByText("Active Sponsor")).toBeInTheDocument();
-    expect(screen.getByText("Acme Corp")).toBeInTheDocument();
+    expect(screen.getByText("Acme eSports")).toBeInTheDocument();
     expect(screen.getByText("Weekly value: €125000")).toBeInTheDocument();
     expect(screen.getByText("8 weeks remaining")).toBeInTheDocument();
+    expect(screen.getByText("Esports sponsor")).toBeInTheDocument();
     expect(screen.getByText("Pending Offers")).toBeInTheDocument();
     expect(
       screen.getByText("Sponsorship Offer — GreenTech Industries"),
@@ -451,6 +468,25 @@ describe("FinancesTab facilities", () => {
     expect(screen.getByText("€10K/wk")).toBeInTheDocument();
     expect(screen.getByText("-€30K/wk")).toBeInTheDocument();
     expect(screen.getByText("9 weeks at current pace")).toBeInTheDocument();
+  });
+
+  it("shows monthly upkeep on the installation cards", () => {
+    const gameState = createGameState({
+      facilities: {
+        training: 3,
+        medical: 1,
+        scouting: 2,
+      },
+    });
+
+    render(<FinancesTab gameState={gameState} />);
+
+    expect(screen.getAllByText("Monthly upkeep: €40K")).toHaveLength(1);
+    expect(screen.getAllByText("Monthly upkeep: €30K")).toHaveLength(1);
+    expect(screen.getAllByText("Monthly upkeep: €10K")).toHaveLength(1);
+    expect(screen.getAllByText("Next upgrade: €750,000").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Next upgrade: €250,000").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Next upgrade: €500,000").length).toBeGreaterThan(0);
   });
 
   it("renders wage pressure and contract risk indicators for expiring players", () => {
