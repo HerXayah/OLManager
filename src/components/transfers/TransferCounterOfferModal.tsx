@@ -96,7 +96,7 @@ export default function TransferCounterOfferModal({
         <input
           id="counter-offer-amount"
           type="number"
-          step="0.1"
+          step="1000"
           min="0"
           value={counterAmount}
           onChange={(event) => onCounterAmountChange(event.target.value)}

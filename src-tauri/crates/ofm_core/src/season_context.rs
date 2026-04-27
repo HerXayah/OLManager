@@ -4,9 +4,6 @@ use chrono::{Duration, NaiveDate};
 use domain::league::League;
 use domain::season::{SeasonContext, SeasonPhase, TransferWindowContext, TransferWindowStatus};
 
-const TRANSFER_WINDOW_PRESEASON_DAYS: i64 = 30;
-const TRANSFER_WINDOW_POST_START_DAYS: i64 = 30;
-
 pub fn refresh_game_context(game: &mut Game) {
     game.season_context = derive_season_context(game);
 }
@@ -78,25 +75,13 @@ fn derive_transfer_window_context(
         return TransferWindowContext::default();
     };
 
-    let opens_on = season_start - Duration::days(TRANSFER_WINDOW_PRESEASON_DAYS);
-    let closes_on = season_start + Duration::days(TRANSFER_WINDOW_POST_START_DAYS);
+    let opens_on = season_start - Duration::days(365);
+    let closes_on = season_start;
 
-    let (status, days_until_opens, days_remaining) = if current_date < opens_on {
-        (
-            TransferWindowStatus::Closed,
-            Some((opens_on - current_date).num_days()),
-            None,
-        )
-    } else if current_date > closes_on {
-        (TransferWindowStatus::Closed, None, None)
+    let (status, days_until_opens, days_remaining) = if current_date < season_start {
+        (TransferWindowStatus::Open, None, Some((season_start - current_date).num_days()))
     } else {
-        let remaining = (closes_on - current_date).num_days();
-        let status = if remaining == 0 {
-            TransferWindowStatus::DeadlineDay
-        } else {
-            TransferWindowStatus::Open
-        };
-        (status, None, Some(remaining))
+        (TransferWindowStatus::Closed, None, None)
     };
 
     TransferWindowContext {
@@ -210,11 +195,11 @@ mod tests {
         assert_eq!(context.season_start.as_deref(), Some("2026-08-01"));
         assert_eq!(context.days_until_season_start, Some(22));
         assert_eq!(context.transfer_window.status, TransferWindowStatus::Open);
-        assert_eq!(context.transfer_window.days_remaining, Some(52));
+        assert_eq!(context.transfer_window.days_remaining, Some(22));
     }
 
     #[test]
-    fn derives_deadline_day_window_status() {
+    fn closes_transfer_window_on_league_start_date() {
         let league = League {
             id: "league1".to_string(),
             name: "Premier Division".to_string(),
@@ -230,15 +215,12 @@ mod tests {
                 StandingEntry::new("team2".to_string()),
             ],
         };
-        let game = make_game((2026, 8, 31), Some(league));
+        let game = make_game((2026, 8, 1), Some(league));
 
         let context = derive_season_context(&game);
 
-        assert_eq!(
-            context.transfer_window.status,
-            TransferWindowStatus::DeadlineDay
-        );
-        assert_eq!(context.transfer_window.days_remaining, Some(0));
+        assert_eq!(context.transfer_window.status, TransferWindowStatus::Closed);
+        assert_eq!(context.transfer_window.days_remaining, None);
     }
 
     #[test]
@@ -265,7 +247,7 @@ mod tests {
 
         assert_eq!(context.phase, SeasonPhase::InSeason);
         assert_eq!(context.days_until_season_start, None);
-        assert_eq!(context.transfer_window.status, TransferWindowStatus::Open);
+        assert_eq!(context.transfer_window.status, TransferWindowStatus::Closed);
     }
 
     #[test]

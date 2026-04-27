@@ -15,7 +15,6 @@ import {
 import HomeLeaguePositionCard from "./HomeLeaguePositionCard";
 import HomeLatestNewsCard from "./HomeLatestNewsCard";
 import HomeRosterLineupCard from "./HomeRosterLineupCard";
-import HomePlayerMomentumCard from "./HomePlayerMomentumCard";
 import HomeRecentResultsCard from "./HomeRecentResultsCard";
 import HomeRecentMessagesCard from "./HomeRecentMessagesCard";
 import HomeSquadOverviewCard from "./HomeSquadOverviewCard";
@@ -74,9 +73,7 @@ export default function HomeTab({
   const {
     avgCondition,
     avgOvr,
-    coldPlayers,
     exhaustedCount,
-    hotPlayers,
     unavailablePlayers,
   } = getHomeRosterOverview(roster);
   const resolveInjuryName = (injuryName: string): string => {
@@ -271,7 +268,11 @@ export default function HomeTab({
             onNavigate={onNavigate}
           />
 
-          <HomeRosterLineupCard roster={roster} onNavigate={onNavigate} />
+          <HomeRosterLineupCard
+            roster={roster}
+            championMasteries={gameState.champion_masteries ?? []}
+            onNavigate={onNavigate}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Squad Fitness */}
@@ -300,13 +301,6 @@ export default function HomeTab({
             />
           </div>
 
-          {roster.length > 0 && (hotPlayers.length > 0 || coldPlayers.length > 0) && (
-            <HomePlayerMomentumCard
-              hotPlayers={hotPlayers}
-              coldPlayers={coldPlayers}
-              onNavigate={onNavigate}
-            />
-          )}
         </>
       )}
 

@@ -4,6 +4,7 @@ import { Building2, Trophy } from "lucide-react";
 import { formatVal } from "../../lib/helpers";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { useTranslation } from "react-i18next";
+import { getMainTeams } from "../../store/academySelectors";
 
 function teamLogoSrc(teamId: string): string {
   const slug = teamId.replace(/^lec-/, "");
@@ -28,7 +29,7 @@ export default function TeamsListTab({ gameState, onSelectTeam }: TeamsListTabPr
       )
     : [];
 
-  const teamsData = gameState.teams.map(team => {
+  const teamsData = getMainTeams(gameState.teams).map(team => {
     const roster = gameState.players.filter(p => p.team_id === team.id);
     const avgOvr = roster.length > 0
       ? Math.round(roster.reduce((s, p) => s + calculateLolOvr(p), 0) / roster.length)

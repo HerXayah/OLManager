@@ -1,41 +1,18 @@
-import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState } from "react";
 import { GameStateData, FixtureData } from "../../store/gameStore";
 import { Card, CardHeader, CardBody, Badge } from "../ui";
 import {
   Trophy,
   Calendar,
   TableProperties,
-  Award,
-  Star,
-  Shield,
-  Users,
-  Zap,
 } from "lucide-react";
 import {
-  getCompetitiveFixtures,
   getTeamName,
   formatMatchDate,
 } from "../../lib/helpers";
 import { resolveSeasonContext } from "../../lib/seasonContext";
 import { useTranslation } from "react-i18next";
 import PlayoffBracketBoard from "../playoffs/PlayoffBracketBoard";
-
-interface AwardEntry {
-  player_id: string;
-  player_name: string;
-  team_id: string;
-  team_name: string;
-  value: number;
-}
-interface SeasonAwards {
-  golden_boot: AwardEntry[];
-  assist_king: AwardEntry[];
-  player_of_year: AwardEntry[];
-  clean_sheet_king: AwardEntry[];
-  most_appearances: AwardEntry[];
-  young_player: AwardEntry[];
-}
 
 interface TournamentsTabProps {
   gameState: GameStateData;
@@ -51,18 +28,9 @@ export default function TournamentsTab({
   const userTeamId = gameState.manager.team_id;
   const seasonContext = resolveSeasonContext(gameState);
   const isPreseason = seasonContext.phase === "Preseason";
-  const [view, setView] = useState<
-    "overview" | "fixtures" | "standings" | "awards"
-  >("overview");
-  const [awards, setAwards] = useState<SeasonAwards | null>(null);
-
-  useEffect(() => {
-    if (view === "awards" && !awards) {
-      invoke<SeasonAwards>("get_season_awards")
-        .then(setAwards)
-        .catch(() => {});
-    }
-  }, [view, awards]);
+  const [view, setView] = useState<"overview" | "fixtures" | "standings">(
+    "overview",
+  );
 
   if (!league) {
     return (
@@ -82,7 +50,6 @@ export default function TournamentsTab({
       b.goals_for - a.goals_for,
   );
 
-  const competitiveFixtures = getCompetitiveFixtures(league.fixtures);
   const playoffFixtures = league.fixtures.filter((fixture) => fixture.competition === "Playoffs");
   const hasPlayoffsStarted = playoffFixtures.length > 0;
   const tournamentFixtures = league.fixtures.filter(
@@ -108,30 +75,6 @@ export default function TournamentsTab({
   const completedMatches = tournamentFixtures.filter(
     (f) => f.status === "Completed",
   ).length;
-
-  const topKda = (() => {
-    const leagueTeamIds = new Set(league.standings.map((entry) => entry.team_id));
-    return gameState.players
-      .filter((player) => (player.team_id ? leagueTeamIds.has(player.team_id) : false))
-      .map((player) => {
-        const kills = Number(player.stats.kills ?? 0);
-        const deaths = Number(player.stats.deaths ?? 0);
-        const assists = Number(player.stats.assists ?? 0);
-        const gamesPlayed = Number(player.stats.games_played ?? player.stats.appearances ?? 0);
-        const kda = (kills + assists) / Math.max(1, deaths);
-        return {
-          player,
-          kills,
-          deaths,
-          assists,
-          gamesPlayed,
-          kda,
-        };
-      })
-      .filter((entry) => entry.gamesPlayed > 0 || entry.kills + entry.deaths + entry.assists > 0)
-      .sort((a, b) => b.kda - a.kda || (b.kills + b.assists) - (a.kills + a.assists))
-      .slice(0, 10);
-  })();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -207,7 +150,7 @@ export default function TournamentsTab({
 
       {/* Tab switcher */}
       <div className="flex gap-2 mb-5">
-        {(["overview", "standings", "fixtures", "awards"] as const).map((v) => (
+        {(["overview", "standings", "fixtures"] as const).map((v) => (
           <button
             key={v}
             onClick={() => setView(v)}
@@ -226,11 +169,6 @@ export default function TournamentsTab({
               <>
                 <TableProperties className="w-4 h-4 inline mr-1.5 -mt-0.5" />
                 {t("schedule.standings")}
-              </>
-            ) : v === "awards" ? (
-              <>
-                <Award className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                Awards
               </>
             ) : (
               <>
@@ -341,43 +279,30 @@ export default function TournamentsTab({
             </CardBody>
           </Card>
 
-          {/* Top scorers */}
           <Card>
-            <CardHeader>Top K/D/A</CardHeader>
+            <CardHeader>{t("schedule.fixtures")}</CardHeader>
             <CardBody className="p-0">
-              {topKda.length === 0 ? (
+              {sortedMatchdays.length === 0 ? (
                 <p className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-                  Sin datos de K/D/A todavía.
+                  {t("season.noOpener")}
                 </p>
               ) : (
                 <div className="divide-y divide-gray-100 dark:divide-navy-600">
-                  {topKda.map((entry, i) => (
-                    <div
-                      key={entry.player.id}
-                      className="flex items-center px-4 py-2.5 gap-3"
-                    >
-                      <span className="font-heading font-bold text-sm text-gray-400 dark:text-gray-500 w-5 text-center">
-                        {i + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">
-                          {entry.player.match_name}
+                  {sortedMatchdays.slice(-5).map(([md, fixtures]) => {
+                    const first = fixtures[0];
+                    return (
+                      <div key={`overview-md-${md}`} className="px-4 py-3">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-heading font-bold">
+                          {first.competition === "Playoffs"
+                            ? `${t("schedule.playoffs")} · ${t("schedule.round", { number: md })}`
+                            : t("schedule.matchday", { number: md })}
                         </p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
-                          {getTeamName(
-                            gameState.teams,
-                            entry.player.team_id ?? "",
-                          )}
-                        </p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 tabular-nums">
-                          {entry.kills}/{entry.deaths}/{entry.assists}
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                          {formatMatchDate(first.date)} · {fixtures.length} {t("tournaments.matches").toLowerCase()}
                         </p>
                       </div>
-                      <span className="font-heading font-bold text-lg text-accent-500 tabular-nums">
-                        {entry.kda.toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardBody>
@@ -558,150 +483,6 @@ export default function TournamentsTab({
           ))}
         </div>
       )}
-      {/* Awards */}
-      {view === "awards" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {awards ? (
-            <>
-              <AwardCard
-                icon={<Zap className="w-5 h-5 text-accent-500" />}
-                title="Kill Leader"
-                subtitle="Most Kills"
-                entries={awards.golden_boot}
-                unit="kills"
-              />
-              <AwardCard
-                icon={<Star className="w-5 h-5 text-purple-500" />}
-                title="Assist King"
-                subtitle="Most Assists"
-                entries={awards.assist_king}
-                unit="assists"
-              />
-              <AwardCard
-                icon={<Trophy className="w-5 h-5 text-primary-500" />}
-                title="Split MVP"
-                subtitle="Best Avg Rating (min 5 games)"
-                entries={awards.player_of_year}
-                unit="rating"
-                decimal
-              />
-              <AwardCard
-                icon={<Shield className="w-5 h-5 text-blue-500" />}
-                title="Untouchable"
-                subtitle="Most Deathless Games"
-                entries={awards.clean_sheet_king}
-                unit="games"
-              />
-              <AwardCard
-                icon={<Users className="w-5 h-5 text-green-500" />}
-                title="Grinder"
-                subtitle="Most Games"
-                entries={awards.most_appearances}
-                unit="games"
-              />
-              <AwardCard
-                icon={<Star className="w-5 h-5 text-amber-500" />}
-                title="Rookie Star"
-                subtitle="Best U21 Avg Rating (min 3 games)"
-                entries={awards.young_player}
-                unit="rating"
-                decimal
-              />
-            </>
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <Award className="w-12 h-12 text-gray-300 dark:text-navy-600 mx-auto mb-3" />
-              <p className="text-sm text-gray-400 dark:text-gray-500">
-                Loading awards...
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
-  );
-}
-
-function AwardCard({
-  icon,
-  title,
-  subtitle,
-  entries,
-  unit,
-  decimal,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  entries: AwardEntry[];
-  unit: string;
-  decimal?: boolean;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {icon}
-          <div>
-            <span>{title}</span>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-normal normal-case tracking-normal">
-              {subtitle}
-            </p>
-          </div>
-        </div>
-      </CardHeader>
-      <CardBody className="p-0">
-        {entries.length === 0 ? (
-          <p className="p-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-            No data yet
-          </p>
-        ) : (
-          <div className="divide-y divide-gray-100 dark:divide-navy-600">
-            {entries.map((entry, i) => (
-              <div
-                key={entry.player_id}
-                className="flex items-center px-4 py-2.5 gap-3"
-              >
-                <span
-                  className={`font-heading font-bold text-sm w-5 text-center ${
-                    i === 0
-                      ? "text-accent-500"
-                      : "text-gray-400 dark:text-gray-500"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm font-semibold truncate ${
-                      i === 0
-                        ? "text-gray-900 dark:text-gray-100"
-                        : "text-gray-700 dark:text-gray-300"
-                    }`}
-                  >
-                    {entry.player_name}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    {entry.team_name}
-                  </p>
-                </div>
-                <span
-                  className={`font-heading font-bold tabular-nums ${
-                    i === 0
-                      ? "text-lg text-accent-500"
-                      : "text-sm text-gray-600 dark:text-gray-400"
-                  }`}
-                >
-                  {decimal ? entry.value.toFixed(2) : entry.value}
-                </span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 w-12">
-                  {unit}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardBody>
-    </Card>
   );
 }

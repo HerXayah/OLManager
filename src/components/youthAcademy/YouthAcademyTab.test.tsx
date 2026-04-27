@@ -4,37 +4,37 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameStateData, TeamData } from "../../store/gameStore";
 import YouthAcademyTab from "./YouthAcademyTab";
 
+const promoteAcademyPlayer = vi.fn();
 const getAcademyAcquisitionOptions = vi.fn();
 const acquireAcademyTeam = vi.fn();
 
 vi.mock("../../services/academyService", () => ({
   getAcademyAcquisitionOptions: (...args: unknown[]) => getAcademyAcquisitionOptions(...args),
   acquireAcademyTeam: (...args: unknown[]) => acquireAcademyTeam(...args),
+  promoteAcademyPlayer: (...args: unknown[]) => promoteAcademyPlayer(...args),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string | number>) => {
-      if (key === "youthAcademy.title") return "Youth Academy";
-      if (key === "youthAcademy.playersUnder21") return `${params?.count} youth players`;
-      if (key === "youthAcademy.youthPlayers") return "Youth Players";
-      if (key === "youthAcademy.avgOvr") return "Avg OVR";
-      if (key === "youthAcademy.avgPotential") return "Avg Potential";
-      if (key === "youthAcademy.highPotential") return "High Potential";
-      if (key === "youthAcademy.youthCoach") return "Youth Coach";
-      if (key === "youthAcademy.noYouthPlayers") return "No youth players";
-      if (key === "youthAcademy.player") return "Player";
+      if (key === "youthAcademy.title") return "Academia";
+      if (key === "youthAcademy.youthPlayers") return "Jugadores academia";
+      if (key === "youthAcademy.avgOvr") return "Media OVR";
+      if (key === "youthAcademy.avgPotential") return "Media Potencial";
+      if (key === "youthAcademy.highPotential") return "Alto Potencial";
+      if (key === "youthAcademy.youthCoach") return "Entrenador de Academia";
+      if (key === "youthAcademy.noYouthPlayers") return "No hay jugadores en tu academia.";
+      if (key === "youthAcademy.player") return "Jugador";
       if (key === "youthAcademy.pos") return "Pos";
-      if (key === "youthAcademy.age") return "Age";
+      if (key === "youthAcademy.age") return "Edad";
       if (key === "youthAcademy.ovr") return "OVR";
-      if (key === "youthAcademy.potential") return "Potential";
-      if (key === "youthAcademy.growth") return "Growth";
-      if (key === "youthAcademy.traits") return "Traits";
-      if (key === "youthAcademy.condition") return "Condition";
-      if (key.startsWith("common.posAbbr.")) return key.replace("common.posAbbr.", "");
+      if (key === "youthAcademy.potential") return "Potencial";
+      if (key === "youthAcademy.growth") return "Crecimiento";
+      if (key === "youthAcademy.traits") return "Rasgos";
+      if (key === "youthAcademy.condition") return "Energia";
+      if (key === "youthAcademy.playersUnder21") return `${params?.count ?? 0} jugadores academia`;
       return key;
     },
-    i18n: { language: "en" },
   }),
 }));
 
@@ -43,6 +43,7 @@ vi.mock("../TraitBadge", () => ({
 }));
 
 beforeEach(() => {
+  promoteAcademyPlayer.mockReset();
   getAcademyAcquisitionOptions.mockReset();
   acquireAcademyTeam.mockReset();
 });
@@ -50,11 +51,11 @@ beforeEach(() => {
 function createTeam(overrides: Partial<TeamData> = {}): TeamData {
   return {
     id: "team-1",
-    name: "Alpha FC",
-    short_name: "ALP",
-    country: "GB",
-    city: "London",
-    stadium_name: "Alpha Ground",
+    name: "Movistar KOI",
+    short_name: "MKOI",
+    country: "ES",
+    city: "Madrid",
+    stadium_name: "Arena",
     stadium_capacity: 30000,
     finance: 500000,
     manager_id: "manager-1",
@@ -70,15 +71,53 @@ function createTeam(overrides: Partial<TeamData> = {}): TeamData {
     training_schedule: "Balanced",
     founded_year: 1900,
     colors: { primary: "#000000", secondary: "#ffffff" },
-    starting_xi_ids: [] as string[],
+    starting_xi_ids: [],
     form: [],
     history: [],
     ...overrides,
   };
 }
 
-function createGameState(teamOverrides: Partial<TeamData> = {}): GameStateData {
-  const team = createTeam(teamOverrides);
+function createGameState(): GameStateData {
+  const mainTeam = createTeam({ id: "team-1", academy_team_id: "academy-1" });
+  const academyTeam = createTeam({
+    id: "academy-1",
+    name: "Movistar KOI Fenix",
+    short_name: "KOIF",
+    team_kind: "Academy",
+    parent_team_id: "team-1",
+    manager_id: null,
+  });
+
+  const academyPlayer = {
+    id: "academy-player-1",
+    team_id: "academy-1",
+    full_name: "Academy Player",
+    match_name: "Prospect",
+    date_of_birth: "2004-01-01",
+    natural_position: "Midfielder",
+    position: "Midfielder",
+    condition: 100,
+    traits: [],
+    attributes: {
+      dribbling: 70,
+      shooting: 70,
+      teamwork: 70,
+      vision: 70,
+      decisions: 70,
+      leadership: 70,
+      agility: 70,
+      composure: 70,
+      stamina: 70,
+    },
+  } as any;
+
+  const mainPlayer = {
+    ...academyPlayer,
+    id: "main-player-1",
+    team_id: "team-1",
+    full_name: "Main Player",
+  };
 
   return {
     clock: { current_date: "2026-08-10T00:00:00Z", start_date: "2026-07-01T00:00:00Z" },
@@ -87,134 +126,125 @@ function createGameState(teamOverrides: Partial<TeamData> = {}): GameStateData {
       first_name: "Jane",
       last_name: "Doe",
       date_of_birth: "1980-01-01",
-      nationality: "GB",
+      nationality: "ES",
       reputation: 50,
       satisfaction: 50,
       fan_approval: 50,
-      team_id: team.id,
+      team_id: "team-1",
       career_stats: { matches_managed: 0, wins: 0, draws: 0, losses: 0, trophies: 0, best_finish: null },
       career_history: [],
     },
-    teams: [team],
-    players: [],
+    teams: [mainTeam, academyTeam],
+    players: [academyPlayer, mainPlayer],
     staff: [],
     messages: [],
     news: [],
     league: null,
     scouting_assignments: [],
     board_objectives: [],
-  };
+  } as GameStateData;
 }
 
 describe("YouthAcademyTab", () => {
-  it("renders acquisition options from the backend service", async () => {
-    getAcademyAcquisitionOptions.mockResolvedValueOnce({
-      parent_team_id: "team-1",
-      acquisition_allowed: true,
-      blocked_reason: null,
-      options: [
-        {
-          source_team_id: "mkoi-fenix",
-          source_team_name: "Movistar KOI Fénix",
-          source_team_short_name: "MKOI F",
-          source_team_logo_url: "https://cdn.example/logo.png",
-          source_identity: {
-            source_team_id: "mkoi-fenix",
-            original_name: "Movistar KOI Fénix",
-            original_short_name: "MKOI F",
-            original_logo_url: "https://cdn.example/logo.png",
-          },
-          erl_league_id: "nlc",
-          league_name: "NLC",
-          country: "GB",
-          region: "UK",
-          assignment_rule: "Domestic",
-          fallback_reason: null,
-          reputation: 4,
-          development_level: 5,
-          acquisition_cost: 260000,
-          rebrand_allowed: true,
-        },
-      ],
-    });
+  it("shows academy roster and hides legacy acquisition section", () => {
+    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} onGameUpdate={vi.fn()} />);
 
-    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} />);
-
-    expect(getAcademyAcquisitionOptions).toHaveBeenCalledWith("team-1");
-    await waitFor(() => expect(screen.getByText("Movistar KOI Fénix")).toBeInTheDocument());
-    expect(screen.getByText("260000")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Adquirir" })).toBeInTheDocument();
+    expect(screen.getByText("Movistar KOI Fenix")).toBeInTheDocument();
+    expect(screen.getByText("Academy Player")).toBeInTheDocument();
+    expect(screen.queryByText("Equipo ERL para adquirir")).not.toBeInTheDocument();
   });
 
-  it("invokes the acquisition action for the selected backend option", async () => {
-    getAcademyAcquisitionOptions.mockResolvedValueOnce({
-      parent_team_id: "team-1",
-      acquisition_allowed: true,
-      blocked_reason: null,
-      options: [
-        {
-          source_team_id: "solary",
-          source_team_name: "Solary",
-          source_team_short_name: "SOL",
-          source_team_logo_url: null,
-          source_identity: {
-            source_team_id: "solary",
-            original_name: "Solary",
-            original_short_name: "SOL",
-            original_logo_url: null,
-          },
-          erl_league_id: "lfl",
-          league_name: "LFL",
-          country: "FR",
-          region: "France",
-          assignment_rule: "Fallback",
-          fallback_reason: "Nearby ERL fallback",
-          reputation: 5,
-          development_level: 4,
-          acquisition_cost: 300000,
-          rebrand_allowed: false,
-        },
-      ],
-    });
+  it("promotes an academy player to main team", async () => {
+    const onGameUpdate = vi.fn();
+    promoteAcademyPlayer.mockResolvedValueOnce(createGameState());
 
-    acquireAcademyTeam.mockResolvedValueOnce(createGameState());
+    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} onGameUpdate={onGameUpdate} />);
 
-    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Subir" }));
 
-    await waitFor(() => expect(screen.getByText("Solary")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Adquirir" }));
-
-    await waitFor(() =>
-      expect(acquireAcademyTeam).toHaveBeenCalledWith({
-        parent_team_id: "team-1",
-        source_team_id: "solary",
-        custom_name: undefined,
-        custom_short_name: undefined,
-        custom_logo_url: undefined,
-      }),
-    );
+    await waitFor(() => expect(promoteAcademyPlayer).toHaveBeenCalledWith("academy-player-1"));
+    expect(onGameUpdate).toHaveBeenCalled();
   });
 
-  it("shows a backend blocked state when acquisition is not available", async () => {
+  it("shows finance academy button when team has no linked academy", async () => {
+    const stateWithoutAcademy = createGameState();
+    stateWithoutAcademy.teams = stateWithoutAcademy.teams.filter((team) => team.id !== "academy-1");
+    stateWithoutAcademy.teams[0].academy_team_id = null;
+    stateWithoutAcademy.players = stateWithoutAcademy.players.filter((player) => player.team_id !== "academy-1");
+
     getAcademyAcquisitionOptions.mockResolvedValueOnce({
       parent_team_id: "team-1",
       acquisition_allowed: false,
-      blocked_reason: "No eligible ERL teams within budget",
+      blocked_reason: "No eligible ERL acquisition candidate configured for this team country",
       options: [],
     });
 
-    render(<YouthAcademyTab gameState={createGameState()} onSelectPlayer={vi.fn()} />);
+    render(<YouthAcademyTab gameState={stateWithoutAcademy} onSelectPlayer={vi.fn()} onGameUpdate={vi.fn()} />);
 
-    await waitFor(() => expect(screen.getByText("No eligible ERL teams within budget")).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "Adquirir" })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Financiar academia" })).toBeDisabled();
+    });
   });
 
-  it("does not crash when the current team cannot be resolved in state", () => {
-    const gameState = createGameState();
-    gameState.manager.team_id = "missing-team";
+  it("passes custom academy rename values when financing", async () => {
+    const stateWithoutAcademy = createGameState();
+    stateWithoutAcademy.teams = stateWithoutAcademy.teams.filter((team) => team.id !== "academy-1");
+    stateWithoutAcademy.teams[0].academy_team_id = null;
+    stateWithoutAcademy.players = stateWithoutAcademy.players.filter((player) => player.team_id !== "academy-1");
 
-    render(<YouthAcademyTab gameState={gameState} onSelectPlayer={vi.fn()} />);
+    getAcademyAcquisitionOptions.mockResolvedValueOnce({
+      parent_team_id: "team-1",
+      acquisition_allowed: true,
+      blocked_reason: null,
+      options: [
+        {
+          source_team_id: "academy-lfl-karmine-corp-blue",
+          source_team_name: "Karmine Corp Blue",
+          source_team_short_name: "KCB",
+          source_team_logo_url: null,
+          erl_league_id: "lfl",
+          league_name: "LFL",
+          country: "FR",
+          region: "EMEA",
+          assignment_rule: "Fallback",
+          fallback_reason: null,
+          reputation: 5,
+          development_level: 4,
+          acquisition_cost: 380000,
+          rebrand_allowed: true,
+          source_identity: {
+            source_team_id: "academy-lfl-karmine-corp-blue",
+            original_name: "Karmine Corp Blue",
+            original_short_name: "KCB",
+            original_logo_url: null,
+          },
+        },
+      ],
+    });
+    acquireAcademyTeam.mockResolvedValueOnce(stateWithoutAcademy);
 
-    expect(screen.getByText("No youth players")).toBeInTheDocument();
+    render(<YouthAcademyTab gameState={stateWithoutAcademy} onSelectPlayer={vi.fn()} onGameUpdate={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByText("Karmine Corp Blue")).toBeInTheDocument());
+    fireEvent.change(screen.getByPlaceholderText("Nombre personalizado (opcional)"), {
+      target: { value: "KCB Academy Prime" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("Sigla personalizada (opcional)"), {
+      target: { value: "KCBP" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("URL logo (opcional)"), {
+      target: { value: "https://cdn.example/kcbp.png" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Financiar academia" }));
+
+    await waitFor(() => {
+      expect(acquireAcademyTeam).toHaveBeenCalledWith({
+        parent_team_id: "team-1",
+        source_team_id: "academy-lfl-karmine-corp-blue",
+        custom_name: "KCB Academy Prime",
+        custom_short_name: "KCBP",
+        custom_logo_url: "https://cdn.example/kcbp.png",
+      });
+    });
   });
 });

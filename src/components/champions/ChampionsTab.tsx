@@ -7,6 +7,7 @@ import playersSeed from "../../../data/lec/draft/players.json";
 import { setPlayerChampionTrainingTarget } from "../../services/playerService";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { formatStaffEffectPercent, getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
+import { resolvePlayerPhoto } from "../../lib/playerPhotos";
 
 interface ChampionsTabProps {
   gameState: GameStateData;
@@ -87,12 +88,6 @@ function inferLolRole(player: GameStateData["players"][number]): UiRole {
   if (key.includes("attackingmidfielder")) return "Mid";
   if (key.includes("forward") || key.includes("striker")) return "ADC";
   return "Support";
-}
-
-function playerPhotoUrl(playerId: string): string | null {
-  const match = playerId.match(/^lec-player-(.+)$/);
-  if (!match) return null;
-  return `/player-photos/${match[1]}.png`;
 }
 
 function championTileUrl(championId: string): string {
@@ -558,9 +553,9 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                 <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 overflow-hidden rounded-lg bg-gray-200 dark:bg-navy-700">
-                      {playerPhotoUrl(player.id) ? (
+                      {resolvePlayerPhoto(player.id, player.match_name) ? (
                         <img
-                          src={playerPhotoUrl(player.id) ?? ""}
+                          src={resolvePlayerPhoto(player.id, player.match_name) ?? ""}
                           alt={player.match_name}
                           className="h-full w-full object-cover"
                         />

@@ -1,0 +1,331 @@
+LFL
+
+Team: Solary
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/ec/Solarylogo_square.png/revision/latest/scale-to-width-down/220?cb=20181130231519
+
+Toplaner: Kryze
+Born: July 1, 1999
+Nationality: Sweden
+Full name: Felix Hellström
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c0/SLY_Kryze_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530151746
+
+Jungle: Zicssi 
+Born: May 16, 2002
+Nationality: France
+Full name: 	Lanzo Ciajolo
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/77/M8_Zicssi_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530150843
+
+Midlaner: Jool
+Born: December 30, 2001
+Nationality: South Korea
+Full name: Kang Dong-su
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/09/LOUD_Jool_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250726184942
+
+ADC: Aetinoth
+Born: October 10, 2005
+Nationality: Turkey
+Full name: Berat Tıknazoğlu
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/dc/GXP_Aetinoth_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124021
+
+Support: Piero
+Born: July 15, 2002
+Nationality: South Korea
+Full name: Kim Jung-hun
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/83/KCB_Piero_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530162215
+
+Team: Galions
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/61/Galionslogo_square.png/revision/latest/scale-to-width-down/220?cb=20241209190639
+
+Toplaner: Carlsen
+Born: December 15, 2005
+Nationality: Denmark
+Full name: Carl Ulsted Carlsen
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c5/TH_Carlsen_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250810162230
+
+Jungle: Thayger
+Born: January 27, 2002
+Nationality: Spain
+Full name: Francisco Mazo Sánchez
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/50/NAVI_Thayger_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250810162203
+
+Midlaner: Omon
+Born: July 2, 2003
+Nationality: Czech Republic
+Full name: Šimon Řiháček
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/d8/BKR_OMON_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250529163055
+
+ADC: HARPOON
+Born: April 18, 2005
+Nationality: Poland
+Full name: Franciszek Gryszkiewicz
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/ce/Z10_HARPOON_2024_Split_1.png/revision/latest/scale-to-width-down/220?cb=20240116100742
+
+Support: Zoelys
+Born: May 16, 2003
+Nationality: France
+Full name: Théo Le Scornec
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9a/GL_Zoelys_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530150830
+
+Team: French Flair
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/05/French_Flairlogo_square.png/revision/latest/scale-to-width-down/220?cb=20251203202820
+
+Toplaner: Adam
+Born: December 30, 2001
+Nationality: France
+Full name: Adam Maanane
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/4/47/NAVI_Adam_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250810162159
+
+Jungle: NattyNatt
+Born: ???
+Nationality: Sweden
+Full name: Isak Elgh
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/79/RS_NattyNatt_2025_Split_2_2.png/revision/latest/scale-to-width-down/220?cb=20250529163650
+
+Midlaner: SAKEN
+Born: November 5, 1998
+Nationality: France
+Full name: Lucas Fayard
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/79/KC_SAKEN_2024_Split_1.png/revision/latest/scale-to-width-down/220?cb=20240112205145
+
+ADC: 3XA
+Born: September 28, 2003
+Nationality: France
+Full name: Thomas Foucou
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c2/KCB_3XA_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530151643
+
+Support: Targamas
+Born: June 30, 2000
+Nationality: Belgium
+Full name: Raphaël Crabbé
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/8a/KC_Targamas_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250810162227
+
+Team: JOblife
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/bf/Joblifelogo_profile.png/revision/latest/scale-to-width-down/220?cb=20221219183313
+
+Toplaner: Vertigo
+Born: February 27, 2003
+Nationality: Austria
+Full name: Maximilian Rassi
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fa/VITB_Vertigo_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530144355 
+
+Jungle: Shift
+Born: January 20, 2005
+Nationality: Poland
+Full name: Marcel Bąk
+Image:  January 20, 2005
+
+Midlaner: Czekolad
+Born: February 15, 2000
+Nationality: Poland
+Full name: Paweł Szczepanik
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/6f/BAR_Czekolad_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250905145939
+
+ADC: Comp
+Born: December 20, 2001 
+Nationality: Greece
+Full name: Markos Stamkopoulos
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a4/M8_Comp_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530150856
+
+Support: Mersa
+Born: August 22, 2002
+Nationality: Greece
+Full name: Mertai Sari
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/00/SLY_Mersa_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530151741
+
+Team: TLN Pirates
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/06/TLN_Pirateslogo_square.png/revision/latest/scale-to-width-down/220?cb=20260114195706
+
+Toplaner: Spooder
+Born: September 5, 2002
+Nationality: Sweden
+Full name: Muhanad Maitham Sharad
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fe/MKFX_Spooder_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124057
+
+Jungle: Stefan
+Born: ??
+Nationality: Serbia
+Full name: Stefan Nikolić
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/ce/DSY_Stefan_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250827204410
+
+Midlaner: Toffer
+Born: 	May 2, 2005
+Nationality: Lithuania
+Full name: Tautvydas Gegeckas
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fa/BDSA_Toffe_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250529162546
+
+ADC: Axelent
+Born: May 14, 2004
+Nationality: North Macedonia
+Full name: Nikola Petrusev
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/6d/MHSC_Axelent_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240521135749
+
+Support: Thomas
+Born: June 20, 2003
+Nationality: Croatia
+Full name: Tomislav Nanjara
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/dc/MKF_Thomas_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250726151513
+
+Team: Skillcamp 
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/a2/Skillcamplogo_profile.png/revision/latest/scale-to-width-down/220?cb=20260216032253
+
+Toplaner: Yeti
+Born: March 13, 2007
+Nationality: Poland
+Full name: Szymon Wójcicki 
+Image:  ??
+
+Jungle: Spooky
+Born: August 12, 1999
+Nationality: Bulgaria
+Full name: Miroslav Gochev
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/09/ANO_SPOOKY_2023_SPLIT_1.png/revision/latest/scale-to-width-down/220?cb=20230414163049
+
+Midlaner: Nafkelah
+Born: November 13, 2002
+Nationality: Montenegro
+Full name: Andrija Kovačević
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/76/SC_Nafkelah_2026_Split_1.png/revision/latest/scale-to-width-down/220?cb=20260207005634
+
+ADC: Deadly
+Born: August 28, 1999
+Nationality: United Kingdom
+Full name: Matthew Luke Smith
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/4/46/GL_Deadly_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530150827
+
+Support: Steeelback
+Born: Pierre Medjaldi
+Nationality: France
+Full name: Pierre Medjaldi
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b3/GW_Steeelback_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240916153222
+
+Team: Ici Japon Corp. Esport
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/7a/Ici_Japon_Corp._Esportlogo_square.png/revision/latest/scale-to-width-down/220?cb=20241006054235
+
+Toplaner: Badlulu
+Born: September 13, 2002
+Nationality: France
+Full name: Lucas Piochaud
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/6a/GXP_Badlulu_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124023
+
+Jungle: Kaboom
+Born: March 14, 2006
+Nationality: Turkey
+Full name: Osman Onur Korkmaz
+Image:  ??
+
+Midlaner: Dajor
+Born: April 18, 2003
+Nationality: Germany
+Full name: Oliver Ryppa
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/03/BIG_Dajor_2025_Split_1.png/revision/latest?cb=20250216162352
+
+ADC: Soldier
+Born: November 6, 2002
+Nationality: France
+Full name: Thomas Thierry Haudecoeur
+Image:  ???
+
+Support: Whiteinn
+Born: October 3, 2000
+Nationality: Romania
+Full name: Alexandru Kolozsvari
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/3/36/BAR_whiteinn_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250905145945
+
+Team: ZYB Esport
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/72/ZYB_Esportlogo_square.png/revision/latest/scale-to-width-down/220?cb=20260110152035
+
+Toplaner: Wao
+Born: May 30, 2003
+Nationality: France
+Full name: Wao Dai
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/51/KC_Wao_2022_Split_1.png/revision/latest/scale-to-width-down/220?cb=20220113121319
+
+Jungle: Manaty
+Born: January 21, 2002
+Nationality: France
+Full name: Stéphane Dimier
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/f9/JL_Manaty_2022_Split_1.png/revision/latest/scale-to-width-down/220?cb=20220121153820
+
+Midlaner: Nisqy
+Born: July 28, 1998
+Nationality: Belgium
+Full name: Yasin Dinçer
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/eb/VIT_Nisqy_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250430140243
+
+ADC: Jezu
+Born: July 27, 2000
+Nationality: France
+Full name: Jean Massol
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/f5/GL_Jezu_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250530150839
+
+Support: Riippp
+Born: September 13, 1995
+Nationality: France
+Full name: Arnaud Mesmin
+Image:  ??
+
+Team: Karmine Corp Blue
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9f/Karmine_Corp_Bluelogo_profile.png/revision/latest/scale-to-width-down/220?cb=20260110071859
+
+Toplaner: Tao
+Born: ??
+Nationality: Italy
+Full name: Xu Hongtao Alessandro
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/eb/KCB_Tao_2026_Split_1.png/revision/latest/scale-to-width-down/220?cb=20260117100541
+
+Jungle: Yukino
+Born: February 14, 2006
+Nationality: United States
+Full name: Johnny Hoang Dang
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/3/39/KCB_Yukino_2026_Split_1.png/revision/latest/scale-to-width-down/220?cb=20260117100543
+
+Midlaner: Kamiloo
+Born: July 20, 2005
+Nationality: France
+Full name: Kamil Bruno Mehdi Wahid Haudegond
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/73/KCB_Kamiloo_2026_Split_1.png/revision/latest/scale-to-width-down/220?cb=20260117100536
+
+ADC: Hazel
+Born: May 14, 2007
+Nationality: Romania
+Full name: Costin Pestrițu
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/e6/KCB_Hazel_2026_Split_1.png/revision/latest/scale-to-width-down/220?cb=20260117100534
+
+Support: Prime
+Born: February 24, 2000
+Nationality: France
+Full name: Olivier Pierre Julien Payet
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/80/KCB_Prime_2026_Split_1.png/revision/latest/scale-to-width-down/220?cb=20260117100538
+
+Team: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/86/Team_Vitalitylogo_square.png/revision/latest/scale-to-width-down/220?cb=20230224142251
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/86/Team_Vitalitylogo_square.png/revision/latest/scale-to-width-down/220?cb=20230224142251
+
+Toplaner: Potent
+Born: United States
+Nationality: July 14, 2002
+Full name: Mehdi Ahmed Bouchaffra
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/2/26/JL_Potent_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240521132736
+
+Jungle: Dawciu
+Born: March 21, 2008
+Nationality: Poland 
+Full name: Dawid Drzyzga
+Image:  ??
+
+Midlaner: Czajek
+Born: September 24, 2003
+Nationality: Poland
+Full name: Mateusz Czajka
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fd/VIT_Czajek_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250810162152
+
+ADC: Yakkey
+Born: January 14, 2005
+Nationality: Romania
+Full name: Darius Eduard Bistrian
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/e/eb/PAR_Yakkey_2023_Split_2.png/revision/latest/scale-to-width-down/220?cb=20230528083849
+
+Support: Dekap
+Born: December 11, 2000
+Nationality: Jordan
+Full name: Waleed Mohammed Ismail
+Image:  https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/1/14/GK_Dekap_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250429125541

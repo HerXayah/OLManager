@@ -44,7 +44,7 @@ fn candidate(id: &str, league_id: &str, country: &str, reputation: u8, developme
 }
 
 #[test]
-fn domestic_candidate_teams_have_priority_over_nearby_fallbacks() {
+fn acquisition_options_include_candidates_from_all_configured_erl_leagues() {
     let options = eligible_academy_acquisition_options(
         "FR",
         &[
@@ -57,14 +57,15 @@ fn domestic_candidate_teams_have_priority_over_nearby_fallbacks() {
         ],
     );
 
-    assert_eq!(options.len(), 1);
-    assert_eq!(options[0].source_team_id, "kcb");
-    assert_eq!(options[0].erl_league_id, "lfl");
-    assert_eq!(options[0].assignment_rule, ErlAssignmentRule::Domestic);
+    assert_eq!(options.len(), 2);
+    assert!(options.iter().any(|option| option.source_team_id == "kcb"));
+    assert!(options
+        .iter()
+        .any(|option| option.source_team_id == "heretics"));
 }
 
 #[test]
-fn nearby_candidate_fallbacks_are_offered_only_when_no_domestic_erl_exists() {
+fn assignment_rule_marks_domestic_vs_cross_country_candidates_in_open_pool() {
     let options = eligible_academy_acquisition_options(
         "BE",
         &[
@@ -77,14 +78,19 @@ fn nearby_candidate_fallbacks_are_offered_only_when_no_domestic_erl_exists() {
         ],
     );
 
-    assert_eq!(options.len(), 1);
-    assert_eq!(options[0].source_team_id, "kcb");
-    assert_eq!(options[0].erl_league_id, "lfl");
-    assert_eq!(options[0].assignment_rule, ErlAssignmentRule::Fallback);
-    assert_eq!(
-        options[0].fallback_reason.as_deref(),
-        Some("BE has no domestic ERL; lfl is configured as nearby")
-    );
+    assert_eq!(options.len(), 2);
+    let cross_country = options
+        .iter()
+        .find(|option| option.source_team_id == "kcb")
+        .unwrap();
+    let domestic = options
+        .iter()
+        .find(|option| option.source_team_id == "heretics")
+        .unwrap();
+
+    assert_eq!(cross_country.assignment_rule, ErlAssignmentRule::Fallback);
+    assert_eq!(cross_country.fallback_reason, None);
+    assert_eq!(domestic.assignment_rule, ErlAssignmentRule::Domestic);
 }
 
 #[test]

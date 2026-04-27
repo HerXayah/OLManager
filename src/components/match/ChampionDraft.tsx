@@ -2056,19 +2056,18 @@ export default function ChampionDraft({
         </section>
 
         <section className="order-1 flex-1 min-h-0 rounded-md border border-cyan-400/25 bg-[#050608] p-3 overflow-hidden shadow-[0_0_28px_rgba(18,215,255,0.06)]">
-          <div className="h-full grid grid-cols-1 xl:grid-cols-[270px_minmax(0,1fr)_270px] gap-3 items-start">
-            <aside className="hidden xl:flex flex-col gap-2 min-h-0 overflow-y-auto scrollbar-draft pr-1">
+          <div className="h-full min-h-0 grid grid-cols-1 xl:grid-cols-[270px_minmax(0,1fr)_270px] gap-3 items-stretch">
+            <aside className="hidden xl:flex h-full flex-col gap-2 min-h-0 overflow-y-auto scrollbar-draft pr-1">
               {assistantCoachTips.length > 0 ? (
                 <div className="rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-3 text-[12px] text-gray-200">
                   <p className="font-heading uppercase tracking-wide text-xs text-white mb-2">
                     {t("match.draft.tipsTitle")}
                   </p>
-                  <div className="space-y-2">
-                    {assistantCoachTips.map((tip, idx) => (
-                      <article
-                        key={`${tip.sourceName}-${idx}`}
-                        className="rounded-md border border-white/10 bg-[#070915] px-2.5 py-2"
-                      >
+                  {(() => {
+                    const tip = assistantCoachTips[0];
+                    if (!tip) return null;
+                    return (
+                      <article className="rounded-md border border-white/10 bg-[#070915] px-2.5 py-2">
                         <div className="flex items-start gap-2">
                           <img
                             src={tip.sourceImage}
@@ -2122,8 +2121,8 @@ export default function ChampionDraft({
                           </div>
                         ) : null}
                       </article>
-                    ))}
-                  </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-3 text-[12px] text-gray-200">
@@ -2172,7 +2171,7 @@ export default function ChampionDraft({
               </div>
             </aside>
 
-            <div className="h-full rounded-md border border-cyan-400/25 bg-[#0a0b0f]/95 p-3 space-y-2 relative overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]">
+            <div className="h-full min-h-0 rounded-md border border-cyan-400/25 bg-[#0a0b0f]/95 p-3 space-y-2 relative overflow-hidden shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)] flex flex-col">
               <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_35%_45%,rgba(0,209,255,0.12),transparent_40%),radial-gradient(circle_at_70%_45%,rgba(255,146,56,0.1),transparent_45%)]" />
 
               <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto_auto] gap-2 items-center">
@@ -2267,17 +2266,17 @@ export default function ChampionDraft({
                 </div>
               ) : null}
 
-              {loading ? (
-                <p className="relative text-sm text-gray-300">{t("match.draft.loadingChampions")}</p>
-              ) : error ? (
-                <p className="relative text-sm text-red-300">
-                  {t("match.draft.loadError")}: {error}
-                </p>
-              ) : visibleChampions.length === 0 ? (
-                <p className="relative text-sm text-gray-300">{t("match.draft.noChampionsForFilters")}</p>
-              ) : (
-                <>
-                  <div className="relative grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 gap-1 max-h-[calc(100%-104px)] overflow-auto scrollbar-draft pr-1">
+              <div className="relative min-h-0 flex-1 overflow-y-auto scrollbar-draft pr-1">
+                {loading ? (
+                  <p className="relative text-sm text-gray-300">{t("match.draft.loadingChampions")}</p>
+                ) : error ? (
+                  <p className="relative text-sm text-red-300">
+                    {t("match.draft.loadError")}: {error}
+                  </p>
+                ) : visibleChampions.length === 0 ? (
+                  <p className="relative text-sm text-gray-300">{t("match.draft.noChampionsForFilters")}</p>
+                ) : (
+                  <div className="relative grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 gap-1">
                     {visibleChampions.map((champion) => {
                       const isUsed = usedChampionIds.has(champion.id);
                       return (
@@ -2302,11 +2301,11 @@ export default function ChampionDraft({
                       );
                     })}
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </div>
 
-            <aside className="hidden xl:flex flex-col rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-2 min-h-0 overflow-y-auto scrollbar-draft pr-1">
+            <aside className="hidden xl:flex h-full flex-col rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-2 min-h-0 overflow-y-auto scrollbar-draft pr-1">
               <p className="text-[11px] font-heading uppercase tracking-wide text-gray-200 mb-2 text-right">
                 {t("match.draft.enemyComfortTitle")}
               </p>

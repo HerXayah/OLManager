@@ -136,6 +136,7 @@ export default function DashboardTabContent({
         <YouthAcademyTab
           gameState={gameState}
           onSelectPlayer={onSelectPlayer}
+          onGameUpdate={onGameUpdate}
         />
       )}
 

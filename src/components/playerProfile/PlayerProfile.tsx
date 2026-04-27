@@ -35,6 +35,9 @@ import PlayerProfileChampionsCard from "./PlayerProfileChampionsCard";
 import playersSeed from "../../../data/lec/draft/players.json";
 import championsSeed from "../../../data/lec/draft/champions.json";
 import { startPotentialResearch } from "../../services/playerService";
+import { demoteMainPlayerToAcademy, promoteAcademyPlayer } from "../../services/academyService";
+import { findAcademyTeamForParent } from "../../store/academySelectors";
+import { fallbackChampionForRole, resolvePlayerLolRole } from "../../lib/lolIdentity";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
@@ -75,7 +78,7 @@ const CHAMPION_ID_BY_NORMALIZED_NAME = new Map<string, string>([
 ]);
 
 function normalizeKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, "");
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function championIdFromName(name: string): string | null {
@@ -142,7 +145,9 @@ function buildChampionPerformanceMap(
 }
 
 function buildTopChampionMasteries(
+  playerId: string,
   matchName: string,
+  role: "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT",
   championPerformance: Map<string, { wr: number; games: number }>,
   visibleChampionCount = 4,
 ) {
@@ -155,7 +160,20 @@ function buildTopChampionMasteries(
     .filter((entry) => entry.championName.length > 0)
     .sort((a, b) => b.mastery - a.mastery);
 
-  if (champions.length === 0) return [];
+  if (champions.length === 0) {
+    const fallbackChampion = fallbackChampionForRole(playerId, role);
+    if (!fallbackChampion) return [];
+    return [
+      {
+        championId: fallbackChampion,
+        championName: fallbackChampion,
+        mastery: 100,
+        rank: "insignia" as const,
+        wr: championPerformance.get(fallbackChampion)?.wr ?? 0,
+        games: championPerformance.get(fallbackChampion)?.games ?? 0,
+      },
+    ];
+  }
 
   const insignia = champions[0];
   const rest = champions.slice(1, Math.max(1, visibleChampionCount));
@@ -218,7 +236,7 @@ export default function PlayerProfile({
 }: PlayerProfileProps) {
   const { t, i18n } = useTranslation();
   const weeklySuffix = t("finances.perWeekSuffix", "/wk");
-  const primaryPosition = player.natural_position || player.position;
+  const primaryRole = resolvePlayerLolRole(player);
 
   if (!player) {
     return null;
@@ -227,6 +245,7 @@ export default function PlayerProfile({
   const [scoutStatus, setScoutStatus] = useState<PlayerProfileScoutStatus>(
     "idle",
   );
+  const [academyActionSubmitting, setAcademyActionSubmitting] = useState(false);
   const [playerHistory, setPlayerHistory] = useState<PlayerMatchHistoryEntryData[]>([]);
   const [rerollingRole, setRerollingRole] = useState(false);
   const [potentialResearchSubmitting, setPotentialResearchSubmitting] = useState(false);
@@ -263,8 +282,11 @@ export default function PlayerProfile({
       unknown: t("common.unknown"),
     },
   );
-  const actualIsOwnClub =
-    gameState.manager.team_id !== null && player.team_id === gameState.manager.team_id;
+  const managerTeamId = gameState.manager.team_id;
+  const managerAcademyTeam = findAcademyTeamForParent(gameState.teams, managerTeamId);
+  const isOwnMainPlayer = managerTeamId !== null && player.team_id === managerTeamId;
+  const isOwnAcademyPlayer = managerAcademyTeam !== null && player.team_id === managerAcademyTeam.id;
+  const actualIsOwnClub = isOwnMainPlayer || isOwnAcademyPlayer;
   const contractRiskLevel = getContractRiskLevel(
     player.contract_end,
     gameState.clock.current_date,
@@ -322,7 +344,9 @@ export default function PlayerProfile({
   const championPerformance = buildChampionPerformanceMap(playerHistory);
   const visibleChampionMasteryCount = actualIsOwnClub ? 4 : latestScoutReport ? 2 : 1;
   const topChampions = buildTopChampionMasteries(
+    player.id,
     player.match_name,
+    primaryRole,
     championPerformance,
     visibleChampionMasteryCount,
   );
@@ -602,7 +626,7 @@ export default function PlayerProfile({
       <PlayerProfileHeroCard
         player={player}
         ovr={ovr}
-        primaryPosition={primaryPosition}
+        primaryRole={primaryRole}
         age={age}
         teamName={teamName}
         weeklySuffix={weeklySuffix}
@@ -640,6 +664,37 @@ export default function PlayerProfile({
         rerollingRole={rerollingRole}
         insigniaChampionId={topChampions[0]?.championId ?? null}
         onSelectTeam={onSelectTeam}
+        academyActionLabel={
+          isOwnAcademyPlayer
+            ? "Subir al primer equipo"
+            : isOwnMainPlayer && managerAcademyTeam
+              ? "Bajar a academia"
+              : null
+        }
+        academyActionLoading={academyActionSubmitting}
+        onAcademyAction={
+          isOwnAcademyPlayer || (isOwnMainPlayer && managerAcademyTeam)
+            ? () => {
+                if (!onGameUpdate || academyActionSubmitting) {
+                  return;
+                }
+
+                void (async () => {
+                  setAcademyActionSubmitting(true);
+                  try {
+                    const updated = isOwnAcademyPlayer
+                      ? await promoteAcademyPlayer(player.id)
+                      : await demoteMainPlayerToAcademy(player.id);
+                    onGameUpdate(updated);
+                  } catch {
+                    return;
+                  } finally {
+                    setAcademyActionSubmitting(false);
+                  }
+                })();
+              }
+            : null
+        }
         onStartPotentialResearch={
           onGameUpdate
             ? () => {

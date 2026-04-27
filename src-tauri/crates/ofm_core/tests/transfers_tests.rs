@@ -6,7 +6,7 @@ use domain::player::{
     Player, PlayerAttributes, PlayerIssueCategory, Position, TransferOffer, TransferOfferStatus,
 };
 use domain::season::TransferWindowStatus;
-use domain::team::Team;
+use domain::team::{Team, TeamKind};
 use ofm_core::clock::GameClock;
 use ofm_core::game::Game;
 use ofm_core::transfers::{
@@ -730,4 +730,155 @@ fn completed_transfer_news_is_not_duplicated_when_article_already_exists() {
             .count(),
         1
     );
+}
+
+#[test]
+fn academy_sale_replenishes_roster_and_role_coverage() {
+    let player = make_player("player-academy-sale");
+    let mut game = make_game_with_player(player, vec![], 5_000_000, 2_000_000);
+    game.teams[1].team_kind = TeamKind::Academy;
+
+    let result = make_transfer_bid(&mut game, "player-academy-sale", 1_500_000)
+        .expect("academy transfer bid should succeed");
+
+    assert_eq!(result.decision, TransferNegotiationDecision::Accepted);
+    assert_eq!(
+        game.players
+            .iter()
+            .find(|player| player.id == "player-academy-sale")
+            .and_then(|player| player.team_id.as_deref()),
+        Some("team-1")
+    );
+
+    let academy_players: Vec<_> = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some("team-2"))
+        .collect();
+
+    assert!(academy_players.len() >= 5);
+
+    let has_top = academy_players
+        .iter()
+        .any(|player| matches!(player.natural_position, Position::Defender | Position::RightBack | Position::CenterBack | Position::LeftBack | Position::RightWingBack | Position::LeftWingBack));
+    let has_jungle = academy_players.iter().any(|player| {
+        matches!(
+            player.natural_position,
+            Position::Midfielder | Position::CentralMidfielder
+        )
+    });
+    let has_mid = academy_players.iter().any(|player| {
+        matches!(
+            player.natural_position,
+            Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder
+        )
+    });
+    let has_adc = academy_players.iter().any(|player| {
+        matches!(
+            player.natural_position,
+            Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker
+        )
+    });
+    let has_support = academy_players.iter().any(|player| {
+        matches!(
+            player.natural_position,
+            Position::Goalkeeper | Position::DefensiveMidfielder
+        )
+    });
+
+    assert!(has_top && has_jungle && has_mid && has_adc && has_support);
+}
+
+#[test]
+fn academy_sale_routes_fee_to_parent_club_owner() {
+    let mut player = make_player("player-academy-owner");
+    player.transfer_listed = true;
+
+    let mut game = make_game_with_player(player, vec![], 5_000_000, 2_000_000);
+    game.teams[1].team_kind = TeamKind::Academy;
+    game.teams[1].parent_team_id = Some("team-parent".to_string());
+
+    let mut parent_club = Team::new(
+        "team-parent".to_string(),
+        "Parent Club".to_string(),
+        "PAR".to_string(),
+        "England".to_string(),
+        "London".to_string(),
+        "Parent Ground".to_string(),
+        30_000,
+    );
+    parent_club.finance = 1_000_000;
+    game.teams.push(parent_club);
+
+    let academy_finance_before = game
+        .teams
+        .iter()
+        .find(|team| team.id == "team-2")
+        .map(|team| team.finance)
+        .unwrap();
+    let parent_finance_before = game
+        .teams
+        .iter()
+        .find(|team| team.id == "team-parent")
+        .map(|team| team.finance)
+        .unwrap();
+
+    let result = make_transfer_bid(&mut game, "player-academy-owner", 1_200_000)
+        .expect("academy transfer should succeed");
+
+    assert_eq!(result.decision, TransferNegotiationDecision::Accepted);
+    let academy_finance_after = game
+        .teams
+        .iter()
+        .find(|team| team.id == "team-2")
+        .map(|team| team.finance)
+        .unwrap();
+    let parent_finance_after = game
+        .teams
+        .iter()
+        .find(|team| team.id == "team-parent")
+        .map(|team| team.finance)
+        .unwrap();
+
+    assert_eq!(academy_finance_after, academy_finance_before);
+    assert_eq!(parent_finance_after, parent_finance_before + 1_200_000);
+}
+
+#[test]
+fn incoming_offers_can_target_players_in_user_academy() {
+    let mut academy_team = Team::new(
+        "team-academy".to_string(),
+        "User Academy".to_string(),
+        "UAC".to_string(),
+        "England".to_string(),
+        "London".to_string(),
+        "Academy Ground".to_string(),
+        5_000,
+    );
+    academy_team.team_kind = TeamKind::Academy;
+    academy_team.parent_team_id = Some("team-1".to_string());
+
+    let mut academy_player = make_player("player-user-academy");
+    academy_player.team_id = Some("team-academy".to_string());
+    academy_player.contract_end = Some("2026-09-01".to_string());
+    academy_player.market_value = 1_200_000;
+    academy_player.transfer_listed = true;
+
+    let mut game = make_game_with_player(academy_player, vec![], 5_000_000, 2_000_000);
+    game.clock.current_date = Utc.with_ymd_and_hms(2026, 8, 3, 12, 0, 0).unwrap();
+    game.teams.push(academy_team);
+    game.teams[1].finance = 6_000_000;
+    game.teams[1].transfer_budget = 3_000_000;
+
+    generate_incoming_transfer_offers(&mut game);
+
+    let academy_player = game
+        .players
+        .iter()
+        .find(|player| player.id == "player-user-academy")
+        .expect("academy player should exist");
+
+    assert_eq!(academy_player.transfer_offers.len(), 1);
+    assert_eq!(academy_player.transfer_offers[0].from_team_id, "team-2");
+    assert_eq!(academy_player.transfer_offers[0].status, TransferOfferStatus::Pending);
 }

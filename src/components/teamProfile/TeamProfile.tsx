@@ -2,7 +2,6 @@ import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { TeamProfileProps } from "./TeamProfile.types";
-import TeamProfileAdvancedStatsCard from "./TeamProfileAdvancedStatsCard";
 import TeamProfileClubDetailsCard from "./TeamProfileClubDetailsCard";
 import TeamProfileHeroCard from "./TeamProfileHeroCard";
 import TeamProfileHistoryCard from "./TeamProfileHistoryCard";
@@ -23,7 +22,7 @@ export default function TeamProfile({
   const { t, i18n } = useTranslation();
   const weeklySuffix = t("finances.perWeekSuffix", "/wk");
   const viewModel = buildTeamProfileViewModel(team, gameState);
-  const { teamStatsOverview, recentMatches } = useTeamProfileStats(team.id);
+  const { recentMatches } = useTeamProfileStats(team.id);
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -58,10 +57,6 @@ export default function TeamProfile({
           t={t}
         />
         <TeamProfileLeagueStandingCard standings={viewModel.standings} t={t} />
-
-        {teamStatsOverview && (
-          <TeamProfileAdvancedStatsCard overview={teamStatsOverview} t={t} />
-        )}
 
         <TeamProfileRecentMatchesCard matches={recentMatches} t={t} />
 

@@ -167,7 +167,7 @@ describe("TransferCounterOfferModal", () => {
       <TransferCounterOfferModal
         counterTarget={createCounterTarget()}
         teams={[createTeam(), createTeam({ id: "team-2", name: "Buyer FC" })]}
-        counterAmount="1.6"
+        counterAmount="1600000"
         onCounterAmountChange={vi.fn()}
         counterFeedback={{
           mood: "firm",
@@ -204,7 +204,7 @@ describe("TransferCounterOfferModal", () => {
       <TransferCounterOfferModal
         counterTarget={createCounterTarget()}
         teams={[createTeam(), createTeam({ id: "team-2", name: "Buyer FC" })]}
-        counterAmount="1.4"
+        counterAmount="1400000"
         onCounterAmountChange={onCounterAmountChange}
         counterFeedback={null}
         activeCounterOffer={null}
@@ -217,12 +217,12 @@ describe("TransferCounterOfferModal", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Counter Amount"), {
-      target: { value: "1.8" },
+      target: { value: "1800000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Submit Counter" }));
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
-    expect(onCounterAmountChange).toHaveBeenCalledWith("1.8");
+    expect(onCounterAmountChange).toHaveBeenCalledWith("1800000");
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });

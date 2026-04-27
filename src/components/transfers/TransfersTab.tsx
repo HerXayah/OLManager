@@ -115,10 +115,13 @@ export default function TransfersTab({
 
     setBidTarget(player);
     setBidAmount(
-      (
-        (existingOffer?.suggested_counter_fee ?? existingOffer?.fee ?? player.market_value) /
-        1_000_000
-      ).toFixed(existingOffer ? 2 : 1),
+      String(
+        Math.round(
+          existingOffer?.suggested_counter_fee ??
+            existingOffer?.fee ??
+            player.market_value,
+        ),
+      ),
     );
     setBidResult(null);
     setBidFeedback(buildResumedBidFeedback(existingOffer));
@@ -135,11 +138,7 @@ export default function TransfersTab({
       fromTeamId: offer.from_team_id,
       fee: offer.fee,
     });
-    setCounterAmount(
-      ((offer.suggested_counter_fee ?? offer.fee) / 1_000_000).toFixed(
-        offer.negotiation_round > 1 ? 2 : 1,
-      ),
-    );
+    setCounterAmount(String(Math.round(offer.suggested_counter_fee ?? offer.fee)));
     setCounterError(null);
     setCounterResult(null);
     setCounterFeedback(buildResumedCounterFeedback(offer));
@@ -151,13 +150,13 @@ export default function TransfersTab({
     setBidResult(null);
     setBidFeedback(null);
     try {
-      const fee = Math.round(parseFloat(bidAmount) * 1_000_000);
+      const fee = Math.round(parseFloat(bidAmount));
       const res = await makeTransferBid(bidTarget.id, fee);
       setBidResult(res.decision);
       setBidFeedback(res.feedback);
       if (onGameUpdate) onGameUpdate(res.game);
       if (res.suggested_fee !== null) {
-        setBidAmount((res.suggested_fee / 1_000_000).toFixed(2));
+        setBidAmount(String(Math.round(res.suggested_fee)));
       }
       if (res.decision === "accepted") {
         setTimeout(() => {
@@ -196,7 +195,7 @@ export default function TransfersTab({
     setCounterFeedback(null);
 
     try {
-      const requestedFee = Math.round(parseFloat(counterAmount) * 1_000_000);
+      const requestedFee = Math.round(parseFloat(counterAmount));
       const response = await counterOffer(
         counterTarget.player.id,
         counterTarget.offerId,
@@ -207,7 +206,7 @@ export default function TransfersTab({
       setCounterResult(response.decision);
       setCounterFeedback(response.feedback);
       if (response.suggested_fee !== null) {
-        setCounterAmount((response.suggested_fee / 1_000_000).toFixed(2));
+        setCounterAmount(String(Math.round(response.suggested_fee)));
       }
       if (response.decision === "accepted") {
         setTimeout(() => {
@@ -265,6 +264,7 @@ export default function TransfersTab({
     myTransferList,
     myLoanList,
     marketPlayers,
+    erlPlayers,
     loanPlayers,
     playersWithOffers,
   } = transferCollections;
@@ -290,6 +290,12 @@ export default function TransfersTab({
         count: marketPlayers.length,
       },
       {
+        id: "erl",
+        label: t("transfers.erlMarket", "Mercado ERL"),
+        icon: <TrendingUp className="w-4 h-4" />,
+        count: erlPlayers.length,
+      },
+      {
         id: "loans",
         label: t("transfers.loanMarket"),
         icon: <ArrowRightLeft className="w-4 h-4" />,
@@ -308,9 +314,9 @@ export default function TransfersTab({
   const weeklyWageBudget = myTeam
     ? annualAmountToWeeklyCommitment(myTeam.wage_budget)
     : 0;
-  const bidAmountMillions = Number.parseFloat(bidAmount);
-  const bidFee = Number.isFinite(bidAmountMillions)
-    ? Math.round(bidAmountMillions * 1_000_000)
+  const bidAmountValue = Number.parseFloat(bidAmount);
+  const bidFee = Number.isFinite(bidAmountValue)
+    ? Math.round(bidAmountValue)
     : null;
 
   useEffect(() => {
@@ -527,7 +533,7 @@ export default function TransfersTab({
                         {t("transfers.offers")}
                       </th>
                     )}
-                    {(view === "market" || view === "loans") && (
+                    {(view === "market" || view === "erl" || view === "loans") && (
                       <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                         {t("common.action")}
                       </th>
@@ -693,7 +699,7 @@ export default function TransfersTab({
                             </div>
                           </td>
                         )}
-                        {(view === "market" || view === "loans") && (
+                        {(view === "market" || view === "erl" || view === "loans") && (
                           <td className="py-2.5 px-4">
                             <button
                               onClick={(e) => {
@@ -716,7 +722,7 @@ export default function TransfersTab({
         </Card>
       )}
 
-      {(view === "market" || view === "loans") && filteredList.length === 0 && (
+      {(view === "market" || view === "erl" || view === "loans") && filteredList.length === 0 && (
         <Card>
           <CardBody>
             <div className="text-center py-8">
@@ -724,6 +730,8 @@ export default function TransfersTab({
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {view === "market"
                   ? t("transfers.noTransferMarket")
+                  : view === "erl"
+                    ? t("transfers.noErlMarket", "Sin jugadores ERL disponibles para fichar.")
                   : t("transfers.noLoanMarket")}
               </p>
             </div>

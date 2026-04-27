@@ -10,6 +10,54 @@ use ofm_core::live_match_manager::{self, MatchMode};
 use ofm_core::state::StateManager;
 use serde::{Deserialize, Serialize};
 
+fn lol_role_for_position(position: &domain::player::Position) -> &'static str {
+    use domain::player::Position;
+    match position {
+        Position::Defender
+        | Position::RightBack
+        | Position::CenterBack
+        | Position::LeftBack
+        | Position::RightWingBack
+        | Position::LeftWingBack => "TOP",
+        Position::AttackingMidfielder
+        | Position::RightMidfielder
+        | Position::LeftMidfielder => "MID",
+        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => {
+            "ADC"
+        }
+        Position::Goalkeeper | Position::DefensiveMidfielder => "SUPPORT",
+        Position::Midfielder | Position::CentralMidfielder => "JUNGLE",
+    }
+}
+
+fn validate_user_team_role_coverage(game: &Game) -> Result<(), String> {
+    let Some(user_team_id) = game.manager.team_id.as_deref() else {
+        return Ok(());
+    };
+
+    let role_set: std::collections::HashSet<&'static str> = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some(user_team_id))
+        .map(|player| lol_role_for_position(&player.natural_position))
+        .collect();
+    let required_roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+    let missing_roles: Vec<&str> = required_roles
+        .iter()
+        .copied()
+        .filter(|role| !role_set.contains(role))
+        .collect();
+
+    if missing_roles.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "Main roster role coverage incomplete: missing {}. You need at least one TOP, JUNGLE, MID, ADC, and SUPPORT before starting a match.",
+            missing_roles.join(", ")
+        ))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishLiveMatchResponse {
     pub game: Game,
@@ -324,6 +372,8 @@ pub fn start_live_match(
     let game = state
         .get_game(|g| g.clone())
         .ok_or("No active game session")?;
+
+    validate_user_team_role_coverage(&game)?;
 
     let match_mode = match mode {
         "spectator" => MatchMode::Spectator,

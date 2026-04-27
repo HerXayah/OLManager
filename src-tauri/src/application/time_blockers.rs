@@ -258,6 +258,105 @@ fn contract_wage_risk_blocker(
     })
 }
 
+fn minimum_main_roster_blocker(roster: &[&domain::player::Player]) -> Option<serde_json::Value> {
+    (roster.len() < 5).then(|| {
+        build_blocker(
+            "main_roster_minimum",
+            "warn",
+            format!(
+                "Plantel principal incompleto: tenes {} jugador(es). Necesitas al menos 5 para avanzar.",
+                roster.len()
+            ),
+            "Squad",
+        )
+    })
+}
+
+fn main_role_coverage_blocker(roster: &[&domain::player::Player]) -> Option<serde_json::Value> {
+    let role_set: std::collections::HashSet<&'static str> = roster
+        .iter()
+        .map(|player| lol_role_for_position(&player.natural_position))
+        .collect();
+    let required_roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+    let missing_roles: Vec<&str> = required_roles
+        .iter()
+        .copied()
+        .filter(|role| !role_set.contains(role))
+        .collect();
+
+    (!missing_roles.is_empty()).then(|| {
+        build_blocker(
+            "main_missing_roles",
+            "warn",
+            format!(
+                "Plantel principal incompleto por roles: falta al menos un jugador en {}. No podes avanzar hasta cubrir TOP, JUNGLE, MID, ADC y SUPPORT.",
+                missing_roles.join(", ")
+            ),
+            "Squad",
+        )
+    })
+}
+
+fn lol_role_for_position(position: &domain::player::Position) -> &'static str {
+    use domain::player::Position;
+    match position {
+        Position::Defender
+        | Position::RightBack
+        | Position::CenterBack
+        | Position::LeftBack
+        | Position::RightWingBack
+        | Position::LeftWingBack => "TOP",
+        Position::AttackingMidfielder
+        | Position::RightMidfielder
+        | Position::LeftMidfielder => "MID",
+        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => {
+            "ADC"
+        }
+        Position::Goalkeeper | Position::DefensiveMidfielder => "SUPPORT",
+        Position::Midfielder | Position::CentralMidfielder => "JUNGLE",
+    }
+}
+
+fn academy_role_coverage_blocker(
+    game: &Game,
+    team: &domain::team::Team,
+) -> Option<serde_json::Value> {
+    let academy_team_id = team.academy_team_id.clone().or_else(|| {
+        game.teams
+            .iter()
+            .find(|candidate| {
+                candidate.team_kind == domain::team::TeamKind::Academy
+                    && candidate.parent_team_id.as_deref() == Some(team.id.as_str())
+            })
+            .map(|academy| academy.id.clone())
+    })?;
+
+    let role_set: std::collections::HashSet<&'static str> = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some(academy_team_id.as_str()))
+        .map(|player| lol_role_for_position(&player.natural_position))
+        .collect();
+    let required_roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+    let missing_roles: Vec<&str> = required_roles
+        .iter()
+        .copied()
+        .filter(|role| !role_set.contains(role))
+        .collect();
+
+    (!missing_roles.is_empty()).then(|| {
+        build_blocker(
+            "academy_missing_roles",
+            "warn",
+            format!(
+                "Academia incompleta: falta al menos un jugador en {}. No podes avanzar hasta cubrir todos los roles.",
+                missing_roles.join(", ")
+            ),
+            "YouthAcademy",
+        )
+    })
+}
+
 pub fn compute_blocking_actions(game: &Game) -> Vec<serde_json::Value> {
     let mut blockers = Vec::new();
     let (team, roster) = match user_team_context(game) {
@@ -280,6 +379,14 @@ pub fn compute_blocking_actions(game: &Game) -> Vec<serde_json::Value> {
         blockers.push(blocker);
     }
 
+    if let Some(blocker) = minimum_main_roster_blocker(&roster) {
+        blockers.push(blocker);
+    }
+
+    if let Some(blocker) = main_role_coverage_blocker(&roster) {
+        blockers.push(blocker);
+    }
+
     if let Some(blocker) =
         key_contract_risk_blocker(&roster, &effective_healthy_xi_ids, current_date)
     {
@@ -287,6 +394,10 @@ pub fn compute_blocking_actions(game: &Game) -> Vec<serde_json::Value> {
     }
 
     if let Some(blocker) = contract_wage_risk_blocker(team, &roster, current_date) {
+        blockers.push(blocker);
+    }
+
+    if let Some(blocker) = academy_role_coverage_blocker(game, team) {
         blockers.push(blocker);
     }
 

@@ -59,30 +59,35 @@ pub fn eligible_academy_acquisition_options(
     leagues: &[ErlLeagueDefinition],
     candidates: &[ErlAcademyCandidate],
 ) -> Vec<AcademyAcquisitionOption> {
-    let domestic_leagues: Vec<_> = leagues
+    candidates
         .iter()
-        .filter(|erl| country_matches(&erl.country_code, team_country_code))
-        .collect();
-
-    if !domestic_leagues.is_empty() {
-        return acquisition_options_for_leagues(candidates, &domestic_leagues, ErlAssignmentRule::Domestic, None);
-    }
-
-    let fallback_leagues: Vec<_> = leagues
-        .iter()
-        .filter(|erl| {
-            erl.nearby_country_codes
+        .filter_map(|candidate| {
+            let league = leagues
                 .iter()
-                .any(|country| country_matches(country, team_country_code))
-        })
-        .collect();
+                .find(|league| league.id == candidate.erl_league_id)?;
+            let is_domestic = country_matches(&candidate.country_code, team_country_code);
+            let assignment_rule = if is_domestic {
+                ErlAssignmentRule::Domestic
+            } else {
+                ErlAssignmentRule::Fallback
+            };
 
-    acquisition_options_for_leagues(
-        candidates,
-        &fallback_leagues,
-        ErlAssignmentRule::Fallback,
-        Some(team_country_code),
-    )
+            Some(AcademyAcquisitionOption {
+                source_team_id: candidate.source_team_id.clone(),
+                name: candidate.name.clone(),
+                short_name: candidate.short_name.clone(),
+                logo_url: candidate.logo_url.clone(),
+                erl_league_id: league.id.clone(),
+                erl_league_name: league.name.clone(),
+                country_code: candidate.country_code.clone(),
+                assignment_rule,
+                fallback_reason: None,
+                reputation: candidate.reputation,
+                development_level: candidate.development_level,
+                acquisition_cost: acquisition_cost_for_candidate(candidate),
+            })
+        })
+        .collect()
 }
 
 pub fn eligible_academy_creation_options(
@@ -186,43 +191,6 @@ fn acquisition_option_from_league(
         development_level: erl.reputation,
         acquisition_cost: acquisition_cost_for_reputation(erl.reputation),
     }
-}
-
-fn acquisition_options_for_leagues(
-    candidates: &[ErlAcademyCandidate],
-    leagues: &[&ErlLeagueDefinition],
-    assignment_rule: ErlAssignmentRule,
-    fallback_team_country_code: Option<&str>,
-) -> Vec<AcademyAcquisitionOption> {
-    candidates
-        .iter()
-        .filter_map(|candidate| {
-            let league = leagues
-                .iter()
-                .copied()
-                .find(|league| league.id == candidate.erl_league_id)?;
-            let fallback_reason = fallback_team_country_code.map(|country| {
-                format!(
-                    "{} has no domestic ERL; {} is configured as nearby",
-                    country, league.id
-                )
-            });
-            Some(AcademyAcquisitionOption {
-                source_team_id: candidate.source_team_id.clone(),
-                name: candidate.name.clone(),
-                short_name: candidate.short_name.clone(),
-                logo_url: candidate.logo_url.clone(),
-                erl_league_id: league.id.clone(),
-                erl_league_name: league.name.clone(),
-                country_code: candidate.country_code.clone(),
-                assignment_rule: assignment_rule.clone(),
-                fallback_reason,
-                reputation: candidate.reputation,
-                development_level: candidate.development_level,
-                acquisition_cost: acquisition_cost_for_candidate(candidate),
-            })
-        })
-        .collect()
 }
 
 fn acquisition_cost_for_candidate(candidate: &ErlAcademyCandidate) -> i64 {

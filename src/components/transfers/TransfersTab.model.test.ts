@@ -266,4 +266,90 @@ describe("TransfersTab.model", () => {
       "forward",
     ]);
   });
+
+  it("excludes duplicated identities when academy owns the player", () => {
+    const mainDuplicate = createPlayer({
+      id: "market-main",
+      team_id: "team-2",
+      transfer_listed: true,
+      full_name: "Karmine Fenix",
+      match_name: "Fenix",
+      date_of_birth: "2005-03-11",
+      nationality: "France",
+    });
+    const academyDuplicate = createPlayer({
+      id: "market-academy",
+      team_id: "academy-1",
+      transfer_listed: true,
+      full_name: "Karmine Fénix",
+      match_name: "Fénix",
+      date_of_birth: "2005-03-11",
+      nationality: "France",
+    });
+    const gameState = createGameState([
+      mainDuplicate,
+      academyDuplicate,
+    ]);
+    gameState.teams.push(
+      createTeam({
+        id: "academy-1",
+        name: "Academy Team",
+        team_kind: "Academy",
+        manager_id: null,
+      }),
+    );
+
+    const collections = deriveTransferCollections(gameState, "team-1");
+
+    expect(collections.marketPlayers).toHaveLength(0);
+  });
+
+  it("excludes transfer-listed players when same identity exists in academy", () => {
+    const duplicatedInAcademy = createPlayer({
+      id: "market-main-copy",
+      team_id: "team-2",
+      transfer_listed: true,
+      full_name: "Prospect One",
+      match_name: "P1",
+      date_of_birth: "2006-06-20",
+      nationality: "Spain",
+    });
+    const academyCanonical = createPlayer({
+      id: "academy-prospect",
+      team_id: "academy-1",
+      transfer_listed: false,
+      full_name: "Prospect One",
+      match_name: "P1",
+      date_of_birth: "2006-06-20",
+      nationality: "Spain",
+    });
+    const unrelatedMarketPlayer = createPlayer({
+      id: "market-keep",
+      team_id: "team-2",
+      transfer_listed: true,
+      full_name: "Unrelated",
+      match_name: "Unrelated",
+      date_of_birth: "2001-01-01",
+      nationality: "France",
+    });
+    const gameState = createGameState([
+      duplicatedInAcademy,
+      academyCanonical,
+      unrelatedMarketPlayer,
+    ]);
+    gameState.teams.push(
+      createTeam({
+        id: "academy-1",
+        name: "Academy Team",
+        team_kind: "Academy",
+        manager_id: null,
+      }),
+    );
+
+    const collections = deriveTransferCollections(gameState, "team-1");
+
+    expect(collections.marketPlayers.map((player) => player.id)).toEqual([
+      "market-keep",
+    ]);
+  });
 });

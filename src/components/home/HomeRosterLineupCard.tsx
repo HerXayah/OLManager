@@ -2,9 +2,10 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import playersSeed from "../../../data/lec/draft/players.json";
 
-import { calcOvr } from "../../lib/helpers";
-import type { PlayerData } from "../../store/gameStore";
+import type { ChampionMasteryEntryData, PlayerData } from "../../store/gameStore";
 import { Card, CardBody, CardHeader } from "../ui";
+import { fallbackChampionForRole, resolvePlayerLolRole } from "../../lib/lolIdentity";
+import { resolvePlayerPhoto } from "../../lib/playerPhotos";
 
 type DraftRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
@@ -12,6 +13,7 @@ const ROLE_ORDER: DraftRole[] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
 
 interface HomeRosterLineupCardProps {
   roster: PlayerData[];
+  championMasteries?: ChampionMasteryEntryData[];
   onNavigate?: (tab: string) => void;
 }
 
@@ -26,10 +28,6 @@ const PLAYER_SEEDS: PlayerSeed[] = [
   ...(((playersSeed as { data?: { free_agent_seeds?: PlayerSeed[] } }).data?.free_agent_seeds ?? []) as PlayerSeed[]),
 ];
 
-const ROLE_BY_IGN = new Map(
-  PLAYER_SEEDS.map((player) => [normalizeKey(player.ign), String(player.role || "").toLowerCase()]),
-);
-
 const TOP_CHAMPION_BY_IGN = new Map(
   PLAYER_SEEDS.map((player) => {
     const best = [...(player.champions ?? [])]
@@ -42,48 +40,23 @@ const TOP_CHAMPION_BY_IGN = new Map(
 );
 
 function normalizeKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, "");
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function positionToDraftRole(position: string): DraftRole | null {
-  const normalized = normalizeKey(position);
-  if (normalized === "defender") return "TOP";
-  if (normalized === "midfielder") return "JUNGLE";
-  if (normalized === "attackingmidfielder") return "MID";
-  if (normalized === "forward") return "ADC";
-  if (normalized === "defensivemidfielder" || normalized === "goalkeeper") return "SUPPORT";
-  return null;
-}
-
-function seedRoleToDraftRole(role: string): DraftRole | null {
-  const normalized = normalizeKey(role);
-  if (normalized === "top") return "TOP";
-  if (normalized === "jungle") return "JUNGLE";
-  if (normalized === "mid") return "MID";
-  if (normalized === "bot" || normalized === "bottom" || normalized === "adc") return "ADC";
-  if (normalized === "support" || normalized === "sup") return "SUPPORT";
-  return null;
-}
-
-function roleToOvrPosition(role: DraftRole): string {
-  switch (role) {
-    case "TOP":
-      return "Defender";
-    case "JUNGLE":
-      return "Midfielder";
-    case "MID":
-      return "AttackingMidfielder";
-    case "ADC":
-      return "Forward";
-    case "SUPPORT":
-      return "DefensiveMidfielder";
-  }
-}
-
-function playerPhotoUrl(playerId: string): string | null {
-  const match = playerId.match(/^lec-player-(.+)$/);
-  if (!match) return null;
-  return `/player-photos/${match[1]}.png`;
+function getLolOvr(player: PlayerData): number {
+  const attrs = player.attributes;
+  const avg =
+    (Number(attrs.dribbling ?? 0) +
+      Number(attrs.shooting ?? 0) +
+      Number(attrs.teamwork ?? 0) +
+      Number(attrs.vision ?? 0) +
+      Number(attrs.decisions ?? 0) +
+      Number(attrs.leadership ?? 0) +
+      Number(attrs.agility ?? 0) +
+      Number(attrs.composure ?? 0) +
+      Number(attrs.stamina ?? 0)) /
+    9;
+  return Math.max(1, Math.min(99, Math.round(avg)));
 }
 
 function championIdFromName(name: string): string | null {
@@ -120,26 +93,36 @@ function championSplashUrl(championId: string | null): string | null {
 
 export default function HomeRosterLineupCard({
   roster,
+  championMasteries = [],
   onNavigate,
 }: HomeRosterLineupCardProps) {
   const { t } = useTranslation();
+
+  const topMasteryChampionByPlayerId = useMemo(() => {
+    const bestByPlayer = new Map<string, { championId: string; mastery: number }>();
+    championMasteries.forEach((entry) => {
+      const current = bestByPlayer.get(entry.player_id);
+      const mastery = Number(entry.mastery ?? 0);
+      if (!current || mastery > current.mastery) {
+        bestByPlayer.set(entry.player_id, { championId: entry.champion_id, mastery });
+      }
+    });
+    return new Map(
+      [...bestByPlayer.entries()].map(([playerId, value]) => [playerId, value.championId]),
+    );
+  }, [championMasteries]);
 
   const lineup = useMemo(
     () =>
       ROLE_ORDER.map((role) => {
         const candidates = roster
           .filter(
-            (player) =>
-              (
-                seedRoleToDraftRole(
-                  ROLE_BY_IGN.get(normalizeKey(player.match_name)) ?? "",
-                ) ?? positionToDraftRole(player.natural_position || player.position)
-              ) === role,
+            (player) => resolvePlayerLolRole(player) === role,
           )
           .sort(
             (a, b) =>
-              calcOvr(b, roleToOvrPosition(role)) -
-              calcOvr(a, roleToOvrPosition(role)),
+              getLolOvr(b) -
+              getLolOvr(a),
           );
 
         return {
@@ -167,12 +150,15 @@ export default function HomeRosterLineupCard({
       <CardBody>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
           {lineup.map(({ role, player }) => {
-            const photo = player ? playerPhotoUrl(player.id) : null;
-            const ovr = player ? calcOvr(player, roleToOvrPosition(role)) : null;
+            const photo = player ? resolvePlayerPhoto(player.id, player.match_name) : null;
+            const ovr = player ? getLolOvr(player) : null;
             const condition = player?.condition ?? null;
             const morale = player?.morale ?? null;
             const topChampion = player
-              ? TOP_CHAMPION_BY_IGN.get(normalizeKey(player.match_name)) ?? ""
+              ? topMasteryChampionByPlayerId.get(player.id)
+                ?? TOP_CHAMPION_BY_IGN.get(normalizeKey(player.match_name))
+                ?? fallbackChampionForRole(player.id, role)
+                ?? ""
               : "";
             const championSplash = championSplashUrl(championIdFromName(topChampion));
 

@@ -16,6 +16,7 @@ vi.mock("react-i18next", () => ({
       if (key === "common.nResults") return `${params?.count} results`;
       if (key === "common.action") return "Action";
       if (key === "transfers.transferMarket") return "Transfer Market";
+      if (key === "transfers.erlMarket") return "ERL Market";
       if (key === "transfers.offers") return "Offers";
       if (key === "transfers.counterOffer") return "Counter Offer";
       if (key === "transfers.counterAmount") return "Counter Amount";
@@ -24,7 +25,7 @@ vi.mock("react-i18next", () => ({
       if (key === "transfers.counter") return "Counter";
       if (key === "transfers.bid") return "Bid";
       if (key === "transfers.makeBid") return "Make Transfer Bid";
-      if (key === "transfers.bidAmount") return "Bid Amount (€M)";
+      if (key === "transfers.bidAmount") return "Bid Amount (€)";
       if (key === "transfers.submitBid") return "Submit Bid";
       if (key === "transfers.bidImpactTitle") return "Projected impact";
       if (key === "transfers.bidImpactTransferBudget")
@@ -312,7 +313,7 @@ describe("TransfersTab", function (): void {
     fireEvent.click(screen.getByRole("button", { name: /offers/i }));
     fireEvent.click(screen.getByRole("button", { name: /counter offer/i }));
     fireEvent.change(screen.getByLabelText(/counter amount/i), {
-      target: { value: "1.2" },
+      target: { value: "1200000" },
     });
     fireEvent.click(screen.getByRole("button", { name: /submit counter/i }));
 
@@ -372,7 +373,7 @@ describe("TransfersTab", function (): void {
     expect(screen.getByText("Your last bid")).toBeInTheDocument();
     expect(screen.getByText("Their last signal")).toBeInTheDocument();
     expect(screen.getByText("Round 2")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("1.15")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1150000")).toBeInTheDocument();
   });
 
   it("resumes an incoming transfer negotiation when reopening the counter-offer modal", function (): void {
@@ -413,7 +414,7 @@ describe("TransfersTab", function (): void {
     expect(screen.getByText("Your last counter")).toBeInTheDocument();
     expect(screen.getByText("Their current offer")).toBeInTheDocument();
     expect(screen.getByText("Round 2")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("1.15")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("1150000")).toBeInTheDocument();
   });
 
   it("shows a localized message when a counter-offer expires before submission", async function (): Promise<void> {
@@ -496,7 +497,7 @@ describe("TransfersTab", function (): void {
     fireEvent.click(screen.getByRole("button", { name: /transfer market/i }));
     fireEvent.click(screen.getByRole("button", { name: /^bid$/i }));
     fireEvent.change(screen.getByLabelText(/bid amount/i), {
-      target: { value: "9.0" },
+      target: { value: "9000000" },
     });
 
     await waitFor(function (): void {
@@ -506,5 +507,39 @@ describe("TransfersTab", function (): void {
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /submit bid/i })).toBeDisabled();
     });
+  });
+
+  it("shows ERL players in a dedicated market tab and allows bidding", function (): void {
+    const state = createGameState([
+      createPlayer({
+        id: "player-erl-1",
+        team_id: "team-academy-1",
+        transfer_listed: false,
+        transfer_offers: [],
+      }),
+    ]);
+    state.teams.push(
+      createTeam({
+        id: "team-academy-1",
+        name: "Seller Academy",
+        short_name: "SAC",
+        manager_id: null,
+        team_kind: "Academy",
+        parent_team_id: "team-2",
+      }),
+    );
+
+    render(
+      <TransfersTab
+        gameState={state}
+        onSelectPlayer={vi.fn()}
+        onSelectTeam={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /erl market/i }));
+
+    expect(screen.getByText("J. Smith")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^bid$/i })).toBeInTheDocument();
   });
 });

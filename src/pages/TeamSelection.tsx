@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useGameStore, GameStateData, PlayerData } from "../store/gameStore";
 import { Card, CardBody, Badge, TeamLocation, ThemeToggle } from "../components/ui";
 import { ArrowLeft, Users, Trophy, Landmark, ChevronRight, Star, Loader2 } from "lucide-react";
+import { getMainTeams } from "../store/academySelectors";
 
 type TeamSelectionData = {
   manager: GameStateData["manager"];
@@ -134,7 +135,7 @@ export default function TeamSelection() {
     );
   }
 
-  const teams = viewState.teams;
+  const teams = getMainTeams(viewState.teams);
 
   const getTeamPlayers = (teamId: string): PlayerData[] =>
     viewState.players.filter((p) => p.team_id === teamId);

@@ -14,6 +14,7 @@ import playersSeed from "../../../data/lec/draft/players.json";
 import { buildStartingXIIds, isPlayerOutOfPosition } from "./SquadTab.helpers";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { resolvePlayerPhoto } from "../../lib/playerPhotos";
+import { fallbackChampionForRole, resolvePlayerLolRole } from "../../lib/lolIdentity";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 type SortKey = "pos" | "ovr" | "condition" | "morale" | "age";
@@ -56,22 +57,8 @@ const PLAYER_SEEDS: PlayerSeed[] = [
 ];
 
 function normalizeKey(value: string): string {
-  return value.toLowerCase().replace(/[^a-z]/g, "");
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
-
-function seedRoleToDraftRole(role: string): LolRole | null {
-  const normalized = normalizeKey(role);
-  if (normalized === "top") return "TOP";
-  if (normalized === "jungle") return "JUNGLE";
-  if (normalized === "mid" || normalized === "middle") return "MID";
-  if (normalized === "bot" || normalized === "bottom" || normalized === "adc") return "ADC";
-  if (normalized === "support" || normalized === "sup") return "SUPPORT";
-  return null;
-}
-
-const ROLE_BY_IGN = new Map(
-  PLAYER_SEEDS.map((player) => [normalizeKey(player.ign), String(player.role || "")]),
-);
 
 const TOP_3_CHAMPIONS_BY_IGN = new Map(
   PLAYER_SEEDS.map((player) => {
@@ -85,22 +72,8 @@ const TOP_3_CHAMPIONS_BY_IGN = new Map(
   }),
 );
 
-function roleFromPosition(position: string): LolRole {
-  const normalized = normalizeKey(position || "");
-  if (normalized.includes("attackingmidfielder") || normalized.includes("midlane")) return "MID";
-  if (normalized.includes("forward") || normalized.includes("striker") || normalized.includes("adc")) return "ADC";
-  if (normalized.includes("defensivemidfielder") || normalized.includes("goalkeeper") || normalized.includes("support")) {
-    return "SUPPORT";
-  }
-  if (normalized.includes("jungle")) return "JUNGLE";
-  if (normalized.includes("midfielder")) return "JUNGLE";
-  return "TOP";
-}
-
 function resolveRole(player: PlayerData): LolRole {
-  const fromSeed = seedRoleToDraftRole(ROLE_BY_IGN.get(normalizeKey(player.match_name)) ?? "");
-  if (fromSeed) return fromSeed;
-  return roleFromPosition(player.natural_position || player.position);
+  return resolvePlayerLolRole(player);
 }
 
 function championIdFromName(name: string): string | null {
@@ -197,6 +170,28 @@ export default function SquadRosterView({
     return sortDir === "desc" ? sorted.reverse() : sorted;
   }, [roster, sortDir, sortKey]);
 
+  const masteryTopChampionsByPlayer = useMemo(() => {
+    const grouped = new Map<string, Array<{ champion: string; mastery: number }>>();
+    (gameState.champion_masteries ?? []).forEach((entry) => {
+      const list = grouped.get(entry.player_id) ?? [];
+      list.push({ champion: entry.champion_id, mastery: Number(entry.mastery ?? 0) });
+      grouped.set(entry.player_id, list);
+    });
+
+    const topByPlayer = new Map<string, string[]>();
+    grouped.forEach((entries, playerId) => {
+      const top = entries
+        .sort((a, b) => b.mastery - a.mastery)
+        .map((item) => item.champion)
+        .filter((champion, index, arr) => arr.indexOf(champion) === index)
+        .slice(0, 3);
+      if (top.length > 0) {
+        topByPlayer.set(playerId, top);
+      }
+    });
+    return topByPlayer;
+  }, [gameState.champion_masteries]);
+
   const toggleSort = (nextKey: SortKey): void => {
     if (sortKey === nextKey) {
       setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -241,7 +236,10 @@ export default function SquadRosterView({
             const role = resolveRole(player);
             const ovr = calculateLolOvr(player);
             const photo = resolvePlayerPhoto(player.id, player.match_name);
-            const championNames = TOP_3_CHAMPIONS_BY_IGN.get(normalizeKey(player.match_name)) ?? [];
+            const fallbackChampion = fallbackChampionForRole(player.id, role);
+            const championNames = masteryTopChampionsByPlayer.get(player.id)
+              ?? TOP_3_CHAMPIONS_BY_IGN.get(normalizeKey(player.match_name))
+              ?? (fallbackChampion ? [fallbackChampion] : []);
             const inXI = xiIds.has(player.id);
             const currentPos = player.natural_position || player.position;
             const wrongPos = inXI && isPlayerOutOfPosition(player, currentPos);

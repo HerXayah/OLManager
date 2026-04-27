@@ -194,7 +194,7 @@ describe("TransferBidModal", () => {
       <TransferBidModal
         bidTarget={createPlayer()}
         teams={[createTeam(), createTeam({ id: "team-2", name: "Seller FC" })]}
-        bidAmount="1.5"
+        bidAmount="1500000"
         onBidAmountChange={vi.fn()}
         myTeam={createTeam()}
         bidFee={1500000}
@@ -234,7 +234,7 @@ describe("TransferBidModal", () => {
       <TransferBidModal
         bidTarget={createPlayer()}
         teams={[createTeam(), createTeam({ id: "team-2", name: "Seller FC" })]}
-        bidAmount="1.0"
+        bidAmount="1000000"
         onBidAmountChange={onBidAmountChange}
         myTeam={createTeam()}
         bidFee={1000000}
@@ -251,12 +251,12 @@ describe("TransferBidModal", () => {
     );
 
     fireEvent.change(screen.getByLabelText("Bid Amount"), {
-      target: { value: "2.0" },
+      target: { value: "2000000" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Submit Bid" }));
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
-    expect(onBidAmountChange).toHaveBeenCalledWith("2.0");
+    expect(onBidAmountChange).toHaveBeenCalledWith("2000000");
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(screen.getByRole("button", { name: "Submit Bid" })).not.toBeDisabled();

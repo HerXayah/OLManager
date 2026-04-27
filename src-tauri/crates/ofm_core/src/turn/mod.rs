@@ -15,8 +15,10 @@ use crate::training;
 use crate::transfers;
 use chrono::Datelike;
 use domain::league::{Fixture, FixtureCompetition, FixtureStatus, League, MatchResult};
+use domain::message::{InboxMessage, MessageCategory, MessageContext, MessagePriority};
 use domain::player::Position as DomainPosition;
 use domain::stats::StatsState;
+use domain::team::{Team, TeamKind, TeamSeasonRecord};
 use log::{debug, info};
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -85,6 +87,8 @@ where
     random_events::check_random_events(game);
     scouting::process_scouting(game);
     transfers::generate_incoming_transfer_offers(game);
+    maybe_simulate_parallel_academy_leagues(game);
+    maybe_push_weekly_academy_report(game, &today);
 
     news::generate_weekly_digest_news(game, &today);
     news::generate_pre_match_messages(game, &today);
@@ -117,6 +121,8 @@ pub fn finish_live_match_day(game: &mut Game) {
     random_events::check_random_events(game);
     scouting::process_scouting(game);
     transfers::generate_incoming_transfer_offers(game);
+    maybe_simulate_parallel_academy_leagues(game);
+    maybe_push_weekly_academy_report(game, &today);
     news::generate_weekly_digest_news(game, &today);
     news::generate_pre_match_messages(game, &today);
 
@@ -204,6 +210,372 @@ fn build_engine_team(game: &Game, team_id: &str) -> engine::TeamData {
         formation,
         play_style,
         players,
+    }
+}
+
+fn academy_player_ovr(player: &domain::player::Player) -> u32 {
+    let attrs = &player.attributes;
+    let total = u32::from(attrs.dribbling)
+        + u32::from(attrs.shooting)
+        + u32::from(attrs.teamwork)
+        + u32::from(attrs.vision)
+        + u32::from(attrs.decisions)
+        + u32::from(attrs.leadership)
+        + u32::from(attrs.agility)
+        + u32::from(attrs.composure)
+        + u32::from(attrs.stamina);
+    (total + 4) / 9
+}
+
+fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
+    if game.clock.current_date.weekday().num_days_from_monday() != 0 {
+        return;
+    }
+
+    let Some(parent_team_id) = game.manager.team_id.clone() else {
+        return;
+    };
+    let Some(parent_team) = game.teams.iter().find(|team| team.id == parent_team_id) else {
+        return;
+    };
+
+    let academy_team_id = parent_team.academy_team_id.clone().or_else(|| {
+        game.teams
+            .iter()
+            .find(|team| {
+                team.team_kind == TeamKind::Academy
+                    && team.parent_team_id.as_deref() == Some(parent_team.id.as_str())
+            })
+            .map(|team| team.id.clone())
+    });
+    let Some(academy_team_id) = academy_team_id else {
+        return;
+    };
+    let Some(academy_team) = game.teams.iter().find(|team| team.id == academy_team_id) else {
+        return;
+    };
+    let season = game.clock.current_date.year() as u32;
+    let academy_league_id = academy_team
+        .academy
+        .as_ref()
+        .map(|metadata| metadata.erl_assignment.erl_league_id.clone())
+        .unwrap_or_default();
+
+    let mut league_rows: Vec<(String, String, u32, i32, u32, u32, u32)> = game
+        .teams
+        .iter()
+        .filter(|team| {
+            team.team_kind == TeamKind::Academy
+                && team
+                    .academy
+                    .as_ref()
+                    .map(|metadata| metadata.erl_assignment.erl_league_id.as_str())
+                    == Some(academy_league_id.as_str())
+        })
+        .map(|team| {
+            let record = team
+                .history
+                .iter()
+                .find(|record| record.season == season)
+                .cloned()
+                .unwrap_or(TeamSeasonRecord {
+                    season,
+                    league_position: 0,
+                    played: 0,
+                    won: 0,
+                    drawn: 0,
+                    lost: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                });
+            let points = record
+                .won
+                .saturating_mul(3)
+                .saturating_add(record.drawn);
+            let goal_diff = record.goals_for as i32 - record.goals_against as i32;
+            (
+                team.id.clone(),
+                team.name.clone(),
+                points,
+                goal_diff,
+                record.goals_for,
+                record.won,
+                record.lost,
+            )
+        })
+        .collect();
+    league_rows.sort_by(|left, right| {
+        right
+            .2
+            .cmp(&left.2)
+            .then_with(|| right.3.cmp(&left.3))
+            .then_with(|| right.4.cmp(&left.4))
+            .then_with(|| left.1.cmp(&right.1))
+    });
+    let academy_position = league_rows
+        .iter()
+        .position(|row| row.0 == academy_team_id)
+        .map(|index| index + 1)
+        .unwrap_or(league_rows.len().max(1));
+    let table_preview = league_rows
+        .iter()
+        .take(3)
+        .enumerate()
+        .map(|(index, row)| {
+            format!(
+                "{}. {} {} pts ({}-{})",
+                index + 1,
+                row.1,
+                row.2,
+                row.5,
+                row.6
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" | ");
+
+    let report_id = format!("academy-weekly-report-{}-{}", parent_team.id, today);
+    if game.messages.iter().any(|message| message.id == report_id) {
+        return;
+    }
+
+    let mut academy_players: Vec<&domain::player::Player> = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some(academy_team_id.as_str()))
+        .collect();
+
+    if academy_players.is_empty() {
+        let message = InboxMessage::new(
+            report_id,
+            "Reporte semanal de academia".to_string(),
+            format!(
+                "La academia {} no tiene jugadores activos esta semana. Conviene revisar adquisicion/promocion para mantener pipeline.",
+                academy_team.name
+            ),
+            "Coordinador de Academia".to_string(),
+            today.to_string(),
+        )
+        .with_category(MessageCategory::Training)
+        .with_priority(MessagePriority::Normal)
+        .with_sender_role("Coordinador de Academia")
+        .with_context(MessageContext {
+            team_id: Some(parent_team.id.clone()),
+            ..Default::default()
+        });
+        game.messages.push(message);
+        return;
+    }
+
+    academy_players.sort_by_key(|player| std::cmp::Reverse(academy_player_ovr(player)));
+    let avg_ovr = academy_players
+        .iter()
+        .map(|player| academy_player_ovr(player))
+        .sum::<u32>()
+        / academy_players.len() as u32;
+    let high_potential = academy_players
+        .iter()
+        .filter(|player| player.potential_base >= 80)
+        .count();
+    let top_labels = academy_players
+        .iter()
+        .take(2)
+        .map(|player| format!("{} ({})", player.match_name, academy_player_ovr(player)))
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    let main_players: Vec<&domain::player::Player> = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some(parent_team.id.as_str()))
+        .collect();
+    let mut main_best_by_role: HashMap<&'static str, u32> = HashMap::new();
+    for player in main_players {
+        let role = lol_role_from_position(&player.natural_position);
+        let ovr = academy_player_ovr(player);
+        let entry = main_best_by_role.entry(role).or_insert(0);
+        if ovr > *entry {
+            *entry = ovr;
+        }
+    }
+    let promotion_ready: Vec<String> = academy_players
+        .iter()
+        .filter_map(|player| {
+            let role = lol_role_from_position(&player.natural_position);
+            let main_ref = main_best_by_role.get(role).copied().unwrap_or(75);
+            let academy_ovr = academy_player_ovr(player);
+            (academy_ovr >= main_ref.saturating_sub(2)).then(|| player.match_name.clone())
+        })
+        .take(2)
+        .collect();
+    let recommendation = if promotion_ready.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "\n\nRecomendacion: {} listo(s) para promocion -> {}.",
+            promotion_ready.len(),
+            promotion_ready.join(", ")
+        )
+    };
+
+    let message = InboxMessage::new(
+        report_id,
+        format!("Reporte semanal academia: {}", academy_team.name),
+        format!(
+            "Resumen semanal de academia:\n- Jugadores activos: {}\n- OVR medio: {}\n- Talentos altos (potencial >= 80): {}\n- Destacados: {}\n- Posicion ERL actual: #{} de {}\n- Tabla rapida: {}{}",
+            academy_players.len(),
+            avg_ovr,
+            high_potential,
+            top_labels,
+            academy_position,
+            league_rows.len(),
+            table_preview,
+            recommendation
+        ),
+        "Coordinador de Academia".to_string(),
+        today.to_string(),
+    )
+    .with_category(MessageCategory::ScoutReport)
+    .with_priority(MessagePriority::Normal)
+    .with_sender_role("Coordinador de Academia")
+    .with_context(MessageContext {
+        team_id: Some(parent_team.id.clone()),
+        ..Default::default()
+    });
+    game.messages.push(message);
+}
+
+fn round_robin_pairings(team_ids: &[String], round_index: usize) -> Vec<(String, String)> {
+    if team_ids.len() < 2 {
+        return Vec::new();
+    }
+
+    let mut participants: Vec<Option<String>> = team_ids.iter().cloned().map(Some).collect();
+    if participants.len() % 2 == 1 {
+        participants.push(None);
+    }
+
+    let n = participants.len();
+    let rounds = n.saturating_sub(1).max(1);
+    let effective_round = round_index % rounds;
+
+    for _ in 0..effective_round {
+        let last = participants.pop().unwrap_or(None);
+        participants.insert(1, last);
+    }
+
+    let mut pairings = Vec::new();
+    for idx in 0..(n / 2) {
+        let home = participants[idx].clone();
+        let away = participants[n - 1 - idx].clone();
+        if let (Some(home_id), Some(away_id)) = (home, away) {
+            pairings.push((home_id, away_id));
+        }
+    }
+
+    pairings
+}
+
+fn ensure_team_season_record(team: &mut Team, season: u32) -> &mut TeamSeasonRecord {
+    if let Some(index) = team.history.iter().position(|record| record.season == season) {
+        return &mut team.history[index];
+    }
+
+    team.history.push(TeamSeasonRecord {
+        season,
+        league_position: 0,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        goals_for: 0,
+        goals_against: 0,
+    });
+    let last_index = team.history.len().saturating_sub(1);
+    &mut team.history[last_index]
+}
+
+fn register_parallel_result(
+    team: &mut Team,
+    season: u32,
+    scored: u8,
+    conceded: u8,
+    won_series: bool,
+) {
+    team.form.push(if won_series { "W" } else { "L" }.to_string());
+    if team.form.len() > 5 {
+        let overflow = team.form.len() - 5;
+        team.form.drain(0..overflow);
+    }
+
+    let record = ensure_team_season_record(team, season);
+    record.played = record.played.saturating_add(1);
+    record.goals_for = record.goals_for.saturating_add(u32::from(scored));
+    record.goals_against = record.goals_against.saturating_add(u32::from(conceded));
+    if won_series {
+        record.won = record.won.saturating_add(1);
+    } else {
+        record.lost = record.lost.saturating_add(1);
+    }
+}
+
+fn maybe_simulate_parallel_academy_leagues(game: &mut Game) {
+    if game.clock.current_date.weekday().num_days_from_monday() != 0 {
+        return;
+    }
+
+    let mut academy_groups: HashMap<String, Vec<String>> = HashMap::new();
+    for team in game.teams.iter().filter(|team| team.team_kind == TeamKind::Academy) {
+        let Some(metadata) = team.academy.as_ref() else {
+            continue;
+        };
+        academy_groups
+            .entry(metadata.erl_assignment.erl_league_id.clone())
+            .or_default()
+            .push(team.id.clone());
+    }
+
+    let season = game.clock.current_date.year() as u32;
+    let round_index = game.clock.current_date.iso_week().week() as usize;
+
+    for team_ids in academy_groups.values() {
+        if team_ids.len() < 2 {
+            continue;
+        }
+        let mut ordered = team_ids.clone();
+        ordered.sort();
+        let pairings = round_robin_pairings(&ordered, round_index);
+
+        for (home_team_id, away_team_id) in pairings {
+            let home_data = build_engine_team(game, &home_team_id);
+            let away_data = build_engine_team(game, &away_team_id);
+            let report = engine::simulate(&home_data, &away_data, &engine::MatchConfig::default());
+            let home_won = if report.home_wins == report.away_wins {
+                home_team_id <= away_team_id
+            } else {
+                report.home_wins > report.away_wins
+            };
+            let away_won = !home_won;
+
+            if let Some(home_team) = game.teams.iter_mut().find(|team| team.id == home_team_id) {
+                register_parallel_result(
+                    home_team,
+                    season,
+                    report.home_wins,
+                    report.away_wins,
+                    home_won,
+                );
+            }
+            if let Some(away_team) = game.teams.iter_mut().find(|team| team.id == away_team_id) {
+                register_parallel_result(
+                    away_team,
+                    season,
+                    report.away_wins,
+                    report.home_wins,
+                    away_won,
+                );
+            }
+        }
     }
 }
 

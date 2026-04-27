@@ -2,8 +2,10 @@ use crate::finances::calc_annual_wages;
 use crate::game::Game;
 use chrono::{Datelike, NaiveDate};
 use domain::negotiation::{NegotiationFeedback, NegotiationMood};
+use domain::player::Position;
 use domain::player::TransferOfferStatus;
 use domain::season::TransferWindowStatus;
+use domain::team::TeamKind;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -341,11 +343,21 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
 
     let current_date = game.clock.current_date.date_naive();
     let today = game.clock.current_date.format("%Y-%m-%d").to_string();
+    let academy_offer_window_open = matches!(current_date.weekday(), chrono::Weekday::Mon);
+
+    let mut managed_team_ids = std::collections::HashSet::new();
+    managed_team_ids.insert(user_team_id.clone());
+    for team in &game.teams {
+        if team.team_kind == TeamKind::Academy && team.parent_team_id.as_deref() == Some(&user_team_id)
+        {
+            managed_team_ids.insert(team.id.clone());
+        }
+    }
 
     let buyer_ids: Vec<String> = game
         .teams
         .iter()
-        .filter(|team| team.id != user_team_id)
+        .filter(|team| team.id != user_team_id && team.team_kind == TeamKind::Main)
         .map(|team| team.id.clone())
         .collect();
 
@@ -359,8 +371,28 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
         let mut chosen_fee = 0_u64;
 
         for player in &game.players {
-            if player.team_id.as_deref() != Some(user_team_id.as_str()) {
+            let Some(player_team_id) = player.team_id.as_deref() else {
                 continue;
+            };
+
+            if !managed_team_ids.contains(player_team_id) {
+                continue;
+            }
+
+            let player_team = game.teams.iter().find(|team| team.id == player_team_id);
+            let is_academy_player = player_team
+                .map(|team| team.team_kind == TeamKind::Academy)
+                .unwrap_or(false);
+
+            if is_academy_player {
+                if !academy_offer_window_open {
+                    continue;
+                }
+
+                if player_team.and_then(|team| team.parent_team_id.as_deref()) == Some(buyer_id.as_str())
+                {
+                    continue;
+                }
             }
 
             if has_open_incoming_offer_from_club(player, &buyer_id) {
@@ -368,7 +400,8 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
             }
 
             let score = incoming_interest_score(current_date, player);
-            if score < 35 {
+            let minimum_score = if is_academy_player { 55 } else { 35 };
+            if score < minimum_score {
                 continue;
             }
 
@@ -1008,6 +1041,122 @@ fn round_transfer_fee(value: u64) -> u64 {
     ((value + 49_999) / 50_000) * 50_000
 }
 
+fn lol_role_for_position(position: &Position) -> &'static str {
+    match position {
+        Position::Defender
+        | Position::RightBack
+        | Position::CenterBack
+        | Position::LeftBack
+        | Position::RightWingBack
+        | Position::LeftWingBack => "TOP",
+        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => "MID",
+        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => "ADC",
+        Position::Goalkeeper | Position::DefensiveMidfielder => "SUPPORT",
+        Position::Midfielder | Position::CentralMidfielder => "JUNGLE",
+    }
+}
+
+fn position_for_lol_role(role: &str) -> Position {
+    match role {
+        "TOP" => Position::Defender,
+        "JUNGLE" => Position::Midfielder,
+        "MID" => Position::AttackingMidfielder,
+        "ADC" => Position::Forward,
+        "SUPPORT" => Position::DefensiveMidfielder,
+        _ => Position::Midfielder,
+    }
+}
+
+fn academy_role_count(game: &Game, academy_team_id: &str, role: &str) -> usize {
+    game.players
+        .iter()
+        .filter(|player| player.team_id.as_deref() == Some(academy_team_id))
+        .filter(|player| lol_role_for_position(&player.natural_position) == role)
+        .count()
+}
+
+fn try_assign_free_agent_by_role(game: &mut Game, academy_team_id: &str, role: &str) -> bool {
+    let candidate_id = game
+        .players
+        .iter()
+        .filter(|player| player.team_id.is_none())
+        .filter(|player| lol_role_for_position(&player.natural_position) == role)
+        .max_by_key(|player| player.market_value)
+        .map(|player| player.id.clone());
+
+    let Some(candidate_id) = candidate_id else {
+        return false;
+    };
+
+    if let Some(player) = game.players.iter_mut().find(|player| player.id == candidate_id) {
+        player.team_id = Some(academy_team_id.to_string());
+        player.transfer_listed = false;
+        player.loan_listed = false;
+        if player.contract_end.is_none() {
+            player.contract_end = Some(format!("{}-11-30", game.clock.current_date.year() + 2));
+        }
+        return true;
+    }
+
+    false
+}
+
+fn spawn_academy_replacement(
+    game: &mut Game,
+    academy_team_id: &str,
+    template: &domain::player::Player,
+    role: &str,
+) {
+    let replacement_id = format!("academy-replacement-{}-{}", academy_team_id, Uuid::new_v4());
+    let match_name = format!("{} Prospect", role);
+    let mut replacement = domain::player::Player::new(
+        replacement_id,
+        match_name.clone(),
+        match_name,
+        "2006-01-01".to_string(),
+        template.nationality.clone(),
+        position_for_lol_role(role),
+        template.attributes.clone(),
+    );
+    replacement.team_id = Some(academy_team_id.to_string());
+    replacement.contract_end = Some(format!("{}-11-30", game.clock.current_date.year() + 2));
+    replacement.wage = template.wage.max(6_000) / 2;
+    replacement.market_value = template.market_value.max(120_000) / 2;
+    replacement.morale = 62;
+    replacement.condition = 100;
+    replacement.potential_base = template.potential_base;
+    game.players.push(replacement);
+}
+
+fn ensure_academy_roster_continuity(
+    game: &mut Game,
+    academy_team_id: &str,
+    template: &domain::player::Player,
+) {
+    let required_roles = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
+
+    for _ in 0..8 {
+        let roster_size = game
+            .players
+            .iter()
+            .filter(|player| player.team_id.as_deref() == Some(academy_team_id))
+            .count();
+        let missing_role = required_roles
+            .iter()
+            .copied()
+            .find(|role| academy_role_count(game, academy_team_id, role) == 0);
+
+        if roster_size >= 5 && missing_role.is_none() {
+            break;
+        }
+
+        let target_role = missing_role.unwrap_or_else(|| lol_role_for_position(&template.natural_position));
+        if !try_assign_free_agent_by_role(game, academy_team_id, target_role) {
+            spawn_academy_replacement(game, academy_team_id, template, target_role);
+        }
+    }
+}
+
 fn build_transfer_feedback(
     headline_key: &str,
     detail_key: &str,
@@ -1058,6 +1207,12 @@ fn execute_transfer(
         .map(|team| team.name.clone())
         .unwrap_or_else(|| to_team_id.to_string());
     let today = game.clock.current_date.format("%Y-%m-%d").to_string();
+    let selling_team_is_academy = game
+        .teams
+        .iter()
+        .find(|team| team.id == from_team_id)
+        .map(|team| team.team_kind == TeamKind::Academy)
+        .unwrap_or(false);
     let departing_starter_ids: Vec<String> = game
         .teams
         .iter()
@@ -1099,13 +1254,27 @@ fn execute_transfer(
         }
     }
 
-    // Credit selling team
-    if let Some(t) = game.teams.iter_mut().find(|t| t.id == from_team_id) {
+    let academy_owner_id = game
+        .teams
+        .iter()
+        .find(|team| team.id == from_team_id && team.team_kind == TeamKind::Academy)
+        .and_then(|team| team.parent_team_id.clone());
+
+    // Credit selling team or academy owner
+    let credit_target_id = academy_owner_id.as_deref().unwrap_or(from_team_id);
+    if let Some(t) = game.teams.iter_mut().find(|t| t.id == credit_target_id) {
         t.finance += fee as i64;
-        // Remove from starting XI
+    }
+
+    // Remove sold player from selling team XI if present
+    if let Some(t) = game.teams.iter_mut().find(|t| t.id == from_team_id) {
         if let Some(pos) = t.starting_xi_ids.iter().position(|id| id == player_id) {
             t.starting_xi_ids.remove(pos);
         }
+    }
+
+    if selling_team_is_academy {
+        ensure_academy_roster_continuity(game, from_team_id, &player_snapshot);
     }
 
     if should_generate_major_transfer_news(&player_snapshot, fee) {

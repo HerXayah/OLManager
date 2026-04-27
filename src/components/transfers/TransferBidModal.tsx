@@ -101,7 +101,7 @@ export default function TransferBidModal({
         <input
           id="bid-amount"
           type="number"
-          step="0.1"
+          step="1000"
           min="0"
           value={bidAmount}
           onChange={(event) => onBidAmountChange(event.target.value)}

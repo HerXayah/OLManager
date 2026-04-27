@@ -1,0 +1,265 @@
+LES
+
+Team: Movistar KOI Fénix
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/bd/Movistar_KOIlogo_square.png/revision/latest/scale-to-width-down/220?cb=20240528162718
+
+Toplaner: NightSlayer
+Born: January 18, 2008
+Nationality: Ukraine 
+Full name: Ivan Bilous
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/79/MKF_NightSlayer_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250726151518
+
+Jungle: Time
+Born: December 6, 2002 
+Nationality: Portugal
+Full name: Tiago Almeida
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/1/1a/MKF_Time_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250726151516
+
+Midlaner: Fresskowy
+Born: November 26, 1999
+Nationality: Poland
+Full name: Bartłomiej Przewoźnik
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/6b/MKFX_Fresskowy_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124051
+
+ADC: 13
+Born: ???????
+Nationality: France
+Full name: Zayan Taeau
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/51/MKF_13_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250726151515
+
+Support: Myrtus
+Born: October 11, 2005
+Nationality: France
+Full name: Mohamed Rahli
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/cb/BDSA_Myrtus_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250529162538
+
+Team: Team Heretics
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/bf/Team_Hereticslogo_square.png/revision/latest/scale-to-width-down/220?cb=20251230025102
+
+Toplaner: Papiteero
+Born: September 20, 2003
+Nationality: Portugal
+Full name: Antero Trindade Baldaia
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/f/fa/BDSA_Papiteero_2025_Split_2.png/revision/latest/scale-to-width-down/220?cb=20250529162541
+
+Jungle: Daglas
+Born: October 23, 2005
+Nationality: Poland
+Full name: Kacper Dagiel
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/4/43/TH_Daglas_2026_Split_2.png/revision/latest/scale-to-width-down/220?cb=20260426085145
+
+Midlaner: Mercy9
+Born: June 5, 2005
+Nationality: Turkey
+Full name: Cengizhan Teker
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/de/MISA_Mercy9_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240618160643
+
+ADC: Lure
+Born: May 16, 2003 
+Nationality: Korea
+Full name: 	Shin Jae-yoon
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/63/HLE.C_Lure_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240618143648
+
+Support: Batuuu
+Born: July 27, 2005
+Nationality: Turkey
+Full name: Batu Kaygusuz
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/8a/BGT_Batuuu_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240618155404
+
+Team: Barcelona Esports
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/68/Bar%C3%A7a_eSportslogo_square.png/revision/latest/scale-to-width-down/220?cb=20221118223547
+
+Toplaner: selenex 
+Born: ????????
+Nationality: Spain 
+Full name: Eric Lozano Gutierrez
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/3/31/XOL_Selenex_2024_Split_1.png/revision/latest/scale-to-width-down/220?cb=20240202212308
+
+Jungle: Koldo
+Born: November 7, 2000 
+Nationality: Spain
+Full name: Luis Perez García
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/7f/UCAM_Koldo_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124112
+
+Midlaner: Macaquinho
+Born: July 30, 2003
+Nationality: Portugal
+Full name: Sergio Bouzende Rodrigues
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c9/BAR_Macaquino_2025_Iberian_Cup.jpg/revision/latest/scale-to-width-down/220?cb=20260306155142
+
+ADC: Legolas
+Born: December 20, 2000
+Nationality: Spain
+Full name: Sergio Vicente Gispert
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/3/33/BAR_Legolas_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250905145943
+
+Support: Oscure
+Born: April 30, 2000
+Nationality: Spain
+Full name: Víctor Guzmán Fernández
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9c/BAR_Oscure_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240816123844
+
+Team: GiantX Itero
+Team Logo: https://upload.wikimedia.org/wikipedia/en/0/0e/GiantX_logo.svg
+
+Toplaner: ManoloGap
+Born: June 9, 2002
+Nationality: Spain
+Full name: Manuel García Azcúnaga
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/79/ESDH_ManoloGap_2022_Split_1.png/revision/latest/scale-to-width-down/220?cb=20220125234841
+
+Jungle: Th3Antonio
+Born: April 12, 1999
+Nationality: Spain
+Full name: Antonio Espinosa Bejarano
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/74/GX_Th3Antonio_2025.png/revision/latest/scale-to-width-down/220?cb=20251024172601
+
+Midlaner: Miniduke
+Born: November 3, 1997
+Nationality: Spain
+Full name: Ismael Martínez Cortés
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/0a/VVV_Miniduke_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124117
+
+ADC: Flakked
+Born: April 25, 2001
+Nationality: Spain
+Full name: Víctor Lirola Tortosa
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/3/30/TH_Flakked_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250810162235
+
+Support: Attila
+Born: February 26, 1996
+Nationality: Portugal
+Full name: Amadeu Jesus Dias de Carvalho
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/d6/ZTA_Attila_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240816130642
+
+Team: UCAM Esports
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/ad/UCAM_Esports_Clublogo_square.png/revision/latest/scale-to-width-down/220?cb=20251113225931
+
+Toplaner: Kozi
+Born: April 6, 2005
+Nationality: Poland
+Full name: Jarosław Marchewka
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/97/RBLS_Kozi_2024_Split_3.png/revision/latest/scale-to-width-down/220?cb=20241117111216
+
+Jungle: bluerzor
+Born: May 4, 1999
+Nationality: Hungary
+Full name: Dániel Subicz
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/8/89/UCAM_bluerzor_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250905150006
+
+Midlaner: ESCIK
+Born: April 11, 2002
+Nationality: Poland
+Full name: Tomasz Maciej Skwarczyński
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/57/UCAM_ESCIK_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124107
+
+ADC: ANDARIEL
+Born: November 14, 2003
+Nationality: Turkey
+Full name: Mert Kılıç
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/6b/UCAM_ANDARIEL_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124104
+
+Support: iLEVI
+Born: May 16, 1998
+Nationality: Albania
+Full name: Besmir Jakupi
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9c/UCAM_iLevi_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124110
+
+Team: Falke Esports
+Team Logo:
+
+Toplaner: Ethe
+Born: August 7, 2001
+Nationality: Spain
+Full name: Raúl Campos Vico
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/d2/ZTA_Ethe_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124127
+
+Jungle: Clicker
+Born: ???????
+Nationality: Spain
+Full name: Alejandro Botella Santos
+Image: ???????
+
+Midlaner: Midnight
+Born: ???????
+Nationality: Spain
+Full name: Víctor Caro Rodríguez
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/73/AYM_Midnight_2023_Split_1.png/revision/latest/scale-to-width-down/220?cb=20230227203829
+
+ADC: Marcv1
+Born: ???????
+Nationality: Spain
+Full name: Marc Villalba de la Arada
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c8/RBT_Marcv1_2024_Split_2.png/revision/latest/scale-to-width-down/220?cb=20240816130603
+
+Support: Deleted
+Born: ??????????
+Nationality: Spain
+Full name: Unai San Juan Fajardo
+Image: ??????????
+
+Team: LUA Gaming
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b8/LUA_Gaminglogo_square.png/revision/latest/scale-to-width-down/220?cb=20231214150503
+
+Toplaner: Dani
+Born: ???????????
+Nationality: Spain
+Full name: Daniel Gómez Martínez
+Image: ??????????
+
+Jungle: Pegaso
+Born: December 15, 2004
+Nationality: Spain
+Full name: Edison Rivera Menéndez
+Image: ??????????
+
+Midlaner: Hydra
+Born: ???????????
+Nationality: Spain
+Full name: Raúl Moreno Valero
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9e/LUA_Hydra_2025_Split_3.png/revision/latest/scale-to-width-down/220?cb=20250905145951
+
+ADC: Kaii
+Born: July 8, 2004
+Nationality: Spain
+Full name: Jorge Saiz Hoyos
+Image: ??????????
+
+Support: TIMR
+Born: ???????????
+Nationality: Czech Republic
+Full name: Tomáš Buštík
+Image: ??????????
+
+Team: UB Alma Mater
+Team Logo: https://images.seeklogo.com/logo-png/50/2/universitat-de-barcelona-logo-png_seeklogo-500551.png
+
+Toplaner: Pasameelcelo
+Born: ???????????
+Nationality: Andorra
+Full name: Jordi Franco Carreras
+Image: ??????????
+
+Jungle: Ivama
+Born: ???????????
+Nationality: Spain
+Full name: Ivan Torn Cubero
+Image: ??????????
+
+Midlaner: Pauporter
+Born: 	September 22, 2004
+Nationality: Spain
+Full name: Pau Vintró Nogué
+Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/7b/BAR_Pauporter_2025_Split_1.jpg/revision/latest/scale-to-width-down/220?cb=20250309113408
+
+ADC: adrianlaneitor
+Born: ???????????
+Nationality: Spain
+Full name: Adrián Tejero Gomez
+Image: ??????????
+
+Support: Kellie
+Born: ???????????
+Nationality: Spain
+Full name: Joel Rodríguez Pérez
+Image: ??????????

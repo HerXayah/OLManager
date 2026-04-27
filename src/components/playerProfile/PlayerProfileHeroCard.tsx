@@ -18,7 +18,7 @@ type TranslateFn = (
 interface PlayerProfileHeroCardProps {
   player: PlayerData;
   ovr: number;
-  primaryPosition: string;
+  primaryRole: "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
   age: number;
   teamName: string;
   weeklySuffix: string;
@@ -35,13 +35,16 @@ interface PlayerProfileHeroCardProps {
   onStartPotentialResearch?: () => void;
   potentialResearchSubmitting?: boolean;
   isPotentialResearchBlockedByOther?: boolean;
+  academyActionLabel?: string | null;
+  academyActionLoading?: boolean;
+  onAcademyAction?: (() => void) | null;
   t: TranslateFn;
 }
 
 export default function PlayerProfileHeroCard({
   player,
   ovr,
-  primaryPosition,
+  primaryRole,
   age,
   teamName,
   weeklySuffix,
@@ -57,9 +60,12 @@ export default function PlayerProfileHeroCard({
   onStartPotentialResearch,
   potentialResearchSubmitting = false,
   isPotentialResearchBlockedByOther = false,
+  academyActionLabel = null,
+  academyActionLoading = false,
+  onAcademyAction = null,
   t,
 }: PlayerProfileHeroCardProps) {
-  const role = getLolRoleLabel(primaryPosition);
+  const role = primaryRole;
   const roleVariant = getLolRoleBadgeVariant(role);
   const playerPhoto = resolvePlayerPhoto(player.id, player.match_name);
   const [insigniaBackground, setInsigniaBackground] = useState<string | null>(null);
@@ -197,6 +203,20 @@ export default function PlayerProfileHeroCard({
             </h2>
             <div className="flex items-center gap-3 mt-2">
               <Badge variant={roleVariant}>{role}</Badge>
+              {isOwnClub && academyActionLabel && onAcademyAction ? (
+                <button
+                  type="button"
+                  onClick={onAcademyAction}
+                  disabled={academyActionLoading}
+                  className={`px-2.5 py-1 rounded-md text-xs font-heading font-bold uppercase tracking-wide border transition-colors ${
+                    academyActionLoading
+                      ? "bg-gray-600/30 border-gray-500 text-gray-300 cursor-wait"
+                      : "bg-primary-500/20 border-primary-400 text-primary-200 hover:bg-primary-500/30"
+                  }`}
+                >
+                  {academyActionLoading ? "Procesando..." : academyActionLabel}
+                </button>
+              ) : null}
               {isOwnClub ? (
                 <button
                   type="button"
@@ -423,17 +443,6 @@ function canLoadImage(url: string): Promise<boolean> {
     image.onerror = () => resolve(false);
     image.src = url;
   });
-}
-
-function getLolRoleLabel(position: string): "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT" {
-  const normalized = (position || "").toLowerCase();
-  if (normalized.includes("attackingmidfielder")) return "MID";
-  if (normalized.includes("forward")) return "ADC";
-  if (normalized.includes("defensivemidfielder") || normalized.includes("goalkeeper")) {
-    return "SUPPORT";
-  }
-  if (normalized === "midfielder") return "JUNGLE";
-  return "TOP";
 }
 
 function getLolRoleBadgeVariant(role: "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT") {

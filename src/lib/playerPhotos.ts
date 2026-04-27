@@ -1,9 +1,14 @@
 import playersSeed from "../../data/lec/draft/players.json";
+import lesExampleRaw from "../../EXAMPLE/les.txt?raw";
+import lflExampleRaw from "../../EXAMPLE/lfl.txt?raw";
+import primeLeagueExampleRaw from "../../EXAMPLE/Prime League.txt?raw";
 
 interface PlayerSeedEntry {
   ign?: string;
   photo?: string;
 }
+
+const FALLBACK_PLAYER_PHOTO = "/player-photos/107455908655055017.png";
 
 function normalizeKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -31,11 +36,44 @@ ALL_SEED_PLAYERS.forEach((seed) => {
   PHOTO_BY_IGN.set(normalizeKey(ign), src);
 });
 
+function parseExamplePhotoMap(content: string): Map<string, string> {
+  const map = new Map<string, string>();
+  let currentIgn = "";
+
+  const rolePrefixes = ["Toplaner:", "Jungle:", "Midlaner:", "ADC:", "Support:"];
+
+  content.split(/\r?\n/).forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) return;
+
+    const rolePrefix = rolePrefixes.find((prefix) => line.startsWith(prefix));
+    if (rolePrefix) {
+      currentIgn = line.slice(rolePrefix.length).trim();
+      return;
+    }
+
+    if (line.startsWith("Image:")) {
+      const rawUrl = line.slice("Image:".length).trim();
+      if (!currentIgn) return;
+      if (!rawUrl || rawUrl.includes("??") || !rawUrl.startsWith("http")) return;
+      map.set(normalizeKey(currentIgn), rawUrl);
+    }
+  });
+
+  return map;
+}
+
+const EXAMPLE_PHOTO_MAP = new Map<string, string>([
+  ...parseExamplePhotoMap(lesExampleRaw).entries(),
+  ...parseExamplePhotoMap(lflExampleRaw).entries(),
+  ...parseExamplePhotoMap(primeLeagueExampleRaw).entries(),
+]);
+
 export function resolvePlayerPhoto(playerId: string, matchName?: string): string | null {
   const legacy = playerId.match(/^lec-player-(.+)$/);
   if (legacy) return `/player-photos/${legacy[1]}.png`;
 
   const key = normalizeKey(matchName ?? "");
-  if (!key) return null;
-  return PHOTO_BY_IGN.get(key) ?? null;
+  if (!key) return FALLBACK_PLAYER_PHOTO;
+  return PHOTO_BY_IGN.get(key) ?? EXAMPLE_PHOTO_MAP.get(key) ?? FALLBACK_PLAYER_PHOTO;
 }

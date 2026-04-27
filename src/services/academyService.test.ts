@@ -27,27 +27,36 @@ describe("academyService", () => {
       options: [
         {
           source_team_id: "mkoi-fenix",
-          source_team_name: "Movistar KOI Fénix",
-          source_team_short_name: "MKOI F",
-          source_team_logo_url: "https://cdn.example/logo.png",
-          source_identity: {
-            source_team_id: "mkoi-fenix",
-            original_name: "Movistar KOI Fénix",
-            original_short_name: "MKOI F",
-            original_logo_url: "https://cdn.example/logo.png",
-          },
+          name: "Movistar KOI Fénix",
+          short_name: "MKOI F",
+          logo_url: "https://cdn.example/logo.png",
           erl_league_id: "nlc",
+          erl_league_name: "NLC",
+          country_code: "GB",
           assignment_rule: "Domestic",
           fallback_reason: null,
           reputation: 4,
+          development_level: 4,
           acquisition_cost: 260000,
-          rebrand_allowed: true,
         },
       ],
     };
     mockedInvoke.mockResolvedValueOnce(response);
 
-    await expect(getAcademyAcquisitionOptions("team-1")).resolves.toMatchObject(response);
+    await expect(getAcademyAcquisitionOptions("team-1")).resolves.toMatchObject({
+      parent_team_id: "team-1",
+      acquisition_allowed: true,
+      blocked_reason: null,
+      options: [
+        expect.objectContaining({
+          source_team_id: "mkoi-fenix",
+          source_team_name: "Movistar KOI Fénix",
+          source_team_short_name: "MKOI F",
+          source_team_logo_url: "https://cdn.example/logo.png",
+          league_name: "NLC",
+        }),
+      ],
+    });
     expect(mockedInvoke).toHaveBeenCalledWith("get_academy_acquisition_options", {
       parentTeamId: "team-1",
     });
@@ -74,21 +83,17 @@ describe("academyService", () => {
       options: [
         {
           source_team_id: "kcool",
-          source_team_name: "Karmine Corp Blue",
-          source_team_short_name: "KCB",
-          source_team_logo_url: null,
-          source_identity: {
-            source_team_id: "kcool",
-            original_name: "Karmine Corp Blue",
-            original_short_name: "KCB",
-            original_logo_url: null,
-          },
+          name: "Karmine Corp Blue",
+          short_name: "KCB",
+          logo_url: null,
           erl_league_id: "lfl",
+          erl_league_name: "LFL",
+          country_code: "FR",
           assignment_rule: "Fallback",
-          fallback_reason: "BE has no domestic ERL; lfl is configured as nearby",
+          fallback_reason: null,
           reputation: 5,
+          development_level: 4,
           acquisition_cost: 300000,
-          rebrand_allowed: false,
         },
       ],
     };
@@ -100,7 +105,8 @@ describe("academyService", () => {
       options: [
         expect.objectContaining({
           assignment_rule: "Fallback",
-          fallback_reason: "BE has no domestic ERL; lfl is configured as nearby",
+          fallback_reason: null,
+          source_team_name: "Karmine Corp Blue",
         }),
       ],
     });
@@ -123,11 +129,13 @@ describe("academyService", () => {
       }),
     ).resolves.toBe(updatedGame);
     expect(mockedInvoke).toHaveBeenCalledWith("acquire_academy_team", {
-      parentTeamId: "team-1",
-      sourceTeamId: "mkoi-fenix",
-      customName: "Movistar KOI Fénix Academy",
-      customShortName: "MKOI F",
-      customLogoUrl: "https://cdn.example/custom-logo.png",
+      request: {
+        parentTeamId: "team-1",
+        sourceTeamId: "mkoi-fenix",
+        customName: "Movistar KOI Fénix Academy",
+        customShortName: "MKOI F",
+        customLogoUrl: "https://cdn.example/custom-logo.png",
+      },
     });
   });
 
@@ -149,11 +157,13 @@ describe("academyService", () => {
 
     await expect(createAcademy("team-legacy", "legacy-source")).resolves.toBe(updatedGame);
     expect(mockedInvoke).toHaveBeenCalledWith("acquire_academy_team", {
-      parentTeamId: "team-legacy",
-      sourceTeamId: "legacy-source",
-      customName: undefined,
-      customShortName: undefined,
-      customLogoUrl: undefined,
+      request: {
+        parentTeamId: "team-legacy",
+        sourceTeamId: "legacy-source",
+        customName: undefined,
+        customShortName: undefined,
+        customLogoUrl: undefined,
+      },
     });
   });
 });

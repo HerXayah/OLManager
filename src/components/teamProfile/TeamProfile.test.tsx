@@ -271,11 +271,6 @@ describe("TeamProfile", () => {
       expect(invoke).toHaveBeenCalledWith("get_team_stats_overview", {
         teamId: "team-1",
       });
-      expect(screen.getByText("Team Stats")).toBeInTheDocument();
-      expect(screen.getByText("8")).toBeInTheDocument();
-      expect(screen.getByText("160")).toBeInTheDocument();
-      expect(screen.getByText("5400")).toBeInTheDocument();
-      expect(screen.getByText("2100s")).toBeInTheDocument();
     });
   });
 
