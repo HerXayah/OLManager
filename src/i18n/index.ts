@@ -11,10 +11,7 @@ import it from "./locales/it.json";
 export const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English" },
   { code: "es", label: "Español" },
-  { code: "pt", label: "Português" },
   { code: "fr", label: "Français" },
-  { code: "de", label: "Deutsch" },
-  { code: "it", label: "Italiano" },
   { code: "pt-BR", label: "Português (Brasil)" },
 ] as const;
 

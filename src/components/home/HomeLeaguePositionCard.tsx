@@ -120,13 +120,12 @@ export default function HomeLeaguePositionCard({
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="accent" size="sm">
                     {nextPlayoffFixture
-                      ? t("home.nextMatch", { defaultValue: "Next Match" })
-                      : t("schedule.lastResult", { defaultValue: "Last Result" })}
+                      ? t("home.nextMatch")
+                      : t("schedule.lastResult")}
                   </Badge>
                   <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-cyan-300/90">
                     {t("schedule.round", {
                       number: spotlightFixture.matchday,
-                      defaultValue: `Round ${spotlightFixture.matchday}`,
                     })}
                     {` · BO${spotlightFixture.best_of ?? 3}`}
                   </span>
@@ -148,9 +147,7 @@ export default function HomeLeaguePositionCard({
               </>
             ) : (
               <p className="text-xs text-gray-400 dark:text-gray-500">
-                {t("home.noUpcomingOpponent", {
-                  defaultValue: "No upcoming playoff match.",
-                })}
+                {t("home.noUpcomingPlayoffMatch")}
               </p>
             )}
           </div>

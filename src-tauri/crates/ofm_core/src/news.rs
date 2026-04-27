@@ -68,7 +68,7 @@ pub fn league_roundup_article(
     let biggest_winner = biggest_winner_name(results);
 
     let mut body = format!(
-        "Matchday {} is in the books. Here are the full series results:\n",
+        "Matchday {} is complete. Here are the full series results:\n",
         matchday
     );
     for line in &results_text {
@@ -84,7 +84,7 @@ pub fn league_roundup_article(
 
     if !biggest_winner.is_empty() {
         body.push_str(&format!(
-            "{} recorded the cleanest series win of the day.",
+            "{} recorded the cleanest closeout of the day.",
             biggest_winner
         ));
     }
@@ -103,7 +103,7 @@ pub fn league_roundup_article(
         "be.source.riftHerald",
         "be.source.leaguePulse",
     ];
-    let sources = ["Rift Wire", "The Rift Herald", "League Pulse"];
+    let sources = ["Inven Global", "Riot Games Newsroom", "The Shotcaller"];
     let src_idx = rng.random_range(0..sources.len());
     let headline_idx = rng.random_range(0..headlines.len());
 
@@ -163,7 +163,7 @@ pub fn standings_update_article(
         "be.source.riftHerald",
         "be.source.leaguePulse",
     ];
-    let sources = ["Rift Wire", "The Rift Herald", "League Pulse"];
+    let sources = ["Inven Global", "Riot Games Newsroom", "The Shotcaller"];
     let src_idx = rng.random_range(0..sources.len());
     let headline_idx = rng.random_range(0..headlines.len());
 
@@ -239,7 +239,7 @@ pub fn season_preview_article(team_names: &[String], date: &str) -> NewsArticle 
         "season_preview".to_string(),
         headlines[headline_idx].clone(),
         body,
-        "The Rift Herald".to_string(),
+        "Riot Games Newsroom".to_string(),
         date.to_string(),
         NewsCategory::SeasonPreview,
     )
@@ -288,6 +288,17 @@ pub fn major_transfer_article(
     )
     .with_teams(vec![from_team_id.to_string(), to_team_id.to_string()])
     .with_players(vec![player_id.to_string()])
+    .with_i18n(
+        "be.news.transferRumour.headline",
+        "be.news.transferRumour.body",
+        "be.source.leagueChronicle",
+        params(&[
+            ("player", player_name),
+            ("to", to_team_name),
+            ("from", from_team_name),
+            ("fee", &fee_display),
+        ]),
+    )
 }
 
 pub fn weekly_digest_article(
@@ -322,7 +333,7 @@ pub fn weekly_digest_article(
         id.to_string(),
         headline,
         body,
-        "League Pulse".to_string(),
+        "The Shotcaller".to_string(),
         date.to_string(),
         NewsCategory::Editorial,
     )
@@ -359,7 +370,7 @@ pub fn title_race_storyline_article(
             "{} remain in front, but {} are only {} point(s) behind as the playoff race takes shape.",
             leader, challenger, gap
         ),
-        "League Pulse".to_string(),
+        "The Shotcaller".to_string(),
         date.to_string(),
         NewsCategory::Editorial,
     )
@@ -393,7 +404,7 @@ pub fn unbeaten_streak_storyline_article(
             "{} have gone {} series without a loss and are building real momentum around drafts and objectives.",
             team, run_length
         ),
-        "League Pulse".to_string(),
+        "The Shotcaller".to_string(),
         date.to_string(),
         NewsCategory::Editorial,
     )
@@ -413,9 +424,9 @@ mod tests {
 
     fn assert_valid_roundup_source_pair(source: &str, source_key: &str) {
         let valid = [
-            ("League Wire", "be.source.leagueWire"),
-            ("The Rift Herald", "be.source.riftHerald"),
-            ("Sports Gazette", "be.source.sportsGazette"),
+            ("Inven Global", "be.source.riftWire"),
+            ("Riot Games Newsroom", "be.source.riftHerald"),
+            ("The Shotcaller", "be.source.leaguePulse"),
         ];
 
         assert!(
@@ -427,9 +438,9 @@ mod tests {
 
     fn assert_valid_standings_source_pair(source: &str, source_key: &str) {
         let valid = [
-            ("League Wire", "be.source.leagueWire"),
-            ("The Rift Herald", "be.source.riftHerald"),
-            ("League Chronicle", "be.source.leagueChronicle"),
+            ("Inven Global", "be.source.riftWire"),
+            ("Riot Games Newsroom", "be.source.riftHerald"),
+            ("The Shotcaller", "be.source.leaguePulse"),
         ];
 
         assert!(
@@ -450,14 +461,14 @@ mod tests {
 
         assert_eq!(article.id, "roundup_md4");
         assert_eq!(article.category, NewsCategory::LeagueRoundup);
-        assert!(article.body.contains("Matchday 4 is in the books."));
+        assert!(article.body.contains("Matchday 4 is complete."));
         assert!(article.body.contains("Alpha FC 3 - 0 Beta FC"));
         assert!(article.body.contains("Gamma FC 1 - 1 Delta FC"));
-        assert!(article.body.contains("5 goals scored across 2 matches."));
+        assert!(article.body.contains("5 maps played across 2 series."));
         assert!(
             article
                 .body
-                .contains("Alpha FC recorded the biggest win of the day.")
+                .contains("Alpha FC recorded the cleanest closeout of the day.")
         );
         assert!(
             [
@@ -471,7 +482,7 @@ mod tests {
         assert_valid_roundup_source_pair(&article.source, article.source_key.as_deref().unwrap());
         assert_eq!(article.i18n_params.get("matchday"), Some(&"4".to_string()));
         assert_eq!(
-            article.i18n_params.get("totalGoals"),
+            article.i18n_params.get("totalMaps"),
             Some(&"5".to_string())
         );
         assert_eq!(
@@ -497,7 +508,7 @@ mod tests {
 
         let article = league_roundup_article(5, &results, "2025-08-19");
 
-        assert!(!article.body.contains("recorded the biggest win of the day"));
+        assert!(!article.body.contains("recorded the cleanest closeout of the day"));
         assert_eq!(
             article.i18n_params.get("biggestWinner"),
             Some(&String::new())
@@ -573,7 +584,7 @@ mod tests {
 
         assert_eq!(article.id, "season_preview");
         assert_eq!(article.category, NewsCategory::SeasonPreview);
-        assert_eq!(article.source, "The Rift Herald");
+        assert_eq!(article.source, "Riot Games Newsroom");
         assert_eq!(
             article.source_key.as_deref(),
             Some("be.source.riftHerald")
@@ -590,7 +601,7 @@ mod tests {
             article.body_key.as_deref(),
             Some("be.news.seasonPreview.body")
         );
-        assert!(article.body.contains("3 teams vying for the title"));
+        assert!(article.body.contains("3 teams entering the split"));
         assert!(article.body.contains("Teams: Alpha FC, Beta FC, Gamma FC"));
         assert_eq!(article.i18n_params.get("teamCount"), Some(&"3".to_string()));
         assert_eq!(
@@ -611,7 +622,7 @@ mod tests {
 
         let article = season_preview_article(&teams, "2025-08-01");
 
-        assert!(article.body.contains("1 teams vying for the title"));
+        assert!(article.body.contains("1 teams entering the split"));
         assert!(article.body.contains("Teams: Solo FC"));
         assert_eq!(article.i18n_params.get("teamCount"), Some(&"1".to_string()));
         assert_eq!(

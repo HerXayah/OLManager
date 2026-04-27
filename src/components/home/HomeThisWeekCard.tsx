@@ -70,7 +70,7 @@ export default function HomeThisWeekCard({ gameState }: HomeThisWeekCardProps) {
 
   return (
     <Card>
-      <CardHeader>{t("home.schedule", { defaultValue: "Cronograma" })}</CardHeader>
+      <CardHeader>{t("home.schedule")}</CardHeader>
       <CardBody>
         <div className="grid grid-cols-7 gap-1.5">
           {weekDays.map((day) => {
@@ -90,14 +90,14 @@ export default function HomeThisWeekCard({ gameState }: HomeThisWeekCardProps) {
                   className={`text-[10px] mt-2 font-heading font-bold ${isMatchDay ? "text-primary-500" : "text-gray-400 dark:text-gray-500"}`}
                 >
                   {isMatchDay
-                    ? t("home.matchShort", { defaultValue: "Partido" })
-                    : t("home.restShort", { defaultValue: "Descanso" })}
+                    ? t("home.matchShort")
+                    : t("home.restShort")}
                 </p>
                 {isMatchDay ? (
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-1">
                     {day.fixture?.competition === "League"
-                      ? t("home.leagueShort", { defaultValue: "League" })
-                      : t("home.otherShort", { defaultValue: "Other" })}
+                      ? t("home.leagueShort")
+                      : t("home.otherShort")}
                   </p>
                 ) : null}
               </div>

@@ -965,32 +965,32 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
                 </div>
                 <div className="flex flex-col leading-[0.9]">
                   <span className="text-[22px] font-black tracking-[-1px] text-[#00fcdb] sm:text-[34px]">{blueBrand.tag || blueTag}</span>
-                  <span className="text-[13px] font-bold text-white/55">LIVE</span>
+                  <span className="text-[13px] font-bold text-white/55">{t("match.live")}</span>
                 </div>
                 <div className="ml-4 flex items-center gap-2 text-[16px] font-bold italic text-white sm:ml-7 sm:text-[24px]">
-                  <img src={ICON_TOWER} className="h-5 w-5 object-contain opacity-90" alt="Tower" loading="lazy" />
+                  <img src={ICON_TOWER} className="h-5 w-5 object-contain opacity-90" alt={t("match.liveA11y.towerIcon")} loading="lazy" />
                   <span>{blueTowers}</span>
-                  <img src={ICON_GOLD} className="ml-2 h-5 w-5 object-contain" alt="Gold" loading="lazy" />
+                  <img src={ICON_GOLD} className="ml-2 h-5 w-5 object-contain" alt={t("match.liveA11y.goldIcon")} loading="lazy" />
                   <span>{blueGold}</span>
                 </div>
               </div>
 
               <div className="flex w-[24%] items-center justify-center gap-4">
                 <span className="text-[34px] font-black italic leading-none text-white sm:text-[48px]">{blueKills}</span>
-                <img src={ICON_LEC} className="h-7 w-7 object-contain opacity-95" alt="LEC" loading="lazy" />
+                <img src={ICON_LEC} className="h-7 w-7 object-contain opacity-95" alt={t("match.liveA11y.lecLogo")} loading="lazy" />
                 <span className="text-[34px] font-black italic leading-none text-white sm:text-[48px]">{redKills}</span>
               </div>
 
               <div className="flex w-[38%] items-center justify-end px-4 text-right">
                 <div className="mr-4 flex items-center gap-2 text-[16px] font-bold italic text-white sm:mr-5 sm:text-[24px]">
                   <span>{redGold}</span>
-                  <img src={ICON_GOLD} className="h-5 w-5 object-contain" alt="Gold" loading="lazy" />
+                  <img src={ICON_GOLD} className="h-5 w-5 object-contain" alt={t("match.liveA11y.goldIcon")} loading="lazy" />
                   <span className="ml-2">{redTowers}</span>
-                  <img src={ICON_TOWER} className="h-5 w-5 object-contain opacity-90" alt="Tower" loading="lazy" />
+                  <img src={ICON_TOWER} className="h-5 w-5 object-contain opacity-90" alt={t("match.liveA11y.towerIcon")} loading="lazy" />
                 </div>
                 <div className="flex flex-col leading-[0.9]">
                   <span className="text-[22px] font-black tracking-[-1px] text-[#ff4e00] sm:text-[34px]">{redBrand.tag || redTag}</span>
-                  <span className="text-[13px] font-bold text-white/55">LIVE</span>
+                  <span className="text-[13px] font-bold text-white/55">{t("match.live")}</span>
                 </div>
                 <div className="ml-3 flex h-[42px] w-[42px] items-center justify-center border border-white/20 bg-white/5">
                   {redBrand.logo ? <img src={redBrand.logo} className="h-9 w-9 object-contain" alt={`${snapshot.away_team.name} logo`} loading="lazy" /> : null}
@@ -1005,11 +1005,11 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
               <div className="flex items-center gap-2">
                 {blueDragonIcons.length > 0
                   ? blueDragonIcons.map((iconSrc, idx) => (
-                    <img key={`blue-dragon-${idx}`} src={iconSrc} className="h-[22px] w-[22px] object-contain" alt="Dragon" loading="lazy" />
+                    <img key={`blue-dragon-${idx}`} src={iconSrc} className="h-[22px] w-[22px] object-contain" alt={t("match.liveA11y.dragonIcon")} loading="lazy" />
                   ))
-                  : <img src={dragonIcon} className="h-[22px] w-[22px] object-contain opacity-35" alt="Dragon" loading="lazy" />}
+                  : <img src={dragonIcon} className="h-[22px] w-[22px] object-contain opacity-35" alt={t("match.liveA11y.dragonIcon")} loading="lazy" />}
                 <div className="flex items-center gap-1 text-[20px] font-bold text-white/70">
-                  <img src={ICON_VOIDGRUB} className="h-4 w-4 object-contain" alt="Voidgrub" loading="lazy" />
+                  <img src={ICON_VOIDGRUB} className="h-4 w-4 object-contain" alt={t("match.liveA11y.voidgrubIcon")} loading="lazy" />
                   <span>{blueVoidgrubs}</span>
                 </div>
               </div>
@@ -1019,13 +1019,13 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1 text-[20px] font-bold text-white/70">
                   <span>{redVoidgrubs}</span>
-                  <img src={ICON_VOIDGRUB} className="h-4 w-4 object-contain" alt="Voidgrub" loading="lazy" />
+                  <img src={ICON_VOIDGRUB} className="h-4 w-4 object-contain" alt={t("match.liveA11y.voidgrubIcon")} loading="lazy" />
                 </div>
                 {redDragonIcons.length > 0
                   ? redDragonIcons.map((iconSrc, idx) => (
-                    <img key={`red-dragon-${idx}`} src={iconSrc} className="h-[22px] w-[22px] object-contain" alt="Dragon" loading="lazy" />
+                    <img key={`red-dragon-${idx}`} src={iconSrc} className="h-[22px] w-[22px] object-contain" alt={t("match.liveA11y.dragonIcon")} loading="lazy" />
                   ))
-                  : <img src={dragonIcon} className="h-[22px] w-[22px] object-contain opacity-35" alt="Dragon" loading="lazy" />}
+                  : <img src={dragonIcon} className="h-[22px] w-[22px] object-contain opacity-35" alt={t("match.liveA11y.dragonIcon")} loading="lazy" />}
               </div>
             </div>
           </div>
@@ -1043,13 +1043,13 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
                       <div className="flex items-center gap-[7px]">
                         <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45">
                           {entry.killerIcon
-                            ? <img src={entry.killerIcon} className="h-full w-full object-cover" alt="Killer" loading="lazy" />
+                            ? <img src={entry.killerIcon} className="h-full w-full object-cover" alt={t("match.liveA11y.killerIcon")} loading="lazy" />
                             : <div className={`flex h-full w-full items-center justify-center text-[11px] font-bold ${entry.side === "red" ? "bg-[#22151a] text-red-200" : "bg-[#151a26] text-cyan-200"}`}>{actorInitials(entry.killerLabel, "K")}</div>}
                         </div>
                         <div className={`flex h-[26px] w-[26px] items-center justify-center rounded-[3px] border text-[13px] ${entry.side === "red" ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"}`}>⚔</div>
                         <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45">
                           {entry.victimIcon
-                            ? <img src={entry.victimIcon} className="h-full w-full object-cover" alt="Victim" loading="lazy" />
+                            ? <img src={entry.victimIcon} className="h-full w-full object-cover" alt={t("match.liveA11y.victimIcon")} loading="lazy" />
                             : <div className={`flex h-full w-full items-center justify-center text-[11px] font-bold ${entry.side === "red" ? "bg-[#22151a] text-red-200" : "bg-[#151a26] text-cyan-200"}`}>{actorInitials(entry.victimLabel, "V")}</div>}
                         </div>
                         <span className="ml-auto text-[11px] font-bold text-white/75">{entry.minute}'</span>
@@ -1072,7 +1072,7 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
                   </div>
                 )) : (
                   <div className="rounded-[4px] border border-cyan-500/30 bg-black/75 px-2 py-1 text-[10px] text-white/65">
-                    Waiting for first skirmish...
+                    {t("match.waitingFirstSkirmish")}
                   </div>
                 )}
               </div>
@@ -1087,10 +1087,12 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
 
             <div className="w-full max-w-[260px] lg:w-[246px]">
               <div className="rounded border border-cyan-500/30 bg-black/70 p-2">
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.6px] text-cyan-200/90">Live Controls</div>
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.6px] text-cyan-200/90">
+                  {t("match.liveControls")}
+                </div>
                 <div className="grid grid-cols-2 gap-1 text-[10px]">
                   <button className="rounded border border-cyan-500/30 bg-black/60 px-2 py-1 text-white/90" onClick={() => setRunning((v) => !v)}>
-                    {running ? "Pause" : "Play"}
+                    {running ? t("match.pause") : t("match.play")}
                   </button>
                   <button
                     className="rounded border border-amber-400/40 bg-amber-500/20 px-2 py-1 text-amber-200 disabled:opacity-50"
@@ -1099,7 +1101,9 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
                   >
                     {isSkipping ? t("match.skipping", { defaultValue: "Skipping..." }) : t("match.skipMatch", { defaultValue: "Skip Match" })}
                   </button>
-                  <button className="col-span-2 rounded border border-cyan-500/30 bg-black/60 px-2 py-1 text-white/90" onClick={handleReset}>Reset</button>
+                  <button className="col-span-2 rounded border border-cyan-500/30 bg-black/60 px-2 py-1 text-white/90" onClick={handleReset}>
+                    {t("match.reset")}
+                  </button>
                   {SPEEDS.map((s) => (
                     <button
                       key={s.id}
@@ -1125,16 +1129,21 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
       {skipWarningOpen && !isSkipping ? (
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/55">
           <div className="w-[min(92vw,520px)] rounded border border-red-500/45 bg-[linear-gradient(180deg,rgba(44,8,10,0.95)_0%,rgba(24,5,6,0.95)_100%)] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.6)]">
-            <h3 className="text-[15px] font-bold uppercase tracking-[0.5px] text-red-200">Advertencia</h3>
+            <h3 className="text-[15px] font-bold uppercase tracking-[0.5px] text-red-200">
+              {t("match.skipWarningTitle")}
+            </h3>
             <p className="mt-2 text-[13px] text-red-100/90">
-              Skip Match ahora vuelve a simular desde minuto 0. Vas a perder todo el progreso de esta partida live.
+              {t(
+                "match.skipWarningBody",
+                "Skip Match now re-simulates from minute 0. You will lose all progress from this live match.",
+              )}
             </p>
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 className="rounded border border-white/20 bg-black/45 px-3 py-1.5 text-[12px] text-white/85"
                 onClick={() => setSkipWarningOpen(false)}
               >
-                Cancelar
+                {t("match.cancel")}
               </button>
               <button
                 className="rounded border border-red-400/50 bg-red-600/25 px-3 py-1.5 text-[12px] font-semibold text-red-100"
@@ -1142,7 +1151,7 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
                   void handleSkipMatch();
                 }}
               >
-                Re-simular desde 0
+                {t("match.resimFromZero")}
               </button>
             </div>
           </div>
@@ -1152,7 +1161,9 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
       {isSkipping ? (
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-[1px]">
           <div className="flex flex-col items-center rounded border border-cyan-500/40 bg-black/75 px-6 py-4 shadow-[0_14px_35px_rgba(0,0,0,0.55)]">
-            <span className="text-[17px] font-semibold tracking-[0.4px] text-cyan-100">Limpiando campo de batalla...</span>
+            <span className="text-[17px] font-semibold tracking-[0.4px] text-cyan-100">
+              {t("match.clearingBattlefield")}
+            </span>
             <div className="mt-3 h-8 w-8 animate-spin rounded-full border-2 border-cyan-300/35 border-t-cyan-200" />
           </div>
         </div>

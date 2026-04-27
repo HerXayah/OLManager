@@ -107,15 +107,15 @@ describe("academy acquisition contracts", () => {
         },
         erl_assignment: {
           erl_league_id: "nlc",
-          assignment_rule: "Domestic",
+          country_rule: "Domestic",
           fallback_reason: null,
           reputation: 4,
-          acquisition_cost: 260000,
-          acquired_at: "2026-08-10T00:00:00Z",
+          creation_cost: 260000,
+          created_at: "2026-08-10T00:00:00Z",
         },
       },
     };
 
-    expect(team.academy?.acquisition.source_team_id).toBe("mkoi-fenix");
+    expect(team.academy?.acquisition?.source_team_id).toBe("mkoi-fenix");
   });
 });

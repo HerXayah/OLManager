@@ -168,7 +168,7 @@ export default function NewsTab({ gameState, onSelectTeam }: NewsTabProps) {
               selectSize="sm"
               className="min-w-40 font-heading font-bold uppercase tracking-wider"
             >
-              <option value="">{t("news.allTeams", "All Teams")}</option>
+              <option value="">{t("news.allTeams")}</option>
               {teamsInNews.map((tm) => (
                 <option key={tm.id} value={tm.id}>
                   {tm.name}

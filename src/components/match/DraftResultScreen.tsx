@@ -138,8 +138,8 @@ export default function DraftResultScreen({
 
   const controlledWon = selectedResult.winnerSide === controlledSide;
   const title = controlledWon
-    ? t("match.victory", "Victory")
-    : t("match.defeat", "Defeat");
+    ? t("match.victory")
+    : t("match.defeat");
 
   const blueRows = selectedResult.playerResults.filter((row) => row.side === "blue");
   const redRows = selectedResult.playerResults.filter((row) => row.side === "red");
@@ -168,7 +168,7 @@ export default function DraftResultScreen({
     <div className="min-h-screen bg-[#050608] text-white p-4 md:p-6">
       <div className="max-w-[1200px] mx-auto space-y-4">
         <header className="rounded-xl border border-cyan-400/25 bg-[#0a1433] p-5 text-center shadow-[0_0_24px_rgba(0,242,255,0.1)]">
-          <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{t("match.matchOver", "Match Over")}</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-gray-400">{t("match.matchOver")}</p>
           <h1 className={`mt-1 text-4xl font-heading uppercase ${controlledWon ? "text-green-400" : "text-red-400"}`}>
             {title}
           </h1>
@@ -182,7 +182,7 @@ export default function DraftResultScreen({
           </div>
 
           <p className="mt-2 text-sm text-gray-300">
-            MVP: <span className="font-bold text-cyan-300">{selectedResult.mvp.playerName}</span>
+            {t("match.draftResult.mvp")}: <span className="font-bold text-cyan-300">{selectedResult.mvp.playerName}</span>
           </p>
           {seriesGamesForTabs.length > 1 ? (
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
@@ -203,7 +203,7 @@ export default function DraftResultScreen({
           ) : null}
           {seriesLength > 1 ? (
             <p className="mt-1 text-xs text-gray-400">
-              Serie ({seriesLength === 3 ? "Bo3" : "Bo5"}) · {userSeriesWins} - {opponentSeriesWins}
+              {t("match.draftResult.series")} ({seriesLength === 3 ? "Bo3" : "Bo5"}) · {userSeriesWins} - {opponentSeriesWins}
             </p>
           ) : null}
         </header>
@@ -211,7 +211,7 @@ export default function DraftResultScreen({
         <section className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-4">
           <aside className="space-y-4">
             <div className="rounded-xl border border-yellow-400/25 bg-[#0a1433] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-300">Mejor del partido</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-300">{t("match.draftResult.bestOfMatch")}</p>
               <div className="mt-3 flex items-center gap-3">
                 {mvpPhoto ? (
                   <img
@@ -235,7 +235,7 @@ export default function DraftResultScreen({
             </div>
 
             <div className="rounded-xl border border-cyan-400/25 bg-[#0a1433] p-4">
-              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200">Gold advantage</p>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200">{t("match.draftResult.goldAdvantage")}</p>
               <div className="mt-3 rounded-md bg-[#081028] border border-white/10 p-2">
                 <svg viewBox="0 0 100 100" className="w-full h-36">
                   <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,0.2)" strokeDasharray="2 2" />
@@ -247,12 +247,14 @@ export default function DraftResultScreen({
                   />
                 </svg>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Duración: {selectedResult.durationMinutes}m</p>
+              <p className="text-xs text-gray-400 mt-2">
+                {t("match.draftResult.duration")}: {selectedResult.durationMinutes}m
+              </p>
             </div>
           </aside>
 
           <div className="rounded-xl border border-cyan-400/25 bg-[#0a1433] p-4">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200 mb-3">Performance</p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200 mb-3">{t("match.draftResult.performance")}</p>
 
             <div className="space-y-1">
               <p className="text-sm font-bold text-cyan-300">{blueTri}</p>
@@ -301,7 +303,7 @@ export default function DraftResultScreen({
         </section>
 
         <section className="rounded-xl border border-cyan-400/25 bg-[#0a1433] p-4">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200 mb-3">Game Timeline</p>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-200 mb-3">{t("match.draftResult.gameTimeline")}</p>
           <div className="space-y-2">
             <div className="h-px bg-white/10" />
             <div className="flex flex-wrap gap-2">
@@ -335,13 +337,13 @@ export default function DraftResultScreen({
                   className={`rounded px-3 py-1 text-xs font-heading font-bold uppercase ${controlledSide === "blue" ? "bg-cyan-500/20 text-cyan-200" : "text-gray-300"}`}
                   onClick={() => onContinue("blue")}
                 >
-                  Blue next
+                  {t("match.draftResult.blueNext")}
                 </button>
                 <button
                   className={`rounded px-3 py-1 text-xs font-heading font-bold uppercase ${controlledSide === "red" ? "bg-orange-500/20 text-orange-200" : "text-gray-300"}`}
                   onClick={() => onContinue("red")}
                 >
-                  Red next
+                  {t("match.draftResult.redNext")}
                 </button>
               </div>
             ) : null}

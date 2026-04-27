@@ -448,7 +448,7 @@ export default function ScheduleTab({
                                   setFixtureResultView(stored);
                                 }}
                                 className="inline-flex items-center justify-center w-7 h-7 rounded-md text-gray-500 dark:text-gray-300 hover:text-primary-500 transition-colors"
-                                title={t("schedule.viewResult", { defaultValue: "Ver resultado" })}
+                                title={t("schedule.viewResult")}
                                 disabled={!hasStoredResult}
                               >
                                 <ChevronRight className="w-4 h-4" />

@@ -40,7 +40,10 @@ export default function InboxTab({
 }: InboxTabProps): JSX.Element {
   const { i18n } = useTranslation();
   const messages = gameState.messages ?? [];
-  const allMessages = useMemo(() => messages.map(resolveMessage), [messages]);
+  const allMessages = useMemo(
+    () => messages.map(resolveMessage),
+    [messages, i18n.language],
+  );
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     initialMessageId ?? null,
   );

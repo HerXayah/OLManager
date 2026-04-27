@@ -284,60 +284,62 @@ const DRAFT_SEQUENCE: DraftAction[] = [
   { type: "pick", side: "red", label: "R5" },
 ];
 
-const COACH_BAN_PHRASES: Array<(ctx: { champion: string; player: string; mastery: number }) => string> = [
-  ({ champion, player, mastery }) => `Si dejamos ${champion}, ${player} nos castiga: ${mastery}% de maestría.`,
-  ({ champion, player, mastery }) => `${champion} es comfort puro para ${player} (${mastery}%). Yo lo saco en bans.`,
-  ({ champion, player, mastery }) => `Prioridad de ban: ${champion}. ${player} lo juega a nivel ${mastery}%.`,
-  ({ champion, player, mastery }) => `No regalemos ${champion}; ${player} ya mostró ${mastery}% en ese pick.`,
-  ({ champion, player, mastery }) => `Ban temprano a ${champion}. Ese matchup en manos de ${player} es peligroso (${mastery}%).`,
-  ({ champion, player, mastery }) => `Me preocupa ${champion}: ${player} está muy cómodo (${mastery}%).`,
+const COACH_BAN_PHRASES: string[] = [
+  "If we leave {{champion}} open, {{player}} punishes us: {{mastery}}% mastery.",
+  "{{champion}} is pure comfort for {{player}} ({{mastery}}%). I would remove it in bans.",
+  "Ban priority: {{champion}}. {{player}} plays it at a {{mastery}}% level.",
+  "Do not give away {{champion}}; {{player}} already showed {{mastery}}% on that pick.",
+  "Early ban on {{champion}}. That matchup is dangerous in {{player}}'s hands ({{mastery}}%).",
+  "I am worried about {{champion}}: {{player}} looks very comfortable ({{mastery}}%).",
 ];
 
-const PLAYER_COUNTER_PICK_PHRASES: Array<(ctx: { champion: string; enemy: string }) => string> = [
-  ({ champion, enemy }) => `Pickeame ${champion}. A ${enemy} le gano el matchup fácil.`,
-  ({ champion, enemy }) => `Dame ${champion}, contra ${enemy} lo puedo romper en línea.`,
-  ({ champion, enemy }) => `Con ${champion} le saco ventaja real a ${enemy}. Confía.`,
-  ({ champion, enemy }) => `${champion} es la respuesta correcta para ${enemy}. Dejámelo.`,
-  ({ champion, enemy }) => `Si va ${enemy}, quiero ${champion}: ese cruce lo tengo estudiado.`,
-  ({ champion, enemy }) => `Pick de comfort + counter: ${champion} sobre ${enemy}. Es ahora.`,
+const PLAYER_COUNTER_PICK_PHRASES: string[] = [
+  "Pick me {{champion}}. I win the matchup into {{enemy}}.",
+  "Give me {{champion}}; I can break lane against {{enemy}}.",
+  "With {{champion}} I get real advantage over {{enemy}}. Trust me.",
+  "{{champion}} is the right answer into {{enemy}}. Leave it to me.",
+  "If they go {{enemy}}, I want {{champion}}: I studied that lane.",
+  "Comfort plus counter pick: {{champion}} into {{enemy}}. This is the moment.",
 ];
 
-const PLAYER_SMART_COUNTER_PICK_PHRASES: Array<(ctx: { champion: string; enemy: string }) => string> = [
-  ({ champion, enemy }) => `Por favor pickeame ${champion}; con mi lectura de partida reviento este matchup contra ${enemy}.`,
-  ({ champion, enemy }) => `Con ${champion} puedo outplayear a ${enemy} desde wave 1. Dame ese pick.`,
-  ({ champion, enemy }) => `Ese ${enemy} queda expuesto si me das ${champion}. Lo puedo snowballear.`,
-  ({ champion, enemy }) => `Tengo el timing clarísimo para castigar a ${enemy} con ${champion}.`,
-  ({ champion, enemy }) => `Confía en mí: ${champion} vs ${enemy} es ventaja técnica para nosotros.`,
-  ({ champion, enemy }) => `Este matchup me favorece fuerte: ${champion} contra ${enemy}. Quiero jugarlo.`,
+const PLAYER_SMART_COUNTER_PICK_PHRASES: string[] = [
+  "Please pick {{champion}} for me; with my game read I can break this matchup into {{enemy}}.",
+  "With {{champion}} I can outplay {{enemy}} from wave 1. Give me that pick.",
+  "{{enemy}} gets exposed if you give me {{champion}}. I can snowball it.",
+  "I have perfect timing to punish {{enemy}} with {{champion}}.",
+  "Trust me: {{champion}} vs {{enemy}} is technical advantage for us.",
+  "This matchup heavily favors me: {{champion}} into {{enemy}}. I want to play it.",
 ];
 
-const PLAYER_COMFORT_PICK_PHRASES: Array<(ctx: { champion: string; mastery: number }) => string> = [
-  ({ champion, mastery }) => `Me siento muy sólido con ${champion} (${mastery}% de maestría).`,
-  ({ champion, mastery }) => `Si me das ${champion}, te garantizo consistencia (${mastery}%).`,
-  ({ champion, mastery }) => `${champion} es mi pick más confiable ahora mismo (${mastery}%).`,
-  ({ champion, mastery }) => `Estoy cómodo para carryear con ${champion} (${mastery}% mastery).`,
-  ({ champion, mastery }) => `${champion} me da impacto temprano y control (${mastery}%).`,
-  ({ champion, mastery }) => `Quiero ${champion}; lo tengo muy practicado (${mastery}%).`,
+const PLAYER_COMFORT_PICK_PHRASES: string[] = [
+  "I feel very solid on {{champion}} ({{mastery}}% mastery).",
+  "If you give me {{champion}}, I can guarantee consistency ({{mastery}}%).",
+  "{{champion}} is my most reliable pick right now ({{mastery}}%).",
+  "I am comfortable carrying with {{champion}} ({{mastery}}% mastery).",
+  "{{champion}} gives me early impact and control ({{mastery}}%).",
+  "I want {{champion}}; I practiced it a lot ({{mastery}}%).",
 ];
 
-const PLAYER_BAN_REQUEST_PHRASES: Array<(ctx: { threat: string; champion: string }) => string> = [
-  ({ threat, champion }) => `¿Podemos banear ${threat}? Es de lo poco que frena mi ${champion}.`,
-  ({ threat, champion }) => `Si sacamos ${threat}, mi ${champion} queda mucho más libre.`,
-  ({ threat, champion }) => `Necesito fuera a ${threat}; me complica demasiado el plan con ${champion}.`,
-  ({ threat, champion }) => `Ban a ${threat} y te juego ${champion} con mucha más presión.`,
-  ({ threat, champion }) => `${threat} es counter duro de ${champion}. Mejor negarlo ahora.`,
-  ({ threat, champion }) => `Si quieren que juegue ${champion}, lo ideal es quitar ${threat}.`,
+const PLAYER_BAN_REQUEST_PHRASES: string[] = [
+  "Can we ban {{threat}}? It is one of the few picks that shuts down my {{champion}}.",
+  "If we remove {{threat}}, my {{champion}} becomes much freer.",
+  "I need {{threat}} out; it hurts the plan too much with {{champion}}.",
+  "Ban {{threat}} and I can play {{champion}} with much more pressure.",
+  "{{threat}} is a hard counter to {{champion}}. Better remove it now.",
+  "If you want me on {{champion}}, the best move is removing {{threat}}.",
 ];
 
-function pickPhrase<T>(
-  pool: Array<(ctx: T) => string>,
+function pickPhrase(
+  pool: string[],
   seed: string,
-  ctx: T,
   shift = 0,
-): string {
-  if (pool.length === 0) return "";
+): { index: number; template: string } {
+  if (pool.length === 0) return { index: 0, template: "" };
   const index = (hashText(seed) + shift) % pool.length;
-  return pool[index]?.(ctx) ?? pool[0](ctx);
+  return {
+    index,
+    template: pool[index] ?? pool[0] ?? "",
+  };
 }
 
 function inferRoleHints(tags: string[]): Role[] {
@@ -1453,12 +1455,17 @@ export default function ChampionDraft({
         ? "ban"
         : "pick";
 
-    const uniquePhrase = <T,>(
-      pool: Array<(ctx: T) => string>,
+    const uniquePhrase = (
+      keyPrefix: string,
+      pool: string[],
       seed: string,
-      ctx: T,
+      vars: Record<string, string | number>,
     ): string => {
-      return pickPhrase(pool, seed, ctx);
+      const { index, template } = pickPhrase(pool, seed);
+      return t(`${keyPrefix}.${index}`, {
+        ...vars,
+        defaultValue: template,
+      });
     };
 
     const userTeamId = controlledSide === "blue" ? snapshot.home_team.id : snapshot.away_team.id;
@@ -1478,13 +1485,13 @@ export default function ChampionDraft({
     const coachName =
       assistantCoach && (assistantCoach.first_name || assistantCoach.last_name)
         ? `${assistantCoach.first_name ?? ""} ${assistantCoach.last_name ?? ""}`.trim()
-        : "Segundo entrenador";
+        : t("match.draft.assistantCoach");
 
     const addCoachTip = (type: "ban" | "pick" | "warn", text: string, champion?: ChampionData) => {
       tips.push({
         sourceType: "coach",
         sourceName: coachName,
-        sourceRole: "Segundo entrenador",
+        sourceRole: t("match.draft.assistantCoach"),
         sourceImage: ASSISTANT_COACH_PLACEHOLDER,
         type,
         text,
@@ -1510,11 +1517,16 @@ export default function ChampionDraft({
       if (topRival.mastery >= 75) {
         addCoachTip(
           "ban",
-          uniquePhrase(COACH_BAN_PHRASES, `coach-ban-${topRival.champion.id}-${topRival.playerName}-${stepIndex}`, {
+          uniquePhrase(
+            "match.draft.phrases.coachBan",
+            COACH_BAN_PHRASES,
+            `coach-ban-${topRival.champion.id}-${topRival.playerName}-${stepIndex}`,
+            {
             champion: topRival.champion.name,
             player: topRival.playerName,
             mastery: topRival.mastery,
-          }),
+            },
+          ),
           topRival.champion,
         );
       }
@@ -1528,7 +1540,14 @@ export default function ChampionDraft({
           if (counterVal <= -2) {
             const enemyChamp = championById.get(enemyPick.championId);
             if (enemyChamp) {
-              addCoachTip("warn", `Ojo con ${enemyChamp.name}: está countereando tu última selección.`, enemyChamp);
+              addCoachTip(
+                "warn",
+                t("match.draft.warnCounterLastPick", {
+                  defaultValue: "Careful with {{champion}}: it is countering your last pick.",
+                  champion: enemyChamp.name,
+                }),
+                enemyChamp,
+              );
             }
           }
         });
@@ -1540,7 +1559,12 @@ export default function ChampionDraft({
       const hasLate = ownPicksList.some((pick) => getChampionTiming(pick.championId) === "Late");
 
       if (ownPicksList.length >= 3 && !hasEarly && !hasLate) {
-        addCoachTip("warn", "Nos falta identidad de timing. Busquemos un pick de Early o Late para cerrar mejor.");
+        addCoachTip(
+          "warn",
+          t("match.draft.warnTimingIdentity", {
+            defaultValue: "We are missing a clear timing identity. Look for an Early or Late pick to close better.",
+          }),
+        );
       }
 
       if (ownPicksList.length >= 4) {
@@ -1551,7 +1575,12 @@ export default function ChampionDraft({
         });
 
         if (rolesCovered.size < 4) {
-          addCoachTip("warn", "Nos están quedando huecos de rol. Sumemos un pick más flexible.");
+          addCoachTip(
+            "warn",
+            t("match.draft.warnRoleCoverage", {
+              defaultValue: "We still have role gaps. Add a more flexible pick.",
+            }),
+          );
         }
       }
     }
@@ -1627,17 +1656,17 @@ export default function ChampionDraft({
       const bestChampionAny = masteredChampions[0];
 
       let bestMastery = 0;
-      let bestChampion: ChampionData | null = null;
+      let resolvedBestChampion: ChampionData | null = null;
 
-      masteredChampions.forEach(({ champion, mastery }) => {
-        if (usedChampionIds.has(champion.id)) return;
+      for (const { champion, mastery } of masteredChampions) {
+        if (usedChampionIds.has(champion.id)) continue;
         if (mastery > bestMastery) {
           bestMastery = mastery;
-          bestChampion = champion;
+          resolvedBestChampion = champion;
         }
-      });
+      }
 
-      if (!bestChampion) return;
+      if (!resolvedBestChampion) return;
 
       const strongCounterTarget = enemyPicksList
         .map((enemyPick) => {
@@ -1645,31 +1674,35 @@ export default function ChampionDraft({
           if (!enemyChampion) return null;
           return {
             enemyChampion,
-            value: counterValue(bestChampion.id, enemyChampion.id),
+            value: counterValue(resolvedBestChampion.id, enemyChampion.id),
           };
         })
         .filter((item): item is { enemyChampion: ChampionData; value: number } => item !== null)
         .sort((a, b) => b.value - a.value)[0];
 
-      if (draftAdviceStage !== "ban" && bestChampion && bestMastery >= 50) {
+      if (draftAdviceStage !== "ban" && bestMastery >= 50) {
         if (sourceRole && ownCoveredRoles.has(sourceRole)) {
           return;
         }
         const pickPhraseText =
           strongCounterTarget && strongCounterTarget.value >= 2
             ? uniquePhrase(
+              gameIq >= 78
+                ? "match.draft.phrases.playerSmartCounterPick"
+                : "match.draft.phrases.playerCounterPick",
               gameIq >= 78 ? PLAYER_SMART_COUNTER_PICK_PHRASES : PLAYER_COUNTER_PICK_PHRASES,
-              `player-counter-pick-${player.id}-${bestChampion.id}-${strongCounterTarget.enemyChampion.id}-${stepIndex}`,
-              {
-                champion: bestChampion.name,
-                enemy: strongCounterTarget.enemyChampion.name,
-              },
-            )
+                 `player-counter-pick-${player.id}-${resolvedBestChampion.id}-${strongCounterTarget.enemyChampion.id}-${stepIndex}`,
+               {
+                 champion: resolvedBestChampion.name,
+                 enemy: strongCounterTarget.enemyChampion.name,
+               },
+             )
             : uniquePhrase(
+              "match.draft.phrases.playerComfortPick",
               PLAYER_COMFORT_PICK_PHRASES,
-              `player-comfort-pick-${player.id}-${bestChampion.id}-${stepIndex}`,
-              { champion: bestChampion.name, mastery: bestMastery },
-            );
+               `player-comfort-pick-${player.id}-${resolvedBestChampion.id}-${stepIndex}`,
+               { champion: resolvedBestChampion.name, mastery: bestMastery },
+             );
 
         tips.push({
           sourceType: "player",
@@ -1678,7 +1711,7 @@ export default function ChampionDraft({
           sourceImage,
           type: "pick",
           text: pickPhraseText,
-          champion: bestChampion,
+          champion: resolvedBestChampion,
         });
       }
 
@@ -1701,6 +1734,7 @@ export default function ChampionDraft({
           sourceImage,
           type: "ban",
           text: uniquePhrase(
+            "match.draft.phrases.playerBanRequest",
             PLAYER_BAN_REQUEST_PHRASES,
               `player-ban-${player.id}-${banTarget.id}-${bestChampionAny.champion.id}-${stepIndex}`,
               {
@@ -1715,7 +1749,7 @@ export default function ChampionDraft({
 
     const hasPlayerPickTip = tips.some((tip) => tip.sourceType === "player" && tip.type === "pick");
     if (draftAdviceStage !== "ban" && !hasPlayerPickTip) {
-      const fallbackPlayerIndex = ownPlayers.findIndex((player, index) => {
+      const fallbackPlayerIndex = ownPlayers.findIndex((_, index) => {
         const fallbackRole =
           mapSeedRoleToDraftRole(String(ownTeamSeedPlayers[index]?.role ?? "")) ?? ROLE_ORDER[index] ?? null;
         return fallbackRole ? !ownCoveredRoles.has(fallbackRole) : true;
@@ -1736,6 +1770,7 @@ export default function ChampionDraft({
             `/player-photos/${fallbackPlayer.id}.png`,
           type: "pick",
           text: uniquePhrase(
+            "match.draft.phrases.playerComfortPick",
             PLAYER_COMFORT_PICK_PHRASES,
             `player-fallback-pick-${fallbackPlayer.id}-${fallbackChampion.id}-${stepIndex}`,
             { champion: fallbackChampion.name, mastery: 60 },
@@ -1837,7 +1872,7 @@ export default function ChampionDraft({
     { label: t("match.draft.scoreLabels.synergy"), value: controlledScore.synergy },
     { label: t("match.draft.scoreLabels.mastery"), value: controlledScore.mastery },
     { label: t("match.draft.scoreLabels.comfort"), value: controlledScore.comfort },
-    { label: t("match.draft.scoreLabels.preparation", "Staff prep"), value: controlledScore.preparation },
+    { label: t("match.draft.scoreLabels.preparation"), value: controlledScore.preparation },
   ];
   const formattedScoreDelta = scoreDelta >= 0 ? `+${scoreDelta}` : `${scoreDelta}`;
   const seriesBansRequiresTwoRows = seriesLength > 1 && seriesLockedChampions.length > 10;
@@ -2030,10 +2065,12 @@ export default function ChampionDraft({
 
               <img
                 src={LEC_LOGO_URL}
-                alt="LEC"
+                alt={t("match.draft.leagueLogoAlt")}
                 className="w-10 h-10 object-contain opacity-100 mt-1"
               />
-              <p className="text-[11px] tracking-[0.15em] text-gray-300 uppercase mb-1">Patch {patchLabel}</p>
+              <p className="text-[11px] tracking-[0.15em] text-gray-300 uppercase mb-1">
+                {t("match.draft.patchLabel", { patch: patchLabel })}
+              </p>
             </div>
 
             {redOrderedPicks.map((pick, index) => (
@@ -2095,7 +2132,10 @@ export default function ChampionDraft({
                                 />
                               ) : null}
                               <p className="text-[10px] uppercase tracking-wide text-cyan-300/90">
-                                {tip.sourceRole ?? (tip.sourceType === "coach" ? "SEGUNDO ENTRENADOR" : "PLAYER")}
+                                {tip.sourceRole
+                                  ?? (tip.sourceType === "coach"
+                                    ? t("match.draft.assistantCoach")
+                                    : t("match.draft.playerLabel"))}
                               </p>
                             </div>
                           </div>
@@ -2209,7 +2249,7 @@ export default function ChampionDraft({
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   className="rounded-md bg-[#111318] border border-white/15 px-2 py-1.5 text-xs w-44"
-                  placeholder="Search..."
+                  placeholder={t("match.draft.searchPlaceholder")}
                 />
 
                 {!finished ? (
@@ -2219,7 +2259,7 @@ export default function ChampionDraft({
                     disabled={loading || champions.length === 0}
                     className="rounded-md bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-300/50 disabled:opacity-40 disabled:cursor-not-allowed text-cyan-100 px-2.5 py-1.5 text-[11px] font-heading uppercase tracking-wide"
                   >
-                    {t("match.draft.skipFast", "Skip (auto-best picks)")}
+                    {t("match.draft.skipFast")}
                   </button>
                 ) : null}
               </div>
@@ -2252,8 +2292,8 @@ export default function ChampionDraft({
                 <div className="relative flex items-center justify-between gap-2 rounded-md border border-white/12 bg-[#0c1018] px-2 py-1.5">
                   <p className="text-[11px] text-gray-300 truncate">
                     {pendingChampionId
-                      ? `${t("match.draft.selected", "Seleccionado")}: ${championById.get(pendingChampionId)?.name ?? pendingChampionId}`
-                      : t("match.draft.selectThenConfirm", "Seleccioná un campeón y confirmá")}
+                      ? `${t("match.draft.selected")}: ${championById.get(pendingChampionId)?.name ?? pendingChampionId}`
+                      : t("match.draft.selectThenConfirm")}
                   </p>
                   <button
                     type="button"
@@ -2261,7 +2301,9 @@ export default function ChampionDraft({
                     disabled={!pendingChampionId}
                     className="rounded-md bg-orange-500 hover:bg-orange-400 disabled:opacity-40 disabled:cursor-not-allowed text-navy-900 px-3 py-1 text-[11px] font-heading font-bold uppercase tracking-wide"
                   >
-                    {currentStep?.type === "ban" ? "Banear" : "Pickear"}
+                    {currentStep?.type === "ban"
+                      ? t("match.draft.actions.ban")
+                      : t("match.draft.actions.pick")}
                   </button>
                 </div>
               ) : null}
@@ -2312,7 +2354,7 @@ export default function ChampionDraft({
               <div className="space-y-1">
                 {rivalMasteryDisplay.length === 0 ? (
                   <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
-                    {t("match.draft.enemyComfortUnknown", "Sin maestrías rivales descubiertas")}
+                    {t("match.draft.enemyComfortUnknown")}
                   </div>
                 ) : null}
                 {rivalMasteryDisplay.map(({ champion, mastery, playerName, source }) => (
@@ -2329,10 +2371,10 @@ export default function ChampionDraft({
                         <p className="text-[10px] text-gray-400 truncate">{playerName}</p>
                         <p className="text-[9px] uppercase tracking-wide text-cyan-200/70 truncate">
                           {source === "insignia"
-                            ? t("match.draft.masterySourceSignature", "Insignia")
+                            ? t("match.draft.masterySourceSignature")
                             : source === "scouting"
-                              ? t("match.draft.masterySourceScouting", "Scouting")
-                              : t("match.draft.masterySourceStaff", "Lectura staff")}
+                              ? t("match.draft.masterySourceScouting")
+                              : t("match.draft.masterySourceStaff")}
                         </p>
                         <div className="mt-1 h-1.5 bg-black/35 rounded overflow-hidden">
                           <div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, mastery)}%` }} />
@@ -2366,7 +2408,7 @@ export default function ChampionDraft({
               })
             }
           >
-            {t("match.draft.finalizeDraft", "Finalizar draft")}
+            {t("match.draft.finalizeDraft")}
           </button>
         ) : null}
       </div>
@@ -2399,6 +2441,7 @@ function DraftSlot({
   swapTargetable: boolean;
   reorderFxActive: boolean;
 }) {
+  const { t } = useTranslation();
   const champion = pick ? championById.get(pick.championId) : null;
 
   return (
@@ -2445,7 +2488,7 @@ function DraftSlot({
               onSwapArm();
             }}
             className={`w-5 h-5 rounded border text-[10px] leading-none text-white ${swapArmed ? "bg-cyan-500/35 border-cyan-300/80" : "bg-black/65 border-white/25"}`}
-            title="Elegir campeón para intercambiar"
+            title={t("match.draft.swapTargetTitle")}
           >
             ▲
           </button>
@@ -2456,7 +2499,7 @@ function DraftSlot({
               onSwapArm();
             }}
             className={`w-5 h-5 rounded border text-[10px] leading-none text-white ${swapArmed ? "bg-cyan-500/35 border-cyan-300/80" : "bg-black/65 border-white/25"}`}
-            title="Elegir campeón para intercambiar"
+            title={t("match.draft.swapTargetTitle")}
           >
             ▼
           </button>

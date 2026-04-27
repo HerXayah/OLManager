@@ -141,11 +141,11 @@ export default function HomeRosterLineupCard({
             onClick={() => onNavigate?.("Squad")}
             className="text-primary-500 dark:text-primary-400 text-xs font-heading font-bold uppercase tracking-wider hover:text-primary-600 dark:hover:text-primary-300 transition-colors"
           >
-            {t("home.fullRoster", { defaultValue: "Full Roster" })}
+            {t("home.fullRoster")}
           </button>
         }
       >
-        {t("home.roster", { defaultValue: "Roster" })}
+        {t("home.roster")}
       </CardHeader>
       <CardBody>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
@@ -198,7 +198,7 @@ export default function HomeRosterLineupCard({
                       {player?.match_name ?? "—"}
                     </p>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                      OVR {ovr ?? "—"}
+                      {t("common.ovr")} {ovr ?? "—"}
                     </p>
                     {topChampion ? (
                       <p className="text-[10px] text-primary-300 truncate">{topChampion}</p>
@@ -208,13 +208,13 @@ export default function HomeRosterLineupCard({
 
                 <div className="mt-2 grid grid-cols-2 gap-1 text-[10px]">
                   <div className="rounded bg-navy-900/60 px-1.5 py-1 text-center">
-                    <p className="text-gray-400">{t("common.condition", { defaultValue: "Condition" })}</p>
+                    <p className="text-gray-400">{t("common.condition")}</p>
                     <p className="font-heading font-bold text-primary-400">
                       {condition !== null ? `${condition}%` : "—"}
                     </p>
                   </div>
                   <div className="rounded bg-navy-900/60 px-1.5 py-1 text-center">
-                    <p className="text-gray-400">{t("common.morale", { defaultValue: "Morale" })}</p>
+                    <p className="text-gray-400">{t("common.morale")}</p>
                     <p className="font-heading font-bold text-accent-400">
                       {morale !== null ? `${morale}%` : "—"}
                     </p>

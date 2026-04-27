@@ -218,6 +218,35 @@ describe("PressConference LoL social content", () => {
     expect(questions[0].question).toContain("underperformancePressure");
   });
 
+  it("returns a safe fallback question when no registry candidate matches", () => {
+    const lecState = {
+      ...makeGameState(),
+      league: {
+        ...makeGameState().league,
+        id: "lec",
+      },
+    };
+
+    const questions = buildPressConferenceQuestions({
+      snapshot: makeSnapshot({
+        home_score: 1,
+        away_score: 0,
+        events: [],
+      }),
+      gameState: lecState,
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0,
+    });
+
+    expect(questions).toHaveLength(1);
+    expect(questions[0].id).toBe("fallback-post-match");
+    expect(questions[0].responses.map((response) => response.id)).toEqual([
+      "credit-preparation",
+      "stay-measured",
+    ]);
+  });
+
   it("submits stable effect_id values while preserving text for news generation", async () => {
     render(
       <ThemeProvider>

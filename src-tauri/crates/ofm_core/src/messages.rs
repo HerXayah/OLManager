@@ -238,6 +238,12 @@ pub fn transfer_complete_message(player_name: &str, fee: u64, date: &str) -> Inb
     .with_category(MessageCategory::Transfer)
     .with_priority(MessagePriority::Normal)
     .with_sender_role("Director of Football")
+    .with_i18n(
+        "be.msg.transferComplete.subject",
+        "be.msg.transferComplete.body",
+        params(&[("player", player_name), ("fee", &fee_display)]),
+    )
+    .with_sender_i18n("be.sender.directorOfFootball", "be.role.directorOfFootball")
 }
 
 pub fn incoming_transfer_offer_message(
@@ -281,4 +287,14 @@ pub fn incoming_transfer_offer_message(
         player_id: Some(player_id.to_string()),
         ..Default::default()
     })
+    .with_i18n(
+        "be.msg.transferOffer.subject",
+        "be.msg.transferOffer.body",
+        params(&[
+            ("club", buying_team_name),
+            ("fee", &fee_display),
+            ("player", player_name),
+        ]),
+    )
+    .with_sender_i18n("be.sender.directorOfFootball", "be.role.directorOfFootball")
 }

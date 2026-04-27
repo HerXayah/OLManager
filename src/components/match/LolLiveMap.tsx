@@ -8,6 +8,7 @@ import {
   STRUCTURE_ICON_PATH,
 } from "../../lib/lolMapLayout";
 import type { ChampionSelectionByPlayer } from "./LolMatchLive";
+import { useTranslation } from "react-i18next";
 
 interface LolLiveMapProps {
   snapshot: MatchSnapshot;
@@ -59,6 +60,7 @@ function initials(name: string): string {
 }
 
 export default function LolLiveMap({ snapshot, championSelections }: LolLiveMapProps) {
+  const { t } = useTranslation();
   const units = snapshot.lol_map?.units ?? [];
 
   const playerNameById = new Map<string, string>();
@@ -71,12 +73,21 @@ export default function LolLiveMap({ snapshot, championSelections }: LolLiveMapP
     <div className="h-full w-full overflow-auto">
       <div className="mx-auto max-w-3xl">
         <div className="mb-2 flex items-center justify-between gap-2 text-xs text-gray-600 dark:text-gray-400">
-          <span className="font-heading uppercase tracking-wider">{snapshot.home_team.name} (Blue)</span>
-          <span className="font-heading uppercase tracking-wider">{snapshot.away_team.name} (Red)</span>
+          <span className="font-heading uppercase tracking-wider">
+            {t("match.liveMap.teamBlue", { team: snapshot.home_team.name })}
+          </span>
+          <span className="font-heading uppercase tracking-wider">
+            {t("match.liveMap.teamRed", { team: snapshot.away_team.name })}
+          </span>
         </div>
 
         <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-gray-200 bg-black shadow-xl dark:border-navy-600">
-          <img src="/map.webp" alt="Summoner's Rift" className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+          <img
+            src="/map.webp"
+            alt={t("match.liveMap.mapAlt")}
+            className="absolute inset-0 h-full w-full object-cover"
+            draggable={false}
+          />
 
           {STRUCTURES_LAYOUT.map((point) => (
             structureAlive(snapshot, point.id) ? (
@@ -181,19 +192,25 @@ export default function LolLiveMap({ snapshot, championSelections }: LolLiveMapP
         {snapshot.lol_map ? (
           <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-700 dark:text-gray-300">
             <div className="rounded border border-gray-200 px-2 py-1 dark:border-navy-600">
-              <p className="font-heading uppercase tracking-wider text-[10px] text-gray-500 dark:text-gray-400">Dragon</p>
+              <p className="font-heading uppercase tracking-wider text-[10px] text-gray-500 dark:text-gray-400">{t("match.liveMap.dragon")}</p>
               <p>
                 {snapshot.lol_map.objectives.dragon.alive
-                  ? `Alive (${snapshot.lol_map.objectives.dragon.current_kind ?? "Elemental"})`
-                  : `Respawn: ${snapshot.lol_map.objectives.dragon.next_spawn_minute ?? "—"}m`}
+                  ? t("match.liveMap.aliveWithKind", {
+                    kind: snapshot.lol_map.objectives.dragon.current_kind ?? t("match.liveMap.elemental"),
+                  })
+                  : t("match.liveMap.respawn", {
+                    minute: snapshot.lol_map.objectives.dragon.next_spawn_minute ?? "—",
+                  })}
               </p>
             </div>
             <div className="rounded border border-gray-200 px-2 py-1 dark:border-navy-600">
-              <p className="font-heading uppercase tracking-wider text-[10px] text-gray-500 dark:text-gray-400">Baron</p>
+              <p className="font-heading uppercase tracking-wider text-[10px] text-gray-500 dark:text-gray-400">{t("match.liveMap.baron")}</p>
               <p>
                 {snapshot.lol_map.objectives.baron.alive
-                  ? "Alive"
-                  : `Respawn: ${snapshot.lol_map.objectives.baron.next_spawn_minute ?? "—"}m`}
+                  ? t("match.liveMap.alive")
+                  : t("match.liveMap.respawn", {
+                    minute: snapshot.lol_map.objectives.baron.next_spawn_minute ?? "—",
+                  })}
               </p>
             </div>
           </div>

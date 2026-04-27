@@ -123,26 +123,26 @@ export default function ScoutingTab({
               </div>
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-heading uppercase tracking-wider">
-                  Academia y scouting
+                  {t("scouting.academyScoutingTag")}
                 </p>
                 {academyTeam && (
                   <p className="text-xs text-primary-500 dark:text-primary-300 mt-1">
-                    Academia adquirida
+                    {t("scouting.academyAcquired")}
                   </p>
                 )}
                 <p className="font-heading font-bold text-gray-800 dark:text-gray-100 mt-1">
-                  {academyTeam?.name ?? "Adquisición de academia pendiente"}
+                  {academyTeam?.name ?? t("scouting.academyPending")}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   {academyTeam
-                    ? `${academyRosterCount} jugadores en la plantilla adquirida`
-                    : "Compra un equipo ERL existente desde Academia para abrir el pipeline."}
+                    ? t("scouting.academyRosterCount", { count: academyRosterCount })
+                    : t("scouting.academyPipelineHint")}
                 </p>
               </div>
             </div>
             {!academyTeam && onNavigate && (
               <Button size="sm" variant="outline" onClick={() => onNavigate("YouthAcademy")}>
-                Ver opciones de adquisición
+                {t("scouting.viewAcquisitionOptions")}
               </Button>
             )}
           </div>

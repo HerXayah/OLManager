@@ -51,7 +51,8 @@ function getLolOvr(player: PlayerData): number {
 }
 
 export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdate }: YouthAcademyTabProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const numberLocale = i18n.language || "en";
   const myTeam = gameState.teams.find((team) => team.id === gameState.manager.team_id);
   const academyTeam = useMemo(
     () => findAcademyTeamForParent(gameState.teams, myTeam?.id),
@@ -82,12 +83,12 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
       })
       .catch(() => {
         setAcquisitionOptions([]);
-        setAcquisitionBlockedReason("No se pudieron cargar las opciones de academia.");
+        setAcquisitionBlockedReason(t("youthAcademy.loadOptionsError"));
       })
       .finally(() => {
         setAcquisitionLoading(false);
       });
-  }, [academyTeam, myTeam?.id]);
+  }, [academyTeam, myTeam?.id, t]);
 
   const youthPlayers = useMemo(
     () =>
@@ -214,41 +215,41 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
 
       {!academyTeam && (
         <Card accent="accent">
-          <CardHeader>Academia</CardHeader>
+          <CardHeader>{t("youthAcademy.academyCardTitle")}</CardHeader>
           <CardBody>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {acquisitionLoading
-                  ? "Cargando opciones para adquirir academia..."
+                  ? t("youthAcademy.acquisitionLoading")
                   : acquisitionOptions.length > 0
-                    ? "Todavia no tenes academia vinculada. Elegi un equipo ERL para adquirirla."
-                    : acquisitionBlockedReason ?? "No hay opciones de academia disponibles para tu equipo en este momento."}
+                    ? t("youthAcademy.acquisitionIntro")
+                    : acquisitionBlockedReason ?? t("youthAcademy.acquisitionNoOptions")}
               </p>
               {acquisitionOptions.length > 0 && (
                 <div className="grid gap-2 md:grid-cols-3">
                   <input
                     value={academyCustomName}
                     onChange={(event) => setAcademyCustomName(event.target.value)}
-                    placeholder="Nombre personalizado (opcional)"
+                    placeholder={t("youthAcademy.placeholderCustomName")}
                     className="w-full rounded-lg border border-gray-200 dark:border-navy-600 bg-white/80 dark:bg-navy-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-200"
                   />
                   <input
                     value={academyCustomShortName}
                     onChange={(event) => setAcademyCustomShortName(event.target.value)}
-                    placeholder="Sigla personalizada (opcional)"
+                    placeholder={t("youthAcademy.placeholderCustomShortName")}
                     className="w-full rounded-lg border border-gray-200 dark:border-navy-600 bg-white/80 dark:bg-navy-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-200"
                   />
                   <input
                     value={academyCustomLogoUrl}
                     onChange={(event) => setAcademyCustomLogoUrl(event.target.value)}
-                    placeholder="URL logo (opcional)"
+                    placeholder={t("youthAcademy.placeholderCustomLogoUrl")}
                     className="w-full rounded-lg border border-gray-200 dark:border-navy-600 bg-white/80 dark:bg-navy-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-200"
                   />
                 </div>
               )}
               {acquisitionOptions.length === 0 && (
                 <Button size="sm" variant="outline" disabled>
-                  Financiar academia
+                  {t("youthAcademy.fundAcademy")}
                 </Button>
               )}
               {acquisitionOptions.length > 0 && (
@@ -260,7 +261,7 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
                           {option.source_team_logo_url ? (
                             <img
                               src={option.source_team_logo_url}
-                              alt={`${option.source_team_name} logo`}
+                              alt={t("youthAcademy.sourceTeamLogoAlt", { team: option.source_team_name })}
                               className="w-8 h-8 object-contain"
                               loading="lazy"
                             />
@@ -271,7 +272,7 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-gray-800 dark:text-gray-100 truncate">{option.source_team_name}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {option.league_name} · {option.country} · €{option.acquisition_cost.toLocaleString("es-ES")}
+                            {option.league_name} · {option.country} · €{option.acquisition_cost.toLocaleString(numberLocale)}
                           </p>
                         </div>
                       </div>
@@ -295,7 +296,9 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
                           }
                         }}
                       >
-                        {acquiringSourceId === option.source_team_id ? "Financiando..." : "Financiar academia"}
+                        {acquiringSourceId === option.source_team_id
+                          ? t("youthAcademy.fundingAcademy")
+                          : t("youthAcademy.fundAcademy")}
                       </Button>
                     </div>
                   ))}
@@ -307,7 +310,9 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
       )}
 
       <Card>
-        <CardHeader>{academyTeam ? "Plantilla de academia" : "Academia no vinculada"}</CardHeader>
+        <CardHeader>
+          {academyTeam ? t("youthAcademy.academyRosterLinked") : t("youthAcademy.academyNotLinked")}
+        </CardHeader>
         <CardBody className="p-0">
           {youthPlayers.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12">
@@ -324,7 +329,9 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
                   <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">{t("youthAcademy.ovr")}</th>
                   <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">{t("youthAcademy.potential")}</th>
                   <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">{t("youthAcademy.condition")}</th>
-                  <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">Accion</th>
+                  <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
+                    {t("common.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-navy-600">
@@ -371,7 +378,7 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
                             }
                           }}
                         >
-                          {promotingPlayerId === player.id ? "Subiendo..." : "Subir"}
+                          {promotingPlayerId === player.id ? t("youthAcademy.promoting") : t("youthAcademy.promote")}
                         </Button>
                       </td>
                     </tr>

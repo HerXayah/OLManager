@@ -44,6 +44,12 @@ vi.mock("react-i18next", () => ({
       if (key === "scouting.judgingPotential") return "Judging Potential";
       if (key === "scouting.scoutLabel") return params?.name ? `Scout ${params.name}` : "Scout ";
       if (key === "scouting.daysLeft") return `${params?.days} days left`;
+      if (key === "scouting.academyScoutingTag") return "Academy and scouting";
+      if (key === "scouting.academyAcquired") return "Academy acquired";
+      if (key === "scouting.academyPending") return "Academy acquisition pending";
+      if (key === "scouting.academyRosterCount") return `${params?.count} players in the acquired roster`;
+      if (key === "scouting.academyPipelineHint") return "Acquire an existing ERL team from Youth Academy to unlock the pipeline.";
+      if (key === "scouting.viewAcquisitionOptions") return "View acquisition options";
       if (key === "common.all") return "All";
       if (key === "common.freeAgent") return "Free Agent";
       return key;
@@ -255,11 +261,11 @@ describe("ScoutingTab", () => {
       />,
     );
 
-    expect(screen.getByText("Academia y scouting")).toBeInTheDocument();
-    expect(screen.getByText("Compra un equipo ERL existente desde Academia para abrir el pipeline."))
+    expect(screen.getByText("Academy and scouting")).toBeInTheDocument();
+    expect(screen.getByText("Acquire an existing ERL team from Youth Academy to unlock the pipeline."))
       .toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Ver opciones de adquisición" }));
+    fireEvent.click(screen.getByRole("button", { name: "View acquisition options" }));
 
     expect(onNavigate).toHaveBeenCalledWith("YouthAcademy");
   });
@@ -283,11 +289,11 @@ describe("ScoutingTab", () => {
       />,
     );
 
-    expect(screen.getByText("Academia adquirida")).toBeInTheDocument();
+    expect(screen.getByText("Academy acquired")).toBeInTheDocument();
     expect(screen.getAllByText("Alpha Academy")).not.toHaveLength(0);
-    expect(screen.getByText("1 jugadores en la plantilla adquirida"))
+    expect(screen.getByText("1 players in the acquired roster"))
       .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Ver opciones de adquisición" }))
+    expect(screen.queryByRole("button", { name: "View acquisition options" }))
       .not.toBeInTheDocument();
   });
 });

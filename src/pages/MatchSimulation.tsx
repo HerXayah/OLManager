@@ -244,7 +244,7 @@ function normalizeDraftPayload(
     });
   };
 
-  const baseScore = { mastery: 0, synergy: 0, counter: 0, comfort: 0, total: 0 };
+  const baseScore = { mastery: 0, synergy: 0, counter: 0, comfort: 0, preparation: 0, total: 0 };
 
   return {
     blue: {

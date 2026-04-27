@@ -188,7 +188,7 @@ export default function TournamentsTab({
               league={league}
               teams={gameState.teams}
               onSelectTeam={onSelectTeam}
-              title={`${t("schedule.playoffs")} · Bracket`}
+              title={`${t("schedule.playoffs")} · ${t("tournaments.bracket")}`}
             />
           ) : null}
 
@@ -224,13 +224,13 @@ export default function TournamentsTab({
                         {t("common.won")}
                       </th>
                       <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                        WR
+                        {t("tournaments.winRateShort")}
                       </th>
                       <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
                         {t("common.lost")}
                       </th>
                       <th className="py-2 px-3 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                        +/-
+                        {t("common.gd")}
                       </th>
                     </tr>
                   </thead>
@@ -332,7 +332,7 @@ export default function TournamentsTab({
             league={league}
             teams={gameState.teams}
             onSelectTeam={onSelectTeam}
-            title={`${t("schedule.playoffs")} · Bracket`}
+            title={`${t("schedule.playoffs")} · ${t("tournaments.bracket")}`}
           />
         ) : (
           <Card>
@@ -360,19 +360,19 @@ export default function TournamentsTab({
                       {t("common.won")}
                     </th>
                       <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                        WR
+                        {t("tournaments.winRateShort")}
                       </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
                       {t("common.lost")}
                     </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      K
+                      {t("tournaments.killsShort")}
                     </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      D
+                      {t("tournaments.deathsShort")}
                     </th>
                     <th className="py-3 px-4 font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 text-center">
-                      +/-
+                      {t("common.gd")}
                     </th>
                   </tr>
                 </thead>

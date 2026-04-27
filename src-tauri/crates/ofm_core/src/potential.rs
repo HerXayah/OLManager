@@ -3,6 +3,13 @@ use domain::message::{InboxMessage, MessageCategory, MessageContext, MessagePrio
 use domain::player::Player;
 use std::collections::HashMap;
 
+fn params(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+    pairs
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect()
+}
+
 pub const POTENTIAL_RESEARCH_DURATION_DAYS: u8 = 7;
 
 pub fn active_potential_research_player_id(game: &Game) -> Option<String> {
@@ -112,6 +119,12 @@ pub fn process_potential_research(game: &mut Game) {
         .with_sender_role("Staff")
         .with_category(MessageCategory::Training)
         .with_priority(MessagePriority::Normal)
+        .with_i18n(
+            "be.msg.potentialReport.subject",
+            "be.msg.potentialReport.body",
+            params(&[("player", &player.match_name), ("potential", &revealed.to_string())]),
+        )
+        .with_sender_i18n("be.sender.performanceStaff", "be.role.performanceStaff")
         .with_context(MessageContext {
             player_id: Some(player.id.clone()),
             team_id: player.team_id.clone(),

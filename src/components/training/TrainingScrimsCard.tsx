@@ -27,8 +27,6 @@ const SLOT_WEEKDAYS: Record<string, number[]> = {
   Light: [1, 3],
 };
 
-const WEEKDAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] as const;
-
 function getWeekdayFromDate(dateStr: string): number {
   const date = new Date(dateStr);
   return (date.getUTCDay() + 6) % 7;
@@ -61,6 +59,15 @@ export default function TrainingScrimsCard({
   currentSchedule,
 }: TrainingScrimsCardProps) {
   const { t } = useTranslation();
+  const weekdayLabels = [
+    t("training.days.mon"),
+    t("training.days.tue"),
+    t("training.days.wed"),
+    t("training.days.thu"),
+    t("training.days.fri"),
+    t("training.days.sat"),
+    t("training.days.sun"),
+  ];
 
   const myTeam = gameState.teams.find((team) => team.id === gameState.manager.team_id);
   if (!myTeam) return null;
@@ -146,28 +153,27 @@ export default function TrainingScrimsCard({
       <CardHeader>
         <span className="inline-flex items-center gap-2">
           <Swords className="w-4 h-4 text-amber-400" />
-          {t("training.scrims.title", "Scrims semanales")}
+          {t("training.scrims.title")}
         </span>
       </CardHeader>
       <CardBody>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">
           {t(
             "training.scrims.description",
-            "Planificá scrims por día. El rendimiento rival se calcula con los 5 activos del roster; rivales más fuertes aceleran el crecimiento en Scrims.",
           )}
         </p>
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-gray-300 dark:border-navy-600 px-2.5 py-1 text-[11px] font-heading uppercase tracking-wide text-gray-600 dark:text-gray-300">
-            {t("training.scrims.weekCapacity", "Capacidad semanal")}: {slots}
+            {t("training.scrims.weekCapacity")}: {slots}
           </span>
           <span className="rounded-full border border-gray-300 dark:border-navy-600 px-2.5 py-1 text-[11px] font-heading uppercase tracking-wide text-gray-600 dark:text-gray-300">
-            {t("training.scrims.lossStreak", "Racha")}: {streak}
+            {t("training.scrims.lossStreak")}: {streak}
           </span>
           {usingAutoRandom ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/10 px-2.5 py-1 text-[11px] font-heading uppercase tracking-wide text-amber-300">
               <Shuffle className="h-3.5 w-3.5" />
-              {t("training.scrims.autoRandom", "Auto-random activo")}
+              {t("training.scrims.autoRandom")}
             </span>
           ) : null}
         </div>
@@ -183,7 +189,7 @@ export default function TrainingScrimsCard({
                     const previousSameDay = slotDays.slice(0, index).filter((candidate) => candidate === day).length;
                     const totalSameDay = slotDays.filter((candidate) => candidate === day).length;
                     const suffix = totalSameDay > 1 ? ` ${String.fromCharCode(65 + previousSameDay)}` : "";
-                    return `${WEEKDAY_LABELS[day]}${suffix}`;
+                    return `${weekdayLabels[day]}${suffix}`;
                   })()}
                 </span>
               </div>
@@ -195,7 +201,7 @@ export default function TrainingScrimsCard({
                 selectSize="sm"
                 fullWidth
               >
-                <option value="">{t("training.scrims.noOpponent", "Aleatorio")}</option>
+                <option value="">{t("training.scrims.noOpponent")}</option>
                 {options.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.name} · OVR {teamOvrById.get(team.id) ?? 74}
@@ -206,7 +212,7 @@ export default function TrainingScrimsCard({
                 {(selected[index] || resultBySlot.get(index)?.opponentTeamId) ? (
                   <img
                     src={teamLogoPath(selected[index] || resultBySlot.get(index)?.opponentTeamId || "")}
-                    alt="logo"
+                    alt={t("training.scrims.opponentLogoAlt")}
                     className="h-6 w-6 rounded-md object-contain bg-black/20 p-0.5"
                     loading="lazy"
                     onError={(event) => {
@@ -226,7 +232,7 @@ export default function TrainingScrimsCard({
               </div>
               {!selected[index] && resultBySlot.get(index)?.opponentTeamId ? (
                 <div className="col-start-2 text-[10px] text-amber-300">
-                  {t("training.scrims.randomResolved", "Aleatorio → {{team}}", {
+                  {t("training.scrims.randomResolved", {
                     team: teamNameById.get(resultBySlot.get(index)?.opponentTeamId ?? "")
                       ?? resultBySlot.get(index)?.opponentTeamId,
                   })}

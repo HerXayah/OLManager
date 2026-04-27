@@ -214,7 +214,19 @@
     "inProgress": "In Progress",
     "objectivesMet": "{{done}}/{{total}} objectives met — Board satisfaction: {{pct}}%",
     "unavailablePlayers": "Unavailable Players",
-    "daysUnavailable": "{{count}} day(s) remaining"
+    "daysUnavailable": "{{count}} day(s) remaining",
+    "schedule": "Schedule",
+    "roster": "Roster",
+    "matchShort": "Match",
+    "restShort": "Rest",
+    "leagueShort": "League",
+    "otherShort": "Other",
+    "projectedBalance": "Projected balance",
+    "rawCash": "Raw cash",
+    "monthlyNet": "Monthly Net",
+    "income": "Income",
+    "expenses": "Expenses",
+    "noUpcomingPlayoffMatch": "No upcoming playoff match."
   },
   "season": {
     "preseasonStatus": "Preseason Status",
@@ -281,7 +293,22 @@
     "potExcellent": "Excellent",
     "potPromising": "Promising",
     "potDecent": "Decent",
-    "potLimited": "Limited"
+    "potLimited": "Limited",
+    "loadOptionsError": "Could not load academy options.",
+    "academyCardTitle": "Academy",
+    "acquisitionLoading": "Loading academy acquisition options...",
+    "acquisitionIntro": "You do not have a linked academy yet. Choose an ERL team to acquire it.",
+    "acquisitionNoOptions": "No academy options are available for your team right now.",
+    "placeholderCustomName": "Custom name (optional)",
+    "placeholderCustomShortName": "Custom short name (optional)",
+    "placeholderCustomLogoUrl": "Logo URL (optional)",
+    "fundAcademy": "Fund academy",
+    "fundingAcademy": "Funding...",
+    "sourceTeamLogoAlt": "{{team}} logo",
+    "academyRosterLinked": "Academy roster",
+    "academyNotLinked": "Academy not linked",
+    "promoting": "Promoting...",
+    "promote": "Promote"
   },
   "common": {
     "loading": "Loading...",
@@ -552,7 +579,128 @@
     "compareSelectionHint": "Review both players below, then confirm the swap when you're ready.",
     "confirmSwap": "Confirm swap",
     "selectPitchPlayer": "Select a player in the lineup view to inspect their attributes.",
-    "selectAnotherToSwap": "Select a second player to compare them and confirm the swap."
+    "selectAnotherToSwap": "Select a second player to compare them and confirm the swap.",
+    "lol": {
+      "roles": {
+        "TOP": "Top lane",
+        "JUNGLE": "Jungle",
+        "MID": "Mid lane",
+        "ADC": "Bot lane (ADC)",
+        "SUPPORT": "Support"
+      },
+      "options": {
+        "strongSide": {
+          "Top": {
+            "label": "Top",
+            "description": "Play for top: priority resources and ganks on top side."
+          },
+          "Mid": {
+            "label": "Mid",
+            "description": "Mid is the map axis: tempo control and rotations."
+          },
+          "Bot": {
+            "label": "Bot",
+            "description": "Invest in bot lane to scale for fights and objectives."
+          }
+        },
+        "gameTiming": {
+          "Early": {
+            "label": "Early game",
+            "description": "Look for a lead before minute 14 with an aggressive pace."
+          },
+          "Mid": {
+            "label": "Mid game",
+            "description": "Power spike in mid game with objective setups."
+          },
+          "Late": {
+            "label": "Late game",
+            "description": "Prioritize scaling and execution in extended teamfights."
+          }
+        },
+        "jungleStyle": {
+          "Ganker": {
+            "label": "Gank",
+            "description": "Lane pressure jungle: punish mistakes early."
+          },
+          "Invader": {
+            "label": "Invade",
+            "description": "Enter enemy jungle to deny resources and vision."
+          },
+          "Farmer": {
+            "label": "Farm",
+            "description": "Maximize farm to hit mid/late game stronger."
+          },
+          "Enabler": {
+            "label": "Enable",
+            "description": "Jungle enables carries with cover and tempo."
+          }
+        },
+        "junglePathing": {
+          "TopToBot": {
+            "label": "Top -> Bot",
+            "description": "Open top side to end pathing toward bot side."
+          },
+          "BotToTop": {
+            "label": "Bot -> Top",
+            "description": "Open bot side to impact top in early windows."
+          }
+        },
+        "fightPlan": {
+          "FrontToBack": {
+            "label": "Front to back",
+            "description": "Structured teamfight: front line protects the carry."
+          },
+          "Pick": {
+            "label": "Pick",
+            "description": "Play vision and picks to fight with an advantage."
+          },
+          "Dive": {
+            "label": "Dive",
+            "description": "Explosive entries to enemy backline to remove carries."
+          },
+          "Siege": {
+            "label": "Siege",
+            "description": "Range and structure pressure without overextending."
+          }
+        },
+        "supportRoaming": {
+          "Lane": {
+            "label": "Play lane",
+            "description": "Support prioritizes bot 2v2, peel, and wave control."
+          },
+          "RoamMid": {
+            "label": "Roam mid",
+            "description": "After reset, roam mid for picks and vision control."
+          },
+          "RoamTop": {
+            "label": "Roam top",
+            "description": "Early top rotations for dives, grubs, and map tempo."
+          }
+        }
+      },
+      "noStarter": "No starter set",
+      "gamePlan": "Game plan",
+      "gamePlanDescription": "These tactics define how your team plays in simulation. They affect role impact and macro behavior (objectives/tempo) during the match. They are also used in scrims, pre-match tweaks, and between maps in Bo3/Bo5 series.",
+      "impactAndCoherence": "Impact and coherence",
+      "coherenceLabel": "Tactical coherence",
+      "coherence": {
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      },
+      "coherenceChecks": {
+        "junglePathToBot": "Jungle pathing toward bot side",
+        "junglePathToTop": "Jungle pathing toward top side",
+        "timingVsJungleStyle": "Timing vs jungle style",
+        "fightPlanVsExecution": "Fight plan vs execution",
+        "supportRoamVsStrongSide": "Support roaming vs strong side"
+      },
+      "score": "Score",
+      "roleImpact": "Role impact",
+      "variance": "variance",
+      "tip": "Tip: if coherence score is low, align strong side + jungle pathing + game timing.",
+      "autoSave": "Changes are saved automatically"
+    }
   },
   "training": {
     "weeklySchedule": "Weekly Schedule",
@@ -677,6 +825,16 @@
         "3": "Macro Lab",
         "4": "Reset Block"
       }
+    },
+    "scrims": {
+      "title": "Weekly scrims",
+      "description": "Plan scrims by day. Opponent strength is calculated from each rival's active five; stronger rivals accelerate scrim growth.",
+      "weekCapacity": "Weekly capacity",
+      "lossStreak": "Streak",
+      "autoRandom": "Auto-random active",
+      "noOpponent": "Random",
+      "randomResolved": "Random -> {{team}}",
+      "opponentLogoAlt": "Opponent logo"
     }
   },
   "staff": {
@@ -708,6 +866,24 @@
       "Attacking": "Attacking",
       "GoalKeeping": "Goalkeeping",
       "Youth": "Youth Dev"
+    },
+    "lolAttrs": {
+      "coaching": "LoL coaching",
+      "judgingAbility": "Meta reading",
+      "judgingPotential": "Meta projection",
+      "physiotherapy": "Recovery"
+    },
+    "lolImpactTeamTitle": "LoL staff team impact",
+    "lolImpactTitle": "LoL impact",
+    "lolImpact": {
+      "development": "Development",
+      "tactics": "Scrim prep",
+      "analysis": "Meta read",
+      "execution": "Execution",
+      "recovery": "Recovery",
+      "draftAnalysis": "Draft analysis",
+      "futureMeta": "Future meta",
+      "tiltControl": "Tilt control"
     }
   },
   "finances": {
@@ -926,6 +1102,7 @@
     "noLeague": "No league schedule available.",
     "fixtures": "Fixtures",
     "standings": "Standings",
+    "viewResult": "View result",
     "matchday": "Matchday {{number}}",
     "playoffs": "Playoffs",
     "round": "Round {{number}}",
@@ -972,6 +1149,14 @@
     "nTeams": "{{count}} teams",
     "progress": "Progress",
     "matches": "Matches",
+    "bracket": "Bracket",
+    "winRateShort": "WR",
+    "killsShort": "K",
+    "deathsShort": "D",
+    "playoffBracketTitle": "Playoff bracket",
+    "upperBracket": "Upper Bracket",
+    "lowerBracket": "Lower Bracket",
+    "scheduled": "Scheduled",
     "goals": "Goals",
     "overview": "Overview",
     "leagueTable": "League Table",
@@ -983,6 +1168,7 @@
     "newsWillAppear": "News will appear as the season progresses.",
     "backToNews": "Back to News",
     "nArticles": "{{count}} article(s)",
+    "allTeams": "All teams",
     "categories": {
       "MatchReport": "Match Report",
       "LeagueRoundup": "League Roundup",
@@ -1081,7 +1267,13 @@
     "renewalProjectionTitle": "Projected financial impact",
     "renewalProjectionWageBill": "Weekly wage bill {{before}} → {{after}}",
     "renewalProjectionBudgetUsage": "Wage budget use {{before}}% → {{after}}%",
-    "renewalProjectionRunway": "Cash runway {{before}} → {{after}}"
+    "renewalProjectionRunway": "Cash runway {{before}} → {{after}}",
+    "scoutSending": "Sending...",
+    "championPoolTitle": "Champion pool",
+    "championInsignia": "Insignia",
+    "championWinRateShort": "WR",
+    "championMasteryLabel": "Mastery {{value}}",
+    "championGames": "Games"
   },
   "teamProfile": {
     "clubInfo": "Team Information",
@@ -1222,7 +1414,13 @@
     "morale": "Morale",
     "estimatedAttributes": "Estimated Attributes",
     "undiscovered": "Not discovered",
-    "confidence": "Confidence"
+    "confidence": "Confidence",
+    "academyScoutingTag": "Academy and scouting",
+    "academyAcquired": "Academy acquired",
+    "academyPending": "Academy acquisition pending",
+    "academyRosterCount": "{{count}} players in the acquired roster",
+    "academyPipelineHint": "Acquire an existing ERL team from Youth Academy to unlock the pipeline.",
+    "viewAcquisitionOptions": "View acquisition options"
   },
   "match": {
     "live": "Live",
@@ -1244,6 +1442,14 @@
     "keyEvents": "Key Events",
     "noEventsYet": "Match hasn't started yet.",
     "waitingKickoff": "Waiting for kick-off...",
+    "waitingFirstSkirmish": "Waiting for first skirmish...",
+    "liveControls": "Live controls",
+    "play": "Play",
+    "reset": "Reset",
+    "skipWarningTitle": "Warning",
+    "skipWarningBody": "Skip Match now re-simulates from minute 0. You will lose all progress from this live match.",
+    "resimFromZero": "Re-simulate from 0",
+    "clearingBattlefield": "Clearing battlefield...",
     "draft": {
       "title": "Draft",
       "completed": "Draft completed",
@@ -1259,6 +1465,19 @@
       "loadingChampions": "Loading champions...",
       "loadError": "Error loading champions",
       "noChampionsForFilters": "No champions available with the current filters.",
+      "searchPlaceholder": "Search...",
+      "selected": "Selected",
+      "selectThenConfirm": "Select a champion and confirm",
+      "enemyComfortUnknown": "No rival mastery discovered",
+      "masterySourceSignature": "Signature",
+      "masterySourceScouting": "Scouting",
+      "masterySourceStaff": "Staff read",
+      "assistantCoach": "Assistant coach",
+      "playerLabel": "Player",
+      "swapTargetTitle": "Choose champion to swap",
+      "warnCounterLastPick": "Careful with {{champion}}: it is countering your last pick.",
+      "warnTimingIdentity": "We are missing a clear timing identity. Look for an Early or Late pick to close better.",
+      "warnRoleCoverage": "We still have role gaps. Add a more flexible pick.",
       "scoreLine": "{{side}} · Total {{total}} (M {{mastery}}, S {{synergy}}, C {{counter}}, Co {{comfort}})",
       "championSelection": "Champion selection",
       "stepCounter": "Step {{current}}/{{total}}",
@@ -1285,9 +1504,53 @@
         "ban": "Ban",
         "pick": "Pick"
       },
+      "leagueLogoAlt": "League logo",
+      "patchLabel": "Patch {{patch}}",
       "sides": {
         "blue": "Blue side",
         "red": "Red side"
+      },
+      "phrases": {
+        "coachBan": {
+          "0": "If we leave {{champion}} open, {{player}} punishes us: {{mastery}}% mastery.",
+          "1": "{{champion}} is pure comfort for {{player}} ({{mastery}}%). I would remove it in bans.",
+          "2": "Ban priority: {{champion}}. {{player}} plays it at a {{mastery}}% level.",
+          "3": "Do not give away {{champion}}; {{player}} already showed {{mastery}}% on that pick.",
+          "4": "Early ban on {{champion}}. That matchup is dangerous in {{player}}'s hands ({{mastery}}%).",
+          "5": "I am worried about {{champion}}: {{player}} looks very comfortable ({{mastery}}%)."
+        },
+        "playerCounterPick": {
+          "0": "Pick me {{champion}}. I win the matchup into {{enemy}}.",
+          "1": "Give me {{champion}}; I can break lane against {{enemy}}.",
+          "2": "With {{champion}} I get real advantage over {{enemy}}. Trust me.",
+          "3": "{{champion}} is the right answer into {{enemy}}. Leave it to me.",
+          "4": "If they go {{enemy}}, I want {{champion}}: I studied that lane.",
+          "5": "Comfort plus counter pick: {{champion}} into {{enemy}}. This is the moment."
+        },
+        "playerSmartCounterPick": {
+          "0": "Please pick {{champion}} for me; with my game read I can break this matchup into {{enemy}}.",
+          "1": "With {{champion}} I can outplay {{enemy}} from wave 1. Give me that pick.",
+          "2": "{{enemy}} gets exposed if you give me {{champion}}. I can snowball it.",
+          "3": "I have perfect timing to punish {{enemy}} with {{champion}}.",
+          "4": "Trust me: {{champion}} vs {{enemy}} is technical advantage for us.",
+          "5": "This matchup heavily favors me: {{champion}} into {{enemy}}. I want to play it."
+        },
+        "playerComfortPick": {
+          "0": "I feel very solid on {{champion}} ({{mastery}}% mastery).",
+          "1": "If you give me {{champion}}, I can guarantee consistency ({{mastery}}%).",
+          "2": "{{champion}} is my most reliable pick right now ({{mastery}}%).",
+          "3": "I am comfortable carrying with {{champion}} ({{mastery}}% mastery).",
+          "4": "{{champion}} gives me early impact and control ({{mastery}}%).",
+          "5": "I want {{champion}}; I practiced it a lot ({{mastery}}%)."
+        },
+        "playerBanRequest": {
+          "0": "Can we ban {{threat}}? It is one of the few picks that shuts down my {{champion}}.",
+          "1": "If we remove {{threat}}, my {{champion}} becomes much freer.",
+          "2": "I need {{threat}} out; it hurts the plan too much with {{champion}}.",
+          "3": "Ban {{threat}} and I can play {{champion}} with much more pressure.",
+          "4": "{{threat}} is a hard counter to {{champion}}. Better remove it now.",
+          "5": "If you want me on {{champion}}, the best move is removing {{threat}}."
+        }
       }
     },
     "assist": "assist: {{name}}",
@@ -1364,6 +1627,55 @@
     "postMatchTeamTalk": "Post-Match Team Talk",
     "addressPlayers": "Address your players after the match.",
     "matchOver": "Match Over",
+    "tacticsBeforeLive": "Adjust the plan and, when ready, start live mode.",
+    "runParallelSims": "Run 8 sims",
+    "stopParallelSims": "Stop sims",
+    "startLive": "Go live",
+    "draftResult": {
+      "mvp": "MVP",
+      "series": "Series",
+      "bestOfMatch": "Best of the match",
+      "goldAdvantage": "Gold advantage",
+      "duration": "Duration",
+      "performance": "Performance",
+      "gameTimeline": "Game timeline",
+      "blueNext": "Blue next",
+      "redNext": "Red next"
+    },
+    "lolResult": {
+      "dragonSummary": "Dragon {{kind}} · H/A stacks {{home}}/{{away}} · Soul {{soul}}",
+      "performanceHeader": "Performance · K / D / A · CS · Gold",
+      "teamStats": "Team stats",
+      "goldDiffOverTime": "Gold difference over time",
+      "keyTimeline": "Key timeline",
+      "stats": {
+        "gold": "Gold",
+        "towers": "Towers",
+        "dragons": "Dragons",
+        "barons": "Barons",
+        "kills": "Kills"
+      }
+    },
+    "liveMap": {
+      "teamBlue": "{{team}} (Blue)",
+      "teamRed": "{{team}} (Red)",
+      "mapAlt": "Summoner's Rift",
+      "dragon": "Dragon",
+      "baron": "Baron",
+      "alive": "Alive",
+      "aliveWithKind": "Alive ({{kind}})",
+      "elemental": "Elemental",
+      "respawn": "Respawn: {{minute}}m"
+    },
+    "liveA11y": {
+      "towerIcon": "Tower",
+      "goldIcon": "Gold",
+      "lecLogo": "League logo",
+      "dragonIcon": "Dragon",
+      "voidgrubIcon": "Voidgrub",
+      "killerIcon": "Killer",
+      "victimIcon": "Victim"
+    },
     "ratings": "{{team}} Ratings",
     "motm": "Man of the Match",
     "roundSummary": "Round Summary",
@@ -1621,7 +1933,10 @@
       "intlLiaison": "International Liaison",
       "player": "Player",
       "pressOfficer": "Press Officer",
-      "scout": "Scout"
+      "scout": "Scout",
+      "performanceStaff": "Performance Staff",
+      "coachingStaff": "Coaching Staff",
+      "academyCoordinator": "Academy Coordinator"
     },
     "role": {
       "chairman": "Chairman",
@@ -1635,17 +1950,20 @@
       "directorOfFootball": "Director of Football",
       "intlLiaison": "International Liaison",
       "player": "Player",
-      "scout": "Scout"
+      "scout": "Scout",
+      "performanceStaff": "Performance Staff",
+      "coachingStaff": "Coaching Staff",
+      "academyCoordinator": "Academy Coordinator"
     },
     "source": {
-      "sportsGazette": "Esports Gazette",
-      "footballHerald": "The Rift Herald",
-      "matchDayPress": "Matchday Desk",
-      "leagueChronicle": "League Pulse",
-      "leagueWire": "Rift Wire",
-      "riftWire": "Rift Wire",
-      "riftHerald": "The Rift Herald",
-      "leaguePulse": "League Pulse"
+      "sportsGazette": "Dot Esports",
+      "footballHerald": "LoL Esports",
+      "matchDayPress": "Dexerto Esports",
+      "leagueChronicle": "Sheep Esports",
+      "leagueWire": "Esports Insider",
+      "riftWire": "Inven Global",
+      "riftHerald": "Riot Games Newsroom",
+      "leaguePulse": "The Shotcaller"
     },
     "msg": {
       "welcome": {
@@ -2026,6 +2344,36 @@
       "jobRejection": {
         "subject": "Application Update — {{team}}",
         "body": "Thank you for your interest in the managerial position at {{team}}. After careful consideration, we have decided to pursue other candidates. We wish you the best in your future career."
+      },
+      "transferComplete": {
+        "subject": "Transfer Complete: {{player}}",
+        "body": "The transfer of {{player}} has been completed for a fee of {{fee}}.\n\nThe player has joined the squad and is available for selection."
+      },
+      "transferOffer": {
+        "subject": "Incoming Offer for {{player}}",
+        "body": "{{club}} have submitted an offer of {{fee}} for {{player}}. Review the bid in the Transfers tab to accept or reject it.",
+        "actionReview": "Review Offer"
+      },
+      "potentialReport": {
+        "subject": "Potential report completed",
+        "body": "Scouting finished evaluating {{player}}. New potential estimate: {{potential}}."
+      },
+      "scrimWeekly": {
+        "subject": "Weekly Scrim Staff Report",
+        "body": "Weekly scrim report:\n\nPlayed: {{played}}\nWins: {{wins}}\nLosses: {{losses}}\nCurrent loss streak: {{lossStreak}}\n\nScrim progress applies even on losses, but extended losing streaks are hurting morale."
+      },
+      "patchNotes": {
+        "subject": "Patch {{label}} Notes",
+        "body": "Patch {{label}} deployed.\n\nBuffed: {{buffed}}\nNerfed: {{nerfed}}\n\nYour staff is already scouting the new tier shifts."
+      },
+      "academyWeeklyEmpty": {
+        "subject": "Academy weekly report",
+        "body": "Academy {{academy}} has no active players this week. Review acquisition and promotion flow to keep your pipeline healthy."
+      },
+      "academyWeekly": {
+        "subject": "Academy weekly report: {{academy}}",
+        "body": "Academy weekly summary:\n- Active players: {{activePlayers}}\n- Average OVR: {{avgOvr}}\n- High potential talents (>= 80): {{highPotential}}\n- Highlights: {{highlights}}\n- Current ERL rank: #{{position}} of {{total}}\n- Quick table: {{tablePreview}}",
+        "bodyWithPromotion": "Academy weekly summary:\n- Active players: {{activePlayers}}\n- Average OVR: {{avgOvr}}\n- High potential talents (>= 80): {{highPotential}}\n- Highlights: {{highlights}}\n- Current ERL rank: #{{position}} of {{total}}\n- Quick table: {{tablePreview}}\n\nRecommendation: {{promotionCount}} player(s) ready for promotion -> {{promotionList}}."
       }
     },
     "news": {
@@ -2033,29 +2381,29 @@
         "headline": {
           "homeWin": {
             "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Hosts Control the Rift",
-            "1": "{{home}} Edge Past {{away}} in Matchday {{matchday}}",
-            "2": "Clinical {{home}} Close Out {{away}}"
+            "1": "{{home}} Outdraft {{away}} in Matchday {{matchday}}",
+            "2": "Clean series from {{home}} over {{away}}"
           },
           "awayWin": {
             "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Visitors Strike on the Rift",
-            "1": "{{away}} Stun {{home}} Away from Base",
-            "2": "Road Series Delight for {{away}}"
+            "1": "{{away}} punish {{home}} in draft and tempo",
+            "2": "Road series win for {{away}}"
           },
           "draw": {
             "0": "{{home}} {{homeGoals}} - {{awayGoals}} {{away}}: Series Ends Level",
-            "1": "{{home}} and {{away}} Share the Points",
-            "2": "Even Series Between {{home}} and {{away}}"
+            "1": "{{home}} and {{away}} split the maps",
+            "2": "No edge found between {{home}} and {{away}}"
           }
         },
-        "body0": "In Matchday {{matchday}} action, the series ended {{home}} {{homeGoals}} - {{awayGoals}} {{away}}. The result could shape league standings as the split progresses.\n\nKey plays: {{scorers}}",
-        "body1": "The series ended {{home}} {{homeGoals}} - {{awayGoals}} {{away}} in a Matchday {{matchday}} clash. Both sides contested drafts, objectives and late-game calls.\n\nKey plays: {{scorers}}",
-        "body2": "Matchday {{matchday}} delivered another competitive series as {{home}} faced {{away}} ({{homeGoals}}-{{awayGoals}}). Fans saw draft adaptations and objective fights throughout.\n\nKey plays: {{scorers}}"
+        "body1": "The series closed {{home}} {{homeGoals}} - {{awayGoals}} {{away}} in Matchday {{matchday}}. Both teams traded draft adaptations, objective setups and late-game calls.\n\nPlayer of the match: {{playerOfMatch}}",
+        "body2": "Matchday {{matchday}} delivered another competitive series between {{home}} and {{away}} ({{homeGoals}}-{{awayGoals}}). Fans got draft pivots and objective fights all the way.\n\nPlayer of the match: {{playerOfMatch}}",
+        "body0": "Matchday {{matchday}} wrapped with {{home}} {{homeGoals}} - {{awayGoals}} {{away}}. The result can influence standings momentum as the split progresses.\n\nPlayer of the match: {{playerOfMatch}}"
       },
       "roundup": {
         "headline0": "Matchday {{matchday}} Round-Up: {{totalMaps}} Maps Across the Rift",
         "headline1": "League Matchday {{matchday}}: All the Series Results",
         "headline2": "Drafts, Objectives and Maps Define Matchday {{matchday}}",
-        "body": "Matchday {{matchday}} is in the books. Here are the full series results:\n\n{{results}}\n\n{{totalMaps}} maps played across {{matchCount}} series."
+        "body": "Matchday {{matchday}} is complete. Here are the full series results:\n\n{{results}}\n\n{{totalMaps}} maps played across {{matchCount}} series."
       },
       "standings": {
         "headline0": "{{leader}} Lead the Standings After Matchday {{matchday}}",
@@ -2083,6 +2431,10 @@
           "headline": "{{team}} Extend Series Run to {{runLength}}",
           "body": "{{team}} have gone {{runLength}} series without a loss and are building real momentum around drafts and objectives."
         }
+      },
+      "transferRumour": {
+        "headline": "{{player}} Complete Move to {{to}}",
+        "body": "{{to}} have completed the signing of {{player}} from {{from}} for {{fee}}."
       }
     }
   },

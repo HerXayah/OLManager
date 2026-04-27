@@ -177,18 +177,50 @@ export function buildPressConferenceQuestions({
     }),
     random,
   );
-  if (!candidate) return [];
+
+  const fallbackResponses: PressResponse[] = [
+    {
+      id: "credit-preparation",
+      tone: t("content.lol.social.responses.creditPreparation.label"),
+      text: t("content.lol.social.responses.creditPreparation.text"),
+      effectId: "press_squad_morale_small_up",
+      target: "squad",
+    },
+    {
+      id: "stay-measured",
+      tone: t("content.lol.social.responses.stayMeasured.label"),
+      text: t("content.lol.social.responses.stayMeasured.text"),
+      effectId: "press_no_effect",
+      target: "none",
+    },
+  ];
+
+  if (!candidate) {
+    return [
+      {
+        id: "fallback-post-match",
+        journalist: "Verified Analyst",
+        outlet: "Rift Desk",
+        question: t("content.lol.social.questions.cleanWinObjectives.text"),
+        responses: fallbackResponses,
+      },
+    ];
+  }
 
   const responses = filterEligibleResponses(SOCIAL_CONTENT_PACK.responses, {
     responseIds: candidate.question.responseIds,
     allowedTones: candidate.question.tones,
-  }).map((response) => ({
-    id: response.id,
-    tone: t(response.labelKey),
-    text: t(response.textKey),
-    effectId: response.effectId,
-    target: response.target,
-  }));
+  })
+    .map((response) => ({
+      id: response.id,
+      tone: t(response.labelKey),
+      text: t(response.textKey),
+      effectId: response.effectId,
+      target: response.target,
+    }))
+    .filter((response) => response.text && response.tone);
+
+  const safeResponses = responses.length > 0 ? responses : fallbackResponses;
 
   const targetPlayerId =
     responses.some((response) => response.target === "player") && typeof context.facts.worstPlayerId === "string"
@@ -201,7 +233,7 @@ export function buildPressConferenceQuestions({
       journalist: candidate.personaName,
       outlet: candidate.outletName,
       question: t(candidate.question.textKey),
-      responses,
+      responses: safeResponses,
       playerId: targetPlayerId,
     },
   ];

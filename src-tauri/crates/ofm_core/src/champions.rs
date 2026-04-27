@@ -8,6 +8,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
+fn params(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+    pairs
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect()
+}
+
 const MIN_MASTERY: u8 = 25;
 const MASTERY_CAP: u8 = 100;
 const PATCH_INTERVAL_DAYS: i64 = 14;
@@ -886,19 +893,21 @@ fn apply_patch(game: &mut Game) {
         .collect();
 
     let label = game.champion_patch.current_patch_label.clone();
+    let buffed_list = if buffs.is_empty() {
+        "-".to_string()
+    } else {
+        buffs.join(", ")
+    };
+    let nerfed_list = if nerfs.is_empty() {
+        "-".to_string()
+    } else {
+        nerfs.join(", ")
+    };
     let body = format!(
         "Patch {} deployed.\n\nBuffed: {}\nNerfed: {}\n\nYour staff is already scouting the new tier shifts.",
         label,
-        if buffs.is_empty() {
-            "-".to_string()
-        } else {
-            buffs.join(", ")
-        },
-        if nerfs.is_empty() {
-            "-".to_string()
-        } else {
-            nerfs.join(", ")
-        },
+        buffed_list,
+        nerfed_list,
     );
 
     let msg = InboxMessage::new(
@@ -910,7 +919,13 @@ fn apply_patch(game: &mut Game) {
     )
     .with_category(MessageCategory::System)
     .with_priority(MessagePriority::Normal)
-    .with_sender_role("Competition Team");
+    .with_sender_role("Competition Team")
+    .with_i18n(
+        "be.msg.patchNotes.subject",
+        "be.msg.patchNotes.body",
+        params(&[("label", &label), ("buffed", &buffed_list), ("nerfed", &nerfed_list)]),
+    )
+    .with_sender_i18n("be.sender.leagueOffice", "be.role.competitionSecretary");
 
     game.messages.push(msg);
 }

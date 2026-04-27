@@ -423,19 +423,19 @@ export default function PostMatchScreen({
                 </h3>
               </div>
               <QuickStat
-                label="Possession"
+                label={t("match.possession")}
                 home={`${snapshot.home_possession_pct.toFixed(0)}%`}
                 away={`${snapshot.away_possession_pct.toFixed(0)}%`}
                 homePct={snapshot.home_possession_pct}
               />
-              <QuickStat label="Shots" home={homeShots} away={awayShots} />
+              <QuickStat label={t("match.shots")} home={homeShots} away={awayShots} />
               <QuickStat
-                label="Fouls"
+                label={t("match.fouls")}
                 home={countType(homeEvents, "Foul")}
                 away={countType(awayEvents, "Foul")}
               />
               <QuickStat
-                label="Corners"
+                label={t("match.corners")}
                 home={countType(homeEvents, "Corner")}
                 away={countType(awayEvents, "Corner")}
               />

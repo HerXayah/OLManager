@@ -108,7 +108,7 @@ export default function InboxMessageDetailPane({
             className="bg-red-500 hover:bg-red-600 active:bg-red-700 focus:ring-red-500"
             data-testid="inbox-delete-message"
           >
-            {t("inbox.deleteMessage", "Delete message")}
+            {t("inbox.deleteMessage")}
           </Button>
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function InboxMessageDetailPane({
             <div className="mt-4 p-3 bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/30 rounded-xl flex items-center gap-2 animate-pulse">
               <CheckCircle2 className="w-4 h-4 text-primary-500 shrink-0" />
               <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                {t("inbox.effectOutcomeLabel", "Outcome")}: {effectFeedback}
+                {t("inbox.effectOutcomeLabel")}: {effectFeedback}
               </span>
             </div>
           ) : null}
@@ -172,7 +172,7 @@ export default function InboxMessageDetailPane({
                       >
                         <CheckCircle2 className="w-4 h-4 text-primary-500" />
                         <span className="font-heading font-bold uppercase tracking-wider text-xs">
-                          {t("inbox.responded", "Response sent")}
+                          {t("inbox.responded")}
                         </span>
                       </div>
                     );
@@ -183,13 +183,11 @@ export default function InboxMessageDetailPane({
                       <p className="text-xs font-heading font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 flex items-center gap-1.5 mb-3">
                         <MessageCircle className="w-3.5 h-3.5" />
                         {isPlayerEventMessage(selectedMessage.id)
-                          ? t(
+                            ? t(
                               "inbox.chooseResponseOutcomeVaries",
-                              "Choose your response — outcome varies",
                             )
-                          : t(
+                            : t(
                               "inbox.chooseResponse",
-                              "Choose your response",
                             )}
                       </p>
                       {options.map((option) => (

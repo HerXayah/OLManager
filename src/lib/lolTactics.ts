@@ -108,24 +108,24 @@ export function computeRoleModifiers(tactics: LolTacticsData): Record<DraftRole,
   return mod;
 }
 
-export function computeCoherenceBreakdown(tactics: LolTacticsData): Array<{ label: string; delta: number }> {
-  const checks: Array<{ label: string; delta: number }> = [];
+export function computeCoherenceBreakdown(tactics: LolTacticsData): Array<{ labelKey: string; delta: number }> {
+  const checks: Array<{ labelKey: string; delta: number }> = [];
 
   if (tactics.strong_side === "Bot") {
-    checks.push({
-      label: "Ruta de JUNGLE hacia bot side",
+      checks.push({
+      labelKey: "tactics.lol.coherenceChecks.junglePathToBot",
       delta: tactics.jungle_pathing === "TopToBot" ? 0.5 : -0.5,
     });
   }
   if (tactics.strong_side === "Top") {
     checks.push({
-      label: "Ruta de JUNGLE hacia top side",
+      labelKey: "tactics.lol.coherenceChecks.junglePathToTop",
       delta: tactics.jungle_pathing === "BotToTop" ? 0.5 : -0.5,
     });
   }
 
   checks.push({
-    label: "Timing vs estilo de JUNGLE",
+    labelKey: "tactics.lol.coherenceChecks.timingVsJungleStyle",
     delta:
       tactics.game_timing === "Early"
         ? tactics.jungle_style === "Ganker" || tactics.jungle_style === "Invader"
@@ -139,7 +139,7 @@ export function computeCoherenceBreakdown(tactics: LolTacticsData): Array<{ labe
   });
 
   checks.push({
-    label: "Plan de pelea vs ejecución",
+    labelKey: "tactics.lol.coherenceChecks.fightPlanVsExecution",
     delta:
       tactics.fight_plan === "Pick"
         ? tactics.jungle_style === "Ganker" || tactics.jungle_style === "Invader"
@@ -153,7 +153,7 @@ export function computeCoherenceBreakdown(tactics: LolTacticsData): Array<{ labe
   });
 
   checks.push({
-    label: "Roaming support vs lado fuerte",
+    labelKey: "tactics.lol.coherenceChecks.supportRoamVsStrongSide",
     delta:
       tactics.support_roaming === "Lane"
         ? tactics.strong_side === "Bot"

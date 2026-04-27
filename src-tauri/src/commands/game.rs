@@ -8,6 +8,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
+use tauri::Manager as TauriManager;
 use tauri::State;
 
 use db::save_index::SaveEntry;
@@ -625,16 +626,34 @@ pub(crate) fn ensure_example_academy_pool(game: &mut Game) {
     bootstrap_example_academy_pool_from_example(&mut game.teams, &mut game.players, &bootstrap_date);
 }
 
-fn resolve_default_world_path() -> Result<std::path::PathBuf, String> {
+fn resolve_default_world_path(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     let cwd = std::env::current_dir().map_err(|e| format!("Failed to read current dir: {}", e))?;
-    let candidates = [
+    let mut candidates = vec![
+        app_handle
+            .path()
+            .resource_dir()
+            .ok()
+            .map(|dir| dir.join("databases").join("lec_world.json")),
         cwd.join("src-tauri")
             .join("databases")
-            .join("lec_world.json"),
-        cwd.join("databases").join("lec_world.json"),
+            .join("lec_world.json")
+            .into(),
+        cwd.join("databases").join("lec_world.json").into(),
     ];
 
-    for candidate in candidates {
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            candidates.push(Some(exe_dir.join("databases").join("lec_world.json")));
+            candidates.push(Some(
+                exe_dir
+                    .join("resources")
+                    .join("databases")
+                    .join("lec_world.json"),
+            ));
+        }
+    }
+
+    for candidate in candidates.into_iter().flatten() {
         if candidate.exists() {
             return Ok(candidate);
         }
@@ -1597,6 +1616,7 @@ fn inject_seed_free_agents(players: &mut Vec<Player>) {
 /// world_source: "random" (default) or a file path to a JSON world database.
 #[tauri::command]
 pub async fn start_new_game(
+    app_handle: tauri::AppHandle,
     state: State<'_, StateManager>,
     nickname: Option<String>,
     first_name: String,
@@ -1654,7 +1674,7 @@ pub async fn start_new_game(
     let (teams, mut players, staff) = if world_source == "random" {
         ofm_core::generator::generate_world(None)
     } else if world_source == "lec-default" {
-        let path = resolve_default_world_path()?;
+        let path = resolve_default_world_path(&app_handle)?;
         let json = std::fs::read_to_string(&path)
             .map_err(|e| format!("Failed to read default LEC world database: {}", e))?;
         let world = ofm_core::generator::load_world_from_json(&json)?;

@@ -19,6 +19,10 @@ vi.mock("react-i18next", () => ({
       if (key === "tournaments.nTeams") return `${params?.count} teams`;
       if (key === "tournaments.progress") return "Progress";
       if (key === "tournaments.matches") return "Matches";
+      if (key === "tournaments.bracket") return "Bracket";
+      if (key === "tournaments.winRateShort") return "WR";
+      if (key === "tournaments.killsShort") return "K";
+      if (key === "tournaments.deathsShort") return "D";
       if (key === "tournaments.goals") return "Goals";
       if (key === "tournaments.topScorers") return "Top Scorers";
       if (key === "tournaments.noGoals") return "No goals yet";

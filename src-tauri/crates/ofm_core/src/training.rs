@@ -10,6 +10,13 @@ use domain::staff::CoachingSpecialization;
 use domain::team::{TrainingFocus, TrainingIntensity, TrainingSchedule};
 use std::collections::HashMap;
 
+fn params(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+    pairs
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect()
+}
+
 /// Computed coaching quality for a team's staff.
 pub struct TeamCoachingBonus {
     pub coaching_mult: f64, // Overall coaching quality multiplier (1.0 = no staff)
@@ -555,7 +562,18 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
             )
             .with_category(MessageCategory::System)
             .with_priority(MessagePriority::Normal)
-            .with_sender_role("Coaching Staff");
+            .with_sender_role("Coaching Staff")
+            .with_i18n(
+                "be.msg.scrimWeekly.subject",
+                "be.msg.scrimWeekly.body",
+                params(&[
+                    ("played", &team.scrim_weekly_played.to_string()),
+                    ("wins", &team.scrim_weekly_wins.to_string()),
+                    ("losses", &team.scrim_weekly_losses.to_string()),
+                    ("lossStreak", &team.scrim_loss_streak.to_string()),
+                ]),
+            )
+            .with_sender_i18n("be.sender.coachingStaff", "be.role.coachingStaff");
 
             game.messages.push(msg);
         }

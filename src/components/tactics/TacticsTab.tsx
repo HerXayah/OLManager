@@ -61,12 +61,12 @@ const OVR_KEYS = [
   "leadership",
 ] as const;
 
-const ROLE_META: Record<DraftRole, { name: string; icon: string }> = {
-  TOP: { name: "Carril superior", icon: "🛡️" },
-  JUNGLE: { name: "JUNGLE", icon: "🌲" },
-  MID: { name: "Carril central", icon: "⚡" },
-  ADC: { name: "Carril inferior (tirador)", icon: "🎯" },
-  SUPPORT: { name: "Soporte", icon: "🤝" },
+const ROLE_META: Record<DraftRole, { nameKey: string; icon: string; defaultName: string }> = {
+  TOP: { nameKey: "tactics.lol.roles.TOP", icon: "🛡️", defaultName: "Top lane" },
+  JUNGLE: { nameKey: "tactics.lol.roles.JUNGLE", icon: "🌲", defaultName: "Jungle" },
+  MID: { nameKey: "tactics.lol.roles.MID", icon: "⚡", defaultName: "Mid lane" },
+  ADC: { nameKey: "tactics.lol.roles.ADC", icon: "🎯", defaultName: "Bot lane (ADC)" },
+  SUPPORT: { nameKey: "tactics.lol.roles.SUPPORT", icon: "🤝", defaultName: "Support" },
 };
 
 const ROLE_ICON_URLS: Record<DraftRole, string> = {
@@ -79,135 +79,182 @@ const ROLE_ICON_URLS: Record<DraftRole, string> = {
     "https://raw.communitydragon.org/latest/plugins/rcp-fe-lol-clash/global/default/assets/images/position-selector/positions/icon-position-utility.png",
 };
 
-const STRONG_SIDE_OPTIONS: Array<{ value: StrongSide; label: string; icon: JSX.Element; description: string }> = [
+type LocalizedOption<T extends string> = {
+  value: T;
+  labelKey: string;
+  labelDefault: string;
+  descriptionKey: string;
+  descriptionDefault: string;
+  icon: JSX.Element;
+};
+
+const STRONG_SIDE_OPTIONS: Array<LocalizedOption<StrongSide>> = [
   {
     value: "Top",
-    label: "Top",
+    labelKey: "tactics.lol.options.strongSide.Top.label",
+    labelDefault: "Top",
     icon: <Shield className="h-4 w-4" />,
-    description: "Jugamos para top: prioridad de recursos y ganks arriba.",
+    descriptionKey: "tactics.lol.options.strongSide.Top.description",
+    descriptionDefault: "Play for top: priority resources and ganks on top side.",
   },
   {
     value: "Mid",
-    label: "Mid",
+    labelKey: "tactics.lol.options.strongSide.Mid.label",
+    labelDefault: "Mid",
     icon: <Brain className="h-4 w-4" />,
-    description: "El eje del mapa es mid: control de tempo y rotaciones.",
+    descriptionKey: "tactics.lol.options.strongSide.Mid.description",
+    descriptionDefault: "Mid is the map axis: tempo control and rotations.",
   },
   {
     value: "Bot",
-    label: "Bot",
+    labelKey: "tactics.lol.options.strongSide.Bot.label",
+    labelDefault: "Bot",
     icon: <Crosshair className="h-4 w-4" />,
-    description: "Invertimos en botlane para escalar peleas y objetivos.",
+    descriptionKey: "tactics.lol.options.strongSide.Bot.description",
+    descriptionDefault: "Invest in bot lane to scale for fights and objectives.",
   },
 ];
 
-const GAME_TIMING_OPTIONS: Array<{ value: GameTiming; label: string; icon: JSX.Element; description: string }> = [
+const GAME_TIMING_OPTIONS: Array<LocalizedOption<GameTiming>> = [
   {
     value: "Early",
-    label: "Early game",
+    labelKey: "tactics.lol.options.gameTiming.Early.label",
+    labelDefault: "Early game",
     icon: <Flame className="h-4 w-4 text-red-500" />,
-    description: "Buscamos ventaja antes de minuto 14 con ritmo agresivo.",
+    descriptionKey: "tactics.lol.options.gameTiming.Early.description",
+    descriptionDefault: "Look for a lead before minute 14 with an aggressive pace.",
   },
   {
     value: "Mid",
-    label: "Mid game",
+    labelKey: "tactics.lol.options.gameTiming.Mid.label",
+    labelDefault: "Mid game",
     icon: <Scale className="h-4 w-4 text-accent-500" />,
-    description: "Pico de poder en mid game con setup de objetivos.",
+    descriptionKey: "tactics.lol.options.gameTiming.Mid.description",
+    descriptionDefault: "Power spike in mid game with objective setups.",
   },
   {
     value: "Late",
-    label: "Late game",
+    labelKey: "tactics.lol.options.gameTiming.Late.label",
+    labelDefault: "Late game",
     icon: <Feather className="h-4 w-4 text-blue-500" />,
-    description: "Priorizamos escalado y ejecución en peleas largas.",
+    descriptionKey: "tactics.lol.options.gameTiming.Late.description",
+    descriptionDefault: "Prioritize scaling and execution in extended teamfights.",
   },
 ];
 
-const JUNGLE_STYLE_OPTIONS: Array<{ value: JungleStyle; label: string; icon: JSX.Element; description: string }> = [
+const JUNGLE_STYLE_OPTIONS: Array<LocalizedOption<JungleStyle>> = [
   {
     value: "Ganker",
-    label: "Gankear",
+    labelKey: "tactics.lol.options.jungleStyle.Ganker.label",
+    labelDefault: "Gank",
     icon: <Crosshair className="h-4 w-4" />,
-    description: "JUNGLE de presión en líneas: castiga errores temprano.",
+    descriptionKey: "tactics.lol.options.jungleStyle.Ganker.description",
+    descriptionDefault: "Lane pressure jungle: punish mistakes early.",
   },
   {
     value: "Invader",
-    label: "Invadir",
+    labelKey: "tactics.lol.options.jungleStyle.Invader.label",
+    labelDefault: "Invade",
     icon: <Zap className="h-4 w-4" />,
-    description: "Entramos a JUNGLE rival para negar recursos y visión.",
+    descriptionKey: "tactics.lol.options.jungleStyle.Invader.description",
+    descriptionDefault: "Enter enemy jungle to deny resources and vision.",
   },
   {
     value: "Farmer",
-    label: "Farmear",
+    labelKey: "tactics.lol.options.jungleStyle.Farmer.label",
+    labelDefault: "Farm",
     icon: <Feather className="h-4 w-4" />,
-    description: "Maximizamos farmeo para llegar fuertes a mid/late.",
+    descriptionKey: "tactics.lol.options.jungleStyle.Farmer.description",
+    descriptionDefault: "Maximize farm to hit mid/late game stronger.",
   },
   {
     value: "Enabler",
-    label: "Habilitar",
+    labelKey: "tactics.lol.options.jungleStyle.Enabler.label",
+    labelDefault: "Enable",
     icon: <Brain className="h-4 w-4" />,
-    description: "JUNGLE habilita carries con cobertura y tempo.",
+    descriptionKey: "tactics.lol.options.jungleStyle.Enabler.description",
+    descriptionDefault: "Jungle enables carries with cover and tempo.",
   },
 ];
 
-const JUNGLE_PATHING_OPTIONS: Array<{ value: JunglePathing; label: string; icon: JSX.Element; description: string }> = [
+const JUNGLE_PATHING_OPTIONS: Array<LocalizedOption<JunglePathing>> = [
   {
     value: "TopToBot",
-    label: "Top → Bot",
+    labelKey: "tactics.lol.options.junglePathing.TopToBot.label",
+    labelDefault: "Top -> Bot",
     icon: <ArrowDown className="h-4 w-4" />,
-    description: "Abrimos arriba para terminar jugando por bot side.",
+    descriptionKey: "tactics.lol.options.junglePathing.TopToBot.description",
+    descriptionDefault: "Open top side to end pathing toward bot side.",
   },
   {
     value: "BotToTop",
-    label: "Bot → Top",
+    labelKey: "tactics.lol.options.junglePathing.BotToTop.label",
+    labelDefault: "Bot -> Top",
     icon: <ArrowUp className="h-4 w-4" />,
-    description: "Abrimos abajo para impactar top en primeras ventanas.",
+    descriptionKey: "tactics.lol.options.junglePathing.BotToTop.description",
+    descriptionDefault: "Open bot side to impact top in early windows.",
   },
 ];
 
-const FIGHT_PLAN_OPTIONS: Array<{ value: FightPlan; label: string; icon: JSX.Element; description: string }> = [
+const FIGHT_PLAN_OPTIONS: Array<LocalizedOption<FightPlan>> = [
   {
     value: "FrontToBack",
-    label: "Front to back",
+    labelKey: "tactics.lol.options.fightPlan.FrontToBack.label",
+    labelDefault: "Front to back",
     icon: <Shield className="h-4 w-4" />,
-    description: "Pelea ordenada: front line protege al carry.",
+    descriptionKey: "tactics.lol.options.fightPlan.FrontToBack.description",
+    descriptionDefault: "Structured teamfight: front line protects the carry.",
   },
   {
     value: "Pick",
-    label: "Cazadas",
+    labelKey: "tactics.lol.options.fightPlan.Pick.label",
+    labelDefault: "Pick",
     icon: <Crosshair className="h-4 w-4" />,
-    description: "Jugamos visión y cazadas para pelear en ventaja.",
+    descriptionKey: "tactics.lol.options.fightPlan.Pick.description",
+    descriptionDefault: "Play vision and picks to fight with an advantage.",
   },
   {
     value: "Dive",
-    label: "Invade",
+    labelKey: "tactics.lol.options.fightPlan.Dive.label",
+    labelDefault: "Dive",
     icon: <Zap className="h-4 w-4" />,
-    description: "Entradas explosivas al backline para borrar carries.",
+    descriptionKey: "tactics.lol.options.fightPlan.Dive.description",
+    descriptionDefault: "Explosive entries to enemy backline to remove carries.",
   },
   {
     value: "Siege",
-    label: "Acecho",
+    labelKey: "tactics.lol.options.fightPlan.Siege.label",
+    labelDefault: "Siege",
     icon: <Brain className="h-4 w-4" />,
-    description: "Presión de rango y estructura, sin overextender.",
+    descriptionKey: "tactics.lol.options.fightPlan.Siege.description",
+    descriptionDefault: "Range and structure pressure without overextending.",
   },
 ];
 
-const SUPPORT_ROAMING_OPTIONS: Array<{ value: SupportRoaming; label: string; icon: JSX.Element; description: string }> = [
+const SUPPORT_ROAMING_OPTIONS: Array<LocalizedOption<SupportRoaming>> = [
   {
     value: "Lane",
-    label: "Jugar línea",
+    labelKey: "tactics.lol.options.supportRoaming.Lane.label",
+    labelDefault: "Play lane",
     icon: <Shield className="h-4 w-4" />,
-    description: "Support prioriza 2v2 de bot, peel y control de oleada.",
+    descriptionKey: "tactics.lol.options.supportRoaming.Lane.description",
+    descriptionDefault: "Support prioritizes bot 2v2, peel, and wave control.",
   },
   {
     value: "RoamMid",
-    label: "Rotar a mid",
+    labelKey: "tactics.lol.options.supportRoaming.RoamMid.label",
+    labelDefault: "Roam mid",
     icon: <Compass className="h-4 w-4" />,
-    description: "Después del reset, rota a mid para picks y control de visión.",
+    descriptionKey: "tactics.lol.options.supportRoaming.RoamMid.description",
+    descriptionDefault: "After reset, roam mid for picks and vision control.",
   },
   {
     value: "RoamTop",
-    label: "Rotar a top",
+    labelKey: "tactics.lol.options.supportRoaming.RoamTop.label",
+    labelDefault: "Roam top",
     icon: <ArrowUpRight className="h-4 w-4" />,
-    description: "Rotaciones tempranas a top para dives, grubs y tempo de mapa.",
+    descriptionKey: "tactics.lol.options.supportRoaming.RoamTop.description",
+    descriptionDefault: "Early top rotations for dives, grubs, and map tempo.",
   },
 ];
 
@@ -305,6 +352,31 @@ export default function TacticsTab({
   const [tactics, setTactics] = useState<LolTacticsData>(initial);
   const [saving, setSaving] = useState(false);
 
+  const roleMetaLabels = useMemo(() => {
+    return ROLE_ORDER.reduce(
+      (acc, role) => {
+        acc[role] = t(ROLE_META[role].nameKey, ROLE_META[role].defaultName);
+        return acc;
+      },
+      {} as Record<DraftRole, string>,
+    );
+  }, [t]);
+
+  const buildOptions = <T extends string,>(items: Array<LocalizedOption<T>>) =>
+    items.map((item) => ({
+      value: item.value,
+      icon: item.icon,
+      label: t(item.labelKey, item.labelDefault),
+      description: t(item.descriptionKey, item.descriptionDefault),
+    }));
+
+  const gameTimingOptions = useMemo(() => buildOptions(GAME_TIMING_OPTIONS), [t]);
+  const strongSideOptions = useMemo(() => buildOptions(STRONG_SIDE_OPTIONS), [t]);
+  const jungleStyleOptions = useMemo(() => buildOptions(JUNGLE_STYLE_OPTIONS), [t]);
+  const junglePathingOptions = useMemo(() => buildOptions(JUNGLE_PATHING_OPTIONS), [t]);
+  const fightPlanOptions = useMemo(() => buildOptions(FIGHT_PLAN_OPTIONS), [t]);
+  const supportRoamingOptions = useMemo(() => buildOptions(SUPPORT_ROAMING_OPTIONS), [t]);
+
   useEffect(() => {
     setTactics(initial);
   }, [initial]);
@@ -343,14 +415,14 @@ export default function TacticsTab({
       return {
         role,
         playerId: player?.id ?? null,
-        playerName: player?.match_name ?? "Sin titular definido",
+        playerName: player?.match_name ?? t("tactics.lol.noStarter"),
         base,
         modifier,
         variance,
         effective,
       };
     });
-  }, [gameState.players, myTeam, roleModifiers]);
+  }, [gameState.players, myTeam, roleModifiers, t]);
 
   if (!myTeam) {
     return (
@@ -383,12 +455,10 @@ export default function TacticsTab({
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
       <Card accent="accent">
-        <CardHeader>Plan de juego</CardHeader>
+        <CardHeader>{t("tactics.lol.gamePlan")}</CardHeader>
         <CardBody>
           <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-200">
-          Estas tácticas definen cómo juega tu equipo en simulación. Se aplican al impacto por rol y al comportamiento macro
-          (objetivos/tempo) durante la partida. También quedan listas para scrims, para ajustar antes del partido y entre mapas
-          en series Bo3/Bo5.
+            {t("tactics.lol.gamePlanDescription")}
           </p>
         </CardBody>
       </Card>
@@ -396,7 +466,7 @@ export default function TacticsTab({
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.6fr_1fr]">
         <div className="flex flex-col gap-4">
           <Section<GameTiming>
-            title={t("tactics.gameTiming", { defaultValue: "Timing de partida" })}
+            title={t("tactics.gameTiming")}
             value={tactics.game_timing}
             onChange={(value) =>
               void persist({
@@ -404,11 +474,11 @@ export default function TacticsTab({
                 game_timing: value,
               })
             }
-            options={GAME_TIMING_OPTIONS}
+            options={gameTimingOptions}
           />
 
           <Section<StrongSide>
-            title={t("tactics.strongSide", { defaultValue: "Lado fuerte" })}
+            title={t("tactics.strongSide")}
             value={tactics.strong_side}
             onChange={(value) =>
               void persist({
@@ -416,11 +486,11 @@ export default function TacticsTab({
                 strong_side: value,
               })
             }
-            options={STRONG_SIDE_OPTIONS}
+            options={strongSideOptions}
           />
 
           <Section<JungleStyle>
-            title={t("tactics.jungleStyle", { defaultValue: "Estilo de JUNGLE" })}
+            title={t("tactics.jungleStyle")}
             value={tactics.jungle_style}
             onChange={(value) =>
               void persist({
@@ -428,11 +498,11 @@ export default function TacticsTab({
                 jungle_style: value,
               })
             }
-            options={JUNGLE_STYLE_OPTIONS}
+            options={jungleStyleOptions}
           />
 
           <Section<JunglePathing>
-            title={t("tactics.junglePathing", { defaultValue: "Ruta de JUNGLE" })}
+            title={t("tactics.junglePathing")}
             value={tactics.jungle_pathing}
             onChange={(value) =>
               void persist({
@@ -440,11 +510,11 @@ export default function TacticsTab({
                 jungle_pathing: value,
               })
             }
-            options={JUNGLE_PATHING_OPTIONS}
+            options={junglePathingOptions}
           />
 
           <Section<FightPlan>
-            title={t("tactics.fightPlan", { defaultValue: "Plan de teamfight" })}
+            title={t("tactics.fightPlan")}
             value={tactics.fight_plan}
             onChange={(value) =>
               void persist({
@@ -452,11 +522,11 @@ export default function TacticsTab({
                 fight_plan: value,
               })
             }
-            options={FIGHT_PLAN_OPTIONS}
+            options={fightPlanOptions}
           />
 
           <Section<SupportRoaming>
-            title={t("tactics.supportRoaming", { defaultValue: "Roaming de support" })}
+            title={t("tactics.supportRoaming")}
             value={tactics.support_roaming}
             onChange={(value) =>
               void persist({
@@ -464,24 +534,28 @@ export default function TacticsTab({
                 support_roaming: value,
               })
             }
-            options={SUPPORT_ROAMING_OPTIONS}
+            options={supportRoamingOptions}
           />
         </div>
 
         <aside className="sticky top-2">
           <Card>
-            <CardHeader>
-            Impacto y coherencia
-            </CardHeader>
+            <CardHeader>{t("tactics.lol.impactAndCoherence")}</CardHeader>
             <CardBody className="p-4">
 
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-navy-600 dark:bg-navy-900/50">
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Coherencia táctica</p>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {t("tactics.lol.coherenceLabel")}
+            </p>
             <p className="text-lg font-heading font-bold text-gray-900 dark:text-gray-100">
-              {coherenceScore >= 1 ? "Alta" : coherenceScore >= 0 ? "Media" : "Baja"}
+              {coherenceScore >= 1
+                ? t("tactics.lol.coherence.high")
+                : coherenceScore >= 0
+                  ? t("tactics.lol.coherence.medium")
+                  : t("tactics.lol.coherence.low")}
             </p>
             <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-              Score: {coherenceScore > 0 ? "+" : ""}
+              {t("tactics.lol.score")}: {coherenceScore > 0 ? "+" : ""}
               {coherenceScore.toFixed(2)}
             </p>
           </div>
@@ -489,7 +563,7 @@ export default function TacticsTab({
           <div className="mt-3 space-y-2">
             {coherence.map((item) => (
               <div key={item.label} className="flex items-start justify-between gap-2 text-xs">
-                <span className="text-gray-600 dark:text-gray-300">{item.label}</span>
+                <span className="text-gray-600 dark:text-gray-300">{t(item.labelKey)}</span>
                 <span
                   className={`font-heading font-bold ${
                     item.delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
@@ -503,7 +577,9 @@ export default function TacticsTab({
           </div>
 
           <div className="mt-4 border-t border-gray-100 pt-3 dark:border-navy-700">
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Impacto por rol</p>
+            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              {t("tactics.lol.roleImpact")}
+            </p>
             <div className="mt-2 space-y-2.5">
               {roleImpactRows.map((row) => (
                 <div
@@ -515,7 +591,7 @@ export default function TacticsTab({
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-100 dark:border-white/10 dark:bg-navy-700">
                         <img
                           src={ROLE_ICON_URLS[row.role]}
-                          alt={ROLE_META[row.role].name}
+                          alt={roleMetaLabels[row.role]}
                           className="w-4 h-4 object-contain opacity-90"
                           loading="lazy"
                         />
@@ -537,7 +613,7 @@ export default function TacticsTab({
                           {row.playerName}
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-gray-300">
-                          {Math.round(row.base)} OVR · {ROLE_META[row.role].name}
+                          {Math.round(row.base)} OVR · {roleMetaLabels[row.role]}
                         </p>
                       </div>
                     </div>
@@ -552,7 +628,7 @@ export default function TacticsTab({
                         {row.modifier.toFixed(1)}
                       </p>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                        ±{row.variance.toFixed(1)} varianza
+                        ±{row.variance.toFixed(1)} {t("tactics.lol.variance")}
                       </p>
                     </div>
                   </div>
@@ -562,7 +638,7 @@ export default function TacticsTab({
           </div>
 
           <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-            Tip: si el score de coherencia es bajo, intentá alinear lado fuerte + ruta de JUNGLE + timing.
+            {t("tactics.lol.tip")}
           </p>
             </CardBody>
           </Card>
@@ -571,8 +647,8 @@ export default function TacticsTab({
 
       <p className="text-xs text-gray-500 dark:text-gray-400 px-1">
         {saving
-          ? t("common.saving", { defaultValue: "Guardando..." })
-          : "Los cambios se guardan automáticamente"}
+          ? t("common.saving")
+          : t("tactics.lol.autoSave")}
       </p>
     </div>
   );

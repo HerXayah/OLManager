@@ -38,7 +38,7 @@ export default function TacticsFilters({
       <div className="grid grid-cols-1 items-end gap-3 p-4 lg:grid-cols-[minmax(0,1.3fr)_220px_auto]">
         <div>
           <label className="mb-2 block text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {t("common.search", "Search")}
+            {t("common.search")}
           </label>
           <input
             type="text"
@@ -60,7 +60,7 @@ export default function TacticsFilters({
             onChange={(event) => onPositionFilterChange(event.target.value)}
             fullWidth
           >
-            <option value="All">{t("common.all", "All")}</option>
+            <option value="All">{t("common.all")}</option>
             {CORE_POSITIONS.map((position) => (
               <option key={position} value={position}>
                 {translatePositionAbbreviation(t, position)}
@@ -74,7 +74,7 @@ export default function TacticsFilters({
           disabled={!canClear}
           className={getClearButtonClassName(canClear)}
         >
-          {t("common.clear", "Clear")}
+          {t("common.clear")}
         </button>
       </div>
     </Card>

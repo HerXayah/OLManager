@@ -1,4 +1,5 @@
 import type { FixtureData, LeagueData, TeamData } from "../../store/gameStore";
+import { useTranslation } from "react-i18next";
 
 interface PlayoffBracketBoardProps {
   league: LeagueData;
@@ -91,8 +92,9 @@ export default function PlayoffBracketBoard({
   league,
   teams,
   onSelectTeam,
-  title = "PLAYOFF BRACKET",
+  title,
 }: PlayoffBracketBoardProps) {
+  const { t } = useTranslation();
   const playoffFixtures = league.fixtures.filter((fixture) => fixture.competition === "Playoffs");
   if (playoffFixtures.length === 0) {
     return null;
@@ -156,7 +158,7 @@ export default function PlayoffBracketBoard({
                 </button>
 
                 <p className="mt-1.5 text-[11px] text-gray-400 font-heading uppercase tracking-wider">
-                  {score ? `${score.home} - ${score.away}` : "Scheduled"}
+                  {score ? `${score.home} - ${score.away}` : t("tournaments.scheduled")}
                 </p>
               </div>
             );
@@ -169,18 +171,18 @@ export default function PlayoffBracketBoard({
   return (
     <section className="rounded-2xl border border-cyan-300/20 bg-[radial-gradient(circle_at_20%_20%,rgba(22,163,255,0.18),transparent_55%),radial-gradient(circle_at_80%_80%,rgba(15,23,42,0.8),transparent_55%),linear-gradient(145deg,#061235_0%,#03081f_65%,#020617_100%)] p-4 md:p-5">
       <p className="text-xs md:text-sm font-heading font-bold uppercase tracking-[0.28em] text-cyan-100/90 mb-4">
-        {title}
+        {title ?? t("tournaments.playoffBracketTitle")}
       </p>
 
       <div className="space-y-5">
         <div>
-          <p className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-cyan-300/90 mb-2">Upper Bracket</p>
+          <p className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-cyan-300/90 mb-2">{t("tournaments.upperBracket")}</p>
           <div className="flex gap-3 overflow-x-auto pb-2">{upperRounds.map((round, i) => renderRound(round, i, rounds.indexOf(round)))}</div>
         </div>
 
         {lowerRounds.length > 0 ? (
           <div>
-            <p className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-cyan-300/90 mb-2">Lower Bracket</p>
+            <p className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-cyan-300/90 mb-2">{t("tournaments.lowerBracket")}</p>
             <div className="flex gap-3 overflow-x-auto pb-1">{lowerRounds.map((round, i) => renderRound(round, i, rounds.indexOf(round)))}</div>
           </div>
         ) : null}

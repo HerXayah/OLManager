@@ -1,4 +1,5 @@
 import { Crown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card, CardBody, CardHeader } from "../ui";
 
 interface ChampionMasteryItem {
@@ -19,9 +20,11 @@ function championPortraitUrl(championId: string): string {
 }
 
 export default function PlayerProfileChampionsCard({ champions }: PlayerProfileChampionsCardProps) {
+  const { t } = useTranslation();
+
   return (
     <Card className="lg:col-span-2 min-h-[304px]">
-      <CardHeader>Pool de campeones</CardHeader>
+      <CardHeader>{t("playerProfile.championPoolTitle")}</CardHeader>
       <CardBody className="py-4 px-5">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2.5">
           {champions.map((item) => (
@@ -39,7 +42,7 @@ export default function PlayerProfileChampionsCard({ champions }: PlayerProfileC
                 <div className="flex items-start justify-between">
                   {item.rank === "insignia" ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-heading font-bold uppercase tracking-wide bg-amber-500/20 text-amber-300 border border-amber-300/35">
-                      <Crown className="w-3 h-3" /> Insignia
+                      <Crown className="w-3 h-3" /> {t("playerProfile.championInsignia")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-heading font-bold uppercase tracking-wide bg-white/20 text-white border border-white/35">
@@ -48,15 +51,17 @@ export default function PlayerProfileChampionsCard({ champions }: PlayerProfileC
                   )}
 
                   <span className={`text-lg font-heading font-black ${item.wr >= 55 ? "text-emerald-300" : item.wr >= 48 ? "text-amber-300" : "text-rose-300"}`}>
-                    {item.wr.toFixed(1)}% WR
+                    {item.wr.toFixed(1)}% {t("playerProfile.championWinRateShort")}
                   </span>
                 </div>
 
                 <div className="mt-auto">
                   <p className="text-2xl font-heading font-black text-white leading-none truncate">{item.championName}</p>
                   <div className="mt-1 flex items-center justify-between text-white/90">
-                    <p className="text-xs">Maestría {item.mastery}</p>
-                    <p className="text-2xl font-heading font-black leading-none">{item.games} <span className="text-lg">Games</span></p>
+                    <p className="text-xs">{t("playerProfile.championMasteryLabel", { value: item.mastery })}</p>
+                    <p className="text-2xl font-heading font-black leading-none">
+                      {item.games} <span className="text-lg">{t("playerProfile.championGames")}</span>
+                    </p>
                   </div>
                 </div>
               </div>

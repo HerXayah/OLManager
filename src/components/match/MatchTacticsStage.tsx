@@ -27,13 +27,10 @@ export default function MatchTacticsStage({
         <div className="mb-4 rounded-xl border border-primary-200 dark:border-primary-900/50 bg-primary-50/70 dark:bg-primary-900/20 p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-xs font-heading uppercase tracking-widest text-primary-700 dark:text-primary-300">
-              {t("match.tactics", { defaultValue: "Tácticas" })}
+              {t("match.tactics")}
             </p>
             <p className="text-sm text-primary-900/90 dark:text-primary-100/90">
-              {t(
-                "match.tacticsBeforeLive",
-                { defaultValue: "Ajustá el plan y cuando estés listo arrancamos el live." },
-              )}
+              {t("match.tacticsBeforeLive")}
             </p>
           </div>
 
@@ -43,8 +40,8 @@ export default function MatchTacticsStage({
               className="px-4 py-2 rounded-lg bg-primary-700 hover:bg-primary-600 text-white font-heading uppercase tracking-wider text-xs"
             >
               {isRunningParallelSims
-                ? t("match.stopParallelSims", { defaultValue: "Detener Sims" })
-                : t("match.runParallelSims", { defaultValue: "8 Sims" })}
+                ? t("match.stopParallelSims")
+                : t("match.runParallelSims")}
             </button>
 
             <button
@@ -52,7 +49,7 @@ export default function MatchTacticsStage({
               disabled={isRunningParallelSims}
               className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 disabled:bg-primary-900/60 disabled:cursor-not-allowed text-white font-heading uppercase tracking-wider text-xs"
             >
-              {t("match.startLive", { defaultValue: "Ir al Live" })}
+              {t("match.startLive")}
             </button>
           </div>
         </div>

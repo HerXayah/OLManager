@@ -23,6 +23,13 @@ use log::{debug, info};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+fn params(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+    pairs
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect()
+}
+
 // Re-export public items
 pub use news::generate_matchday_news;
 pub use post_match::{apply_match_report, apply_match_report_with_capture};
@@ -348,17 +355,23 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
     if academy_players.is_empty() {
         let message = InboxMessage::new(
             report_id,
-            "Reporte semanal de academia".to_string(),
+            "Academy weekly report".to_string(),
             format!(
-                "La academia {} no tiene jugadores activos esta semana. Conviene revisar adquisicion/promocion para mantener pipeline.",
+                "Academy {} has no active players this week. Review acquisition and promotion flow to keep your pipeline healthy.",
                 academy_team.name
             ),
-            "Coordinador de Academia".to_string(),
+            "Academy Coordinator".to_string(),
             today.to_string(),
         )
         .with_category(MessageCategory::Training)
         .with_priority(MessagePriority::Normal)
-        .with_sender_role("Coordinador de Academia")
+        .with_sender_role("Academy Coordinator")
+        .with_i18n(
+            "be.msg.academyWeeklyEmpty.subject",
+            "be.msg.academyWeeklyEmpty.body",
+            params(&[("academy", &academy_team.name)]),
+        )
+        .with_sender_i18n("be.sender.academyCoordinator", "be.role.academyCoordinator")
         .with_context(MessageContext {
             team_id: Some(parent_team.id.clone()),
             ..Default::default()
@@ -412,7 +425,7 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
         String::new()
     } else {
         format!(
-            "\n\nRecomendacion: {} listo(s) para promocion -> {}.",
+            "\n\nRecommendation: {} player(s) ready for promotion -> {}.",
             promotion_ready.len(),
             promotion_ready.join(", ")
         )
@@ -420,9 +433,9 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
 
     let message = InboxMessage::new(
         report_id,
-        format!("Reporte semanal academia: {}", academy_team.name),
+        format!("Academy weekly report: {}", academy_team.name),
         format!(
-            "Resumen semanal de academia:\n- Jugadores activos: {}\n- OVR medio: {}\n- Talentos altos (potencial >= 80): {}\n- Destacados: {}\n- Posicion ERL actual: #{} de {}\n- Tabla rapida: {}{}",
+            "Academy weekly summary:\n- Active players: {}\n- Average OVR: {}\n- High potential talents (>= 80): {}\n- Highlights: {}\n- Current ERL rank: #{} of {}\n- Quick table: {}{}",
             academy_players.len(),
             avg_ovr,
             high_potential,
@@ -432,12 +445,38 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
             table_preview,
             recommendation
         ),
-        "Coordinador de Academia".to_string(),
+        "Academy Coordinator".to_string(),
         today.to_string(),
     )
     .with_category(MessageCategory::ScoutReport)
     .with_priority(MessagePriority::Normal)
-    .with_sender_role("Coordinador de Academia")
+    .with_sender_role("Academy Coordinator")
+    .with_i18n(
+        "be.msg.academyWeekly.subject",
+        if promotion_ready.is_empty() {
+            "be.msg.academyWeekly.body"
+        } else {
+            "be.msg.academyWeekly.bodyWithPromotion"
+        },
+        {
+            let mut p = params(&[
+                ("academy", &academy_team.name),
+                ("activePlayers", &academy_players.len().to_string()),
+                ("avgOvr", &avg_ovr.to_string()),
+                ("highPotential", &high_potential.to_string()),
+                ("highlights", &top_labels),
+                ("position", &academy_position.to_string()),
+                ("total", &league_rows.len().to_string()),
+                ("tablePreview", &table_preview),
+            ]);
+            if !promotion_ready.is_empty() {
+                p.insert("promotionCount".to_string(), promotion_ready.len().to_string());
+                p.insert("promotionList".to_string(), promotion_ready.join(", "));
+            }
+            p
+        },
+    )
+    .with_sender_i18n("be.sender.academyCoordinator", "be.role.academyCoordinator")
     .with_context(MessageContext {
         team_id: Some(parent_team.id.clone()),
         ..Default::default()

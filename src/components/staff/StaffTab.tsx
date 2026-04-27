@@ -44,23 +44,23 @@ const ROLE_COLORS: Record<string, string> = {
   Physio: "text-red-400",
 };
 
-const ATTR_LABELS = {
-  coaching: "Entrenamiento LoL",
-  judgingAbility: "Lectura de meta",
-  judgingPotential: "Proyección de meta",
-  physiotherapy: "Recuperación",
+const ATTR_LABEL_KEYS = {
+  coaching: "staff.lolAttrs.coaching",
+  judgingAbility: "staff.lolAttrs.judgingAbility",
+  judgingPotential: "staff.lolAttrs.judgingPotential",
+  physiotherapy: "staff.lolAttrs.physiotherapy",
 } as const;
 
 const TEAM_IMPACT_ROWS = [
-  { key: "development", label: "Aprendizaje" },
-  { key: "tactics", label: "Preparación scrim" },
-  { key: "analysis", label: "Lectura meta" },
-  { key: "execution", label: "Ejecución" },
-  { key: "recovery", label: "Recuperación" },
+  { key: "development", labelKey: "staff.lolImpact.development" },
+  { key: "tactics", labelKey: "staff.lolImpact.tactics" },
+  { key: "analysis", labelKey: "staff.lolImpact.analysis" },
+  { key: "execution", labelKey: "staff.lolImpact.execution" },
+  { key: "recovery", labelKey: "staff.lolImpact.recovery" },
 ] as const;
 
-type StaffAttrKey = keyof typeof ATTR_LABELS;
-type ImpactRow = { label: string; value: number };
+type StaffAttrKey = keyof typeof ATTR_LABEL_KEYS;
+type ImpactRow = { labelKey: string; value: number };
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -114,42 +114,42 @@ function getStaffImpactRows(s: StaffData): ImpactRow[] {
 
   if (s.role === "Coach") {
     return [
-      { label: "Aprendizaje", value: development },
-      { label: "Preparación scrim", value: tactics },
-      { label: "Ejecución", value: execution },
+      { labelKey: "staff.lolImpact.development", value: development },
+      { labelKey: "staff.lolImpact.tactics", value: tactics },
+      { labelKey: "staff.lolImpact.execution", value: execution },
     ];
   }
   if (s.role === "AssistantManager") {
     return [
-      { label: "Aprendizaje", value: coaching },
-      { label: "Preparación scrim", value: tactics },
-      { label: "Lectura meta", value: analysis },
+      { labelKey: "staff.lolImpact.development", value: coaching },
+      { labelKey: "staff.lolImpact.tactics", value: tactics },
+      { labelKey: "staff.lolImpact.analysis", value: analysis },
     ];
   }
   if (s.role === "Scout") {
     return [
-      { label: "Lectura meta", value: analysis },
-      { label: "Análisis draft", value: execution },
-      { label: "Meta futura", value: metaDiscovery },
+      { labelKey: "staff.lolImpact.analysis", value: analysis },
+      { labelKey: "staff.lolImpact.draftAnalysis", value: execution },
+      { labelKey: "staff.lolImpact.futureMeta", value: metaDiscovery },
     ];
   }
   if (s.role === "Physio") {
     return [
-      { label: "Recuperación", value: recovery },
-      { label: "Control de tilt", value: morale },
+      { labelKey: "staff.lolImpact.recovery", value: recovery },
+      { labelKey: "staff.lolImpact.tiltControl", value: morale },
     ];
   }
 
   return [
-    { label: "Aprendizaje", value: development },
-    { label: "Lectura meta", value: analysis },
-    { label: "Recuperación", value: recovery },
+    { labelKey: "staff.lolImpact.development", value: development },
+    { labelKey: "staff.lolImpact.analysis", value: analysis },
+    { labelKey: "staff.lolImpact.recovery", value: recovery },
   ];
 }
 
 export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
   const { t, i18n } = useTranslation();
-  const weeklySuffix = t("finances.perWeekSuffix", "/wk");
+  const weeklySuffix = t("finances.perWeekSuffix");
   const userTeamId = gameState.manager.team_id;
   const [view, setView] = useState<"mystaff" | "available">("mystaff");
   const [search, setSearch] = useState("");
@@ -197,11 +197,7 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
 
   const roles = ["AssistantManager", "Coach", "Scout", "Physio"];
   const teamEffects = getLolStaffEffectsForTeam(gameState, userTeamId);
-  const attrLabel = (key: StaffAttrKey) => {
-    const translationKey = `staff.lolAttrs.${key}`;
-    const translation = t(translationKey, { defaultValue: ATTR_LABELS[key] });
-    return translation === translationKey ? ATTR_LABELS[key] : translation;
-  };
+  const attrLabel = (key: StaffAttrKey) => t(ATTR_LABEL_KEYS[key]);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -275,14 +271,14 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
           <CardBody>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mr-1">
-                Impacto LoL del staff
+                {t("staff.lolImpactTeamTitle")}
               </span>
               {TEAM_IMPACT_ROWS.map((row) => (
                 <span
                   key={row.key}
                   className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 dark:bg-primary-500/10 px-2 py-1 text-[11px] font-heading uppercase tracking-wider text-primary-600 dark:text-primary-300"
                 >
-                  <span>{row.label}</span>
+                    <span>{t(row.labelKey)}</span>
                   <span className="font-bold tabular-nums">
                     {formatStaffEffectPercent(teamEffects[row.key])}
                   </span>
@@ -399,15 +395,15 @@ export default function StaffTab({ gameState, onGameUpdate }: StaffTabProps) {
 
                       <div className="mt-3">
                         <p className="text-[10px] font-heading font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
-                          Impacto LoL
+                          {t("staff.lolImpactTitle")}
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {impactRows.map((row) => (
                             <span
-                              key={row.label}
+                              key={row.labelKey}
                               className="inline-flex items-center gap-1 rounded bg-navy-50 dark:bg-navy-700/70 px-1.5 py-0.5 text-[10px] font-heading uppercase tracking-wider text-gray-600 dark:text-gray-300"
                             >
-                              <span>{row.label}</span>
+                              <span>{t(row.labelKey)}</span>
                               <span className="font-bold tabular-nums text-primary-500">
                                 {formatStaffEffectPercent(row.value)}
                               </span>

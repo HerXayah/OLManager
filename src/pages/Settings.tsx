@@ -43,6 +43,11 @@ export default function Settings() {
   const [isFullscreen, setIsFullscreen] = useState(
     !!document.fullscreenElement,
   );
+  const selectedLanguage = SUPPORTED_LANGUAGES.some(
+    (lang) => lang.code === settings.language,
+  )
+    ? settings.language
+    : "es";
 
   // Where to go back to
   const returnTo = (location.state as { from?: string })?.from || "/";
@@ -68,10 +73,10 @@ export default function Settings() {
 
   // Sync language with i18n when settings are loaded
   useEffect(() => {
-    if (loaded && settings.language && settings.language !== i18n.language) {
-      i18n.changeLanguage(settings.language);
+    if (loaded && selectedLanguage && selectedLanguage !== i18n.language) {
+      i18n.changeLanguage(selectedLanguage);
     }
-  }, [loaded, settings.language, i18n]);
+  }, [loaded, selectedLanguage, i18n]);
 
   const handleUpdate = (partial: Partial<AppSettings>) => {
     updateSettings(partial);
@@ -174,7 +179,7 @@ export default function Settings() {
             description={t("settings.languageDesc")}
           >
             <Select
-              value={settings.language}
+              value={selectedLanguage}
               onChange={(e) => handleUpdate({ language: e.target.value })}
               icon={<Globe className="w-4 h-4" />}
               className="min-w-48"

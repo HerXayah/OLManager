@@ -195,7 +195,6 @@ export default function TacticsRolesPanel({
           <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
             {t(
               "tactics.noStartersForRoles",
-              "Set your starting XI to assign team roles and set pieces.",
             )}
           </div>
         </CardBody>
@@ -206,13 +205,12 @@ export default function TacticsRolesPanel({
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
       <Card>
-        <CardHeader>{t("tactics.teamRoles", "Team Roles")}</CardHeader>
+        <CardHeader>{t("tactics.teamRoles")}</CardHeader>
         <CardBody>
           <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-navy-600 dark:bg-navy-800/70">
             <p className="text-sm text-gray-600 dark:text-gray-300">
               {t(
                 "tactics.rolesHint",
-                "Choose your leadership hierarchy and dead-ball specialists from the current Starting XI.",
               )}
             </p>
             <button
@@ -224,7 +222,7 @@ export default function TacticsRolesPanel({
             >
               <span className="flex items-center gap-2">
                 <Sparkles className="h-3.5 w-3.5" />
-                {t("tactics.autoSelectAssignments", "Auto-select defaults")}
+                {t("tactics.autoSelectAssignments")}
               </span>
             </button>
           </div>
@@ -240,7 +238,7 @@ export default function TacticsRolesPanel({
             }}
           />
           <SetPieceSelector
-            label={t("tactics.viceCaptain", "Vice-captain")}
+            label={t("tactics.viceCaptain")}
             icon={<Award className="w-4 h-4 text-accent-400" />}
             role="vicecaptain"
             currentId={effectiveRoles.vice_captain}
@@ -253,7 +251,7 @@ export default function TacticsRolesPanel({
         </CardBody>
       </Card>
       <Card>
-        <CardHeader>{t("tactics.setPiecesSection", "Set Pieces")}</CardHeader>
+        <CardHeader>{t("tactics.setPiecesSection")}</CardHeader>
         <CardBody>
           <SetPieceSelector
             label={t("match.penaltyTaker")}

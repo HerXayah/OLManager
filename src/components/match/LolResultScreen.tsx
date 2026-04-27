@@ -149,7 +149,13 @@ export default function LolResultScreen({
   const awayGold = runtime ? runtime.stats.red.gold : awayChampions.reduce((acc, champion) => acc + (champion.gold ?? 0), 0);
   const dragonObjective = runtime?.objectives?.dragon;
   const dragonSummary = runtime
-    ? `Dragon ${dragonObjective?.currentKind ?? "elemental"} · H/A stacks ${dragonObjective?.homeStacks ?? 0}/${dragonObjective?.awayStacks ?? 0} · Soul ${dragonObjective?.soulClaimedBy ?? "-"}`
+    ? t("match.lolResult.dragonSummary", {
+      defaultValue: "Dragon {{kind}} · H/A stacks {{home}}/{{away}} · Soul {{soul}}",
+      kind: dragonObjective?.currentKind ?? "elemental",
+      home: dragonObjective?.homeStacks ?? 0,
+      away: dragonObjective?.awayStacks ?? 0,
+      soul: dragonObjective?.soulClaimedBy ?? "-",
+    })
     : null;
   const runtimeTimelineSource = runtime
     ? (() => {
@@ -188,11 +194,19 @@ export default function LolResultScreen({
     .sort((left, right) => right.score - left.score)[0]?.champion ?? null;
 
   const statRows = [
-    { label: "Gold", home: homeGold, away: awayGold },
-    { label: "Towers", home: homeStructures, away: awayStructures },
-    { label: "Dragons", home: runtime?.stats.blue.dragons ?? 0, away: runtime?.stats.red.dragons ?? 0 },
-    { label: "Barons", home: runtime?.stats.blue.barons ?? 0, away: runtime?.stats.red.barons ?? 0 },
-    { label: "Kills", home: displayHomeKills, away: displayAwayKills },
+    { label: t("match.lolResult.stats.gold"), home: homeGold, away: awayGold },
+    { label: t("match.lolResult.stats.towers"), home: homeStructures, away: awayStructures },
+    {
+      label: t("match.lolResult.stats.dragons"),
+      home: runtime?.stats.blue.dragons ?? 0,
+      away: runtime?.stats.red.dragons ?? 0,
+    },
+    {
+      label: t("match.lolResult.stats.barons"),
+      home: runtime?.stats.blue.barons ?? 0,
+      away: runtime?.stats.red.barons ?? 0,
+    },
+    { label: t("match.lolResult.stats.kills"), home: displayHomeKills, away: displayAwayKills },
   ];
 
   const seriesLength = Math.max(8, Math.min(28, durationMin + 1));
@@ -230,9 +244,9 @@ export default function LolResultScreen({
     <div className="min-h-screen bg-[#0b1631] text-white p-4 md:p-6" style={{ backgroundImage: "radial-gradient(circle at 20% 15%, rgba(59,130,246,0.12), transparent 35%), radial-gradient(circle at 85% 15%, rgba(236,72,153,0.12), transparent 35%)" }}>
       <div className="max-w-6xl mx-auto space-y-4">
         <header className="rounded-2xl border border-cyan-400/20 bg-[#12274c]/95 px-6 py-5 text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-          <p className="text-xs uppercase tracking-[0.28em] text-slate-400">{t("match.matchOver", "Match Over")}</p>
+          <p className="text-xs uppercase tracking-[0.28em] text-slate-400">{t("match.matchOver")}</p>
           <h1 className={`mt-1 text-5xl font-heading uppercase ${userWon ? "text-emerald-400" : "text-rose-400"}`}>
-            {userWon ? t("match.victory", "Victory") : t("match.defeat", "Defeat")}
+            {userWon ? t("match.victory") : t("match.defeat")}
           </h1>
           <div className="mt-4 flex items-center justify-center gap-4 text-3xl font-black">
             <span className="text-cyan-200">{snapshot.home_team.name}</span>
@@ -242,7 +256,7 @@ export default function LolResultScreen({
             <span className="text-orange-200">{snapshot.away_team.name}</span>
           </div>
           <div className="mt-3 inline-flex items-center gap-3 rounded-full border border-yellow-400/30 bg-yellow-500/10 px-3 py-1 text-sm text-yellow-300">
-            <span className="font-heading uppercase tracking-wider">MVP</span>
+            <span className="font-heading uppercase tracking-wider">{t("match.draftResult.mvp")}</span>
             <span>{mvp?.name ?? "-"}</span>
             <span className="text-white/60">· {durationMin}:{String(Math.max(0, Math.floor((runtime?.timeSec ?? 0) % 60))).padStart(2, "0")}</span>
           </div>
@@ -250,7 +264,9 @@ export default function LolResultScreen({
 
         <section className="grid grid-cols-1 xl:grid-cols-[1.25fr_0.9fr] gap-4">
           <div className="rounded-2xl border border-cyan-400/15 bg-[#12274c]/90 p-4">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-3">Performance · K / D / A · CS · Gold</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-3">
+              {t("match.lolResult.performanceHeader")}
+            </p>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-3">
                 <p className="text-cyan-300 font-heading mb-2">{snapshot.home_team.name}</p>
@@ -280,7 +296,9 @@ export default function LolResultScreen({
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-[#12274c]/90 p-4">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-3">Team Stats</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-3">
+              {t("match.lolResult.teamStats")}
+            </p>
             <div className="space-y-2 text-sm">
               {statRows.map((row) => (
                 <div key={row.label} className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg bg-white/[0.03] px-3 py-2">
@@ -291,12 +309,14 @@ export default function LolResultScreen({
               ))}
             </div>
             {dragonSummary && <p className="mt-3 text-xs text-slate-300">{dragonSummary}</p>}
-            <p className="mt-2 text-xs text-slate-400">{t("match.neutralObjectives", "Neutral Objectives")}: <span className="text-cyan-300">{homeObjectives}</span> - <span className="text-orange-300">{awayObjectives}</span></p>
+            <p className="mt-2 text-xs text-slate-400">{t("match.neutralObjectives")}: <span className="text-cyan-300">{homeObjectives}</span> - <span className="text-orange-300">{awayObjectives}</span></p>
           </div>
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#12274c]/90 p-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-3">Gold Difference Over Time</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-3">
+            {t("match.lolResult.goldDiffOverTime")}
+          </p>
           <div className="h-40 rounded-xl border border-white/10 bg-[#0b1835] p-3">
             <div className="relative h-full w-full">
               <div className="absolute left-0 right-0 top-1/2 border-t border-white/10" />
@@ -330,13 +350,17 @@ export default function LolResultScreen({
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[#12274c]/90 p-4">
-          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-2">Key Timeline</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 mb-2">
+            {t("match.lolResult.keyTimeline")}
+          </p>
           <div className="space-y-1 max-h-52 overflow-auto pr-1">
             {timelineItems.map((evt) => (
               <div key={evt.key} className="text-sm text-gray-200 flex items-center justify-between gap-3">
                 <span>{evt.minute}'</span>
                 <span className="flex-1 truncate">{evt.label}</span>
-                <span className={evt.side === "Home" ? "text-cyan-300" : evt.side === "Away" ? "text-orange-300" : "text-gray-400"}>{evt.side}</span>
+                <span className={evt.side === "Home" ? "text-cyan-300" : evt.side === "Away" ? "text-orange-300" : "text-gray-400"}>
+                  {evt.side === "Home" ? t("match.home") : evt.side === "Away" ? t("match.away") : "-"}
+                </span>
               </div>
             ))}
           </div>
@@ -347,13 +371,13 @@ export default function LolResultScreen({
             onClick={onPressConference}
             className="px-4 py-2 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 text-xs uppercase tracking-wider"
           >
-            {t("match.pressConference", { defaultValue: "Press Conference" })}
+            {t("match.pressConference")}
           </button>
           <button
             onClick={onFinish}
             className="px-6 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#101625] font-heading text-sm uppercase tracking-wider"
           >
-            {t("match.continue", { defaultValue: "Continue" })}
+            {t("match.continue")}
           </button>
         </footer>
       </div>

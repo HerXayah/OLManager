@@ -24,6 +24,32 @@ vi.mock("react-i18next", () => ({
       if (key === "staff.hireStaff") return "Hire staff";
       if (key === "common.age") return "Age";
       if (key === "staff.best") return "Best";
+      if (key === "staff.lolImpactTeamTitle") return "Impacto LoL del staff";
+      if (key === "staff.lolImpactTitle") return "Impacto LoL";
+      if (key.startsWith("staff.lolAttrs.")) {
+        const map: Record<string, string> = {
+          coaching: "Entrenamiento LoL",
+          judgingAbility: "Lectura de meta",
+          judgingPotential: "Proyección de meta",
+          physiotherapy: "Recuperación",
+        };
+        const id = key.replace("staff.lolAttrs.", "");
+        return map[id] ?? key;
+      }
+      if (key.startsWith("staff.lolImpact.")) {
+        const map: Record<string, string> = {
+          development: "Aprendizaje",
+          tactics: "Preparación scrim",
+          analysis: "Lectura meta",
+          execution: "Ejecución",
+          recovery: "Recuperación",
+          draftAnalysis: "Análisis draft",
+          futureMeta: "Meta futura",
+          tiltControl: "Control de tilt",
+        };
+        const id = key.replace("staff.lolImpact.", "");
+        return map[id] ?? key;
+      }
       if (key.startsWith("staff.roles.")) return key.replace("staff.roles.", "");
       if (key.startsWith("staff.attrs.")) return key.replace("staff.attrs.", "");
       if (key.startsWith("staff.specializations.")) return key.replace("staff.specializations.", "");

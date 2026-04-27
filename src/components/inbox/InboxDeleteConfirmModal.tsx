@@ -26,20 +26,18 @@ export default function InboxDeleteConfirmModal({
 
   const title =
     deleteModalState.mode === "single"
-      ? t("inbox.deleteMessageTitle", "Delete message?")
-      : t("inbox.deleteSelectedTitle", "Delete selected messages?");
+      ? t("inbox.deleteMessageTitle")
+      : t("inbox.deleteSelectedTitle");
   const message =
     deleteModalState.mode === "single"
       ? t(
-          "inbox.deleteMessageBody",
-          'This will permanently delete "{{subject}}". This action cannot be undone.',
-          { subject: deleteModalState.subject },
-        )
+        "inbox.deleteMessageBody",
+        { subject: deleteModalState.subject },
+      )
       : t(
-          "inbox.deleteSelectedBody",
-          "This will permanently delete {{count}} selected message(s). This action cannot be undone.",
-          { count: deleteModalState.messageIds.length },
-        );
+        "inbox.deleteSelectedBody",
+        { count: deleteModalState.messageIds.length },
+      );
 
   return (
     <DashboardModalFrame maxWidthClassName="max-w-md">
@@ -60,7 +58,7 @@ export default function InboxDeleteConfirmModal({
             onClick={onCancel}
             disabled={isDeleting}
           >
-            {t("common.cancel", "Cancel")}
+            {t("common.cancel")}
           </Button>
           <Button
             type="button"
@@ -70,7 +68,7 @@ export default function InboxDeleteConfirmModal({
             className="bg-red-500 hover:bg-red-600 active:bg-red-700 focus:ring-red-500"
             data-testid="inbox-confirm-delete"
           >
-            {t("inbox.deleteAction", "Delete")}
+            {t("inbox.deleteAction")}
           </Button>
         </div>
       </div>
