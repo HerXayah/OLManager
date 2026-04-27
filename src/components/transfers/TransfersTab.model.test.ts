@@ -172,6 +172,14 @@ describe("TransfersTab.model", () => {
       team_id: "team-2",
       transfer_listed: true,
     });
+    const releasedFreeAgent = createPlayer({
+      id: "released-free-agent",
+      full_name: "Released Agent",
+      match_name: "R. Agent",
+      date_of_birth: "1999-02-10",
+      team_id: null,
+      transfer_listed: false,
+    });
     const loanPlayer = createPlayer({
       id: "loan-player",
       team_id: "team-2",
@@ -197,6 +205,7 @@ describe("TransfersTab.model", () => {
       userListed,
       userLoanListed,
       marketPlayer,
+      releasedFreeAgent,
       loanPlayer,
       offeredPlayer,
     ]);
@@ -211,6 +220,7 @@ describe("TransfersTab.model", () => {
     ]);
     expect(collections.marketPlayers.map((player) => player.id)).toEqual([
       "market-player",
+      "released-free-agent",
     ]);
     expect(collections.loanPlayers.map((player) => player.id)).toEqual([
       "loan-player",

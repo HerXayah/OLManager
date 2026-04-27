@@ -6,6 +6,9 @@ import { PlayerData, GameStateData, PlayerMatchHistoryEntryData, ScoutReportData
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { resolveBackendText } from "../../utils/backendI18n";
+import { resolveSeasonContext } from "../../lib/seasonContext";
+import DashboardModalFrame from "../dashboard/DashboardModalFrame";
+import { Button } from "../ui";
 import {
   getPlayerAge,
   getPlayerTeamName,
@@ -38,8 +41,19 @@ import { startPotentialResearch } from "../../services/playerService";
 import { demoteMainPlayerToAcademy, promoteAcademyPlayer } from "../../services/academyService";
 import { findAcademyTeamForParent } from "../../store/academySelectors";
 import { fallbackChampionForRole, resolvePlayerLolRole } from "../../lib/lolIdentity";
+import {
+  makeTransferBid,
+  releasePlayerContract,
+  type TransferNegotiationFeedbackData,
+} from "../../services/transfersService";
+import { formatVal } from "../../lib/helpers";
 
 type LolRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
+
+interface TransferOfferFeedbackState {
+  decision: "accepted" | "rejected" | "counter_offer";
+  feedback: TransferNegotiationFeedbackData;
+}
 
 function getLatestScoutReportForPlayer(
   gameState: GameStateData,
@@ -251,6 +265,13 @@ export default function PlayerProfile({
   const [potentialResearchSubmitting, setPotentialResearchSubmitting] = useState(false);
   const [scoutError, setScoutError] = useState<string | null>(null);
   const [showRenewalModal, setShowRenewalModal] = useState(false);
+  const [showReleaseContractModal, setShowReleaseContractModal] = useState(false);
+  const [showTransferOfferModal, setShowTransferOfferModal] = useState(false);
+  const [transferActionSubmitting, setTransferActionSubmitting] = useState(false);
+  const [transferOfferAmount, setTransferOfferAmount] = useState("");
+  const [transferOfferError, setTransferOfferError] = useState<string | null>(null);
+  const [transferOfferFeedback, setTransferOfferFeedback] =
+    useState<TransferOfferFeedbackState | null>(null);
   const [renewalWage, setRenewalWage] = useState("");
   const [renewalLength, setRenewalLength] = useState("2");
   const [renewalSubmitting, setRenewalSubmitting] = useState(false);
@@ -287,6 +308,29 @@ export default function PlayerProfile({
   const isOwnMainPlayer = managerTeamId !== null && player.team_id === managerTeamId;
   const isOwnAcademyPlayer = managerAcademyTeam !== null && player.team_id === managerAcademyTeam.id;
   const actualIsOwnClub = isOwnMainPlayer || isOwnAcademyPlayer;
+  const seasonContext = resolveSeasonContext(gameState);
+  const isTransferWindowOpen =
+    seasonContext.transfer_window.status === "Open" ||
+    seasonContext.transfer_window.status === "DeadlineDay";
+  const releasePenaltyPreview = (() => {
+    if (!player.contract_end) {
+      return 0;
+    }
+
+    const currentDate = new Date(gameState.clock.current_date);
+    const contractEndDate = new Date(`${player.contract_end}T00:00:00Z`);
+    if (Number.isNaN(currentDate.getTime()) || Number.isNaN(contractEndDate.getTime())) {
+      return 0;
+    }
+
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const daysRemaining = Math.max(
+      0,
+      Math.ceil((contractEndDate.getTime() - currentDate.getTime()) / msPerDay),
+    );
+    const remainingSalary = Math.round((player.wage * daysRemaining) / 365);
+    return Math.round(remainingSalary * 0.4);
+  })();
   const contractRiskLevel = getContractRiskLevel(
     player.contract_end,
     gameState.clock.current_date,
@@ -399,6 +443,116 @@ export default function PlayerProfile({
       return;
     } finally {
       setRerollingRole(false);
+    }
+  }
+
+  function handleRequestReleaseContract(): void {
+    if (!isTransferWindowOpen || !actualIsOwnClub || transferActionSubmitting) {
+      return;
+    }
+
+    setShowReleaseContractModal(true);
+  }
+
+  async function handleConfirmReleaseContract(): Promise<void> {
+    if (!onGameUpdate || !actualIsOwnClub || transferActionSubmitting) {
+      return;
+    }
+
+    setTransferActionSubmitting(true);
+    try {
+      const updated = await releasePlayerContract(player.id);
+      onGameUpdate(updated);
+      setShowReleaseContractModal(false);
+      onClose();
+    } catch (error) {
+      console.error("Failed to release player contract:", error);
+    } finally {
+      setTransferActionSubmitting(false);
+    }
+  }
+
+  function handleOpenTransferOfferModal(): void {
+    if (!onGameUpdate || actualIsOwnClub || transferActionSubmitting || !isTransferWindowOpen) {
+      return;
+    }
+
+    const initialFee = Math.max(1, Math.round(player.market_value));
+    setTransferOfferAmount(String(initialFee));
+    setTransferOfferError(null);
+    setTransferOfferFeedback(null);
+    setShowTransferOfferModal(true);
+  }
+
+  async function handleSubmitTransferOffer(): Promise<void> {
+    if (!onGameUpdate || actualIsOwnClub || transferActionSubmitting) {
+      return;
+    }
+
+    const fee = Math.round(Number.parseFloat(transferOfferAmount));
+    if (!Number.isFinite(fee) || fee <= 0) {
+      setTransferOfferError(
+        t("playerProfile.transferOfferInvalid", {
+          defaultValue: "Ingresá un monto de oferta valido.",
+        }),
+      );
+      return;
+    }
+
+    setTransferOfferError(null);
+    setTransferOfferFeedback(null);
+    setTransferActionSubmitting(true);
+    try {
+      const result = await makeTransferBid(player.id, fee);
+      onGameUpdate(result.game);
+      setTransferOfferFeedback({
+        decision: result.decision,
+        feedback: result.feedback,
+      });
+
+      if (result.suggested_fee !== null) {
+        setTransferOfferAmount(String(Math.round(result.suggested_fee)));
+      }
+
+      if (result.decision === "accepted") {
+        setShowTransferOfferModal(false);
+      }
+    } catch (error) {
+      console.error("Failed to make transfer offer:", error);
+      const rawError =
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+            ? error.message
+            : String(error);
+
+      if (rawError.includes("Transfer budget too low")) {
+        setTransferOfferError(
+          t("playerProfile.transferOfferBudgetError", {
+            defaultValue: "Tu presupuesto de fichajes no alcanza para este monto.",
+          }),
+        );
+      } else if (rawError.includes("Insufficient funds")) {
+        setTransferOfferError(
+          t("playerProfile.transferOfferFundsError", {
+            defaultValue: "No tenes fondos suficientes para esta oferta.",
+          }),
+        );
+      } else if (rawError.includes("Transfer window is closed")) {
+        setTransferOfferError(
+          t("playerProfile.transferOfferWindowClosed", {
+            defaultValue: "El mercado esta cerrado.",
+          }),
+        );
+      } else {
+        setTransferOfferError(
+          t("playerProfile.transferOfferFailed", {
+            defaultValue: "No se pudo enviar la oferta. Probá de nuevo.",
+          }),
+        );
+      }
+    } finally {
+      setTransferActionSubmitting(false);
     }
   }
 
@@ -741,7 +895,11 @@ export default function PlayerProfile({
           contractRiskLevel={contractRiskLevel}
           contractRiskLabel={contractRiskLabel}
           isOwnClub={actualIsOwnClub}
+          isTransferWindowOpen={isTransferWindowOpen}
+          transferActionSubmitting={transferActionSubmitting}
           onOpenRenewal={openRenewalModal}
+          onReleaseContract={handleRequestReleaseContract}
+          onOpenTransferBid={handleOpenTransferOfferModal}
           t={t}
         />
 
@@ -785,6 +943,116 @@ export default function PlayerProfile({
         onDelegate={() => void handleDelegateRenewal()}
         onSubmit={() => void handleRenewalSubmit()}
       />
+
+      {showReleaseContractModal ? (
+        <DashboardModalFrame maxWidthClassName="max-w-md">
+          <div className="space-y-4">
+            <h3 className="text-lg font-heading font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">
+              {t("playerProfile.releaseContract")}
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {t("playerProfile.releaseContractConfirm")}
+            </p>
+            <div className="rounded-lg border border-gray-200 dark:border-navy-600 bg-gray-50 dark:bg-navy-700/40 p-3">
+              <p className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                {t("playerProfile.releasePenalty", { defaultValue: "Termination cost" })}
+              </p>
+              <p className="text-sm font-semibold text-red-500 mt-1">
+                {formatVal(releasePenaltyPreview)}
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => setShowReleaseContractModal(false)}
+                disabled={transferActionSubmitting}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                className="bg-red-600 hover:bg-red-700 active:bg-red-800"
+                onClick={() => void handleConfirmReleaseContract()}
+                disabled={transferActionSubmitting}
+              >
+                {t("playerProfile.releaseContract")}
+              </Button>
+            </div>
+          </div>
+        </DashboardModalFrame>
+      ) : null}
+
+      {showTransferOfferModal ? (
+        <DashboardModalFrame maxWidthClassName="max-w-md">
+          <div className="space-y-4">
+            <h3 className="text-lg font-heading font-bold uppercase tracking-wider text-gray-900 dark:text-gray-100">
+              {t("playerProfile.makeTransferOffer")}
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{player.full_name}</p>
+            <div>
+              <label
+                htmlFor="transfer-offer-amount"
+                className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1"
+              >
+                {t("playerProfile.transferOfferAmount", {
+                  defaultValue: "Offer amount",
+                })}
+              </label>
+              <input
+                id="transfer-offer-amount"
+                type="number"
+                min="1"
+                step="1000"
+                value={transferOfferAmount}
+                onChange={(event) => setTransferOfferAmount(event.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-navy-700 border border-gray-200 dark:border-navy-600 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+              />
+            </div>
+            {transferOfferError ? (
+              <p className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                {transferOfferError}
+              </p>
+            ) : null}
+            {transferOfferFeedback ? (
+              <div className="rounded-md border border-primary-400/30 bg-primary-500/10 px-3 py-2 text-xs text-primary-100">
+                <p className="font-heading font-bold uppercase tracking-wider text-[10px] text-primary-200/90">
+                  {resolveBackendText(
+                    transferOfferFeedback.feedback.headline_key,
+                    transferOfferFeedback.feedback.headline_key,
+                    transferOfferFeedback.feedback.params,
+                  )}
+                </p>
+                {transferOfferFeedback.feedback.detail_key ? (
+                  <p className="mt-1 text-primary-100/90">
+                    {resolveBackendText(
+                      transferOfferFeedback.feedback.detail_key,
+                      transferOfferFeedback.feedback.detail_key,
+                      transferOfferFeedback.feedback.params,
+                    )}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => setShowTransferOfferModal(false)}
+                disabled={transferActionSubmitting}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={() => void handleSubmitTransferOffer()}
+                disabled={transferActionSubmitting}
+              >
+                {t("playerProfile.transferOfferSubmit", {
+                  defaultValue: "Send offer",
+                })}
+              </Button>
+            </div>
+          </div>
+        </DashboardModalFrame>
+      ) : null}
     </div>
   );
 }

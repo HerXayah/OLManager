@@ -81,7 +81,7 @@ export function deriveTransferCollections(
   const marketPlayers = dedupePlayersPreferAcademy(
     gameState.players.filter(
       (player) =>
-        player.transfer_listed &&
+        (player.team_id === null || player.transfer_listed) &&
         player.team_id !== userTeamId &&
         !academyIdentityKeys.has(normalizePlayerKey(player)),
     ),

@@ -9,6 +9,7 @@ import { findAcademyTeamForParent, getTeamAcademyRoster } from "../../store/acad
 import type { AcademyAcquisitionOptionData } from "../../store/gameStore";
 import { Badge, Button, Card, CardBody, CardHeader } from "../ui";
 import { resolvePlayerLolRole } from "../../lib/lolIdentity";
+import { resolveExampleTeamLogo } from "../../lib/teamLogos";
 
 interface YouthAcademyTabProps {
   gameState: GameStateData;
@@ -52,7 +53,7 @@ function getLolOvr(player: PlayerData): number {
 
 export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdate }: YouthAcademyTabProps) {
   const { t, i18n } = useTranslation();
-  const numberLocale = i18n.language || "en";
+  const numberLocale = i18n?.language || "en";
   const myTeam = gameState.teams.find((team) => team.id === gameState.manager.team_id);
   const academyTeam = useMemo(
     () => findAcademyTeamForParent(gameState.teams, myTeam?.id),
@@ -254,13 +255,16 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
               )}
               {acquisitionOptions.length > 0 && (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {acquisitionOptions.map((option) => (
+                  {acquisitionOptions.map((option) => {
+                    const optionLogoSrc = option.source_team_logo_url ?? resolveExampleTeamLogo(option.source_team_name);
+
+                    return (
                     <div key={option.source_team_id} className="rounded-lg border border-gray-100 dark:border-navy-600 p-4 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-10 h-10 rounded-lg bg-navy-700/40 border border-navy-600 flex items-center justify-center overflow-hidden shrink-0">
-                          {option.source_team_logo_url ? (
+                          {optionLogoSrc ? (
                             <img
-                              src={option.source_team_logo_url}
+                              src={optionLogoSrc}
                               alt={t("youthAcademy.sourceTeamLogoAlt", { team: option.source_team_name })}
                               className="w-8 h-8 object-contain"
                               loading="lazy"
@@ -301,7 +305,8 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
                           : t("youthAcademy.fundAcademy")}
                       </Button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

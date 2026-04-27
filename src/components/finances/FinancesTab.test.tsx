@@ -77,6 +77,7 @@ vi.mock("react-i18next", () => ({
       if (key === "finances.esportsSponsor") return "Esports sponsor";
       if (key === "finances.nextUpgradeCost")
         return `Next upgrade: €${params?.amount}`;
+      if (key === "finances.expandOffices") return "Expand offices";
       if (key === "finances.facilityScrimsRoomEffect")
         return "Improves scrim quality";
       if (key === "finances.facilityAnalysisRoomEffect")
@@ -324,22 +325,21 @@ describe("FinancesTab facilities", () => {
 
     render(<FinancesTab gameState={gameState} />);
 
-    expect(screen.getByText("Facility Hub")).toBeInTheDocument();
+    expect(screen.getAllByText("Facility Hub").length).toBeGreaterThan(0);
     expect(screen.getByText("Scrims Room")).toBeInTheDocument();
     expect(screen.getByText("Analysis Room")).toBeInTheDocument();
     expect(screen.getByText("Bootcamp Area")).toBeInTheDocument();
     expect(screen.getByText("Recovery Suite")).toBeInTheDocument();
     expect(screen.getByText("Content Studio")).toBeInTheDocument();
     expect(screen.getByText("Scouting Lab")).toBeInTheDocument();
-    expect(screen.getAllByText("Level 2")).toHaveLength(2);
-    expect(screen.getAllByText("Level 1")).toHaveLength(2);
-    expect(screen.getAllByText("Level 3")).toHaveLength(2);
+    expect(screen.getAllByText("Level 2")).toHaveLength(1);
+    expect(screen.getAllByText("Level 1")).toHaveLength(3);
+    expect(screen.getAllByText("Level 3")).toHaveLength(3);
 
     const upgradeButtons = screen.getAllByRole("button", { name: /Upgrade/ });
     expect(upgradeButtons).toHaveLength(6);
     expect(upgradeButtons.every((button) => button.hasAttribute("disabled"))).toBe(true);
-    expect(screen.getAllByText("Insufficient funds")).toHaveLength(5);
-    expect(screen.getByText("Expand hub first")).toBeInTheDocument();
+    expect(screen.getAllByText("Insufficient funds")).toHaveLength(4);
   });
 
   it("invokes facility upgrade and publishes the updated game state", async () => {
@@ -363,8 +363,8 @@ describe("FinancesTab facilities", () => {
     fireEvent.click(screen.getByRole("button", { name: /Upgrade Recovery Suite/i }));
 
     await waitFor(() => {
-      expect(mockedInvoke).toHaveBeenCalledWith("upgrade_facility", {
-        facility: "Medical",
+      expect(mockedInvoke).toHaveBeenCalledWith("upgrade_main_facility_module", {
+        module: "RecoverySuite",
       });
     });
     expect(onGameUpdate).toHaveBeenCalledWith(updatedState);
@@ -482,7 +482,7 @@ describe("FinancesTab facilities", () => {
     render(<FinancesTab gameState={gameState} />);
 
     expect(screen.getAllByText("Monthly upkeep: €40K")).toHaveLength(1);
-    expect(screen.getAllByText("Monthly upkeep: €30K")).toHaveLength(1);
+    expect(screen.getAllByText("Monthly upkeep: €0")).toHaveLength(4);
     expect(screen.getAllByText("Monthly upkeep: €10K")).toHaveLength(1);
     expect(screen.getAllByText("Next upgrade: €750,000").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Next upgrade: €250,000").length).toBeGreaterThan(0);

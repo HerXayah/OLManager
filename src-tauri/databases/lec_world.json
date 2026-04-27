@@ -15,7 +15,7 @@
       "manager_id": null,
       "reputation": 500,
       "wage_budget": 1300000,
-      "transfer_budget": 200000,
+      "transfer_budget": 450000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -32,8 +32,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2004,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#191919",
+        "secondary": "#FF5900"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -60,7 +60,7 @@
       "manager_id": null,
       "reputation": 650,
       "wage_budget": 1600000,
-      "transfer_budget": 300000,
+      "transfer_budget": 700000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -77,8 +77,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2014,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#1A1A1B",
+        "secondary": "#FF0000"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -105,7 +105,7 @@
       "manager_id": null,
       "reputation": 500,
       "wage_budget": 1100000,
-      "transfer_budget": 150000,
+      "transfer_budget": 400000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -122,8 +122,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2008,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#001D3D",
+        "secondary": "#000000"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -150,7 +150,7 @@
       "manager_id": null,
       "reputation": 650,
       "wage_budget": 1600000,
-      "transfer_budget": 200000,
+      "transfer_budget": 700000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -167,8 +167,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2020,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#003566",
+        "secondary": "#00A8E8"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -195,7 +195,7 @@
       "manager_id": null,
       "reputation": 650,
       "wage_budget": 1400000,
-      "transfer_budget": 300000,
+      "transfer_budget": 650000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -212,8 +212,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2021,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#9327FF",
+        "secondary": "#00E5FF"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -240,7 +240,7 @@
       "manager_id": null,
       "reputation": 500,
       "wage_budget": 1300000,
-      "transfer_budget": 250000,
+      "transfer_budget": 500000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -257,8 +257,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2009,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#231F20",
+        "secondary": "#FFFF00"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -285,7 +285,7 @@
       "manager_id": null,
       "reputation": 350,
       "wage_budget": 1000000,
-      "transfer_budget": 200000,
+      "transfer_budget": 350000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -302,8 +302,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2012,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#D4AF37",
+        "secondary": "#121212"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -330,7 +330,7 @@
       "manager_id": null,
       "reputation": 350,
       "wage_budget": 1000000,
-      "transfer_budget": 200000,
+      "transfer_budget": 350000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -347,8 +347,8 @@
       "training_schedule": "Balanced",
       "founded_year": 1997,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#000000",
+        "secondary": "#FFFFFF"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -375,7 +375,7 @@
       "manager_id": null,
       "reputation": 500,
       "wage_budget": 900000,
-      "transfer_budget": 150000,
+      "transfer_budget": 350000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -392,8 +392,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2016,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#FFFFFF",
+        "secondary": "#2A2A2A"
       },
       "training_groups": [],
       "starting_xi_ids": [],
@@ -420,7 +420,7 @@
       "manager_id": null,
       "reputation": 650,
       "wage_budget": 1300000,
-      "transfer_budget": 250000,
+      "transfer_budget": 600000,
       "season_income": 0,
       "season_expenses": 0,
       "financial_ledger": [],
@@ -437,8 +437,8 @@
       "training_schedule": "Balanced",
       "founded_year": 2013,
       "colors": {
-        "primary": "#1f2937",
-        "secondary": "#f3f4f6"
+        "primary": "#000000",
+        "secondary": "#FFD700"
       },
       "training_groups": [],
       "starting_xi_ids": [],

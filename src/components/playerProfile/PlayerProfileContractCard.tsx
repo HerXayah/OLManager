@@ -32,7 +32,11 @@ interface PlayerProfileContractCardProps {
     contractRiskLevel: "critical" | "warning" | "stable";
     contractRiskLabel: string;
     isOwnClub: boolean;
+    isTransferWindowOpen: boolean;
+    transferActionSubmitting: boolean;
     onOpenRenewal: () => void;
+    onReleaseContract: () => void;
+    onOpenTransferBid: () => void;
     t: TranslateFn;
 }
 
@@ -49,7 +53,11 @@ export default function PlayerProfileContractCard({
     contractRiskLevel,
     contractRiskLabel,
     isOwnClub,
+    isTransferWindowOpen,
+    transferActionSubmitting,
     onOpenRenewal,
+    onReleaseContract,
+    onOpenTransferBid,
     t,
 }: PlayerProfileContractCardProps) {
     return (
@@ -107,9 +115,30 @@ export default function PlayerProfileContractCard({
                     />
                 </div>
                 {isOwnClub ? (
-                    <div className="pt-3">
+                    <div className="pt-3 flex flex-wrap gap-2">
                         <Button size="sm" variant="outline" onClick={onOpenRenewal}>
                             {t("common.renewContract")}
+                        </Button>
+                        {isTransferWindowOpen ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={onReleaseContract}
+                                disabled={transferActionSubmitting}
+                            >
+                                {t("playerProfile.releaseContract")}
+                            </Button>
+                        ) : null}
+                    </div>
+                ) : isTransferWindowOpen ? (
+                    <div className="pt-3">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={onOpenTransferBid}
+                            disabled={transferActionSubmitting}
+                        >
+                            {t("playerProfile.makeTransferOffer")}
                         </Button>
                     </div>
                 ) : null}

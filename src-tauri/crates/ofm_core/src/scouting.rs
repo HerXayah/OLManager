@@ -1,6 +1,7 @@
 use crate::game::{Game, ScoutingAssignment};
 use domain::message::*;
 use domain::staff::StaffRole;
+use domain::team::MainFacilityModuleKind;
 use rand::RngExt;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -48,6 +49,12 @@ pub fn scout_max_assignments(judging_ability: u8) -> usize {
 /// Send a scout to evaluate a player. Returns an error string if invalid.
 pub fn send_scout(game: &mut Game, scout_id: &str, player_id: &str) -> Result<(), String> {
     let user_team_id = game.manager.team_id.as_ref().ok_or("No team")?;
+    let scouting_facility_level = game
+        .teams
+        .iter()
+        .find(|team| team.id == user_team_id.as_str())
+        .map(|team| team.facilities.module_level(MainFacilityModuleKind::ScoutingLab))
+        .unwrap_or(1);
 
     // Validate scout exists and belongs to user's team
     let scout = game
@@ -74,6 +81,8 @@ pub fn send_scout(game: &mut Game, scout_id: &str, player_id: &str) -> Result<()
 
     // Check scout capacity: higher ability = more concurrent assignments
     let max_slots = scout_max_assignments(scout.attributes.judging_ability);
+    let facility_slot_bonus = usize::from(scouting_facility_level.saturating_sub(1) / 2);
+    let max_slots = max_slots + facility_slot_bonus;
     let current_count = game
         .scouting_assignments
         .iter()
@@ -97,7 +106,7 @@ pub fn send_scout(game: &mut Game, scout_id: &str, player_id: &str) -> Result<()
 
     // Create assignment (2-5 days depending on scout quality)
     let judging = scout.attributes.judging_ability as u32;
-    let days = if judging >= 80 {
+    let base_days: u32 = if judging >= 80 {
         2
     } else if judging >= 60 {
         3
@@ -106,6 +115,14 @@ pub fn send_scout(game: &mut Game, scout_id: &str, player_id: &str) -> Result<()
     } else {
         5
     };
+    let facility_days_reduction: u32 = if scouting_facility_level >= 4 {
+        2
+    } else if scouting_facility_level >= 2 {
+        1
+    } else {
+        0
+    };
+    let days = base_days.saturating_sub(facility_days_reduction).max(1);
 
     game.scouting_assignments.push(ScoutingAssignment {
         id: Uuid::new_v4().to_string(),

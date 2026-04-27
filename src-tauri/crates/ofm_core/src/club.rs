@@ -25,15 +25,23 @@ fn module_from_facility_type(facility_type: &FacilityType) -> MainFacilityModule
 
 fn set_module_level(facilities: &mut Facilities, module: MainFacilityModuleKind, level: u8) {
     match module {
-        MainFacilityModuleKind::ScrimsRoom | MainFacilityModuleKind::AnalysisRoom => {
-            facilities.training = level
-        }
-        MainFacilityModuleKind::BootcampArea | MainFacilityModuleKind::RecoverySuite => {
-            facilities.medical = level
-        }
-        MainFacilityModuleKind::ContentStudio => facilities.main_hub_level = level,
-        MainFacilityModuleKind::ScoutingLab => facilities.scouting = level,
+        MainFacilityModuleKind::ScrimsRoom => facilities.scrims_room_level = Some(level),
+        MainFacilityModuleKind::AnalysisRoom => facilities.analysis_room_level = Some(level),
+        MainFacilityModuleKind::BootcampArea => facilities.bootcamp_area_level = Some(level),
+        MainFacilityModuleKind::RecoverySuite => facilities.recovery_suite_level = Some(level),
+        MainFacilityModuleKind::ContentStudio => facilities.content_studio_level = Some(level),
+        MainFacilityModuleKind::ScoutingLab => facilities.scouting_lab_level = Some(level),
     }
+
+    let scrims = facilities.scrims_room_level.unwrap_or(facilities.training);
+    let analysis = facilities.analysis_room_level.unwrap_or(facilities.training);
+    let bootcamp = facilities.bootcamp_area_level.unwrap_or(facilities.medical);
+    let recovery = facilities.recovery_suite_level.unwrap_or(facilities.medical);
+    let scouting_lab = facilities.scouting_lab_level.unwrap_or(facilities.scouting);
+
+    facilities.training = scrims.max(analysis);
+    facilities.medical = bootcamp.max(recovery);
+    facilities.scouting = scouting_lab;
 }
 
 pub fn next_main_hub_expansion_cost(team: &Team) -> i64 {
@@ -100,13 +108,21 @@ pub fn upgrade_facility(team: &mut Team, facility_type: FacilityType) -> Result<
 
     match facility_type {
         FacilityType::Training => {
-            team.facilities.training = team.facilities.training.saturating_add(1);
+            let next_level = team.facilities.training.saturating_add(1);
+            team.facilities.training = next_level;
+            team.facilities.scrims_room_level = Some(next_level);
+            team.facilities.analysis_room_level = Some(next_level);
         }
         FacilityType::Medical => {
-            team.facilities.medical = team.facilities.medical.saturating_add(1);
+            let next_level = team.facilities.medical.saturating_add(1);
+            team.facilities.medical = next_level;
+            team.facilities.bootcamp_area_level = Some(next_level);
+            team.facilities.recovery_suite_level = Some(next_level);
         }
         FacilityType::Scouting => {
-            team.facilities.scouting = team.facilities.scouting.saturating_add(1);
+            let next_level = team.facilities.scouting.saturating_add(1);
+            team.facilities.scouting = next_level;
+            team.facilities.scouting_lab_level = Some(next_level);
         }
     }
 

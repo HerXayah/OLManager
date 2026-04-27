@@ -85,23 +85,23 @@ vi.mock("../components/match/ChampionDraft", () => ({
 vi.mock("../components/match/MatchTacticsStage", () => ({
   default: ({
     onContinue,
-    onRunParallelSims,
-    isRunningParallelSims,
-    parallelSimsFeedback,
+    onSimulate,
+    isSimulating,
+    simulationFeedback,
   }: {
     onContinue?: () => void;
-    onRunParallelSims?: () => void;
-    isRunningParallelSims?: boolean;
-    parallelSimsFeedback?: string | null;
+    onSimulate?: () => void;
+    isSimulating?: boolean;
+    simulationFeedback?: string | null;
   }) => (
     <div data-testid="tactics-stage">
-      <button data-testid="tactics-run-sims" onClick={onRunParallelSims} disabled={isRunningParallelSims}>
-        8 Sims
+      <button data-testid="tactics-run-sims" onClick={onSimulate} disabled={isSimulating}>
+        Simulate
       </button>
       <button data-testid="tactics-continue" onClick={onContinue}>
         Continue to Live
       </button>
-      <div data-testid="tactics-feedback">{parallelSimsFeedback ?? "none"}</div>
+      <div data-testid="tactics-feedback">{simulationFeedback ?? "none"}</div>
     </div>
   ),
 }));

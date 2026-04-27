@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
@@ -25,7 +25,6 @@ import {
   type DraftMatchResult,
 } from "../components/match/draftResultSimulator";
 import {
-  lolSimV2ClearTelemetryFiles,
   lolSimV2RunToCompletion,
 } from "../components/match/lol-prototype/backend/tauri-client";
 import type {
@@ -550,42 +549,9 @@ function buildDraftResultFromRuntime(params: {
   };
 }
 
-const PARALLEL_SIMULATION_COUNT = 8;
 const PARALLEL_SIM_MAX_TICKS = 3600;
 const PARALLEL_SIM_DT_SEC = 0.2;
 const PARALLEL_SIM_SPEED = 12;
-const PARALLEL_SIMS_CHECKPOINT_KEY = "lol-sim-v2:parallel-sims-checkpoints";
-
-interface ParallelSimsCheckpoint {
-  runId: string;
-  atIso: string;
-  batch: number;
-  batchDurationSec: number;
-  simsPerHour: number;
-  blueWins: number;
-  redWins: number;
-  unresolved: number;
-  totalSims: number;
-  totalBlueWins: number;
-  totalRedWins: number;
-  totalUnresolved: number;
-}
-
-function saveParallelSimsCheckpoint(checkpoint: ParallelSimsCheckpoint) {
-  if (typeof window === "undefined") return;
-
-  try {
-    const raw = window.localStorage.getItem(PARALLEL_SIMS_CHECKPOINT_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    const list = Array.isArray(parsed) ? parsed : [];
-    list.push(checkpoint);
-
-    const bounded = list.slice(-1000);
-    window.localStorage.setItem(PARALLEL_SIMS_CHECKPOINT_KEY, JSON.stringify(bounded));
-  } catch (error) {
-    console.warn("[MatchSimulation] parallelSims:checkpointSaveFailed", error);
-  }
-}
 
 function persistFixtureDraftResult(
   fixtureId: string,
@@ -683,9 +649,8 @@ export default function MatchSimulation() {
   const [userSide, setUserSide] = useState<"Home" | "Away" | null>(null);
   const [isSpectator, setIsSpectator] = useState(matchMode === "spectator");
   const [hasFinalizedMatch, setHasFinalizedMatch] = useState(false);
-  const [isRunningParallelSims, setIsRunningParallelSims] = useState(false);
-  const [parallelSimsFeedback, setParallelSimsFeedback] = useState<string | null>(null);
-  const parallelSimsLoopActiveRef = useRef(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simulationFeedback, setSimulationFeedback] = useState<string | null>(null);
 
   useEffect(() => {
     console.info("[MatchSimulation] mount", {
@@ -733,12 +698,6 @@ export default function MatchSimulation() {
       userSide,
     });
   }, [isSpectator, snapshot, stage, userSide]);
-
-  useEffect(() => {
-    return () => {
-      parallelSimsLoopActiveRef.current = false;
-    };
-  }, []);
 
   // Fetch initial snapshot
   useEffect(() => {
@@ -1081,143 +1040,6 @@ export default function MatchSimulation() {
     setStage("first_half");
   }, []);
 
-  const runSingleParallelSimulation = useCallback(async (
-    runIndex: number,
-    runSnapshot: MatchSnapshot,
-    championMapByPlayerId: Record<string, string>,
-    runSeedBase: string,
-  ): Promise<LolSimV1RuntimeState["winner"]> => {
-    const response = await lolSimV2RunToCompletion({
-      seed: `${runSeedBase}-${runIndex + 1}`,
-      aiMode: "hybrid",
-      policy: simPolicy,
-      snapshot: runSnapshot,
-      championByPlayerId: championMapByPlayerId,
-      championProfilesById: {},
-      dtSec: PARALLEL_SIM_DT_SEC,
-      speed: PARALLEL_SIM_SPEED,
-      maxTicks: PARALLEL_SIM_MAX_TICKS,
-    });
-
-    return response.winner ?? null;
-  }, [simPolicy]);
-
-  const handleRunParallelSims = useCallback(async () => {
-    if (!renderSnapshotWithTactics) {
-      return;
-    }
-
-    if (isRunningParallelSims) {
-      parallelSimsLoopActiveRef.current = false;
-      setParallelSimsFeedback(
-        t("match.parallelSimsStopping", { defaultValue: "Deteniendo simulaciones..." }),
-      );
-      return;
-    }
-
-    setIsRunningParallelSims(true);
-    parallelSimsLoopActiveRef.current = true;
-    setParallelSimsFeedback(
-      t("match.parallelSimsPreparing", { defaultValue: "Preparando simulaciones..." }),
-    );
-
-    const championMapByPlayerId: Record<string, string> = {
-      ...(championSelections?.home ?? {}),
-      ...(championSelections?.away ?? {}),
-    };
-    const runSeedBase = `post-draft-${Date.now()}`;
-    const runId = `parallel-sims-${Date.now()}`;
-
-    try {
-      const clearResult = await lolSimV2ClearTelemetryFiles();
-      console.info("[MatchSimulation] parallelSims:telemetryCleared", clearResult);
-
-      let batch = 0;
-      let totalSims = 0;
-      let totalBlueWins = 0;
-      let totalRedWins = 0;
-      let totalUnresolved = 0;
-
-      while (parallelSimsLoopActiveRef.current) {
-        batch += 1;
-        setParallelSimsFeedback(
-          t("match.parallelSimsRunning", {
-            defaultValue: `Corriendo 8 simulaciones en paralelo... (Lote ${batch})`,
-          }),
-        );
-
-        const batchStartedAt = performance.now();
-        const winners = await Promise.all(
-          Array.from({ length: PARALLEL_SIMULATION_COUNT }, (_, index) =>
-            runSingleParallelSimulation(
-              index + batch * 1000,
-              renderSnapshotWithTactics,
-              championMapByPlayerId,
-              runSeedBase,
-            ),
-          ),
-        );
-        const batchDurationSeconds = (performance.now() - batchStartedAt) / 1_000;
-        const approxSimsPerHour = batchDurationSeconds > 0
-          ? Math.round((winners.length * 3_600) / batchDurationSeconds)
-          : 0;
-
-        const blueWins = winners.filter((winner) => winner === "blue").length;
-        const redWins = winners.filter((winner) => winner === "red").length;
-        const unresolved = winners.length - blueWins - redWins;
-
-        totalSims += winners.length;
-        totalBlueWins += blueWins;
-        totalRedWins += redWins;
-        totalUnresolved += unresolved;
-
-        saveParallelSimsCheckpoint({
-          runId,
-          atIso: new Date().toISOString(),
-          batch,
-          batchDurationSec: Number(batchDurationSeconds.toFixed(3)),
-          simsPerHour: approxSimsPerHour,
-          blueWins,
-          redWins,
-          unresolved,
-          totalSims,
-          totalBlueWins,
-          totalRedWins,
-          totalUnresolved,
-        });
-
-        setParallelSimsFeedback(
-          t("match.parallelSimsDone", {
-            defaultValue: `Lote ${batch} listo en ${batchDurationSeconds.toFixed(1)}s · Azul ${blueWins} / Rojo ${redWins} / Sin ganador ${unresolved} · ~${approxSimsPerHour} sims/h · Total ${totalSims}`,
-          }),
-        );
-      }
-
-      setParallelSimsFeedback(
-        t("match.parallelSimsStopped", {
-          defaultValue: "Simulaciones detenidas.",
-        }),
-      );
-    } catch (error) {
-      console.error("[MatchSimulation] parallelSims:failed", error);
-      setParallelSimsFeedback(
-        t("match.parallelSimsFailed", {
-          defaultValue: "No se pudieron ejecutar las 8 simulaciones.",
-        }),
-      );
-    } finally {
-      parallelSimsLoopActiveRef.current = false;
-      setIsRunningParallelSims(false);
-    }
-  }, [
-    championSelections?.away,
-    championSelections?.home,
-    isRunningParallelSims,
-    renderSnapshotWithTactics,
-    runSingleParallelSimulation,
-    t,
-  ]);
-
   const finalizeMatch = useCallback(async (lolReport?: LolSimV1MatchReportInput): Promise<boolean> => {
     if (hasFinalizedMatch) {
       return true;
@@ -1484,6 +1306,65 @@ export default function MatchSimulation() {
     userSelectedSide,
   ]);
 
+  const handleSimulateFromTactics = async (): Promise<void> => {
+    if (!renderSnapshotWithTactics || isSimulating) {
+      return;
+    }
+
+    setIsSimulating(true);
+    setSimulationFeedback(
+      t("match.simulatingFromTactics", { defaultValue: "Simulando la partida..." }),
+    );
+
+    const championMapByPlayerId: Record<string, string> = {
+      ...(championSelections?.home ?? {}),
+      ...(championSelections?.away ?? {}),
+    };
+
+    try {
+      const response = await lolSimV2RunToCompletion({
+        seed: `post-draft-simulate-${Date.now()}`,
+        aiMode: "hybrid",
+        policy: simPolicy,
+        snapshot: renderSnapshotWithTactics,
+        championByPlayerId: championMapByPlayerId,
+        championProfilesById: {},
+        dtSec: PARALLEL_SIM_DT_SEC,
+        speed: PARALLEL_SIM_SPEED,
+        maxTicks: PARALLEL_SIM_MAX_TICKS,
+      });
+
+      const predictiveState: LolSimV1RuntimeState = {
+        timeSec: response.elapsedSimulatedSec ?? 0,
+        running: false,
+        winner: response.winner ?? null,
+        showWalls: false,
+        champions: [],
+        minions: [],
+        structures: [],
+        objectives: {},
+        neutralTimers: {},
+        stats: {
+          blue: { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 },
+          red: { kills: 0, towers: 0, dragons: 0, barons: 0, gold: 0 },
+        },
+        events: [],
+        speed: PARALLEL_SIM_SPEED,
+      };
+
+      handleFullTime(predictiveState, { source: "skip" });
+    } catch (error) {
+      console.error("[MatchSimulation] simulateFromTactics:failed", error);
+      setSimulationFeedback(
+        t("match.simulateFailed", {
+          defaultValue: "No se pudo simular la partida. Volvé a intentarlo.",
+        }),
+      );
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
   const handlePressConference = useCallback(() => {
     console.info("[MatchSimulation] handlePressConference");
     setStage("press");
@@ -1564,9 +1445,9 @@ export default function MatchSimulation() {
           gameState={gameState}
           onGameUpdate={setGameState}
           onContinue={handleContinueFromTactics}
-          onRunParallelSims={handleRunParallelSims}
-          isRunningParallelSims={isRunningParallelSims}
-          parallelSimsFeedback={parallelSimsFeedback}
+          onSimulate={handleSimulateFromTactics}
+          isSimulating={isSimulating}
+          simulationFeedback={simulationFeedback}
         />
       );
 

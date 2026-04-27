@@ -243,7 +243,7 @@ export default function SquadRosterView({
             const inXI = xiIds.has(player.id);
             const currentPos = player.natural_position || player.position;
             const wrongPos = inXI && isPlayerOutOfPosition(player, currentPos);
-            const annualWage = player.wage * 52;
+            const annualWage = player.wage;
 
             const contextItems = [
               {

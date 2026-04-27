@@ -6,6 +6,7 @@ import { resolveSeasonContext } from "../../lib/seasonContext";
 import NextMatchDisplay from "../NextMatchDisplay";
 import {
   resolveMessage,
+  resolveNewsArticle,
 } from "../../utils/backendI18n";
 import {
   getHomeRosterOverview,
@@ -131,6 +132,7 @@ export default function HomeTab({
 
   // Latest news
   const latestNews = (gameState.news || [])
+    .map(resolveNewsArticle)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 2);
   const recentMessages = (gameState.messages || [])

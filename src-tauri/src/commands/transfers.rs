@@ -213,6 +213,21 @@ pub fn send_scout(
     Ok(game)
 }
 
+#[tauri::command]
+pub fn release_player_contract(
+    state: State<'_, StateManager>,
+    player_id: String,
+) -> Result<Game, String> {
+    info!("[cmd] release_player_contract: player_id={}", player_id);
+    let mut game = state
+        .get_game(|g| g.clone())
+        .ok_or("No active game session".to_string())?;
+
+    ofm_core::transfers::release_player_contract(&mut game, &player_id)?;
+    state.set_game(game.clone());
+    Ok(game)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{

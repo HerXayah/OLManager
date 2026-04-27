@@ -27,6 +27,7 @@ vi.mock("react-i18next", () => ({
         "teamProfile.managerLabel": "Manager:",
         "teamProfile.clubInfo": "Club Information",
         "teamProfile.hq": "HQ",
+        "teamProfile.erl": "ERL",
         "teamProfile.activeRoster": "Active roster",
         "teamProfile.roleSetup": "Core roles",
         "teamProfile.draftIdentity": "Draft identity",
@@ -324,5 +325,111 @@ describe("TeamProfile", () => {
       expect(screen.getByText("16 / 7 / 3")).toBeInTheDocument();
       expect(screen.getByText("62000 / 88000")).toBeInTheDocument();
     });
+  });
+
+  it("uses academy logo URL in profile hero when available", async () => {
+    const team = createTeam({
+      id: "academy-1",
+      name: "Movistar KOI Fenix",
+      short_name: "MKF",
+      team_kind: "Academy",
+      academy: {
+        lifecycle: "Active",
+        erl_assignment: {
+          erl_league_id: "erl-spain",
+          country_rule: "Domestic",
+          fallback_reason: null,
+          reputation: 60,
+          creation_cost: 0,
+          created_at: "2026-08-10T00:00:00Z",
+        },
+        branding: {
+          current_name: "Movistar KOI Fenix",
+          current_short_name: "MKF",
+          current_logo_url:
+            "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b0/Falke_Esportslogo_square.png/revision/latest/scale-to-width-down/220?cb=20250917172449",
+        },
+      },
+    });
+
+    render(
+      <TeamProfile
+        team={team}
+        gameState={createGameState(team)}
+        isOwnTeam
+        onClose={vi.fn()}
+      />,
+    );
+
+    const logo = await screen.findByAltText("Movistar KOI Fenix logo");
+    expect(logo).toHaveAttribute(
+      "src",
+      "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b0/Falke_Esportslogo_square.png/revision/latest/scale-to-width-down/220?cb=20250917172449",
+    );
+  });
+
+  it("resolves academy logo from EXAMPLE team list when metadata logo is missing", async () => {
+    const team = createTeam({
+      id: "academy-liga-espanola-movistar-koi-fenix",
+      name: "Movistar KOI Fénix",
+      short_name: "MKF",
+      team_kind: "Academy",
+      academy: {
+        lifecycle: "Active",
+        erl_assignment: {
+          erl_league_id: "liga-espanola",
+          country_rule: "Domestic",
+          fallback_reason: null,
+          reputation: 60,
+          creation_cost: 0,
+          created_at: "2026-08-10T00:00:00Z",
+        },
+      },
+    });
+
+    render(
+      <TeamProfile
+        team={team}
+        gameState={createGameState(team)}
+        isOwnTeam
+        onClose={vi.fn()}
+      />,
+    );
+
+    const logo = await screen.findByAltText("Movistar KOI Fénix logo");
+    expect(logo.getAttribute("src")).toContain("Movistar_KOIlogo_square.png");
+  });
+
+  it("shows ERL league in club details only for academy teams", async () => {
+    const academyTeam = createTeam({
+      id: "academy-lfl-solary",
+      name: "Solary Academy",
+      short_name: "SLYA",
+      team_kind: "Academy",
+      academy: {
+        lifecycle: "Active",
+        erl_assignment: {
+          erl_league_id: "lfl",
+          country_rule: "Domestic",
+          fallback_reason: null,
+          reputation: 60,
+          creation_cost: 0,
+          created_at: "2026-08-10T00:00:00Z",
+        },
+      },
+    });
+
+    render(
+      <TeamProfile
+        team={academyTeam}
+        gameState={createGameState(academyTeam)}
+        isOwnTeam
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("ERL")).toBeInTheDocument();
+    expect(screen.getByText("LFL")).toBeInTheDocument();
+    expect(screen.queryByText("London")).not.toBeInTheDocument();
   });
 });

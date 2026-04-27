@@ -277,7 +277,11 @@ pub fn process_weekly_finances(game: &mut Game) {
         let sponsorship_income = team
             .sponsorship
             .as_ref()
-            .map(|sponsorship| calc_sponsorship_income(current_position, &team.form, sponsorship))
+            .map(|sponsorship| {
+                let base_income = calc_sponsorship_income(current_position, &team.form, sponsorship);
+                let facility_mult = facility_module_sponsorship_multiplier(&team.facilities);
+                (base_income as f64 * facility_mult).round() as i64
+            })
             .unwrap_or(0);
 
         if sponsorship_income > 0 {
@@ -310,8 +314,8 @@ pub fn process_weekly_finances(game: &mut Game) {
 
             if home_count > 0 {
                 let mut rng = rand::rng();
-                let attendance_pct = rng.random_range(60..=92) as f64 / 100.0;
-                let avg_ticket = rng.random_range(15..=25) as f64;
+                let attendance_pct = rng.random_range(15..=30) as f64 / 100.0;
+                let avg_ticket = rng.random_range(4..=8) as f64;
                 let total_revenue = calc_matchday(
                     team.stadium_capacity,
                     home_count,

@@ -8,6 +8,12 @@ export interface FacilitiesData {
   training: number;
   medical: number;
   scouting: number;
+  scrims_room_level?: number;
+  analysis_room_level?: number;
+  bootcamp_area_level?: number;
+  recovery_suite_level?: number;
+  content_studio_level?: number;
+  scouting_lab_level?: number;
 }
 
 export interface SponsorshipData {

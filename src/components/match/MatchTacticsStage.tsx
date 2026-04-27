@@ -6,18 +6,18 @@ interface MatchTacticsStageProps {
   gameState: GameStateData;
   onGameUpdate: (next: GameStateData) => void;
   onContinue: () => void;
-  onRunParallelSims: () => void;
-  isRunningParallelSims: boolean;
-  parallelSimsFeedback: string | null;
+  onSimulate: () => void;
+  isSimulating: boolean;
+  simulationFeedback: string | null;
 }
 
 export default function MatchTacticsStage({
   gameState,
   onGameUpdate,
   onContinue,
-  onRunParallelSims,
-  isRunningParallelSims,
-  parallelSimsFeedback,
+  onSimulate,
+  isSimulating,
+  simulationFeedback,
 }: MatchTacticsStageProps) {
   const { t } = useTranslation();
 
@@ -36,17 +36,16 @@ export default function MatchTacticsStage({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={onRunParallelSims}
-              className="px-4 py-2 rounded-lg bg-primary-700 hover:bg-primary-600 text-white font-heading uppercase tracking-wider text-xs"
+              onClick={onSimulate}
+              disabled={isSimulating}
+              className="px-4 py-2 rounded-lg bg-primary-700 hover:bg-primary-600 disabled:bg-primary-900/60 disabled:cursor-not-allowed text-white font-heading uppercase tracking-wider text-xs"
             >
-              {isRunningParallelSims
-                ? t("match.stopParallelSims")
-                : t("match.runParallelSims")}
+              {isSimulating ? t("match.simulating") : t("match.simulate")}
             </button>
 
             <button
               onClick={onContinue}
-              disabled={isRunningParallelSims}
+              disabled={isSimulating}
               className="px-4 py-2 rounded-lg bg-primary-600 hover:bg-primary-500 disabled:bg-primary-900/60 disabled:cursor-not-allowed text-white font-heading uppercase tracking-wider text-xs"
             >
               {t("match.startLive")}
@@ -54,9 +53,9 @@ export default function MatchTacticsStage({
           </div>
         </div>
 
-        {parallelSimsFeedback ? (
+        {simulationFeedback ? (
           <p className="mb-4 text-xs text-primary-800 dark:text-primary-200">
-            {parallelSimsFeedback}
+            {simulationFeedback}
           </p>
         ) : null}
 

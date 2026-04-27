@@ -89,16 +89,16 @@ describe("lolFinanceContracts", () => {
         effectKey: "finances.facilityScrimsRoomEffect",
         level: 2,
         monthlyUpkeep: 20_000,
-        upgradeFacility: "Training",
+        upgradeFacility: "ScrimsRoom",
       },
       {
         key: "analysisRoom",
         label: "Analysis Room",
         labelKey: "finances.facilityAnalysisRoom",
         effectKey: "finances.facilityAnalysisRoomEffect",
-        level: 2,
-        monthlyUpkeep: 15_000,
-        upgradeFacility: "Training",
+        level: 1,
+        monthlyUpkeep: 0,
+        upgradeFacility: "AnalysisRoom",
       },
       {
         key: "bootcampArea",
@@ -107,7 +107,7 @@ describe("lolFinanceContracts", () => {
         effectKey: "finances.facilityBootcampAreaEffect",
         level: 1,
         monthlyUpkeep: 0,
-        upgradeFacility: "Medical",
+        upgradeFacility: "BootcampArea",
       },
       {
         key: "recoverySuite",
@@ -116,7 +116,7 @@ describe("lolFinanceContracts", () => {
         effectKey: "finances.facilityRecoverySuiteEffect",
         level: 1,
         monthlyUpkeep: 0,
-        upgradeFacility: "Medical",
+        upgradeFacility: "RecoverySuite",
       },
       {
         key: "contentStudio",
@@ -125,7 +125,7 @@ describe("lolFinanceContracts", () => {
         effectKey: "finances.facilityContentStudioEffect",
         level: 3,
         monthlyUpkeep: 0,
-        upgradeFacility: null,
+        upgradeFacility: "ContentStudio",
       },
       {
         key: "scoutingLab",
@@ -134,7 +134,7 @@ describe("lolFinanceContracts", () => {
         effectKey: "finances.facilityScoutingLabEffect",
         level: 3,
         monthlyUpkeep: 20_000,
-        upgradeFacility: "Scouting",
+        upgradeFacility: "ScoutingLab",
       },
     ]);
   });
@@ -150,8 +150,8 @@ describe("lolFinanceContracts", () => {
 
     expect(getClubInstallationContract(team)).toEqual([
       expect.objectContaining({ key: "scrimsRoom", level: 4 }),
-      expect.objectContaining({ key: "analysisRoom", level: 4 }),
-      expect.objectContaining({ key: "bootcampArea", level: 2 }),
+      expect.objectContaining({ key: "analysisRoom", level: 1 }),
+      expect.objectContaining({ key: "bootcampArea", level: 1 }),
       expect.objectContaining({ key: "recoverySuite", level: 2 }),
       expect.objectContaining({ key: "contentStudio", level: 5 }),
       expect.objectContaining({ key: "scoutingLab", level: 5 }),
@@ -163,7 +163,7 @@ describe("lolFinanceContracts", () => {
 
     expect(getClubInstallationContract(team)).toEqual([
       expect.objectContaining({ key: "scrimsRoom", level: 4 }),
-      expect.objectContaining({ key: "analysisRoom", level: 4 }),
+      expect.objectContaining({ key: "analysisRoom", level: 1 }),
       expect.objectContaining({ key: "bootcampArea", level: 1 }),
       expect.objectContaining({ key: "recoverySuite", level: 1 }),
       expect.objectContaining({ key: "contentStudio", level: 4 }),
@@ -183,7 +183,7 @@ describe("lolFinanceContracts", () => {
 
     expect(getClubInstallationContract(team)).toEqual([
       expect.objectContaining({ key: "scrimsRoom", level: 2 }),
-      expect.objectContaining({ key: "analysisRoom", level: 2 }),
+      expect.objectContaining({ key: "analysisRoom", level: 1 }),
       expect.objectContaining({ key: "bootcampArea", level: 1 }),
       expect.objectContaining({ key: "recoverySuite", level: 1 }),
       expect.objectContaining({ key: "contentStudio", level: 4 }),
@@ -197,8 +197,8 @@ describe("lolFinanceContracts", () => {
 
     expect(getClubInstallationContract(team)).toEqual([
       expect.objectContaining({ key: "scrimsRoom", level: 5, monthlyUpkeep: 80_000 }),
-      expect.objectContaining({ key: "analysisRoom", level: 5, monthlyUpkeep: 60_000 }),
-      expect.objectContaining({ key: "bootcampArea", level: 2, monthlyUpkeep: 15_000 }),
+      expect.objectContaining({ key: "analysisRoom", level: 1, monthlyUpkeep: 0 }),
+      expect.objectContaining({ key: "bootcampArea", level: 1, monthlyUpkeep: 0 }),
       expect.objectContaining({ key: "recoverySuite", level: 2, monthlyUpkeep: 10_000 }),
       expect.objectContaining({ key: "contentStudio", level: 5, monthlyUpkeep: 0 }),
       expect.objectContaining({ key: "scoutingLab", level: 1, monthlyUpkeep: 0 }),
@@ -213,7 +213,7 @@ describe("lolFinanceContracts", () => {
 
     expect(getClubInstallationContract(team)).toEqual([
       expect.objectContaining({ key: "scrimsRoom", level: 2 }),
-      expect.objectContaining({ key: "analysisRoom", level: 2 }),
+      expect.objectContaining({ key: "analysisRoom", level: 1 }),
       expect.objectContaining({ key: "bootcampArea", level: 1 }),
       expect.objectContaining({ key: "recoverySuite", level: 1 }),
       expect.objectContaining({ key: "contentStudio", level: 4 }),

@@ -246,10 +246,11 @@ export default function TeamSelection() {
                 >
                   {/* Team header with gradient */}
                   <div className={`p-4 rounded-t-xl ${
-                    isSelected
-                      ? "bg-gradient-to-r from-primary-600 to-primary-700"
-                      : "bg-gradient-to-r from-navy-700 to-navy-800"
-                  }`}>
+                    isSelected ? "shadow-inner" : ""
+                  }`}
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, rgba(10, 15, 28, 0.52), rgba(10, 15, 28, 0.22)), linear-gradient(135deg, ${team.colors.primary}, ${team.colors.secondary}40)`,
+                  }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div

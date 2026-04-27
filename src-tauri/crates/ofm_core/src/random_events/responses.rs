@@ -3,6 +3,31 @@ use crate::game::Game;
 use domain::team::{Sponsorship, SponsorshipBonusCriterion};
 use rand::RngExt;
 
+fn parse_sponsor_amount(raw: &str) -> Option<u64> {
+    let compact = raw.trim().replace(',', "").replace('€', "");
+    if compact.is_empty() {
+        return None;
+    }
+
+    if compact.ends_with('K') || compact.ends_with('k') {
+        let value = compact[..compact.len().saturating_sub(1)]
+            .trim()
+            .parse::<f64>()
+            .ok()?;
+        return Some((value * 1_000.0).round() as u64);
+    }
+
+    if compact.ends_with('M') || compact.ends_with('m') {
+        let value = compact[..compact.len().saturating_sub(1)]
+            .trim()
+            .parse::<f64>()
+            .ok()?;
+        return Some((value * 1_000_000.0).round() as u64);
+    }
+
+    compact.parse::<u64>().ok()
+}
+
 /// Apply the effect of a sponsor offer choice.
 pub fn apply_event_response(
     game: &mut Game,
@@ -19,8 +44,8 @@ pub fn apply_event_response(
                     .iter()
                     .find(|m| m.id == message_id)
                     .and_then(|m| m.i18n_params.get("amount"))
-                    .and_then(|a| a.parse::<u64>().ok())
-                    .unwrap_or(100_000);
+                    .and_then(|a| parse_sponsor_amount(a))
+                    .unwrap_or(35_000);
                 let sponsor_name = game
                     .messages
                     .iter()

@@ -11,11 +11,31 @@ interface TeamProfileClubDetailsCardProps {
   t: TeamProfileTranslate;
 }
 
+function resolveErlLeagueName(team: TeamData): string | null {
+  if (team.team_kind !== "Academy") return null;
+
+  const erlLeagueId = (team.academy as { erl_assignment?: { erl_league_id?: string } } | null | undefined)
+    ?.erl_assignment?.erl_league_id;
+
+  if (!erlLeagueId) return null;
+
+  const normalized = erlLeagueId.toLowerCase();
+  if (normalized === "liga-espanola" || normalized === "les") return "LES";
+  if (normalized === "lfl") return "LFL";
+  if (normalized === "prime-league" || normalized === "primeleague" || normalized === "prm") {
+    return "Prime League";
+  }
+
+  return null;
+}
+
 export default function TeamProfileClubDetailsCard({
   team,
   rosterSize,
   t,
 }: TeamProfileClubDetailsCardProps) {
+  const erlLeagueName = resolveErlLeagueName(team);
+
   return (
     <Card>
       <CardHeader>{t("teamProfile.clubInfo")}</CardHeader>
@@ -23,8 +43,8 @@ export default function TeamProfileClubDetailsCard({
         <div className="flex flex-col gap-3">
           <InfoRow
             icon={<Building2 className="w-4 h-4" />}
-            label={t("teamProfile.hq")}
-            value={team.city}
+            label={erlLeagueName ? t("teamProfile.erl") : t("teamProfile.hq")}
+            value={erlLeagueName ?? team.city}
           />
           <InfoRow
             icon={<Users className="w-4 h-4" />}

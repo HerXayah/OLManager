@@ -330,10 +330,9 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
         .enumerate()
         .map(|(index, row)| {
             format!(
-                "{}. {} {} pts ({}-{})",
+                "{}. {} {}-{}",
                 index + 1,
                 row.1,
-                row.2,
                 row.5,
                 row.6
             )

@@ -466,7 +466,7 @@ export default function TacticsTab({
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[1.6fr_1fr]">
         <div className="flex flex-col gap-4">
           <Section<GameTiming>
-            title={t("tactics.gameTiming")}
+            title={t("tactics.lol.sections.gameTiming", "Game timing")}
             value={tactics.game_timing}
             onChange={(value) =>
               void persist({
@@ -478,7 +478,7 @@ export default function TacticsTab({
           />
 
           <Section<StrongSide>
-            title={t("tactics.strongSide")}
+            title={t("tactics.lol.sections.strongSide", "Strong side")}
             value={tactics.strong_side}
             onChange={(value) =>
               void persist({
@@ -490,7 +490,7 @@ export default function TacticsTab({
           />
 
           <Section<JungleStyle>
-            title={t("tactics.jungleStyle")}
+            title={t("tactics.lol.sections.jungleStyle", "Jungle style")}
             value={tactics.jungle_style}
             onChange={(value) =>
               void persist({
@@ -502,7 +502,7 @@ export default function TacticsTab({
           />
 
           <Section<JunglePathing>
-            title={t("tactics.junglePathing")}
+            title={t("tactics.lol.sections.junglePathing", "Jungle pathing")}
             value={tactics.jungle_pathing}
             onChange={(value) =>
               void persist({
@@ -514,7 +514,7 @@ export default function TacticsTab({
           />
 
           <Section<FightPlan>
-            title={t("tactics.fightPlan")}
+            title={t("tactics.lol.sections.fightPlan", "Fight plan")}
             value={tactics.fight_plan}
             onChange={(value) =>
               void persist({
@@ -526,7 +526,7 @@ export default function TacticsTab({
           />
 
           <Section<SupportRoaming>
-            title={t("tactics.supportRoaming")}
+            title={t("tactics.lol.sections.supportRoaming", "Support roaming")}
             value={tactics.support_roaming}
             onChange={(value) =>
               void persist({

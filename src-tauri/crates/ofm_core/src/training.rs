@@ -7,7 +7,7 @@ use crate::staff_effects::LolStaffEffects;
 use chrono::Datelike;
 use domain::message::{InboxMessage, MessageCategory, MessagePriority};
 use domain::staff::CoachingSpecialization;
-use domain::team::{TrainingFocus, TrainingIntensity, TrainingSchedule};
+use domain::team::{MainFacilityModuleKind, TrainingFocus, TrainingIntensity, TrainingSchedule};
 use std::collections::HashMap;
 
 fn params(pairs: &[(&str, &str)]) -> HashMap<String, String> {
@@ -54,6 +54,7 @@ struct TeamTrainingPlan {
     schedule: TrainingSchedule,
     bonus: TeamCoachingBonus,
     medical_facility_mult: f64,
+    training_facility_mult: f64,
 }
 
 #[derive(Clone)]
@@ -174,6 +175,12 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
                 schedule: t.training_schedule.clone(),
                 bonus,
                 medical_facility_mult,
+                training_facility_mult: 1.0
+                    + f64::from(
+                        t.facilities
+                            .module_level(MainFacilityModuleKind::ScrimsRoom)
+                            .saturating_sub(1),
+                    ) * 0.03,
             }
         })
         .collect();
@@ -413,7 +420,8 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
                 * intensity_mult
                 * age_factor
                 * plan.bonus.coaching_mult
-                * plan.bonus.specialization_mult;
+                * plan.bonus.specialization_mult
+                * plan.training_facility_mult;
 
             let scrim_gain_mult = if matches!(player_focus, TrainingFocus::Scrims) {
                 scrim_outcome_by_team

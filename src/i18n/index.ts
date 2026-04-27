@@ -12,7 +12,9 @@ export const SUPPORTED_LANGUAGES = [
   { code: "en", label: "English" },
   { code: "es", label: "Español" },
   { code: "fr", label: "Français" },
+  { code: "pt", label: "Português" },
   { code: "pt-BR", label: "Português (Brasil)" },
+  { code: "de", label: "Deutsch" },
 ] as const;
 
 i18n.use(initReactI18next).init({

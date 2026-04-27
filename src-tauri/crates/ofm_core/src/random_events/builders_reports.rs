@@ -285,16 +285,16 @@ pub(super) fn rival_interest_message(
     let mut rng = rand::rng();
     let variations = [
         format!(
-            "We've received word that {} have been making enquiries about {}.\n\n\
-            Their scouts were spotted at our last few matches, and our sources suggest \
-            they may approach with a formal offer soon.\n\n\
+            "We've received word that {} have started making moves for {}.\n\n\
+            Their staff were seen reviewing recent series and solo queue data, and our sources \
+            suggest a formal approach may arrive soon.\n\n\
             How would you like us to respond if they make contact?",
             rival_name, player_name
         ),
         format!(
-            "The press are reporting that {} is a target for {}.\n\n\
-            According to sources, the player has attracted attention after their recent performances. \
-            No formal bid yet, but it's only a matter of time.\n\n\
+            "Esports media are reporting that {} is now a concrete target for {}.\n\n\
+            According to sources, the player has attracted attention after recent stage performances. \
+            No formal bid yet, but pressure is building fast.\n\n\
             What's your stance?",
             player_name, rival_name
         ),
@@ -303,10 +303,7 @@ pub(super) fn rival_interest_message(
 
     InboxMessage::new(
         msg_id.to_string(),
-        format!(
-            "Transfer Rumour — {} linked with {}",
-            player_name, rival_name
-        ),
+        format!("Roster Rumour — {} linked with {}", player_name, rival_name),
         variations[idx].clone(),
         "Director of Football".to_string(),
         date.to_string(),

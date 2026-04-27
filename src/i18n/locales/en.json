@@ -27,6 +27,20 @@
             "label": "Stay measured",
             "text": "One result does not define our form. We review it and move forward."
           }
+        },
+        "conversations": {
+          "playerPressureReset": {
+            "body": "{{player}} has asked for a private reset after a rough scrim block. Their morale is at {{morale}}, and they feel stage pressure is starting to affect team comms.\n\n\"I need to reset before this pressure follows me into the next series, coach.\""
+          },
+          "playerStageTimeRequest": {
+            "body": "{{player}} came in frustrated about limited stage reps. They feel their scrims have been strong and want clarity on what earns a spot in the next series.\n\n\"If I'm not in the stage plan, I need to know what has to change.\""
+          },
+          "playerHighFormCheckin": {
+            "body": "{{player}} checked in after a strong run of solo queue and team practice. They're enjoying the draft room clarity and believe the roster is close to finding another level.\n\n\"Keep the structure like this and I'll bring that confidence onto stage.\""
+          },
+          "playerContractPressure": {
+            "body": "{{player}} wants clarity before the next league window. With {{days}} days left on the deal, they ask whether they remain part of the roster plan or should prepare for other offers.\n\n\"I need to know if this project still has a place for me after the split.\""
+          }
         }
       }
     }
@@ -108,7 +122,7 @@
     "searchTeams": "Teams",
     "searchPlayers": "Players",
     "scouting": "Scouting",
-    "youthAcademy": "Youth Academy",
+    "youthAcademy": "Academy",
     "saveGame": "Save game",
     "saving": "Saving...",
     "saved": "Saved!",
@@ -209,6 +223,7 @@
     "scheduleLabel": "Schedule:",
     "home": "Home",
     "away": "Away",
+    "daysUntilMatch": "days away",
     "matchdayN": "Matchday {{n}}",
     "met": "Met",
     "inProgress": "In Progress",
@@ -272,7 +287,7 @@
     "repDeveloping": "Developing"
   },
   "youthAcademy": {
-    "title": "Youth Academy",
+    "title": "Academy",
     "playersUnder21": "{{count}} players ≤21",
     "youthPlayers": "Youth Players",
     "avgOvr": "Avg OVR",
@@ -587,6 +602,14 @@
         "MID": "Mid lane",
         "ADC": "Bot lane (ADC)",
         "SUPPORT": "Support"
+      },
+      "sections": {
+        "gameTiming": "Game timing",
+        "strongSide": "Strong side",
+        "jungleStyle": "Jungle style",
+        "junglePathing": "Jungle pathing",
+        "fightPlan": "Fight plan",
+        "supportRoaming": "Support roaming"
       },
       "options": {
         "strongSide": {
@@ -921,7 +944,8 @@
     "monthlyUpkeep": "Monthly upkeep: €{{amount}}",
     "nextUpgradeCost": "Next upgrade: €{{amount}}",
     "upgradeFacility": "Upgrade",
-    "hubExpansionRequired": "Expand hub first",
+    "expandOffices": "Expand offices",
+    "hubExpansionRequired": "Expand offices to unlock this module",
     "insufficientFunds": "Insufficient funds",
     "sponsors": "Sponsors",
     "activeSponsor": "Active Sponsor",
@@ -1095,7 +1119,8 @@
     "transferFeedbackCounterHeadline": "They want more before shaking hands.",
     "transferFeedbackCounterDetail": "The bid was close enough to keep talking, but their side are signalling a price nearer {{fee}}.",
     "transferFeedbackRejectedHeadline": "They shut this round down.",
-    "transferFeedbackRejectedDetail": "The proposal did not move them enough. You would need a stronger fee, closer to {{fee}}, to reopen serious talks."
+    "transferFeedbackRejectedDetail": "The proposal did not move them enough. You would need a stronger fee, closer to {{fee}}, to reopen serious talks.",
+    "transferFeedbackPlayerRejectedDetail": "The club accepted, but the player rejected the move after reviewing role, wages, and sporting project."
   },
   "schedule": {
     "noSchedule": "No league schedule available.",
@@ -1188,6 +1213,18 @@
     "yearsRemaining": "Years Remaining",
     "contractRisk": "Contract Risk",
     "renewalTitle": "Renew Contract",
+    "releaseContract": "Release Contract",
+    "releaseContractConfirm": "Release this player and pay a termination fee?",
+    "releasePenalty": "Termination cost",
+    "makeTransferOffer": "Make Offer",
+    "transferOfferPrompt": "Enter transfer offer amount (€)",
+    "transferOfferAmount": "Offer amount",
+    "transferOfferSubmit": "Send offer",
+    "transferOfferInvalid": "Enter a valid offer amount.",
+    "transferOfferBudgetError": "Your transfer budget is too low for this offer.",
+    "transferOfferFundsError": "You do not have enough funds for this offer.",
+    "transferOfferWindowClosed": "The transfer window is closed.",
+    "transferOfferFailed": "Could not send the offer. Please try again.",
     "renewalWage": "Offered Wage",
     "renewalLength": "Contract Length",
     "renewalSubmit": "Submit Offer",
@@ -1278,6 +1315,7 @@
   "teamProfile": {
     "clubInfo": "Team Information",
     "hq": "HQ",
+    "erl": "ERL",
     "activeRoster": "Active roster",
     "roleSetup": "Core roles",
     "draftIdentity": "Draft identity",
@@ -1419,7 +1457,7 @@
     "academyAcquired": "Academy acquired",
     "academyPending": "Academy acquisition pending",
     "academyRosterCount": "{{count}} players in the acquired roster",
-    "academyPipelineHint": "Acquire an existing ERL team from Youth Academy to unlock the pipeline.",
+    "academyPipelineHint": "Acquire an existing ERL team from Academy to unlock the pipeline.",
     "viewAcquisitionOptions": "View acquisition options"
   },
   "match": {
@@ -1627,9 +1665,11 @@
     "postMatchTeamTalk": "Post-Match Team Talk",
     "addressPlayers": "Address your players after the match.",
     "matchOver": "Match Over",
-    "tacticsBeforeLive": "Adjust the plan and, when ready, start live mode.",
-    "runParallelSims": "Run 8 sims",
-    "stopParallelSims": "Stop sims",
+    "tacticsBeforeLive": "Adjust your strategy and, when ready, we start the match.",
+    "simulate": "Simulate",
+    "simulating": "Simulating...",
+    "simulatingFromTactics": "Simulating the match...",
+    "simulateFailed": "Could not simulate the match. Please try again.",
     "startLive": "Go live",
     "draftResult": {
       "mvp": "MVP",
@@ -2238,12 +2278,12 @@
         }
       },
       "fanPetition": {
-        "subject0": "Fan Petition — More Attacking Football",
-        "subject1": "Fan Petition — Give Youth a Chance",
-        "subject2": "Fan Open Letter — Transparency",
-        "body0": "A group of {{team}} supporters has organized a petition calling for more attacking football.\n\n\"We pay good money to watch exciting football. We want to see the team go forward and entertain us!\"\n\nOver 500 signatures so far. How do you respond?",
-        "body1": "Supporters of {{team}} have started a campaign urging you to give more opportunities to young players from the academy.\n\n\"The future of our club depends on developing homegrown talent. Stop overlooking the kids!\"\n\nIt's getting traction on social media. What's your response?",
-        "body2": "An open letter from the {{team}} Supporters Trust has been published, asking for more transparency from the management.\n\n\"We want to understand the club's vision. Where are we heading? What's the long-term plan?\"\n\nThe local press is covering it. How do you handle this?",
+        "subject0": "Fan Petition — More proactive drafts",
+        "subject1": "Fan Petition — Give academy talent stage time",
+        "subject2": "Fan Open Letter — Competitive transparency",
+        "body0": "A group of {{team}} supporters has launched a petition asking for more proactive drafts and earlier map tempo.\n\n\"We want to see identity from minute one, not passive scaling every game.\"\n\nOver 500 signatures already. How do you respond?",
+        "body1": "Supporters of {{team}} are asking you to give more stage time to academy players and fresh prospects.\n\n\"The future of our org depends on developing talent, not benching it forever.\"\n\nThe campaign is gaining traction online. What's your response?",
+        "body2": "An open letter from the {{team}} supporters' group calls for more transparency from the competitive staff.\n\n\"Explain the direction: draft identity, roster plan and playoff goals.\"\n\nEsports media have picked it up. How do you handle this?",
         "options": {
           "listenFans": {
             "label": "Engage with the fans",
@@ -2260,9 +2300,9 @@
         }
       },
       "rivalInterest": {
-        "subject": "Transfer Rumour — {{player}} linked with {{rival}}",
-        "body0": "We've received word that {{rival}} have been making enquiries about {{player}}.\n\nTheir scouts were spotted at our last few matches, and our sources suggest they may approach with a formal offer soon.\n\nHow would you like us to respond if they make contact?",
-        "body1": "The press are reporting that {{player}} is a target for {{rival}}.\n\nAccording to sources, the player has attracted attention after their recent performances. No formal bid yet, but it's only a matter of time.\n\nWhat's your stance?",
+        "subject": "Roster Rumour — {{player}} linked with {{rival}}",
+        "body0": "We've received word that {{rival}} have started making moves for {{player}}.\n\nTheir staff were seen reviewing recent series and solo queue data, and sources suggest a formal approach could arrive soon.\n\nHow do you want us to respond if they make contact?",
+        "body1": "Esports media are reporting that {{player}} is now a concrete target for {{rival}}.\n\nThe player has drawn attention after recent stage performances. There is no formal bid yet, but pressure is building fast.\n\nWhat's your stance?",
         "options": {
           "notForSale": {
             "label": "Not for sale",

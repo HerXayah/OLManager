@@ -5,13 +5,13 @@ import playersSeed from "../../data/lec/draft/players.json";
 import { GameStateData } from "../store/gameStore";
 import { Badge } from "./ui";
 import {
-  calcOvr,
   findNextFixture,
   formatMatchDate,
   getTeamName,
   getTeamShort,
   isSeasonComplete,
 } from "../lib/helpers";
+import { calculateLolOvr } from "../lib/lolPlayerStats";
 
 type DraftRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
@@ -55,21 +55,6 @@ function seedRoleToDraftRole(role: string): DraftRole | null {
   return null;
 }
 
-function roleToOvrPosition(role: DraftRole): string {
-  switch (role) {
-    case "TOP":
-      return "Defender";
-    case "JUNGLE":
-      return "Midfielder";
-    case "MID":
-      return "AttackingMidfielder";
-    case "ADC":
-      return "Forward";
-    case "SUPPORT":
-      return "DefensiveMidfielder";
-  }
-}
-
 function playerPhotoUrl(playerId: string): string | null {
   const match = playerId.match(/^lec-player-(.+)$/);
   if (!match) return null;
@@ -93,7 +78,7 @@ function getLineupByRole(gameState: GameStateData, teamId: string) {
         const fallbackRole = positionToDraftRole(player.natural_position || player.position);
         return (roleFromSeed ?? fallbackRole) === role;
       })
-      .sort((a, b) => calcOvr(b, roleToOvrPosition(role)) - calcOvr(a, roleToOvrPosition(role)));
+      .sort((a, b) => calculateLolOvr(b) - calculateLolOvr(a));
 
     return candidates[0] ?? null;
   });
@@ -103,10 +88,9 @@ function getLineupByRole(gameState: GameStateData, teamId: string) {
 
 function teamLineupOvr(lineup: Array<GameStateData["players"][number] | null>): number {
   const values = lineup
-    .map((player, index) => {
+    .map((player) => {
       if (!player) return null;
-      const role = ROLE_ORDER[index];
-      return calcOvr(player, roleToOvrPosition(role));
+      return calculateLolOvr(player);
     })
     .filter((value): value is number => typeof value === "number");
 
@@ -170,7 +154,7 @@ export default function NextMatchDisplay({
         <div className="flex items-center gap-2 min-w-0">
           <p className="font-heading font-bold text-gray-800 dark:text-gray-100 truncate">
             {getTeamShort(gameState.teams, nextFixture.home_team_id)}
-            <span className="text-gray-400 dark:text-gray-500 mx-1">vs</span>
+            <span className="text-gray-400 dark:text-gray-500 mx-1">{t("common.vs")}</span>
             {getTeamShort(gameState.teams, nextFixture.away_team_id)}
           </p>
           <Badge variant="neutral" size="sm">{fixtureLabel}</Badge>
@@ -196,8 +180,8 @@ export default function NextMatchDisplay({
         {ROLE_ORDER.map((role, index) => {
           const homePlayer = homeLineup[index];
           const awayPlayer = awayLineup[index];
-          const homePlayerOvr = homePlayer ? calcOvr(homePlayer, roleToOvrPosition(role)) : null;
-          const awayPlayerOvr = awayPlayer ? calcOvr(awayPlayer, roleToOvrPosition(role)) : null;
+          const homePlayerOvr = homePlayer ? calculateLolOvr(homePlayer) : null;
+          const awayPlayerOvr = awayPlayer ? calculateLolOvr(awayPlayer) : null;
           const leftPhoto = homePlayer ? playerPhotoUrl(homePlayer.id) : null;
           const rightPhoto = awayPlayer ? playerPhotoUrl(awayPlayer.id) : null;
 
@@ -220,7 +204,9 @@ export default function NextMatchDisplay({
                 )}
               </div>
 
-              <div className="text-center text-gray-400 dark:text-gray-500 font-heading font-bold">{role}</div>
+              <div className="text-center text-gray-400 dark:text-gray-500 font-heading font-bold">
+                {t(`tactics.lol.roles.${role}`, { defaultValue: role })}
+              </div>
 
               <div className="flex items-center justify-end gap-1.5 min-w-0">
                 {awayPlayerOvr !== null && (
@@ -247,7 +233,7 @@ export default function NextMatchDisplay({
         <div className="px-2.5 py-1 rounded-md bg-navy-900/70 border border-navy-600 text-right">
           <p className="font-heading font-bold text-gray-100 text-base leading-none">{countdown}d</p>
           <p className="text-[10px] text-gray-400 leading-none mt-1">
-            {t("home.daysUntilMatch", { defaultValue: "days away" })}
+            {t("home.daysUntilMatch")}
           </p>
         </div>
       </div>

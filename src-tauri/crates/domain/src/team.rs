@@ -551,6 +551,18 @@ pub struct Facilities {
     pub training: u8,
     pub medical: u8,
     pub scouting: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scrims_room_level: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub analysis_room_level: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bootcamp_area_level: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recovery_suite_level: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_studio_level: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scouting_lab_level: Option<u8>,
 }
 
 fn default_main_hub_level() -> u8 {
@@ -587,11 +599,23 @@ pub struct MainFacilityModuleDefinition {
 
 impl MainFacilityModuleDefinition {
     pub fn level_for(&self, facilities: &Facilities) -> u8 {
-        match self.level_source {
-            MainFacilityModuleLevelSource::Training => facilities.training,
-            MainFacilityModuleLevelSource::Medical => facilities.medical,
-            MainFacilityModuleLevelSource::Hub => facilities.effective_main_hub_level(),
-            MainFacilityModuleLevelSource::Scouting => facilities.scouting,
+        match self.kind {
+            MainFacilityModuleKind::ScrimsRoom => {
+                facilities.scrims_room_level.unwrap_or(facilities.training)
+            }
+            MainFacilityModuleKind::AnalysisRoom => facilities
+                .analysis_room_level
+                .unwrap_or(default_main_hub_level()),
+            MainFacilityModuleKind::BootcampArea => facilities
+                .bootcamp_area_level
+                .unwrap_or(default_main_hub_level()),
+            MainFacilityModuleKind::RecoverySuite => facilities
+                .recovery_suite_level
+                .unwrap_or(facilities.medical),
+            MainFacilityModuleKind::ContentStudio => facilities.content_studio_level.unwrap_or(1),
+            MainFacilityModuleKind::ScoutingLab => facilities
+                .scouting_lab_level
+                .unwrap_or(facilities.scouting),
         }
     }
 }
@@ -646,16 +670,29 @@ impl Default for Facilities {
             training: 1,
             medical: 1,
             scouting: 1,
+            scrims_room_level: None,
+            analysis_room_level: None,
+            bootcamp_area_level: None,
+            recovery_suite_level: None,
+            content_studio_level: None,
+            scouting_lab_level: None,
         }
     }
 }
 
 impl Facilities {
     fn effective_main_hub_level(&self) -> u8 {
+        let module_peak = main_facility_module_catalog()
+            .iter()
+            .map(|definition| definition.level_for(self))
+            .max()
+            .unwrap_or(default_main_hub_level());
+
         self.main_hub_level
             .max(self.training)
             .max(self.medical)
             .max(self.scouting)
+            .max(module_peak)
     }
 
     pub fn from_persisted_json(value: &str) -> Self {

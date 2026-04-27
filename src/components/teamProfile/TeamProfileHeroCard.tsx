@@ -1,17 +1,57 @@
 import { Calendar, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Card, TeamLocation } from "../ui";
 import type { TeamProfileTranslate } from "./TeamProfile.types";
 import { QuickStat } from "./TeamProfile.primitives";
 import type { TeamProfileViewModel } from "./TeamProfile.types";
 import type { TeamData } from "../../store/gameStore";
+import { resolveExampleTeamLogo } from "../../lib/teamLogos";
 
-function teamLogoSrc(teamId: string): string {
+function defaultTeamLogoSrc(teamId: string): string {
   const slug = teamId.replace(/^lec-/, "");
   if (slug === "shifters") {
     return "https://static.lolesports.com/teams/1765897071435_600px-Shifters_allmode.png";
   }
   return `/team-logos/${slug}.png`;
+}
+
+function academyLogoFromMetadata(team: TeamData): string | null {
+  const academy = team.academy as
+    | {
+        branding?: { current_logo_url?: string | null };
+        acquisition?: { original_logo_url?: string | null };
+        source_identity?: { original_logo_url?: string | null };
+        current_logo_url?: string | null;
+        original_logo_url?: string | null;
+      }
+    | null
+    | undefined;
+
+  return (
+    academy?.branding?.current_logo_url ??
+    academy?.acquisition?.original_logo_url ??
+    academy?.source_identity?.original_logo_url ??
+    academy?.current_logo_url ??
+    academy?.original_logo_url ??
+    null
+  );
+}
+
+function teamLogoSrc(team: TeamData): string {
+  const academyLogo = academyLogoFromMetadata(team);
+  if (academyLogo) {
+    return academyLogo;
+  }
+
+  if (team.team_kind === "Academy") {
+    const exampleLogo = resolveExampleTeamLogo(team.name);
+    if (exampleLogo) {
+      return exampleLogo;
+    }
+  }
+
+  return defaultTeamLogoSrc(team.id);
 }
 
 interface TeamProfileHeroCardProps {
@@ -27,6 +67,24 @@ export default function TeamProfileHeroCard({
   locale,
   t,
 }: TeamProfileHeroCardProps) {
+  const fallbackLogoSrc = useMemo(() => defaultTeamLogoSrc(team.id), [team.id]);
+  const [logoSrc, setLogoSrc] = useState(() => teamLogoSrc(team));
+
+  useEffect(() => {
+    setLogoSrc(teamLogoSrc(team));
+  }, [
+    team.id,
+    team.name,
+    team.team_kind,
+    team.academy?.branding?.current_logo_url,
+    team.academy?.acquisition?.original_logo_url,
+    team.academy?.source_identity?.original_logo_url,
+    (team.academy as { current_logo_url?: string | null } | null | undefined)
+      ?.current_logo_url,
+    (team.academy as { original_logo_url?: string | null } | null | undefined)
+      ?.original_logo_url,
+  ]);
+
   return (
     <Card className="mb-5 overflow-hidden">
       <div
@@ -40,12 +98,25 @@ export default function TeamProfileHeroCard({
             className="w-24 h-24 rounded-2xl flex items-center justify-center font-heading font-bold text-3xl text-white border-2 border-white/30"
             style={{ backgroundColor: team.colors.primary }}
           >
-            <img
-              src={teamLogoSrc(team.id)}
-              alt={`${team.name} logo`}
-              className="w-16 h-16 object-contain"
-              loading="lazy"
-            />
+            {logoSrc ? (
+              <img
+                src={logoSrc}
+                alt={`${team.name} logo`}
+                className="w-16 h-16 object-contain"
+                loading="lazy"
+                onError={() => {
+                  if (logoSrc !== fallbackLogoSrc) {
+                    setLogoSrc(fallbackLogoSrc);
+                    return;
+                  }
+                  setLogoSrc("");
+                }}
+              />
+            ) : (
+              <span className="text-sm font-bold tracking-wide uppercase">
+                {team.short_name}
+              </span>
+            )}
           </div>
           <div className="flex-1">
             <h2 className="text-3xl font-heading font-bold text-white uppercase tracking-wide drop-shadow">

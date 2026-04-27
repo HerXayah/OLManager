@@ -27,6 +27,20 @@
             "label": "Rester mesuré",
             "text": "Un résultat ne définit pas notre forme. On l'analyse et on avance."
           }
+        },
+        "conversations": {
+          "playerPressureReset": {
+            "body": "{{player}} a demandé un reset privé après un bloc de scrims compliqué. Son moral est à {{morale}} et il sent que la pression de la scène commence à impacter les communications d'équipe.\n\n\"J'ai besoin de reset avant que cette pression n'arrive dans la prochaine série, coach.\""
+          },
+          "playerStageTimeRequest": {
+            "body": "{{player}} est venu frustré par son manque de temps de jeu sur scène. Il estime avoir été solide en scrims et veut de la clarté sur ce qui lui donnera une place dans la prochaine série.\n\n\"Si je ne suis pas dans le plan de scène, j'ai besoin de savoir ce que je dois changer.\""
+          },
+          "playerHighFormCheckin": {
+            "body": "{{player}} est passé après une bonne série de solo queue et d'entraînements d'équipe. Il apprécie la clarté en salle de draft et pense que le roster est proche de franchir un cap.\n\n\"Si on garde cette structure, j'amènerai cette confiance sur scène.\""
+          },
+          "playerContractPressure": {
+            "body": "{{player}} veut des clarifications avant la prochaine fenêtre de ligue. Avec {{days}} jours restants sur son contrat, il demande s'il fait toujours partie du plan roster ou s'il doit se préparer à d'autres offres.\n\n\"J'ai besoin de savoir si ce projet a encore une place pour moi après le split.\""
+          }
         }
       }
     }
@@ -108,7 +122,7 @@
     "searchTeams": "Équipes",
     "searchPlayers": "Joueurs",
     "scouting": "Recrutement",
-    "youthAcademy": "Académie des Jeunes",
+    "youthAcademy": "Académie",
     "saveGame": "Sauvegarder la partie",
     "saving": "Sauvegarde...",
     "saved": "Sauvegardé !",
@@ -203,6 +217,7 @@
     "scheduleLabel": "Programme :",
     "home": "Domicile",
     "away": "Extérieur",
+    "daysUntilMatch": "jours restants",
     "matchdayN": "Journée {{n}}",
     "met": "Atteint",
     "inProgress": "En Cours",
@@ -272,14 +287,14 @@
     "repDeveloping": "En Développement"
   },
   "youthAcademy": {
-    "title": "Académie des Jeunes",
+    "title": "Académie",
     "playersUnder21": "{{count}} joueurs ≤21",
-    "youthPlayers": "Joueurs Jeunes",
+    "youthPlayers": "Joueurs d'académie",
     "avgOvr": "Moy. OVR",
     "avgPotential": "Moy. Potentiel",
     "highPotential": "Haut Potentiel",
-    "youthCoach": "Entraîneur des Jeunes :",
-    "youthProspects": "Espoirs",
+    "youthCoach": "Coach de l'académie :",
+    "youthProspects": "Talents académie",
     "noYouthPlayers": "Aucun joueur jeune (≤21) dans votre effectif.",
     "player": "Joueur",
     "pos": "Pos",
@@ -587,6 +602,14 @@
         "MID": "Voie du milieu",
         "ADC": "Voie du bas (ADC)",
         "SUPPORT": "Support"
+      },
+      "sections": {
+        "gameTiming": "Timing de partie",
+        "strongSide": "Côté fort",
+        "jungleStyle": "Style de jungle",
+        "junglePathing": "Route de jungle",
+        "fightPlan": "Plan de combat",
+        "supportRoaming": "Roaming du support"
       },
       "options": {
         "strongSide": {
@@ -927,7 +950,8 @@
     "monthlyUpkeep": "Entretien mensuel : €{{amount}}",
     "nextUpgradeCost": "Prochaine amélioration : €{{amount}}",
     "upgradeFacility": "Améliorer",
-    "hubExpansionRequired": "Agrandissez d'abord le hub",
+    "expandOffices": "Agrandir les bureaux",
+    "hubExpansionRequired": "Agrandissez les bureaux pour débloquer ce module",
     "insufficientFunds": "Fonds insuffisants",
     "sponsors": "Sponsors",
     "activeSponsor": "Sponsor actif",
@@ -1101,7 +1125,8 @@
     "transferFeedbackCounterHeadline": "Ils veulent plus avant de conclure.",
     "transferFeedbackCounterDetail": "L'offre était assez proche pour continuer à parler, mais leur camp vise plutôt un prix autour de {{fee}}.",
     "transferFeedbackRejectedHeadline": "Ils ont fermé cette manche.",
-    "transferFeedbackRejectedDetail": "La proposition ne les a pas assez fait bouger. Il faudrait une somme plus forte, plus proche de {{fee}}, pour rouvrir des discussions sérieuses."
+    "transferFeedbackRejectedDetail": "La proposition ne les a pas assez fait bouger. Il faudrait une somme plus forte, plus proche de {{fee}}, pour rouvrir des discussions sérieuses.",
+    "transferFeedbackPlayerRejectedDetail": "Le club a accepté, mais le joueur a refusé le transfert après avoir évalué son rôle, le salaire et le projet sportif."
   },
   "schedule": {
     "noSchedule": "Aucun calendrier de ligue disponible.",
@@ -1194,6 +1219,18 @@
     "yearsRemaining": "Années restantes",
     "contractRisk": "Risque contractuel",
     "renewalTitle": "Renouveler le contrat",
+    "releaseContract": "Rompre le contrat",
+    "releaseContractConfirm": "Rompre ce contrat et payer l'indemnité ?",
+    "releasePenalty": "Coût de résiliation",
+    "makeTransferOffer": "Faire une offre",
+    "transferOfferPrompt": "Saisissez le montant de l'offre (€)",
+    "transferOfferAmount": "Montant de l'offre",
+    "transferOfferSubmit": "Envoyer l'offre",
+    "transferOfferInvalid": "Saisissez un montant d'offre valide.",
+    "transferOfferBudgetError": "Votre budget transferts est insuffisant pour ce montant.",
+    "transferOfferFundsError": "Vous n'avez pas les fonds suffisants pour cette offre.",
+    "transferOfferWindowClosed": "Le marché des transferts est fermé.",
+    "transferOfferFailed": "Impossible d'envoyer l'offre. Réessayez.",
     "renewalWage": "Salaire proposé",
     "renewalLength": "Durée du contrat",
     "renewalSubmit": "Envoyer l'offre",
@@ -1284,6 +1321,7 @@
   "teamProfile": {
     "clubInfo": "Informations du Club",
     "hq": "QG",
+    "erl": "ERL",
     "activeRoster": "Effectif actif",
     "roleSetup": "Rôles clés",
     "draftIdentity": "Identité de draft",
@@ -1635,9 +1673,11 @@
     "postMatchTeamTalk": "Causerie d'Après-Match",
     "addressPlayers": "Adressez-vous à vos joueurs après le match.",
     "matchOver": "Match Terminé",
-    "tacticsBeforeLive": "Ajustez le plan et, quand vous êtes prêt, lancez le live.",
-    "runParallelSims": "Lancer 8 sims",
-    "stopParallelSims": "Arrêter les sims",
+    "tacticsBeforeLive": "Ajustez la stratégie et, quand vous êtes prêt, lançons la partie.",
+    "simulate": "Simuler",
+    "simulating": "Simulation...",
+    "simulatingFromTactics": "Simulation de la partie...",
+    "simulateFailed": "Impossible de simuler la partie. Réessayez.",
     "startLive": "Aller au live",
     "draftResult": {
       "mvp": "MVP",
@@ -2246,12 +2286,12 @@
         }
       },
       "fanPetition": {
-        "subject0": "Fan Petition — More Attacking Football",
-        "subject1": "Fan Petition — Give Youth a Chance",
-        "subject2": "Fan Open Letter — Transparency",
-        "body0": "A group of {{team}} supporters has organized a petition calling for more attacking football.\n\n\"We pay good money to watch exciting football. We want to see the team go forward and entertain us!\"\n\nOver 500 signatures so far. How do you respond?",
-        "body1": "Supporters of {{team}} have started a campaign urging you to give more opportunities to young players from the academy.\n\n\"The future of our club depends on developing homegrown talent. Stop overlooking the kids!\"\n\nIt's getting traction on social media. What's your response?",
-        "body2": "An open letter from the {{team}} Supporters Trust has been published, asking for more transparency from the management.\n\n\"We want to understand the club's vision. Where are we heading? What's the long-term plan?\"\n\nThe local press is covering it. How do you handle this?",
+        "subject0": "Pétition des supporters — Drafts plus proactifs",
+        "subject1": "Pétition des supporters — Plus de scène pour l'académie",
+        "subject2": "Lettre ouverte — Transparence compétitive",
+        "body0": "Un groupe de supporters de {{team}} a lancé une pétition demandant des drafts plus proactifs et plus de tempo en early game.\n\n\"On veut une identité dès la première minute, pas du scaling passif à chaque série.\"\n\nLa pétition dépasse déjà 500 signatures. Comment répondez-vous ?",
+        "body1": "Des supporters de {{team}} ont lancé une campagne pour donner plus de scène aux joueurs d'académie et aux nouveaux prospects.\n\n\"L'avenir du club dépend du développement des talents, pas d'un banc permanent.\"\n\nLe sujet prend de l'ampleur sur les réseaux. Quelle est votre réponse ?",
+        "body2": "Une lettre ouverte des supporters de {{team}} demande plus de transparence à la cellule compétitive.\n\n\"On veut comprendre la direction : identité de draft, plan de roster et objectifs de playoffs.\"\n\nLa presse esports relaie largement le sujet. Comment gérez-vous cela ?",
         "options": {
           "listenFans": {
             "label": "Écouter les supporters",
@@ -2268,9 +2308,9 @@
         }
       },
       "rivalInterest": {
-        "subject": "Transfer Rumour — {{player}} linked with {{rival}}",
-        "body0": "We've received word that {{rival}} have been making enquiries about {{player}}.\n\nTheir scouts were spotted at our last few matches, and our sources suggest they may approach with a formal offer soon.\n\nHow would you like us to respond if they make contact?",
-        "body1": "The press are reporting that {{player}} is a target for {{rival}}.\n\nAccording to sources, the player has attracted attention after their recent performances. No formal bid yet, but it's only a matter of time.\n\nWhat's your stance?",
+        "subject": "Rumeur mercato — {{player}} dans le viseur de {{rival}}",
+        "body0": "Nous avons appris que {{rival}} a déjà commencé à se positionner sur {{player}}.\n\nLeur staff a été vu en train d'analyser les dernières séries et les données de solo queue, et nos sources évoquent une offre formelle imminente.\n\nComment souhaitez-vous réagir s'ils prennent contact ?",
+        "body1": "La presse esports indique que {{player}} est désormais une cible concrète de {{rival}}.\n\nLe joueur attire l'attention après ses dernières performances sur scène. Pas d'offre officielle pour l'instant, mais la pression monte vite.\n\nQuelle est votre position ?",
         "options": {
           "notForSale": {
             "label": "Pas à vendre",

@@ -71,7 +71,7 @@ pub fn check_random_events(game: &mut Game) {
                 .find(|t| t.id == user_team_id)
                 .map(|t| t.name.as_str())
                 .unwrap_or("Your Club");
-            let amount = rng.random_range(5..=30) * 10_000; // 50k - 300k
+            let amount = rng.random_range(12..=60) * 1_000; // 12k - 60k
             let sponsor_names = [
                 "GreenTech Industries",
                 "Nova Sports",
@@ -352,14 +352,17 @@ pub fn check_random_events(game: &mut Game) {
             if !eligible.is_empty() {
                 let player = choose_rival_interest_target(&eligible, current_date, &mut rng)
                     .unwrap_or(eligible[rng.random_range(0..eligible.len())]);
-                let rival_names = [
-                    "FC Rival",
-                    "Sporting Ambition",
-                    "United Prestige",
-                    "Real Progress",
-                    "Bayern Elite",
-                ];
-                let rival = rival_names[rng.random_range(0..rival_names.len())];
+                let rival_pool: Vec<&str> = game
+                    .teams
+                    .iter()
+                    .filter(|team| team.id != user_team_id)
+                    .map(|team| team.name.as_str())
+                    .collect();
+                let rival = if rival_pool.is_empty() {
+                    "Rival Club"
+                } else {
+                    rival_pool[rng.random_range(0..rival_pool.len())]
+                };
                 new_messages.push(builders_reports::rival_interest_message(
                     &msg_id,
                     &player.id,

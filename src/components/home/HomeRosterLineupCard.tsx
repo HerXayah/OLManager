@@ -6,6 +6,7 @@ import type { ChampionMasteryEntryData, PlayerData } from "../../store/gameStore
 import { Card, CardBody, CardHeader } from "../ui";
 import { fallbackChampionForRole, resolvePlayerLolRole } from "../../lib/lolIdentity";
 import { resolvePlayerPhoto } from "../../lib/playerPhotos";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 
 type DraftRole = "TOP" | "JUNGLE" | "MID" | "ADC" | "SUPPORT";
 
@@ -43,22 +44,6 @@ function normalizeKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function getLolOvr(player: PlayerData): number {
-  const attrs = player.attributes;
-  const avg =
-    (Number(attrs.dribbling ?? 0) +
-      Number(attrs.shooting ?? 0) +
-      Number(attrs.teamwork ?? 0) +
-      Number(attrs.vision ?? 0) +
-      Number(attrs.decisions ?? 0) +
-      Number(attrs.leadership ?? 0) +
-      Number(attrs.agility ?? 0) +
-      Number(attrs.composure ?? 0) +
-      Number(attrs.stamina ?? 0)) /
-    9;
-  return Math.max(1, Math.min(99, Math.round(avg)));
-}
-
 function championIdFromName(name: string): string | null {
   const normalized = normalizeKey(name);
   if (!normalized) return null;
@@ -70,6 +55,7 @@ function championIdFromName(name: string): string | null {
     drmundo: "DrMundo",
     jarvaniv: "JarvanIV",
     kaisa: "Kaisa",
+    ksante: "KSante",
     khazix: "Khazix",
     kogmaw: "KogMaw",
     leesin: "LeeSin",
@@ -121,8 +107,8 @@ export default function HomeRosterLineupCard({
           )
           .sort(
             (a, b) =>
-              getLolOvr(b) -
-              getLolOvr(a),
+              calculateLolOvr(b) -
+              calculateLolOvr(a),
           );
 
         return {
@@ -151,7 +137,7 @@ export default function HomeRosterLineupCard({
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
           {lineup.map(({ role, player }) => {
             const photo = player ? resolvePlayerPhoto(player.id, player.match_name) : null;
-            const ovr = player ? getLolOvr(player) : null;
+            const ovr = player ? calculateLolOvr(player) : null;
             const condition = player?.condition ?? null;
             const morale = player?.morale ?? null;
             const topChampion = player

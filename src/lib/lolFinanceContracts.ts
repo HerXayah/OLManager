@@ -1,6 +1,12 @@
 import type { FacilitiesData, SponsorshipData, TeamData } from "../store/types";
 
-export type FacilityUpgradeId = "Training" | "Medical" | "Scouting";
+export type FacilityUpgradeId =
+  | "ScrimsRoom"
+  | "AnalysisRoom"
+  | "BootcampArea"
+  | "RecoverySuite"
+  | "ContentStudio"
+  | "ScoutingLab";
 
 type InstallationContractKey =
   | "scrimsRoom"
@@ -49,36 +55,36 @@ export const FACILITY_MODULE_DEFINITIONS: Array<{
     label: "Scrims Room",
     labelKey: "finances.facilityScrimsRoom",
     effectKey: "finances.facilityScrimsRoomEffect",
-    levelKey: "training",
+    levelKey: "scrims_room_level",
     upkeepPerExtraLevel: 20_000,
-    upgradeFacility: "Training",
+    upgradeFacility: "ScrimsRoom",
   },
   {
     key: "analysisRoom",
     label: "Analysis Room",
     labelKey: "finances.facilityAnalysisRoom",
     effectKey: "finances.facilityAnalysisRoomEffect",
-    levelKey: "training",
+    levelKey: "analysis_room_level",
     upkeepPerExtraLevel: 15_000,
-    upgradeFacility: "Training",
+    upgradeFacility: "AnalysisRoom",
   },
   {
     key: "bootcampArea",
     label: "Bootcamp Area",
     labelKey: "finances.facilityBootcampArea",
     effectKey: "finances.facilityBootcampAreaEffect",
-    levelKey: "medical",
+    levelKey: "bootcamp_area_level",
     upkeepPerExtraLevel: 15_000,
-    upgradeFacility: "Medical",
+    upgradeFacility: "BootcampArea",
   },
   {
     key: "recoverySuite",
     label: "Recovery Suite",
     labelKey: "finances.facilityRecoverySuite",
     effectKey: "finances.facilityRecoverySuiteEffect",
-    levelKey: "medical",
+    levelKey: "recovery_suite_level",
     upkeepPerExtraLevel: 10_000,
-    upgradeFacility: "Medical",
+    upgradeFacility: "RecoverySuite",
   },
   {
     key: "contentStudio",
@@ -87,16 +93,16 @@ export const FACILITY_MODULE_DEFINITIONS: Array<{
     effectKey: "finances.facilityContentStudioEffect",
     levelKey: "hub",
     upkeepPerExtraLevel: 0,
-    upgradeFacility: null,
+    upgradeFacility: "ContentStudio",
   },
   {
     key: "scoutingLab",
     label: "Scouting Lab",
     labelKey: "finances.facilityScoutingLab",
     effectKey: "finances.facilityScoutingLabEffect",
-    levelKey: "scouting",
+    levelKey: "scouting_lab_level",
     upkeepPerExtraLevel: 10_000,
-    upgradeFacility: "Scouting",
+    upgradeFacility: "ScoutingLab",
   },
 ];
 
@@ -128,6 +134,13 @@ function resolveInstallationLevels(team: TeamData): FacilitiesData {
     training: source.training ?? DEFAULT_FACILITIES.training,
     medical: source.medical ?? DEFAULT_FACILITIES.medical,
     scouting: source.scouting ?? DEFAULT_FACILITIES.scouting,
+    scrims_room_level: source.scrims_room_level ?? source.training ?? DEFAULT_FACILITIES.training,
+    analysis_room_level: source.analysis_room_level ?? DEFAULT_FACILITIES.training,
+    bootcamp_area_level: source.bootcamp_area_level ?? DEFAULT_FACILITIES.training,
+    recovery_suite_level:
+      source.recovery_suite_level ?? source.medical ?? DEFAULT_FACILITIES.medical,
+    content_studio_level: source.content_studio_level ?? DEFAULT_FACILITIES.training,
+    scouting_lab_level: source.scouting_lab_level ?? source.scouting ?? DEFAULT_FACILITIES.scouting,
   };
 }
 
@@ -135,9 +148,12 @@ function getMainHubLevel(levels: FacilitiesData): number {
   return Math.max(
     DEFAULT_FACILITIES.training,
     levels.main_hub_level ?? DEFAULT_FACILITIES.training,
-    levels.training,
-    levels.medical,
-    levels.scouting,
+    levels.scrims_room_level ?? levels.training,
+    levels.analysis_room_level ?? levels.training,
+    levels.bootcamp_area_level ?? levels.medical,
+    levels.recovery_suite_level ?? levels.medical,
+    levels.content_studio_level ?? DEFAULT_FACILITIES.training,
+    levels.scouting_lab_level ?? levels.scouting,
   );
 }
 

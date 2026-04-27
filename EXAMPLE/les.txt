@@ -166,7 +166,7 @@ Full name: Besmir Jakupi
 Image: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/9c/UCAM_iLevi_2025_Split_1.png/revision/latest/scale-to-width-down/220?cb=20250121124110
 
 Team: Falke Esports
-Team Logo:
+Team Logo: https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b0/Falke_Esportslogo_square.png/revision/latest/scale-to-width-down/220?cb=20250917172449
 
 Toplaner: Ethe
 Born: August 7, 2001

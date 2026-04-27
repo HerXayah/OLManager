@@ -1,6 +1,7 @@
 import { DollarSign, Trophy, Users } from "lucide-react";
 
 import { formatVal, formatWeeklyAmount } from "../../lib/helpers";
+import { annualAmountToWeeklyCommitment } from "../../lib/finance";
 import type { TeamData } from "../../store/gameStore";
 import { Card, CardBody, CardHeader } from "../ui";
 import type { TeamProfileTranslate, TeamProfileViewModel } from "./TeamProfile.types";
@@ -32,24 +33,27 @@ export default function TeamProfileSummaryCard({
               label={t("teamProfile.balance")}
               value={formatVal(team.finance)}
             />
-            <InfoRow
-              icon={<DollarSign className="w-4 h-4" />}
-              label={t("finances.wageBudget")}
-              value={formatWeeklyAmount(formatVal(team.wage_budget), weeklySuffix)}
-            />
+              <InfoRow
+                icon={<DollarSign className="w-4 h-4" />}
+                label={t("finances.wageBudget")}
+                value={formatWeeklyAmount(
+                  formatVal(annualAmountToWeeklyCommitment(team.wage_budget)),
+                  weeklySuffix,
+                )}
+              />
             <InfoRow
               icon={<DollarSign className="w-4 h-4" />}
               label={t("finances.transferBudget")}
               value={formatVal(team.transfer_budget)}
             />
-            <InfoRow
-              icon={<DollarSign className="w-4 h-4" />}
-              label={t("teamProfile.totalWages")}
-              value={formatWeeklyAmount(
-                formatVal(viewModel.totalWages),
-                weeklySuffix,
-              )}
-            />
+              <InfoRow
+                icon={<DollarSign className="w-4 h-4" />}
+                label={t("teamProfile.totalWages")}
+                value={formatWeeklyAmount(
+                  formatVal(annualAmountToWeeklyCommitment(viewModel.totalWages)),
+                  weeklySuffix,
+                )}
+              />
             <InfoRow
               icon={<DollarSign className="w-4 h-4" />}
               label={t("finances.squadValue")}

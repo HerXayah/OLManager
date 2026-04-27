@@ -61,6 +61,23 @@ fn make_user_player(id: &str) -> Player {
     player
 }
 
+fn make_player_with_position(id: &str, position: Position, team_id: Option<&str>, market_value: u64) -> Player {
+    let mut player = Player::new(
+        id.to_string(),
+        format!("{}. Test", id),
+        format!("{} Test", id),
+        "2000-01-01".to_string(),
+        "England".to_string(),
+        position,
+        default_attrs(),
+    );
+    player.team_id = team_id.map(|team| team.to_string());
+    player.contract_end = Some("2028-06-30".to_string());
+    player.market_value = market_value;
+    player.morale = 70;
+    player
+}
+
 fn make_pending_incoming_offer(id: &str, fee: u64) -> TransferOffer {
     TransferOffer {
         id: id.to_string(),
@@ -881,4 +898,155 @@ fn incoming_offers_can_target_players_in_user_academy() {
     assert_eq!(academy_player.transfer_offers.len(), 1);
     assert_eq!(academy_player.transfer_offers[0].from_team_id, "team-2");
     assert_eq!(academy_player.transfer_offers[0].status, TransferOfferStatus::Pending);
+}
+
+#[test]
+fn ai_free_agent_signing_prioritizes_missing_role() {
+    let clock = GameClock::new(Utc.with_ymd_and_hms(2026, 8, 1, 12, 0, 0).unwrap());
+
+    let mut manager = Manager::new(
+        "manager-1".to_string(),
+        "Jane".to_string(),
+        "Doe".to_string(),
+        "1980-01-01".to_string(),
+        "England".to_string(),
+    );
+    manager.hire("team-1".to_string());
+
+    let mut user_team = make_user_team(5_000_000, 2_000_000);
+    user_team.team_kind = TeamKind::Main;
+
+    let mut ai_team = Team::new(
+        "team-2".to_string(),
+        "AI FC".to_string(),
+        "AIF".to_string(),
+        "England".to_string(),
+        "Manchester".to_string(),
+        "AI Ground".to_string(),
+        20_000,
+    );
+    ai_team.team_kind = TeamKind::Main;
+    ai_team.finance = 5_000_000;
+    ai_team.transfer_budget = 3_000_000;
+
+    let players = vec![
+        make_player_with_position("ai-top", Position::Defender, Some("team-2"), 900_000),
+        make_player_with_position("ai-jungle", Position::Midfielder, Some("team-2"), 850_000),
+        make_player_with_position("ai-mid", Position::AttackingMidfielder, Some("team-2"), 920_000),
+        make_player_with_position("ai-support", Position::DefensiveMidfielder, Some("team-2"), 870_000),
+        make_player_with_position("fa-mid-premium", Position::AttackingMidfielder, None, 1_600_000),
+        make_player_with_position("fa-adc-needed", Position::Forward, None, 1_050_000),
+    ];
+
+    let mut game = Game::new(clock, manager, vec![user_team, ai_team], players, vec![], vec![]);
+    game.season_context.transfer_window.status = TransferWindowStatus::Open;
+
+    generate_incoming_transfer_offers(&mut game);
+
+    let ai_adc_signed = game
+        .players
+        .iter()
+        .find(|player| player.id == "fa-adc-needed")
+        .and_then(|player| player.team_id.as_deref());
+    let ai_mid_signed = game
+        .players
+        .iter()
+        .find(|player| player.id == "fa-mid-premium")
+        .and_then(|player| player.team_id.as_deref());
+
+    assert_eq!(ai_adc_signed, Some("team-2"));
+    assert_ne!(ai_mid_signed, Some("team-2"));
+}
+
+#[test]
+fn ai_club_transfer_prioritizes_missing_role() {
+    let clock = GameClock::new(Utc.with_ymd_and_hms(2026, 8, 1, 12, 0, 0).unwrap());
+
+    let mut manager = Manager::new(
+        "manager-1".to_string(),
+        "Jane".to_string(),
+        "Doe".to_string(),
+        "1980-01-01".to_string(),
+        "England".to_string(),
+    );
+    manager.hire("team-1".to_string());
+
+    let mut user_team = make_user_team(5_000_000, 2_000_000);
+    user_team.team_kind = TeamKind::Main;
+
+    let mut ai_buyer = Team::new(
+        "team-2".to_string(),
+        "Buyer FC".to_string(),
+        "BUY".to_string(),
+        "England".to_string(),
+        "Leeds".to_string(),
+        "Buyer Ground".to_string(),
+        25_000,
+    );
+    ai_buyer.team_kind = TeamKind::Main;
+    ai_buyer.finance = 6_000_000;
+    ai_buyer.transfer_budget = 3_500_000;
+
+    let mut seller_team = Team::new(
+        "team-3".to_string(),
+        "Seller City".to_string(),
+        "SEL".to_string(),
+        "England".to_string(),
+        "Bristol".to_string(),
+        "Seller Ground".to_string(),
+        22_000,
+    );
+    seller_team.team_kind = TeamKind::Main;
+    seller_team.finance = 4_000_000;
+    seller_team.transfer_budget = 2_000_000;
+
+    let mut seller_mid = make_player_with_position(
+        "seller-mid-premium",
+        Position::AttackingMidfielder,
+        Some("team-3"),
+        1_500_000,
+    );
+    seller_mid.transfer_listed = true;
+    let mut seller_adc = make_player_with_position(
+        "seller-adc-needed",
+        Position::Forward,
+        Some("team-3"),
+        950_000,
+    );
+    seller_adc.transfer_listed = true;
+
+    let players = vec![
+        make_player_with_position("buyer-top", Position::Defender, Some("team-2"), 900_000),
+        make_player_with_position("buyer-jungle", Position::Midfielder, Some("team-2"), 880_000),
+        make_player_with_position("buyer-mid", Position::AttackingMidfielder, Some("team-2"), 920_000),
+        make_player_with_position("buyer-support", Position::DefensiveMidfielder, Some("team-2"), 870_000),
+        seller_mid,
+        seller_adc,
+    ];
+
+    let mut game = Game::new(
+        clock,
+        manager,
+        vec![user_team, ai_buyer, seller_team],
+        players,
+        vec![],
+        vec![],
+    );
+    game.season_context.transfer_window.status = TransferWindowStatus::Open;
+
+    generate_incoming_transfer_offers(&mut game);
+
+    let adc_team = game
+        .players
+        .iter()
+        .find(|player| player.id == "seller-adc-needed")
+        .and_then(|player| player.team_id.as_deref());
+    let mid_team = game
+        .players
+        .iter()
+        .find(|player| player.id == "seller-mid-premium")
+        .and_then(|player| player.team_id.as_deref());
+
+    assert_eq!(adc_team, Some("team-2"));
+    assert_eq!(mid_team, Some("team-3"));
 }

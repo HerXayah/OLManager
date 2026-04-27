@@ -1,4 +1,5 @@
-import { calcOvr, findNextFixture } from "../../lib/helpers";
+import { findNextFixture } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { hasCompetitiveStandings } from "../../lib/seasonContext";
 import type {
   FixtureData,
@@ -157,8 +158,7 @@ export function getHomeRosterOverview(
     roster.length > 0
       ? Math.round(
           roster.reduce(
-            (total, player) =>
-              total + calcOvr(player, player.natural_position || player.position),
+            (total, player) => total + calculateLolOvr(player),
             0,
           ) / roster.length,
         )

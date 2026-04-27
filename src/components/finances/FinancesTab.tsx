@@ -14,7 +14,6 @@ import {
   getContractRiskBadgeVariant,
   getContractRiskLevel,
   getContractYearsRemaining,
-  positionBadgeVariant,
 } from "../../lib/helpers";
 import {
   annualAmountToWeeklyCommitment,
@@ -27,11 +26,15 @@ import {
 } from "../../lib/lolFinanceContracts";
 import { useTranslation } from "react-i18next";
 import ContextMenu from "../ContextMenu";
-import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
+import { getLolRoleForPlayer, type LolRole } from "../squad/SquadTab.helpers";
 import { resolveMessage } from "../../utils/backendI18n";
 
 function getFacilityUpgradeCost(level: number): number {
   return level * 250_000;
+}
+
+function getMainHubExpansionCost(level: number): number {
+  return level * 500_000;
 }
 
 function formatSignedAmount(value: number): string {
@@ -85,6 +88,17 @@ interface FinancesTabProps {
   onSelectPlayer?: (id: string, options?: PlayerSelectionOptions) => void;
 }
 
+const roleBadgeVariant: Record<
+  LolRole,
+  "danger" | "success" | "accent" | "primary" | "neutral"
+> = {
+  TOP: "danger",
+  JUNGLE: "success",
+  MID: "accent",
+  ADC: "primary",
+  SUPPORT: "neutral",
+};
+
 export default function FinancesTab({
   gameState,
   onGameUpdate,
@@ -115,6 +129,12 @@ export default function FinancesTab({
   const totalWages = financeSnapshot.weeklyWageSpend;
   const totalValue = roster.reduce((s, p) => s + p.market_value, 0);
   const installationContract = getClubInstallationContract(myTeam);
+  const mainHubLevel = installationContract.reduce(
+    (maxLevel, module) => Math.max(maxLevel, module.level),
+    1,
+  );
+  const nextHubExpansionCost = getMainHubExpansionCost(mainHubLevel);
+  const canExpandMainHub = myTeam.finance >= nextHubExpansionCost;
   const activeSponsorship = getSponsorshipContractView(myTeam.sponsorship);
   const weeklySponsorIncome = financeSnapshot.weeklySponsorIncome;
   const projectedWeeklyNet = financeSnapshot.projectedWeeklyNet;
@@ -191,12 +211,24 @@ export default function FinancesTab({
   async function handleUpgradeFacility(facility: FacilityUpgradeId): Promise<void> {
     setActionLoading(facility);
     try {
-      const updated = await invoke<GameStateData>("upgrade_facility", {
-        facility,
+      const updated = await invoke<GameStateData>("upgrade_main_facility_module", {
+        module: facility,
       });
       onGameUpdate?.(updated);
     } catch (error) {
       console.error("Failed to upgrade facility:", error);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleExpandMainHub(): Promise<void> {
+    setActionLoading("expand-main-hub");
+    try {
+      const updated = await invoke<GameStateData>("expand_main_facility_hub");
+      onGameUpdate?.(updated);
+    } catch (error) {
+      console.error("Failed to expand main facility hub:", error);
     } finally {
       setActionLoading(null);
     }
@@ -662,11 +694,39 @@ export default function FinancesTab({
       <Card className="lg:col-span-3">
         <CardHeader>{t("finances.facilities")}</CardHeader>
         <CardBody>
+          <div className="mb-4 rounded-xl border border-gray-200 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                {t("finances.facilities")}
+              </p>
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {t("finances.facilityLevel", { level: mainHubLevel })}
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                {t("finances.nextUpgradeCost", {
+                  amount: nextHubExpansionCost.toLocaleString(),
+                })}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleExpandMainHub()}
+              disabled={!canExpandMainHub || actionLoading === "expand-main-hub"}
+              aria-label={t("finances.expandOffices")}
+            >
+              {t("finances.expandOffices")}
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {installationContract.map((facility) => {
               const level = facility.level;
               const nextUpgradeCost = getFacilityUpgradeCost(level);
-              const canUpgrade = Boolean(facility.upgradeFacility) && myTeam.finance >= nextUpgradeCost;
+              const unlocksNextLevel = level + 1 <= mainHubLevel;
+              const canUpgrade =
+                Boolean(facility.upgradeFacility) &&
+                unlocksNextLevel &&
+                myTeam.finance >= nextUpgradeCost;
               const isLoading = actionLoading === facility.upgradeFacility;
               const label = t(facility.labelKey, facility.label);
 
@@ -715,6 +775,10 @@ export default function FinancesTab({
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {t("finances.hubExpansionRequired")}
                       </p>
+                    ) : !unlocksNextLevel ? (
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {t("finances.hubExpansionRequired")}
+                      </p>
                     ) : !canUpgrade ? (
                       <p className="text-xs text-red-500">
                         {t("finances.insufficientFunds")}
@@ -758,6 +822,7 @@ export default function FinancesTab({
                   .sort((a, b) => b.wage - a.wage)
                   .slice(0, 10)
                   .map((p) => {
+                    const lolRole = getLolRoleForPlayer(p);
                     const contextItems = onSelectPlayer
                       ? [
                           {
@@ -780,8 +845,8 @@ export default function FinancesTab({
                           </span>
                         </td>
                         <td className="py-3 px-5">
-                          <Badge variant={positionBadgeVariant(p.position)}>
-                            {translatePositionAbbreviation(t, p.position)}
+                          <Badge variant={roleBadgeVariant[lolRole]}>
+                            {lolRole === "JUNGLE" ? "JG" : lolRole}
                           </Badge>
                         </td>
                         <td className="py-3 px-5 text-sm font-medium text-gray-700 dark:text-gray-300">

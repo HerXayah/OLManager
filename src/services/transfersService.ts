@@ -81,3 +81,11 @@ export async function previewTransferBidFinancialImpact(
     },
   );
 }
+
+export async function releasePlayerContract(
+  playerId: string,
+): Promise<GameStateData> {
+  return invoke<GameStateData>("release_player_contract", {
+    playerId,
+  });
+}

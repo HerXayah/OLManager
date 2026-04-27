@@ -48,6 +48,15 @@ vi.mock("react-i18next", () => ({
       if (key === "playerProfile.noContract") return "No Contract";
       if (key === "playerProfile.yearsRemaining") return "Years Remaining";
       if (key === "playerProfile.contractRisk") return "Contract Risk";
+      if (key === "playerProfile.releaseContract") return "Release Contract";
+      if (key === "playerProfile.releaseContractConfirm")
+        return "Release this player and pay a termination fee?";
+      if (key === "playerProfile.releasePenalty") return "Termination cost";
+      if (key === "playerProfile.makeTransferOffer") return "Make Offer";
+      if (key === "playerProfile.transferOfferPrompt")
+        return "Enter transfer offer amount (€)";
+      if (key === "playerProfile.transferOfferAmount") return "Offer amount";
+      if (key === "playerProfile.transferOfferSubmit") return "Send offer";
       if (key === "playerProfile.renewalTitle") return "Renew Contract";
       if (key === "playerProfile.renewalWage") return "Offered Wage";
       if (key === "playerProfile.renewalLength") return "Contract Length";
