@@ -46,7 +46,10 @@ interface BuildPressConferenceQuestionsParams {
   userSide: UserSide;
   t: TFunction | ((key: string) => string);
   random?: () => number;
+  recentQuestionIds?: string[];
 }
+
+const PRESS_CONFERENCE_QUESTION_TARGET = 3;
 
 function countEvents(events: MatchEvent[], side: UserSide, names: string[]): number {
   const normalized = new Set(names.map((name) => name.toLowerCase()));
@@ -200,24 +203,88 @@ function buildCandidates(params: {
 function selectDiverseQuestions(
   candidates: Candidate[],
   random: () => number,
+  targetCount = PRESS_CONFERENCE_QUESTION_TARGET,
 ): Candidate[] {
-  const seenIds = new Set<string>();
   const selected: Candidate[] = [];
-  
-  const sorted = [...candidates].sort((a, b) => b.weight - a.weight);
-  
-  for (const candidate of sorted) {
-    if (selected.length >= 4) break;
-    if (selected.length < 2 && candidate.weight > 0) {
-      selected.push(candidate);
-      seenIds.add(candidate.question.id);
-    } else if (!seenIds.has(candidate.question.id) && candidate.weight > 0) {
-      selected.push(candidate);
-      seenIds.add(candidate.question.id);
-    }
+  let remaining = candidates.filter((candidate) => candidate.weight > 0);
+
+  while (selected.length < targetCount && remaining.length > 0) {
+    const candidate = selectWeighted(remaining, random);
+    if (!candidate) break;
+
+    selected.push(candidate);
+    remaining = remaining.filter((item) => item.question.id !== candidate.question.id);
   }
-  
+
   return selected;
+}
+
+function selectPressConferenceCandidates(
+  candidates: Candidate[],
+  random: () => number,
+  recentQuestionIds: string[] = [],
+): Candidate[] {
+  if (recentQuestionIds.length === 0) {
+    return selectDiverseQuestions(candidates, random);
+  }
+
+  const recentIds = new Set(recentQuestionIds);
+  const freshCandidates = candidates.filter((candidate) => !recentIds.has(candidate.question.id));
+
+  if (freshCandidates.length === 0) {
+    return selectDiverseQuestions(candidates, random);
+  }
+
+  const selected = selectDiverseQuestions(freshCandidates, random);
+  if (selected.length >= PRESS_CONFERENCE_QUESTION_TARGET) return selected;
+
+  const selectedIds = new Set(selected.map((candidate) => candidate.question.id));
+  const fallbackCandidates = candidates.filter((candidate) => !selectedIds.has(candidate.question.id));
+
+  return [
+    ...selected,
+    ...selectDiverseQuestions(
+      fallbackCandidates,
+      random,
+      PRESS_CONFERENCE_QUESTION_TARGET - selected.length,
+    ),
+  ];
+}
+
+function buildPressQuestion(params: {
+  candidate: Candidate;
+  contextFacts: Record<string, string | number | boolean>;
+  fallbackResponses: PressResponse[];
+  t: TFunction | ((key: string) => string);
+}): PressQuestion {
+  const responses = filterEligibleResponses(SOCIAL_CONTENT_PACK.responses, {
+    responseIds: params.candidate.question.responseIds,
+    allowedTones: params.candidate.question.tones,
+  })
+    .map((response) => ({
+      id: response.id,
+      tone: params.t(response.labelKey),
+      text: params.t(response.textKey),
+      effectId: response.effectId,
+      target: response.target,
+    }))
+    .filter((response) => response.text && response.tone);
+
+  const safeResponses = responses.length > 0 ? responses : params.fallbackResponses;
+
+  const targetPlayerId =
+    responses.some((response) => response.target === "player") && typeof params.contextFacts.worstPlayerId === "string"
+      ? params.contextFacts.worstPlayerId
+      : undefined;
+
+  return {
+    id: params.candidate.question.id,
+    journalist: params.candidate.personaName,
+    outlet: params.candidate.outletName,
+    question: params.t(params.candidate.question.textKey),
+    responses: safeResponses,
+    playerId: targetPlayerId,
+  };
 }
 
 export function buildPressConferenceQuestions({
@@ -226,6 +293,7 @@ export function buildPressConferenceQuestions({
   userSide,
   t,
   random = Math.random,
+  recentQuestionIds = [],
 }: BuildPressConferenceQuestionsParams): PressQuestion[] {
   const leagueId = gameState.league?.id ?? DEFAULT_LEAGUE_ID;
   const context = extractMatchContext({
@@ -233,15 +301,13 @@ export function buildPressConferenceQuestions({
     userSide: registrySide(userSide),
     leagueId,
   });
-  const candidate = selectWeighted(
-    buildCandidates({
-      questions: SOCIAL_CONTENT_PACK.questions,
-      leagueId,
-      contextTags: context.tags,
-      contextFacts: context.facts,
-    }),
-    random,
-  );
+  const candidates = buildCandidates({
+    questions: SOCIAL_CONTENT_PACK.questions,
+    leagueId,
+    contextTags: context.tags,
+    contextFacts: context.facts,
+  });
+  const selectedCandidates = selectPressConferenceCandidates(candidates, random, recentQuestionIds);
 
   const fallbackResponses: PressResponse[] = [
     {
@@ -260,7 +326,7 @@ export function buildPressConferenceQuestions({
     },
   ];
 
-  if (!candidate) {
+  if (selectedCandidates.length === 0) {
     return [
       {
         id: "fallback-post-match",
@@ -272,34 +338,12 @@ export function buildPressConferenceQuestions({
     ];
   }
 
-  const responses = filterEligibleResponses(SOCIAL_CONTENT_PACK.responses, {
-    responseIds: candidate.question.responseIds,
-    allowedTones: candidate.question.tones,
-  })
-    .map((response) => ({
-      id: response.id,
-      tone: t(response.labelKey),
-      text: t(response.textKey),
-      effectId: response.effectId,
-      target: response.target,
-    }))
-    .filter((response) => response.text && response.tone);
-
-  const safeResponses = responses.length > 0 ? responses : fallbackResponses;
-
-  const targetPlayerId =
-    responses.some((response) => response.target === "player") && typeof context.facts.worstPlayerId === "string"
-      ? context.facts.worstPlayerId
-      : undefined;
-
-  return [
-    {
-      id: candidate.question.id,
-      journalist: candidate.personaName,
-      outlet: candidate.outletName,
-      question: t(candidate.question.textKey),
-      responses: safeResponses,
-      playerId: targetPlayerId,
-    },
-  ];
+  return selectedCandidates.map((candidate) =>
+    buildPressQuestion({
+      candidate,
+      contextFacts: context.facts,
+      fallbackResponses,
+      t,
+    }),
+  );
 }
