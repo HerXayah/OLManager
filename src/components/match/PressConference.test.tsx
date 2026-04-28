@@ -8,6 +8,7 @@ import type { MatchSnapshot } from "./types";
 import type { GameStateData } from "../../store/gameStore";
 import { ThemeProvider } from "../../context/ThemeContext";
 import { invoke } from "@tauri-apps/api/core";
+import { SOCIAL_CONTENT_PACK } from "../../content/lol/social/content";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -166,29 +167,116 @@ function makeGameState(): GameStateData {
   };
 }
 
+function uniqueQuestionIds(questions: ReturnType<typeof buildPressConferenceQuestions>): string[] {
+  return [...new Set(questions.map((question) => question.id))];
+}
+
+function makeObjectiveWinSnapshot(): MatchSnapshot {
+  return makeSnapshot({
+    events: [
+      { minute: 10, event_type: "Dragon", side: "Home", zone: "River", player_id: "adc1", secondary_player_id: null },
+      { minute: 14, event_type: "Baron", side: "Home", zone: "River", player_id: "sup1", secondary_player_id: null },
+    ],
+  });
+}
+
+function answerCurrentQuestion() {
+  const responseButton = screen
+    .getAllByRole("button")
+    .find((button) => button.textContent?.includes('"') && !button.hasAttribute("disabled"));
+
+  expect(responseButton).toBeDefined();
+  fireEvent.click(responseButton!);
+}
+
 describe("PressConference LoL social content", () => {
   beforeEach(() => {
     vi.mocked(invoke).mockReset();
     vi.mocked(invoke).mockResolvedValue({ game: makeGameState(), morale_delta: 3 });
     vi.spyOn(Math, "random").mockReturnValue(0);
+    window.localStorage.clear();
   });
 
   it("buildPressConferenceQuestions reacts to objective events in snapshot.events", () => {
     const questions = buildPressConferenceQuestions({
-      snapshot: makeSnapshot({
-        events: [
-          { minute: 10, event_type: "Dragon", side: "Home", zone: "River", player_id: "adc1", secondary_player_id: null },
-          { minute: 14, event_type: "Baron", side: "Home", zone: "River", player_id: "sup1", secondary_player_id: null },
-        ],
-      }),
+      snapshot: makeObjectiveWinSnapshot(),
       gameState: makeGameState(),
       userSide: "Home",
       t: (key: string) => key,
       random: () => 0,
     });
 
-    expect(questions).toHaveLength(1);
+    expect(questions).toHaveLength(3);
     expect(questions[0].id).toBe("clean-win-objectives");
+    expect(uniqueQuestionIds(questions)).toHaveLength(questions.length);
+  });
+
+  it("excludes recent question IDs when alternatives exist", () => {
+    const questions = buildPressConferenceQuestions({
+      snapshot: makeObjectiveWinSnapshot(),
+      gameState: makeGameState(),
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0,
+      recentQuestionIds: ["clean-win-objectives"],
+    });
+
+    expect(questions).toHaveLength(3);
+    expect(questions.map((question) => question.id)).not.toContain("clean-win-objectives");
+    expect(uniqueQuestionIds(questions)).toHaveLength(questions.length);
+  });
+
+  it("falls back to the eligible pool when every candidate is recent", () => {
+    const allQuestionIds = SOCIAL_CONTENT_PACK.questions.map((question) => question.id);
+    const questions = buildPressConferenceQuestions({
+      snapshot: makeObjectiveWinSnapshot(),
+      gameState: makeGameState(),
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0,
+      recentQuestionIds: allQuestionIds,
+    });
+
+    expect(questions.length).toBeGreaterThan(0);
+    expect(questions[0].id).toBe("clean-win-objectives");
+    expect(uniqueQuestionIds(questions)).toHaveLength(questions.length);
+  });
+
+  it("does not duplicate question IDs within one generated conference", () => {
+    const questions = buildPressConferenceQuestions({
+      snapshot: makeObjectiveWinSnapshot(),
+      gameState: makeGameState(),
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0.99,
+    });
+
+    expect(questions.length).toBeGreaterThan(1);
+    expect(uniqueQuestionIds(questions)).toHaveLength(questions.length);
+  });
+
+  it("returns valid questions for common win and loss snapshots", () => {
+    const winQuestions = buildPressConferenceQuestions({
+      snapshot: makeSnapshot({ home_score: 2, away_score: 0 }),
+      gameState: makeGameState(),
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0,
+    });
+    const lossQuestions = buildPressConferenceQuestions({
+      snapshot: makeSnapshot({ home_score: 0, away_score: 2 }),
+      gameState: makeGameState(),
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0,
+    });
+
+    expect(winQuestions.length).toBeGreaterThan(0);
+    expect(lossQuestions.length).toBeGreaterThan(0);
+    expect(winQuestions.every((question) => question.id && question.question && question.responses.length > 0)).toBe(true);
+    expect(lossQuestions.every((question) => question.id && question.question && question.responses.length > 0)).toBe(true);
+    expect(uniqueQuestionIds(winQuestions)).toHaveLength(winQuestions.length);
+    expect(uniqueQuestionIds(lossQuestions)).toHaveLength(lossQuestions.length);
   });
 
   it("selects the first-blood question from a real runtime event merged into the snapshot", () => {
@@ -207,7 +295,7 @@ describe("PressConference LoL social content", () => {
     expect(snapshotWithRuntimeEvents.events).toEqual([
       { minute: 3, event_type: "FirstBlood", side: "Home", zone: "mid", player_id: null, secondary_player_id: null },
     ]);
-    expect(questions[0].id).toBe("first-blood-impact");
+    expect(questions.map((question) => question.id)).toContain("first-blood-impact");
   });
 
   it("maps runtime events into MatchSnapshot-compatible events without replacing existing events", () => {
@@ -254,21 +342,16 @@ describe("PressConference LoL social content", () => {
       random: () => 0,
     });
 
-    expect(questions).toHaveLength(1);
+    expect(questions.length).toBeGreaterThan(0);
     expect(questions[0].id).toBe("underperformance-pressure");
     expect(questions[0].question).toContain("underperformancePressure");
   });
 
-  it("submits stable effect_id values while preserving text for news generation", async () => {
+  it("persists a scoped recent question history after rendering", async () => {
     render(
       <ThemeProvider>
         <PressConference
-          snapshot={makeSnapshot({
-            events: [
-              { minute: 10, event_type: "Dragon", side: "Home", zone: "River", player_id: "adc1", secondary_player_id: null },
-              { minute: 14, event_type: "Baron", side: "Home", zone: "River", player_id: "sup1", secondary_player_id: null },
-            ],
-          })}
+          snapshot={makeObjectiveWinSnapshot()}
           gameState={makeGameState()}
           userSide="Home"
           onFinish={vi.fn()}
@@ -276,13 +359,37 @@ describe("PressConference LoL social content", () => {
       </ThemeProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /The players earned/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Leave Conference/i }));
+    await waitFor(() => {
+      const stored = JSON.parse(
+        window.localStorage.getItem("olmanager:match:pressConference:recentQuestionIds") ?? "[]",
+      );
+      expect(stored).toContain("clean-win-objectives");
+      expect(stored).toHaveLength(3);
+    });
+  });
+
+  it("submits stable effect_id values while preserving text for news generation", async () => {
+    render(
+      <ThemeProvider>
+        <PressConference
+          snapshot={makeObjectiveWinSnapshot()}
+          gameState={makeGameState()}
+          userSide="Home"
+          onFinish={vi.fn()}
+        />
+      </ThemeProvider>,
+    );
+
+    for (let index = 0; index < 3; index += 1) {
+      answerCurrentQuestion();
+      fireEvent.click(screen.getByRole("button", { name: index === 2 ? /Leave Conference/i : /Next Question/i }));
+    }
 
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(invoke).mock.calls[0][1]).toMatchObject({
-      answers: [
-        {
+    const submitArgs = vi.mocked(invoke).mock.calls[0][1] as { answers: Array<Record<string, string>> };
+    expect(submitArgs.answers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
           question_id: "clean-win-objectives",
           response_id: "credit-preparation",
           effect_id: "press_squad_morale_small_up",
@@ -290,8 +397,8 @@ describe("PressConference LoL social content", () => {
           question_text: expect.stringContaining(
             "Your bot lane stacked dragons and controlled Baron. How much of this win came from objective setup?",
           ),
-        },
-      ],
-    });
+        }),
+      ]),
+    );
   });
 });
