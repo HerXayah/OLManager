@@ -4,6 +4,7 @@ use domain::player::{Player, PlayerAttributes, Position};
 use domain::staff::{Staff, StaffAttributes, StaffRole};
 use domain::team::{Team, TrainingFocus, TrainingIntensity, TrainingSchedule};
 use ofm_core::clock::GameClock;
+use ofm_core::champions::ChampionMasteryEntry;
 use ofm_core::game::Game;
 use ofm_core::training;
 
@@ -918,5 +919,59 @@ fn injured_player_loses_fitness_over_time() {
         "Injured player's fitness ({}) should decay below initial ({})",
         final_fitness,
         initial_fitness
+    );
+}
+
+#[test]
+fn rival_players_get_auto_targets_and_gain_mastery_on_training() {
+    let mut game = make_game();
+
+    let mut team2 = make_team("team2", "Rival FC");
+    team2.training_focus = TrainingFocus::ChampionPoolPractice;
+    team2.training_intensity = TrainingIntensity::High;
+    team2.training_schedule = TrainingSchedule::Intense;
+    game.teams.push(team2);
+
+    let mut rival = make_player("p-rival", "Rival Carry", "team2", "2001-04-11");
+    rival.champion_training_targets = Vec::new();
+    rival.champion_training_target = None;
+    game.players.push(rival);
+
+    game.champion_masteries.push(ChampionMasteryEntry {
+        player_id: "p-rival".to_string(),
+        champion_id: "Azir".to_string(),
+        mastery: 62,
+        last_active_on: "2025-06-15".to_string(),
+    });
+    game.champion_masteries.push(ChampionMasteryEntry {
+        player_id: "p-rival".to_string(),
+        champion_id: "Orianna".to_string(),
+        mastery: 58,
+        last_active_on: "2025-06-15".to_string(),
+    });
+
+    let before_azir = ofm_core::champions::mastery_for_player_champion(&game, "p-rival", "Azir");
+
+    for _ in 0..40 {
+        if let Some(player) = game.players.iter_mut().find(|player| player.id == "p-rival") {
+            player.condition = 95;
+        }
+        training::process_training(&mut game, 0);
+    }
+
+    let rival_player = game
+        .players
+        .iter()
+        .find(|player| player.id == "p-rival")
+        .expect("rival player should exist");
+    let targets = ofm_core::champions::training_targets_for_player(rival_player);
+    assert!(!targets.is_empty(), "rival player should auto-assign mastery targets");
+
+    let after_azir = ofm_core::champions::mastery_for_player_champion(&game, "p-rival", "Azir");
+    assert!(
+        after_azir > before_azir,
+        "rival mastery should grow from training (before={}, after={})",
+        before_azir,
+        after_azir
     );
 }

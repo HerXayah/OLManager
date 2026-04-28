@@ -621,6 +621,55 @@ pub fn training_targets_for_player(player: &domain::player::Player) -> Vec<Strin
     targets
 }
 
+pub fn ensure_training_targets_from_mastery(game: &mut Game, player_id: &str) {
+    let has_existing_targets = game
+        .players
+        .iter()
+        .find(|candidate| candidate.id == player_id)
+        .is_some_and(|player| !training_targets_for_player(player).is_empty());
+    if has_existing_targets {
+        return;
+    }
+
+    let mut ranked_masteries: Vec<(String, u8)> = game
+        .champion_masteries
+        .iter()
+        .filter(|entry| entry.player_id == player_id)
+        .map(|entry| (entry.champion_id.clone(), entry.mastery))
+        .collect();
+    ranked_masteries.sort_by(|left, right| right.1.cmp(&left.1));
+
+    let mut selected: Vec<String> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    for (champion_id, _) in ranked_masteries {
+        let key = normalize_key(&champion_id);
+        if seen.contains(&key) {
+            continue;
+        }
+        seen.insert(key);
+        selected.push(champion_id);
+        if selected.len() >= 3 {
+            break;
+        }
+    }
+
+    if selected.is_empty() {
+        return;
+    }
+
+    if let Some(player) = game.players.iter_mut().find(|candidate| candidate.id == player_id) {
+        player.champion_training_targets.clear();
+        player.champion_training_targets.extend(selected);
+        player.champion_training_targets.truncate(3);
+        player.champion_training_targets.resize(3, String::new());
+        player.champion_training_target = player
+            .champion_training_targets
+            .iter()
+            .find(|slot| !slot.trim().is_empty())
+            .cloned();
+    }
+}
+
 pub fn mastery_for_player_champion(game: &Game, player_id: &str, champion_id: &str) -> u8 {
     game.champion_masteries
         .iter()
