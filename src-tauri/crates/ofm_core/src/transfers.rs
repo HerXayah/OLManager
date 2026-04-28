@@ -579,7 +579,7 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
             date: today.clone(),
         });
 
-        let player_name = player.full_name.clone();
+        let player_name = player.match_name.clone();
         let buyer_name = buyer_team.name.clone();
         let message = crate::messages::incoming_transfer_offer_message(
             &offer_id,
@@ -979,7 +979,7 @@ pub fn make_transfer_bid(
             .players
             .iter()
             .find(|p| p.id == player_id)
-            .map(|p| p.full_name.clone())
+            .map(|p| p.match_name.clone())
             .unwrap_or_default();
 
         let msg = crate::messages::transfer_complete_message(&player_name, fee, &date);
@@ -1095,7 +1095,7 @@ pub fn make_transfer_bid(
             .players
             .iter()
             .find(|p| p.id == player_id)
-            .map(|p| p.full_name.clone())
+            .map(|p| p.match_name.clone())
             .unwrap_or_default();
 
         let msg = crate::messages::transfer_complete_message(&player_name, fee, &date);
@@ -1637,7 +1637,7 @@ pub fn release_player_contract(game: &mut Game, player_id: &str) -> Result<i64, 
 
         (
             owning_team_id,
-            player.full_name.clone(),
+            player.match_name.clone(),
             release_penalty_amount(player, current_date),
         )
     };
@@ -1946,7 +1946,7 @@ fn execute_transfer(
             game.news.push(crate::news::major_transfer_article(
                 &article_id,
                 player_id,
-                &player_snapshot.full_name,
+                &player_snapshot.match_name,
                 from_team_id,
                 &from_team_name,
                 to_team_id,
