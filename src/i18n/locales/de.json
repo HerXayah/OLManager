@@ -8,125 +8,125 @@
       "social": {
         "questions": {
           "cleanWinObjectives": {
-            "text": "Eure Botlane hat Drachen gesammelt und den Baron kontrolliert. Wie viel von diesem Sieg kam aus der Vorbereitung auf die Objectives?"
+            "text": "Deine Botlane und hielt die Kontrolle über den Baron Nashor. "
           },
           "firstBlood": {
-            "text": "Ihr habt das First Blood geholt, und danach hat sich die Karte geöffnet. War das ein vorbereiteter Spielzug oder eine spontane Lesart?"
+            "text": "First Blood! Von hier an öffnete sich die Map. War das ein geplanter Spielzug?"
           },
           "resultWin": {
-            "text": "Ein wichtiger Sieg mit starkem Objective-Kontrollspiel. Wie bewerten Sie die Leistung des Teams heute?"
+            "text": "Ein wichtiger Sieg mit viel objective control. Wie bewertest du die Leistung des Teams heute?"
           },
           "closeGame": {
-            "text": "Das Spiel wurde schwierig, aber ihr habt spät noch das Comeback gefunden. Was hat sich in der Kommunikation des Teams verändert?"
+            "text": ""
           },
           "underperformancePressure": {
-            "text": "Eure Botlane hatte heute Abend unter Druck große Probleme. Entwickelt sich das zu einem Muster?"
+            "text": ""
           },
           "draftLoss": {
-            "text": "Nach dem Draft wirkte es, als hätten euch Werkzeuge für die entscheidenden Kämpfe gefehlt. Akzeptieren Sie, dass dort ein Teil der Serie verloren ging?"
+            "text": ""
           },
           "draftWinFlexibility": {
-            "text": "Der Draft gab euch mehrere Win Conditions und das Team wirkte beim Planwechsel sehr sicher. War diese Flexibilität die zentrale Idee?"
+            "text": ""
           },
           "baronThrowLoss": {
-            "text": "Der Call rund um den Baron hat das Spiel am Ende gedreht. War das ein Shotcalling-Fehler oder ein Fehler in der Ausführung?"
+            "text": ""
           },
           "baronControlWin": {
-            "text": "Eure Baron-Kontrolle war sehr sauber und zwang den Gegner spät zu reagieren. Wie intensiv hattet ihr dieses Setup vorbereitet?"
+            "text": ""
           },
           "visionControlLoss": {
-            "text": "Der Gegner hat euch in den entscheidenden Momenten die Sicht genommen, und das hat die Objectives geprägt. Was ist in eurer Map-Kontrolle zusammengebrochen?"
+            "text": ""
           },
           "starPlayerCarry": {
-            "text": "Euer Carry hat wieder ein riesiges Spiel entschieden. Wie geben Sie ihm Raum zu glänzen, ohne ihm zu viel Verantwortung aufzubürden?"
+            "text": ""
           },
           "starPlayerSlump": {
-            "text": "Einer eurer Schlüsselspieler findet seit einigen Wochen nicht zu seinem Niveau. Macht Ihnen sein Selbstvertrauen Sorgen?"
+            "text": ""
           },
           "midlanePressureMap": {
-            "text": "Der Druck auf der Midlane hat viele Bewegungen auf der Karte bestimmt. War Mid von Beginn an der Bereich, den ihr aktivieren wolltet?"
+            "text": ""
           },
           "toplaneIsland": {
-            "text": "Euer Toplaner war über weite Strecken isoliert, fast auf einer Insel. War das taktisch geplant oder eine Anpassung an den gegnerischen Draft?"
+            "text": ""
           },
           "teamfightExecutionLoss": {
-            "text": "In den entscheidenden Teamfights fehlte die Koordination, und der Gegner hat jeden Engage bestraft. Was hat euch gefehlt, um diese Kämpfe zu beenden?"
+            "text": ""
           },
           "mentalResetAfterLoss": {
-            "text": "Das ist eine harte Niederlage für die Gruppe. Wie schützen Sie die Kabine, damit sie nicht in die nächste Serie mitgenommen wird?"
+            "text": ""
           },
           "rivalryWeekPressure": {
-            "text": "Rivalitätswoche bringt viel Lärm außerhalb des Spiels und Druck auf dem Rift. Fühlt sich die Vorbereitung auf dieses Match anders an?"
+            "text": ""
           },
           "playoffBestOfSeries": {
-            "text": "In einer Best-of-Serie sind Anpassungen enorm wichtig. Wie entscheidend ist es, zwischen den Spielen schnell zu adaptieren?"
+            "text": ""
           },
           "comebackLossHeartbreak": {
-            "text": "Ihr wart sehr nah dran, das Comeback zu vollenden, aber am Ende ist es euch entglitten. Wie verarbeitet man so eine Niederlage?"
+            "text": ""
           },
           "stompWinHumility": {
-            "text": "Ihr habt sehr dominant gewonnen und dem Gegner kaum einen Zugang gelassen. Wie halten Sie das Team nach so einem Spiel bodenständig?"
+            "text": ""
           },
           "stompLossAccountability": {
-            "text": "Die Niederlage war von den ersten Minuten an deutlich. Welche Verantwortung übernehmen Sie als Staff für ein so schwieriges Spiel?"
+            "text": ""
           }
         },
         "responses": {
           "creditPreparation": {
             "label": "Professionell",
-            "text": "Die Spieler haben sich das durch Draft-Vorbereitung und klare Calls rund um die Objectives verdient."
+            "text": ""
           },
           "admitDraftMistake": {
             "label": "Draft-Fehler eingestehen",
-            "text": "Der Draft hat uns nicht die besten Werkzeuge gegeben, und das liegt in unserer Verantwortung. Daraus müssen wir lernen, ohne uns zu verstecken."
+            "text": ""
           },
           "calmRivalry": {
             "label": "Rivalität beruhigen",
-            "text": "Wir wissen, was das für die Fans bedeutet, aber für uns muss es weiterhin ein gut vorbereitetes Spiel mit klarem Kopf sein."
+            "text": ""
           },
           "challengeRoster": {
             "label": "Kader herausfordern",
-            "text": "Dieses Niveau reicht nicht. Spieler und Staff müssen ab der ersten Minute mit mehr Präsenz auftreten."
+            "text": ""
           },
           "creditOpponent": {
             "label": "Gegner anerkennen",
-            "text": "Der Gegner hat die Schlüsselmomente besser gespielt. Das anzuerkennen ist der erste Schritt, um zu korrigieren, was uns gefehlt hat."
+            "text": ""
           },
           "demandReset": {
             "label": "Reset einfordern",
-            "text": "Wir müssen die Standards sofort neu setzen; Druck gehört dazu, wenn man auf diesem Niveau spielt."
+            "text": ""
           },
           "defendDraft": {
             "label": "Draft verteidigen",
-            "text": "Der Draft-Plan ergab Sinn für das, was wir spielen wollten. Der Unterschied lag darin, wie wir die wichtigen Fenster ausgespielt haben."
+            "text": ""
           },
           "focusNextSeries": {
             "label": "Auf die nächste Serie fokussieren",
-            "text": "Wir müssen ehrlich reviewen, aber wir dürfen hier nicht hängen bleiben. Die nächste Serie beginnt mit unserem mentalen Reset."
+            "text": ""
           },
           "keepHungry": {
             "label": "Hungrig bleiben",
-            "text": "Das ist ein guter Sieg, aber er ändert unsere Standards nicht. Wenn wir oben mitspielen wollen, arbeiten wir morgen genauso weiter."
+            "text": ""
           },
           "leanIntoRivalry": {
             "label": "Rivalität annehmen",
-            "text": "Diese Spiele haben etwas Zusätzliches. Wir mögen diesen Druck und wollen, dass unsere Fans spüren, dass wir alles holen wollen."
+            "text": ""
           },
           "praiseShotcalling": {
             "label": "Shotcalling loben",
-            "text": "Die Calls waren sehr klar, besonders rund um Waves und Objectives. Wenn das Team so kommuniziert, wirkt der Plan viel stärker."
+            "text": ""
           },
           "protectPlayer": {
             "label": "Spieler schützen",
-            "text": "Ich werde keinen Spieler öffentlich herausgreifen. Wir gewinnen und verlieren als Team, und die Analyse machen wir intern."
+            "text": ""
           },
           "stayMeasured": {
             "label": "Besonnen bleiben",
-            "text": "Ein Ergebnis definiert nicht unsere Form. Wir arbeiten es auf und gehen weiter."
+            "text": ""
           },
           "takeResponsibility": {
             "label": "Verantwortung übernehmen",
-            "text": "Verantwortung beginnt bei mir. Wenn das Team für diese Momente nicht bereit war, müssen wir das im Staff korrigieren."
+            "text": ""
           }
         },
         "conversations": {
@@ -1884,43 +1884,43 @@
           "win": {
             "humble": {
               "tone": "Bescheiden",
-              "text": "Die Jungs haben hart gearbeitet. Wir waren gut vorbereitet und haben den Matchplan umgesetzt."
+              "text": ""
             },
             "confident": {
               "tone": "Selbstbewusst",
-              "text": "Wir waren von Anfang bis Ende die bessere Mannschaft. Ein verdienter Sieg."
+              "text": ""
             },
             "deflect": {
               "tone": "Ausweichend",
-              "text": "Es sind nur drei Punkte. Jetzt geht der Blick auf das nächste Spiel."
+              "text": ""
             }
           },
           "loss": {
             "accept": {
               "tone": "Ehrlich",
-              "text": "Heute waren wir nicht gut genug. Wir müssen analysieren, was schiefgelaufen ist."
+              "text": ""
             },
             "defiant": {
               "tone": "Kämpferisch",
-              "text": "Ich finde nicht, dass wir eine Niederlage verdient hatten. Wir haben genug Chancen kreiert."
+              "text": ""
             },
             "deflect": {
               "tone": "Ausweichend",
-              "text": "Ich möchte nicht weiter darauf herumreiten. Wir werden für das nächste Spiel bereit sein."
+              "text": ""
             }
           },
           "draw": {
             "fair": {
               "tone": "Fair",
-              "text": "Es war ein gerechtes Ergebnis. Beide Teams hatten ihre Chancen."
+              "text": ""
             },
             "frustrated": {
               "tone": "Frustriert",
-              "text": "Wir hätten das Spiel gewinnen müssen. Zu viele vergebene Möglichkeiten."
+              "text": ""
             },
             "positive": {
               "tone": "Positiv",
-              "text": "Ein Punkt ist ein Punkt. Aus heute kann man trotzdem Positives mitnehmen."
+              "text": ""
             }
           }
         }
@@ -1933,15 +1933,15 @@
         "responses": {
           "praise": {
             "tone": "Lobend",
-            "text": "{{playerName}} war fantastisch. Er ist ein Schlüsselspieler für uns und seine Arbeitsrate ist vorbildlich."
+            "text": ""
           },
           "demanding": {
             "tone": "Anspruchsvoll",
-            "text": "{{playerName}} kann noch mehr bringen. Von einem Spieler seiner Qualität erwarte ich mehr."
+            "text": ""
           },
           "deflect": {
             "tone": "Ausweichend",
-            "text": "Ich stelle ungern einzelne Spieler heraus. Es ist ein Mannschaftsspiel."
+            "text": ""
           }
         }
       },
@@ -1950,15 +1950,15 @@
         "responses": {
           "detailed": {
             "tone": "Detailliert",
-            "text": "Wir wollten das Mittelfeld kontrollieren und die Breite nutzen. Ich denke, die Struktur hat gut funktioniert."
+            "text": ""
           },
           "brief": {
             "tone": "Knapp",
-            "text": "Wir hatten einen Plan, und die Spieler haben ihn umgesetzt. Das ist alles, was zählt."
+            "text": ""
           },
           "evasive": {
             "tone": "Ausweichend",
-            "text": "Ich möchte nicht zu viel verraten. Jede Mannschaft hat ihre Geheimnisse."
+            "text": ""
           }
         }
       },
@@ -1972,43 +1972,43 @@
           "win": {
             "grateful": {
               "tone": "Bescheiden",
-              "text": "Die Fans sind unglaublich. Sie treiben uns in jedem Spiel an, und wir schulden ihnen Leistungen wie heute."
+              "text": ""
             },
             "shared": {
               "tone": "Selbstbewusst",
-              "text": "Wir feiern alle gemeinsam — Spieler, Staff und Fans. Dieser Sieg gehört auch ihnen."
+              "text": ""
             },
             "deflect": {
               "tone": "Ausweichend",
-              "text": "Die Fans wissen, wofür wir stehen. Wir konzentrieren uns einfach auf den Platz."
+              "text": ""
             }
           },
           "loss": {
             "apologize": {
               "tone": "Ehrlich",
-              "text": "Ich verstehe ihren Frust vollkommen. Sie verdienen Besseres, und wir werden hart arbeiten, um das zu liefern."
+              "text": ""
             },
             "patience": {
               "tone": "Fokussiert",
-              "text": "Ich bitte um Geduld. Wir bauen hier etwas auf, und schlechte Tage gehören dazu. Wir kommen stärker zurück."
+              "text": ""
             },
             "curt": {
               "tone": "Knapp",
-              "text": "Ich kommentiere nichts, was im Eifer des Gefechts gesagt wird. Wir schauen nach vorn."
+              "text": ""
             }
           },
           "draw": {
             "appreciate": {
               "tone": "Positiv",
-              "text": "Ich schätze jeden einzelnen Fan, der kommt, um uns zu sehen. Ihre Energie hebt die Mannschaft."
+              "text": ""
             },
             "understand": {
               "tone": "Fair",
-              "text": "Sie wollen uns gewinnen sehen, und ich auch. Wir werden weiter alles geben, bis die Ergebnisse kommen."
+              "text": ""
             },
             "curt": {
               "tone": "Knapp",
-              "text": "Ich beschäftige mich nicht mit dem, was auf den Rängen passiert. Mein Fokus liegt auf dem Platz."
+              "text": ""
             }
           }
         }
@@ -2018,15 +2018,15 @@
         "responses": {
           "focused": {
             "tone": "Fokussiert",
-            "text": "Zuerst Regeneration, dann Vorbereitung. Wir nehmen ein Spiel nach dem anderen."
+            "text": ""
           },
           "ambitious": {
             "tone": "Ambitioniert",
-            "text": "Wir wollen den Schwung weiter mitnehmen. Das Ziel ist klar."
+            "text": ""
           },
           "curt": {
             "tone": "Knapp",
-            "text": "Nächste Frage, bitte. Darum kümmern wir uns, wenn es so weit ist."
+            "text": ""
           }
         }
       }
