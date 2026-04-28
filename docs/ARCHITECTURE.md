@@ -1,362 +1,153 @@
-# Architecture
+# OLManager Architecture
 
-OpenFoot Manager is a desktop football management simulation built with **Tauri** (Rust backend) and **React** (TypeScript frontend). This document describes the project structure, key architectural decisions, and how the pieces fit together.
+This document is a practical map for contributors. It describes the current architecture in the repository, not an aspirational rewrite.
 
----
+OLManager is a desktop game built with **Tauri v2**: a **React + TypeScript** frontend runs in the WebView, while gameplay state, persistence, and long-running simulation logic live in the **Rust backend**.
 
-## Technology Stack
+## System overview
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Desktop shell** | Tauri v2 | Native window, IPC, file system access |
-| **Backend** | Rust | Game logic, simulation, persistence |
-| **Frontend** | React + TypeScript | UI rendering, user interaction |
-| **Styling** | Tailwind CSS | Utility-first CSS framework |
-| **State (frontend)** | Zustand | Lightweight stores for game and settings |
-| **i18n** | i18next + react-i18next | Internationalization (5 languages) |
-| **Build** | Vite | Frontend bundler and dev server |
-
----
-
-## Project Structure
-
-```
-openfootmanager/
-├── src/                          # Frontend (React + TypeScript)
-│   ├── components/               # Reusable UI components
-│   │   ├── match/                # Match day sub-components
-│   │   └── ui/                   # Design system primitives (Badge, ThemeToggle)
-│   ├── context/                  # React contexts (ThemeContext)
-│   ├── i18n/                     # Internationalization config + locale files
-│   │   └── locales/              # en.json, es.json, pt.json, fr.json, de.json
-│   ├── lib/                      # Shared utilities (helpers.ts, countries.ts)
-│   ├── pages/                    # Route-level pages
-│   │   └── store/                # Zustand stores (gameStore, settingsStore)
-│   ├── App.tsx                   # Router setup
-│   └── main.tsx                  # Entry point
-├── src-tauri/                    # Backend (Rust + Tauri)
-│   ├── src/
-│   │   └── lib.rs                # Tauri commands, app setup, settings
-│   ├── crates/
-│   │   ├── domain/               # Pure data types (no logic)
-│   │   ├── engine/               # Match simulation engine
-│   │   ├── ofm_core/             # Game logic, state, turn processing
-│   │   └── db/                   # Save/load persistence
-│   ├── data/                     # External definition files (names, teams JSON)
-│   └── databases/                # Bundled world database files
-├── docs/                         # Documentation
-├── public/                       # Static assets
-└── images/                       # Branding assets
+```text
+React UI (src/)
+  pages, components, hooks, stores, services
+        │
+        │ @tauri-apps/api invoke("command_name")
+        ▼
+Tauri command layer (src-tauri/src/commands/)
+        │
+        ├─ application services (src-tauri/src/application/)
+        ├─ in-memory session state (ofm_core::state::StateManager)
+        ├─ domain/gameplay crates (domain, ofm_core, engine)
+        └─ persistence crate (db, SQLite save files)
 ```
 
----
+The frontend should present state, collect user intent, and call typed service functions. The backend owns authoritative game state, simulations, save/load, and mutations that affect the career.
 
-## Crate Architecture
+## Frontend architecture
 
-The Rust backend is organized into 4 crates with clear dependency boundaries:
+Frontend code lives under `src/` and is built by Vite.
 
-```
-                    ┌──────────┐
-                    │  Tauri   │  src-tauri/src/lib.rs
-                    │ Commands │  (IPC boundary)
-                    └────┬─────┘
-                         │
-                    ┌────┴─────┐
-                    │ ofm_core │  Game logic, turn processing, state
-                    └──┬───┬───┘
-                       │   │
-              ┌────────┘   └────────┐
-         ┌────┴───┐           ┌─────┴────┐
-         │ engine │           │    db    │
-         │        │           │          │
-         └────────┘           └──────────┘
-              │
-         ┌────┴───┐
-         │ domain │  Pure data types (shared by all)
-         └────────┘
-```
+- `main.tsx` mounts React in `StrictMode`, wraps the app with `ThemeProvider`, and initializes i18n.
+- `App.tsx` defines lazy-loaded routes with `react-router-dom` for `/`, `/select-team`, `/dashboard`, `/match`, and `/settings`.
+- `pages/` contains route-level screens such as the main menu, dashboard, team selection, match simulation, and settings.
+- `components/` contains feature UI and reusable UI pieces. Several feature areas have local view-model/helper files and tests.
+- `services/` is the frontend IPC adapter layer. Services call Tauri commands via `invoke(...)` and expose TypeScript-friendly functions such as `advanceTimeWithMode`, `skipToMatchDay`, and player/training/staff actions.
+- `store/` uses Zustand for client-side UI/session state. `gameStore.ts` tracks active game data returned by Rust; `settingsStore.ts` loads and persists settings through backend commands.
+- `hooks/` contains UI orchestration hooks. For example, `useAdvanceTime` coordinates modals/navigation and delegates the actual mutation to `advanceTimeService`.
+- `i18n/` configures `i18next`/`react-i18next` and locale JSON files.
+- `lib/` and `utils/` hold frontend-only helpers, formatting, lightweight calculations, and backend-to-UI translation utilities.
 
-### `domain` — Pure Data Types
+Frontend tests use **Vitest**, **jsdom**, and **React Testing Library**. The test configuration is in `vite.config.ts`; tests are colocated as `*.test.ts` and `*.test.tsx` under `src/`.
 
-Contains only structs and enums with no game logic. All other crates depend on it.
+## Tauri boundary
 
-- **`player.rs`** — `Player`, `PlayerAttributes` (18 attributes), `Position`, `PlayerTrait` (20 traits), `PlayerSeasonStats`, `Injury`, `TransferOffer`
-- **`team.rs`** — `Team`, `PlayStyle`, `TrainingFocus`, `TrainingIntensity`, `TrainingSchedule`, `TeamColors`
-- **`staff.rs`** — `Staff`, `StaffRole` (4 roles), `CoachingSpecialization` (7 specializations), `StaffAttributes`
-- **`manager.rs`** — `Manager`, `ManagerCareerStats`, `ManagerCareerEntry`
-- **`league.rs`** — `League`, `Fixture`, `StandingEntry`, `MatchResult`, `GoalEvent`
-- **`message.rs`** — `InboxMessage`, `MessageCategory` (13 categories), `MessagePriority`, `MessageAction`, `ActionType`
-- **`news.rs`** — `NewsArticle`, `NewsCategory` (8 categories), `NewsMatchScore`
+Tauri commands are registered in `src-tauri/src/lib.rs` with `tauri::generate_handler![...]`. Command modules live in `src-tauri/src/commands/` and are grouped by feature (`game`, `time`, `transfers`, `squad`, `staff`, `settings`, `live_match`, stats, etc.).
 
-**Design decision**: Domain types use `#[serde(default)]` extensively on newer fields for backward compatibility with old save files.
+Use this boundary deliberately:
 
-### `engine` — Match Simulation
+- Frontend code should call command names through small service functions in `src/services/`, not scatter raw `invoke(...)` calls throughout components.
+- Tauri commands should validate inputs, load/update `StateManager`, call application/core/db functions, and return serializable DTOs or domain structures.
+- Business rules that must be consistent across UI flows belong in Rust (`ofm_core`, `engine`, or application services), not in React components.
+- UI-only state, presentation preferences, and navigation belong in React/Zustand/hooks.
 
-Self-contained simulation engine, deliberately **decoupled from `domain`**. Defines its own mirror types (`PlayerData`, `TeamData`, `Position`, `PlayStyle`) so it can be tested and evolved independently.
+The backend keeps process-level state with Tauri-managed objects:
 
-See [MATCH_SIMULATION.md](MATCH_SIMULATION.md) for full details.
+- `ofm_core::state::StateManager` stores the active `Game`, stats state, live match session, and active save id behind mutexes.
+- `SaveManagerState` wraps `db::save_manager::SaveManager` for save listing/loading/saving/deleting.
 
-- **`engine.rs`** — Instant full-match simulation (`simulate()`, `simulate_with_rng()`)
-- **`live_match.rs`** — Step-by-step `LiveMatchState` with phase management, commands, substitutions
-- **`ai.rs`** — AI manager decisions (`AiProfile`, `ai_decide()`)
-- **`types.rs`** — Engine-specific data types and `MatchConfig`
-- **`event.rs`** — `MatchEvent` + `EventType` (22 variants)
-- **`report.rs`** — `MatchReport`, `TeamStats`, `PlayerMatchStats`, `GoalDetail`
+## Rust workspace and crate responsibilities
 
-### `ofm_core` — Game Logic
+The Rust backend is a workspace declared in `src-tauri/Cargo.toml`.
 
-The core game loop — ties domain, engine, and all game systems together.
+### `domain`
 
-- **`game.rs`** — `Game` struct (the root game state: clock, manager, teams, players, staff, messages, news, league)
-- **`clock.rs`** — `GameClock` with date tracking and day advancement
-- **`state.rs`** — `StateManager` with `Mutex<Option<Game>>` and `Mutex<Option<LiveMatchSession>>` for thread-safe Tauri access
-- **`turn.rs`** — Day processing: match simulation, domain↔engine conversion, stats application, news generation
-- **`training.rs`** — Training system: attribute gains, condition management, staff bonuses, fitness warnings
-- **`schedule.rs`** — Round-robin league schedule generation (circle method)
-- **`generator.rs`** — World generation: name/team definition loading, player/staff/team creation
-- **`live_match_manager.rs`** — `LiveMatchSession` wrapping the engine's `LiveMatchState` with RNG, AI profiles
-- **`messages.rs`** — Inbox message generation (welcome, match previews/results, board directives, etc.)
-- **`news.rs`** — News article generation (match reports, league roundups, standings updates)
+`src-tauri/crates/domain` defines serializable domain data types: players, teams, leagues, managers, staff, messages, news, season context, stats, negotiations, and identity structures.
 
-### `db` — Persistence
+Keep this crate model-focused. It currently depends only on general-purpose libraries such as `serde`, `serde_json`, and `log`, and should not know about Tauri, SQLite, or frontend concerns.
 
-Save/load functionality:
+### `engine`
 
-- **`manager.rs`** — Game state serialization to/from SQLite or JSON
-- **`save.rs`** — Save slot management
+`src-tauri/crates/engine` contains match simulation logic. It exposes simulation functions and match types such as `simulate`, `LiveMatchState`, `MatchCommand`, `MatchSnapshot`, `MatchReport`, and `TeamData`.
 
----
+This crate is intentionally separate from Tauri and persistence so match simulation can be tested independently.
 
-## State Management
+### `ofm_core`
 
-### Backend State
+`src-tauri/crates/ofm_core` contains gameplay/application domain logic: game state, clock, club systems, contracts, finances, training, scouting, transfers, schedules, turns, live match management, season logic, player events, generated messages/news, and job offers.
 
-The `StateManager` (in `ofm_core/state.rs`) holds the active game and live match session behind `Mutex` locks:
+It depends on `domain` and `engine`. The central career object is `ofm_core::game::Game`, and runtime session state is managed by `ofm_core::state::StateManager`.
 
-```rust
-pub struct StateManager {
-    pub active_game: Mutex<Option<Game>>,
-    pub live_match: Mutex<Option<LiveMatchSession>>,
-}
-```
+### `db`
 
-This is registered as Tauri managed state and accessed by all commands via `State<StateManager>`.
+`src-tauri/crates/db` owns SQLite persistence. It contains:
 
-**Key pattern**: Commands acquire the mutex, clone the `Game` for return, and release the lock. Mutations happen inside the lock scope.
+- `GameDatabase`, which opens per-save SQLite databases and applies migrations.
+- `migrations` and `sql/`, which define schema evolution.
+- `repositories/`, which map domain/core state to tables.
+- `GamePersistenceReader` and `GamePersistenceWriter`, which reconstruct and persist `Game`/stats state.
+- `SaveManager`, `SaveIndexManager`, and `save_index`, which manage save files, metadata, checksums, and save discovery.
+- `legacy_migration`, which handles old save migration on startup.
 
-### Frontend State
+The `db` crate depends on `domain` and `ofm_core`, but gameplay code should not depend on SQLite details.
 
-Two Zustand stores:
+### Tauri app crate
 
-- **`gameStore`** — Active game state (`GameStateData`), manager info, `hasActiveGame` flag. Updated after every Tauri command that returns game state.
-- **`settingsStore`** — `AppSettings` (theme, language, currency, match preferences). Loaded once on Settings page mount, persisted via Tauri commands.
+`src-tauri/src` wires the desktop application together. `lib.rs` configures plugins, logging, managed state, app data directories, legacy save migration, and command registration. `application/` contains backend orchestration that is too app-specific for the pure crates, such as time advancement and live-match flow coordination.
 
----
+## Persistence and save/load model
 
-## Tauri Command Interface (IPC)
+OLManager uses a per-save SQLite model:
 
-All frontend↔backend communication goes through Tauri's `invoke()` mechanism. Commands are defined in `src-tauri/src/lib.rs` and registered in the Tauri builder.
+1. On startup, Tauri creates the app data directory and initializes `SaveManager` in an app-data `saves/` directory.
+2. Starting a new game creates a new save database through `SaveManager::create_save` and stores its id in `StateManager`.
+3. `GameDatabase::open` creates or opens a `.db` file and applies all migrations before use.
+4. `GamePersistenceWriter` writes game metadata, manager, teams, players, staff, messages, news, league, objectives, scouting assignments, and stats through repositories.
+5. `GamePersistenceReader` loads the same tables back into an `ofm_core::game::Game` and refreshes derived season context.
+6. The save index records save id, name, manager name, db filename, checksum, creation time, and last played time.
+7. `save_game` persists the active game and stats. `exit_to_menu` auto-saves when there is an active save id, then clears in-memory state.
 
-### Game Lifecycle Commands
+Settings are separate from career saves: `get_settings`/`save_settings` read and write `settings.json` in the app data directory.
 
-| Command | Parameters | Returns | Description |
-|---------|-----------|---------|-------------|
-| `list_world_databases` | — | `Vec<WorldDatabaseInfo>` | Scan for available world databases |
-| `start_new_game` | first_name, last_name, dob, nationality, world_source? | — | Create game, generate or load world |
-| `choose_team` | team_id | `Game` | Assign manager to a team |
-| `get_active_game` | — | `GameStateData` | Get current game state |
-| `advance_time` | — | `Game` | Advance one day |
-| `advance_time_with_mode` | mode | `{action, game?, snapshot?}` | Advance with match mode preference |
-| `skip_to_match_day` | — | `Game` | Fast-forward to next fixture |
-| `save_game` | — | — | Persist current game |
-| `load_game` | save_id | — | Load a saved game |
-| `exit_to_menu` | — | — | Save and clear active game |
+## Dependency direction and architectural rules
 
-### Match Commands
+The current code supports this dependency direction:
 
-| Command | Parameters | Returns | Description |
-|---------|-----------|---------|-------------|
-| `start_live_match` | fixture_index, mode, allows_extra_time | `MatchSnapshot` | Initialize a live match session |
-| `step_live_match` | minutes | `Vec<MinuteResult>` | Advance simulation by N minutes |
-| `apply_match_command` | command | `MatchSnapshot` | Send a tactical command |
-| `get_match_snapshot` | — | `MatchSnapshot` | Get current match state |
-| `finish_live_match` | — | `Game` | Apply results and clean up |
-
-### Team Management Commands
-
-| Command | Parameters | Returns | Description |
-|---------|-----------|---------|-------------|
-| `set_formation` | formation | `Game` | Change team formation |
-| `set_play_style` | play_style | `Game` | Change play style |
-| `set_training` | focus, intensity | `Game` | Set training focus and intensity |
-| `set_training_schedule` | schedule | `Game` | Set weekly training schedule |
-| `hire_staff` | staff_id | `Game` | Hire an unattached staff member |
-| `release_staff` | staff_id | `Game` | Release a staff member |
-
-### Settings Commands
-
-| Command | Parameters | Returns | Description |
-|---------|-----------|---------|-------------|
-| `get_settings` | — | `AppSettings` | Load settings from disk |
-| `save_settings` | settings | — | Persist settings |
-| `clear_all_saves` | — | — | Delete all save files |
-| `export_world_database` | export_path | `String` | Export world to JSON |
-
----
-
-## Data Flow
-
-### New Game Flow
-
-```
-MainMenu → Create Manager → Choose World → Choose Team → Dashboard
-    │              │               │              │
-    │         form input     generate_world   choose_team
-    │                        or load JSON      command
-    │                             │              │
-    │                        ┌────┴────┐    ┌────┴────┐
-    │                        │Generator│    │  Game   │
-    │                        │  +JSON  │    │ created │
-    │                        └─────────┘    └─────────┘
+```text
+React UI → frontend services → Tauri commands/application
+Tauri commands/application → ofm_core / engine / db
+db → ofm_core + domain
+ofm_core → domain + engine
+engine → standalone simulation types/logic
+domain → serializable model types only
 ```
 
-### Daily Turn Flow
+Contributor rules of thumb:
 
-```
-Dashboard → "Continue" button → advance_time_with_mode
-                                        │
-                           ┌────────────┼────────────┐
-                           │            │            │
-                      No match     Live match    Delegate
-                           │            │            │
-                    process_day()  start_live    simulate
-                           │       _match()     instantly
-                    ┌──────┴──────┐     │            │
-                    │ Training    │  Navigate     apply
-                    │ + Recovery  │  to /match    results
-                    │ + Messages  │     │            │
-                    │ + Clock++   │  [interactive]   │
-                    └─────────────┘     │      ┌─────┴─────┐
-                                   finish_live  Return to
-                                   _match()     Dashboard
-                                        │
-                                   apply results
-                                   + news + clock
-```
+- Do not put durable business rules only in React. If a rule changes saved game state or simulation results, implement it in Rust and expose it through a command.
+- Keep `domain` free of Tauri, SQLite, and UI-specific code.
+- Keep `engine` focused on simulation. Do not make it depend on save files or Tauri commands.
+- Keep persistence behind `db` repositories/persistence readers/writers. Do not issue SQLite queries from command modules.
+- Keep command modules thin enough to be understandable: parse/validate input, call core/application/db, update `StateManager`, return data.
+- Keep frontend `services/` as the IPC boundary. Components and hooks should use service functions instead of raw command strings when possible.
 
----
+## Testing strategy
 
-## Frontend Architecture
+- Frontend: `npm test` runs Vitest in jsdom. Use React Testing Library for components/pages/hooks and plain Vitest for helpers, stores, and services.
+- TypeScript contract checks: `npm run build:types` runs the release TypeScript config without creating a Tauri production bundle.
+- Rust formatting/linting: use `cargo fmt --manifest-path src-tauri/Cargo.toml --check`, `cargo check`, and `cargo clippy --workspace --all-targets -- -D warnings`.
+- Rust tests: `cargo test --manifest-path src-tauri/Cargo.toml --workspace` covers crates such as `engine`, `ofm_core`, `db`, and command-level tests.
 
-### Routing
+Do not run production Tauri bundle builds for normal documentation or PR validation work.
 
-| Route | Component | Description |
-|-------|-----------|-------------|
-| `/` | `MainMenu` | Main menu with new/load/settings |
-| `/team-selection` | `TeamSelection` | Choose club to manage |
-| `/dashboard` | `Dashboard` | Main game interface |
-| `/match` | `MatchSimulation` | Live match simulation |
-| `/settings` | `Settings` | App settings |
+## Adding a new feature safely
 
-### Dashboard Component Architecture
+1. Decide where the rule belongs. UI-only behavior goes in React; game-state mutations and simulations go in Rust.
+2. Add or extend domain types in `domain` only when the model needs new durable fields or shared serializable structures.
+3. Implement gameplay behavior in `ofm_core` or simulation behavior in `engine` with crate-level tests.
+4. If the feature must be saved, add a migration and repository/persistence updates in `db`.
+5. Expose the behavior through a Tauri command in `src-tauri/src/commands/` and register it in `lib.rs`.
+6. Add a typed frontend service wrapper in `src/services/`.
+7. Update Zustand stores/hooks/pages/components only for presentation and UI flow.
+8. Add or update tests at the lowest useful layer first, then add UI tests for user-visible behavior.
+9. Update docs and data provenance notes when the feature touches inherited assets, generated data, or third-party sources.
 
-The Dashboard is a slim layout shell (~524 lines) with a sidebar, header, and content area. Content is rendered by tab-specific components:
-
-```
-Dashboard.tsx (layout shell)
-├── Sidebar: NavItem buttons for each tab
-├── Header: Back button, tab title, date, search, finances, Continue
-└── Content area (conditional rendering by activeTab):
-    ├── HomeTab         — Overview, next match, standings, squad summary
-    ├── InboxTab        — Two-pane email client with categories
-    ├── ManagerTab      — Manager profile, career stats
-    ├── SquadTab        — Player roster table
-    ├── TacticsTab      — Formation picker, pitch visualization
-    ├── TrainingTab     — Focus/intensity/schedule selection, fitness
-    ├── StaffTab        — Staff management (hire/release)
-    ├── FinancesTab     — Financial overview
-    ├── TransfersTab    — Transfer market with 4 views
-    ├── PlayersListTab  — Full player database browser
-    ├── TeamsListTab    — All teams grid
-    ├── TournamentsTab  — League standings and fixtures
-    ├── ScheduleTab     — Calendar of fixtures
-    ├── NewsTab         — News feed
-    ├── PlayerProfile   — Detailed player view (inline)
-    └── TeamProfile     — Detailed team view (inline)
-```
-
-**Navigation history**: The Dashboard maintains a `navHistory` stack for back navigation when drilling into player/team profiles from any tab.
-
-### Match Day Components
-
-The match simulation uses a multi-stage orchestrator:
-
-```
-MatchSimulation.tsx (orchestrator)
-├── PreMatchSetup    — Team sheet, formation, set pieces
-├── MatchLive        — Live simulation with events, stats, controls
-├── HalfTimeBreak    — Team talk, tactical changes
-├── PostMatchScreen  — Result summary, scorers, team talk
-└── PressConference  — Post-match press questions
-```
-
-Flow: `prematch → first_half → halftime → second_half → postmatch → press`
-
-### Design Language
-
-The UI follows a **"Matchday" broadcast-quality** design language:
-
-- **Colors**: Emerald green primary (#10b981), gold accent (#ffd60a), dark navy backgrounds
-- **Typography**: Barlow Condensed (headings, uppercase tracking) + Inter (body)
-- **Fonts**: Bundled locally via `@fontsource` packages (no CDN)
-- **Dark/Light**: Full theme support with system detection
-
----
-
-## Key Architectural Decisions
-
-### 1. Engine Isolation
-
-The `engine` crate has **no dependency on `domain`**. It defines its own `PlayerData`, `TeamData`, etc. This means:
-- The engine can be tested with synthetic data (no need to generate full game worlds)
-- Engine types can evolve independently (e.g., adding engine-only fields)
-- The `turn.rs` bridge in `ofm_core` handles all type conversion
-
-### 2. `#[serde(default)]` for Backward Compatibility
-
-Every new field added to domain types uses `#[serde(default)]` or a custom default function. This ensures old save files can be loaded without migration scripts. The trade-off is that new features gracefully degrade (e.g., old saves have no traits, empty training schedules) rather than failing.
-
-### 3. Hardcoded Fallbacks for External Data
-
-Generator definition files (`default_names.json`, `default_teams.json`) are loaded at runtime with fallback to hardcoded arrays compiled into the binary. This means:
-- The game always works, even without external files
-- Users can customize by placing definition files in the data directory
-- No build-time dependency on external data files
-
-### 4. Mutex-Based State Management
-
-The backend uses `Mutex<Option<Game>>` rather than `RwLock` or actor patterns. This is simpler and sufficient because:
-- Only one game is active at a time
-- Commands are sequential from the UI perspective
-- Lock contention is negligible (commands are fast)
-
-### 5. `PlayerSnap` Pattern in Engine
-
-The engine uses a "snapshot" pattern (`PlayerSnap`) to work around Rust's borrow checker. Before resolving an action, it clones the relevant player data into a lightweight struct, releasing the immutable borrow on `MatchContext`. This allows event emission (which needs `&mut self`) to happen in the same function.
-
-### 6. Football Identity Codes
-
-The game now distinguishes between general country data and football-facing identity data.
-Most countries still use ISO 3166-1 alpha-2 codes (for example, `"ES"`, `"DE"`, `"BR"`), but football-specific identities can use project-owned short codes where the sport diverges from ISO country data, such as `"ENG"`, `"SCO"`, `"WAL"`, and `"NIR"`.
-
-This enables:
-- Locale-aware country and football-nation display
-- Backward compatibility for legacy demonyms and `GB` saves
-- Correct modeling of football nations without forcing a full non-ISO rewrite for the rest of the world
-
-### 7. Frontend Tab Architecture
-
-The Dashboard uses conditional rendering (not routing) for tabs. This means:
-- Tab state is preserved when switching between tabs
-- No URL changes for tab navigation (clean URLs)
-- Profile views (player/team) overlay on top of the current tab with a back-navigation stack
+When in doubt, follow the dependency direction above. The UI can ask for a change; Rust decides whether the career state is valid.

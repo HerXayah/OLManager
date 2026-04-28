@@ -306,9 +306,9 @@ fn lol_role_for_position(position: &domain::player::Position) -> &'static str {
         | Position::LeftBack
         | Position::RightWingBack
         | Position::LeftWingBack => "TOP",
-        Position::AttackingMidfielder
-        | Position::RightMidfielder
-        | Position::LeftMidfielder => "MID",
+        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => {
+            "MID"
+        }
         Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => {
             "ADC"
         }

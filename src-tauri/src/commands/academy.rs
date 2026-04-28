@@ -1,6 +1,6 @@
 use chrono::Utc;
-use domain::team::{AcademyLifecycle, AcademyMetadata, ErlAssignment, Team, TeamKind};
 use domain::message::{InboxMessage, MessageCategory, MessageContext, MessagePriority};
+use domain::team::{AcademyLifecycle, AcademyMetadata, ErlAssignment, Team, TeamKind};
 use log::info;
 use ofm_core::academy::{
     eligible_academy_acquisition_options, validate_academy_acquisition, AcademyAcquisitionOption,
@@ -124,7 +124,10 @@ pub fn demote_main_player_to_academy(
     state: State<'_, StateManager>,
     player_id: String,
 ) -> Result<Game, String> {
-    info!("[cmd] demote_main_player_to_academy: player_id={}", player_id);
+    info!(
+        "[cmd] demote_main_player_to_academy: player_id={}",
+        player_id
+    );
     let mut game = state
         .get_game(|game| game.clone())
         .ok_or("No active game session".to_string())?;
@@ -366,7 +369,12 @@ pub(crate) fn acquire_academy_team_in_game(
         game.teams.push(academy);
     }
 
-    push_academy_acquired_message(game, &parent_snapshot, &option.name, option.acquisition_cost);
+    push_academy_acquired_message(
+        game,
+        &parent_snapshot,
+        &option.name,
+        option.acquisition_cost,
+    );
     Ok(game.clone())
 }
 
@@ -732,8 +740,7 @@ mod tests {
     fn acquisition_options_include_karmine_corp_blue_for_france() {
         let game = game_with_team(team("karmine", "FR", 1_000_000));
 
-        let response =
-            get_academy_acquisition_options_for_game(&game, "karmine").expect("options");
+        let response = get_academy_acquisition_options_for_game(&game, "karmine").expect("options");
 
         assert!(response.acquisition_allowed);
         assert!(response

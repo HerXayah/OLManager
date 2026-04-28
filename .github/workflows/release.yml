@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to verify, for example 0.2.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  source-release:
+    name: source-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Verify version files and changelog
+        shell: python
+        run: |
+          import json
+          import pathlib
+          import re
+          import sys
+          import tomllib
+
+          version = "${{ steps.version.outputs.version }}"
+          package_version = json.loads(pathlib.Path("package.json").read_text())["version"]
+          cargo_version = tomllib.loads(pathlib.Path("src-tauri/Cargo.toml").read_text())["package"]["version"]
+          tauri_version = json.loads(pathlib.Path("src-tauri/tauri.conf.json").read_text())["version"]
+          changelog = pathlib.Path("CHANGELOG.md").read_text()
+
+          versions = {
+              "package.json": package_version,
+              "src-tauri/Cargo.toml": cargo_version,
+              "src-tauri/tauri.conf.json": tauri_version,
+          }
+          mismatches = [f"{path}={value}" for path, value in versions.items() if value != version]
+          if mismatches:
+              print("Version mismatch: " + ", ".join(mismatches), file=sys.stderr)
+              sys.exit(1)
+          if not re.search(rf"^## \\[{re.escape(version)}\\]", changelog, re.MULTILINE):
+              print(f"CHANGELOG.md is missing a ## [{version}] section", file=sys.stderr)
+              sys.exit(1)
+
+      - name: Create source archive
+        shell: bash
+        run: |
+          mkdir -p dist-release
+          git archive --format=tar.gz --prefix="olmanager-${{ steps.version.outputs.version }}/" HEAD > "dist-release/olmanager-${{ steps.version.outputs.version }}-source.tar.gz"
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist-release
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Record signing status
+        shell: bash
+        run: |
+          cat > dist-release/SIGNING_STATUS.txt <<'EOF'
+          Source archive release only.
+          Platform binaries, signing, and notarization are not enabled until maintainers configure release secrets and document support policy.
+          EOF
+
+      - name: Upload source artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: olmanager-${{ steps.version.outputs.version }}-source
+          path: dist-release/
+          if-no-files-found: error

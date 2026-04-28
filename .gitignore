@@ -1,4 +1,4 @@
-`# =========================
+# =========================
 # Dependencies
 # =========================
 node_modules/
@@ -67,4 +67,4 @@ Thumbs.db
 # =========================
 # Tauri mobile generated files (optional, Tauri v2)
 # =========================
-src-tauri/gen/`
+src-tauri/gen/

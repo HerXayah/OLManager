@@ -440,13 +440,24 @@ mod tests {
     fn missing_lol_roles_trigger_main_role_coverage_blocker() {
         let mut game = make_game(5);
         game.players.truncate(5);
-        game.teams[0].starting_xi_ids = game.players.iter().map(|player| player.id.clone()).collect();
+        game.teams[0].starting_xi_ids = game
+            .players
+            .iter()
+            .map(|player| player.id.clone())
+            .collect();
 
         let blockers = compute_blocking_actions(&game);
 
-        let role_blocker = blocker_by_id(&blockers, "main_missing_roles").expect("missing role blocker");
-        assert_eq!(role_blocker.get("severity").and_then(Value::as_str), Some("warn"));
-        assert_eq!(role_blocker.get("tab").and_then(Value::as_str), Some("Squad"));
+        let role_blocker =
+            blocker_by_id(&blockers, "main_missing_roles").expect("missing role blocker");
+        assert_eq!(
+            role_blocker.get("severity").and_then(Value::as_str),
+            Some("warn")
+        );
+        assert_eq!(
+            role_blocker.get("tab").and_then(Value::as_str),
+            Some("Squad")
+        );
         let text = role_blocker.get("text").and_then(Value::as_str).unwrap();
         assert!(text.contains("JUNGLE"));
         assert!(text.contains("MID"));
