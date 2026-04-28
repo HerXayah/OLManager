@@ -1,6 +1,6 @@
 [package]
 name = "openleaguemanager"
-version = "0.1.2"
+version = "0.1.1"
 description = "Open League Manager"
 authors = ["KOI Noboris Development Team <noboriskoi@gmail.com>"]
 edition = "2021"
