@@ -36,6 +36,8 @@ export interface CompatibleMatchSummary {
   player_results?: CompatiblePlayerResult[];
   goldDiffTimeline?: Array<{ minute: number; diff: number }>;
   gold_diff_timeline?: Array<{ minute: number; diff: number }>;
+  timelineEvents?: Array<{ minute: number; side: Side; type: string; label?: string }>;
+  timeline_events?: Array<{ minute: number; side: Side; type: string; label?: string }>;
   objectives?: DraftMatchResult["objectives"];
 }
 
@@ -100,6 +102,16 @@ function timeline(match: DraftMatchResult | CompatibleMatchSummary): Array<{ min
   );
 }
 
+function timelineEvents(
+  match: DraftMatchResult | CompatibleMatchSummary,
+): Array<{ minute: number; side: Side; type: string; label?: string }> {
+  return (
+    ("timelineEvents" in match && match.timelineEvents) ||
+    ("timeline_events" in match && match.timeline_events) ||
+    []
+  );
+}
+
 function playerId(player: CompatiblePlayerResult | undefined): string | undefined {
   return player?.playerId ?? player?.player_id;
 }
@@ -154,13 +166,19 @@ function botlaneUnderperformed(userPlayers: CompatiblePlayerResult[]): boolean {
   return botlane.length > 0 && botlane.every((player) => (player.rating ?? 10) < 5 || (player.deaths ?? 0) >= 5);
 }
 
+function firstBloodSide(match: DraftMatchResult | CompatibleMatchSummary): Side | undefined {
+  return timelineEvents(match).find((event) => event.type.toLowerCase() === "first_blood")?.side;
+}
+
 export function extractMatchContext(params: ExtractMatchContextParams): MatchContext {
   const { match, userSide } = params;
   const enemySide = otherSide(userSide);
   const result: Result = winnerSide(match) === userSide ? "win" : "loss";
+  const durationMinutes = "durationMinutes" in match ? match.durationMinutes : match.duration_minutes ?? 0;
   const userKills = numberField(match, `${userSide}Kills` as keyof CompatibleMatchSummary, `${userSide}_kills` as keyof CompatibleMatchSummary);
   const enemyKills = numberField(match, `${enemySide}Kills` as keyof CompatibleMatchSummary, `${enemySide}_kills` as keyof CompatibleMatchSummary);
   const killDiff = userKills - enemyKills;
+  const totalKills = userKills + enemyKills;
   const objectiveDiff = Math.round(
     (objectiveScore(match.objectives, userSide) - objectiveScore(match.objectives, enemySide)) * 100,
   ) / 100;
@@ -170,8 +188,11 @@ export function extractMatchContext(params: ExtractMatchContextParams): MatchCon
   const facts: MatchContext["facts"] = {
     result,
     userSide,
+    durationMinutes,
     killDiff,
+    killShare: totalKills > 0 ? Math.round((userKills / totalKills) * 100) / 100 : 0,
     objectiveDiff,
+    objectiveLead: objectiveDiff,
   };
 
   if (params.leagueId) facts.leagueId = params.leagueId;
@@ -180,6 +201,10 @@ export function extractMatchContext(params: ExtractMatchContextParams): MatchCon
 
   if (result === "win" && (killDiff >= 8 || objectiveDiff >= 6)) addTag(tags, "stomp");
   if (result === "loss" && (killDiff <= -8 || objectiveDiff <= -6)) addTag(tags, "stomped");
+  if (Math.abs(killDiff) <= 2 && Math.abs(objectiveDiff) <= 1) addTag(tags, "close_game");
+  if (result === "win" && objectiveDiff >= 3) addTag(tags, "objective_domination");
+  if (result === "loss" && objectiveDiff <= -3) addTag(tags, "objective_control");
+  if (objectiveDiff === 0) addTag(tags, "objective_control");
 
   const deficit = comebackGoldDeficit({
     result,
@@ -196,6 +221,12 @@ export function extractMatchContext(params: ExtractMatchContextParams): MatchCon
   const underperformers = userPlayers.filter((player) => (player.rating ?? 10) < 5 || (player.deaths ?? 0) >= 5);
   if (result === "loss" && underperformers.length > 0) addTag(tags, "underperformance");
   if (result === "loss" && underperformers.some((player) => (player.deaths ?? 0) >= 6)) addTag(tags, "decisive_mistake");
+
+  const bloodSide = firstBloodSide(match);
+  if (bloodSide) {
+    facts.firstBloodSide = bloodSide;
+    addTag(tags, bloodSide === userSide ? "first_blood_for_us" : "first_blood_against_us");
+  }
 
   if (params.draft) {
     addTag(tags, "draft");
@@ -214,6 +245,9 @@ export function extractMatchContext(params: ExtractMatchContextParams): MatchCon
     if (mvp.role) {
       facts.mvpRole = mvp.role;
       addTag(tags, `role_${normalizeRole(mvp.role)}`);
+    }
+    if ((mvp.kills ?? 0) + (mvp.assists ?? 0) >= Math.max(6, Math.ceil(totalKills * 0.45))) {
+      addTag(tags, "mvp_carry");
     }
   }
 

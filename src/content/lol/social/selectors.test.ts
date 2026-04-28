@@ -102,6 +102,17 @@ const questions: SocialQuestion[] = [
     responseIds: ["pressure"],
     weight: 20,
   },
+  {
+    id: "fact-aware-pressure",
+    textKey: "questions.factAwarePressure",
+    scope: { type: "general" },
+    personaIds: ["real-analyst"],
+    tones: ["professional"],
+    requiredFacts: ["mvpPlayerId"],
+    excludedFacts: ["worstPlayerId"],
+    responseIds: ["measured"],
+    weight: 2,
+  },
 ];
 
 const responses: SocialResponse[] = [
@@ -156,7 +167,9 @@ describe("social content selectors", () => {
       contextTags: ["win", "neutral_objectives", "botlane_underperformed"],
     });
 
-    expect(eligibleQuestions.map((question) => question.id)).toEqual(["objective-win"]);
+    expect(eligibleQuestions.map((question) => question.id)).toEqual([
+      "objective-win",
+    ]);
     expect(selectWeighted(eligibleQuestions, () => 0.99)?.id).toBe("objective-win");
   });
 
@@ -167,5 +180,23 @@ describe("social content selectors", () => {
     });
 
     expect(eligibleResponses.map((response) => response.id)).toEqual(["pressure"]);
+  });
+
+  it("treats context facts as additional compatibility signals for newer question templates", () => {
+    const eligibleQuestions = filterEligibleQuestions(questions, {
+      leagueId: "lec",
+      personaId: "real-analyst",
+      allowedTones: ["professional"],
+      contextTags: ["win", "neutral_objectives"],
+      contextFacts: {
+        mvpPlayerId: "blue-mid",
+      },
+    });
+
+    expect(eligibleQuestions.map((question) => question.id)).toEqual([
+      "objective-win",
+      "false-bot-praise",
+      "fact-aware-pressure",
+    ]);
   });
 });

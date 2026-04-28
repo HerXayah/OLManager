@@ -124,21 +124,27 @@ describe("extractMatchContext", () => {
     expect(context.tags).toEqual([
       "win",
       "stomp",
+      "objective_domination",
       "comeback",
       "neutral_objectives",
+      "first_blood_against_us",
       "draft",
       "late_game",
       "mvp",
       "role_mid",
+      "mvp_carry",
       "rivalry",
       "streak_win",
     ]);
     expect(context.facts).toMatchObject({
       leagueId: "lec",
       result: "win",
+      durationMinutes: 31,
       killDiff: 9,
+      killShare: 0.67,
       objectiveDiff: 12,
       comebackGoldDeficit: 1800,
+      firstBloodSide: "red",
       mvpPlayerId: "blue-mid",
       mvpRole: "MID",
       strongSide: "Bot",
@@ -183,7 +189,7 @@ describe("extractMatchContext", () => {
         },
       ],
       objectives: {
-        blue: {
+          blue: {
           voidgrubs: 0,
           dragons: 0,
           dragonSoul: false,
@@ -204,6 +210,10 @@ describe("extractMatchContext", () => {
           inhibitors: 2,
         },
       },
+      timelineEvents: [
+        { minute: 3, side: "blue", type: "first_blood", label: "Blue first blood" },
+        { minute: 18, side: "red", type: "dragon", label: "Red Dragon" },
+      ],
     });
 
     const context = extractMatchContext({
@@ -215,8 +225,10 @@ describe("extractMatchContext", () => {
     expect(context.tags).toEqual([
       "loss",
       "stomped",
+      "objective_control",
       "underperformance",
       "decisive_mistake",
+      "first_blood_for_us",
       "draft",
       "early_game",
       "role_adc",
@@ -227,8 +239,67 @@ describe("extractMatchContext", () => {
       result: "loss",
       worstPlayerId: "blue-adc",
       worstRole: "ADC",
+      durationMinutes: 22,
       strongSide: "Bot",
       timing: "Early",
+      firstBloodSide: "blue",
+    });
+  });
+
+  it("marks close games and preserves compact fact signals for tighter ranking", () => {
+    const closeGame = baseResult({
+      blueKills: 11,
+      redKills: 10,
+      goldDiffTimeline: [
+        { minute: 8, diff: -400 },
+        { minute: 16, diff: 100 },
+        { minute: 30, diff: 700 },
+      ],
+      objectives: {
+        blue: {
+          voidgrubs: 1,
+          dragons: 2,
+          dragonSoul: false,
+          elderDragons: 0,
+          heralds: 0,
+          barons: 0,
+          towers: 4,
+          inhibitors: 0,
+        },
+        red: {
+          voidgrubs: 1,
+          dragons: 2,
+          dragonSoul: false,
+          elderDragons: 0,
+          heralds: 0,
+          barons: 0,
+          towers: 4,
+          inhibitors: 0,
+        },
+      },
+      timelineEvents: [
+        { minute: 2, side: "red", type: "first_blood", label: "Red first blood" },
+        { minute: 17, side: "blue", type: "herald", label: "Blue Herald" },
+      ],
+    });
+
+    const context = extractMatchContext({ match: closeGame, userSide: "blue" });
+
+    expect(context.tags).toEqual([
+      "win",
+      "close_game",
+      "objective_control",
+      "first_blood_against_us",
+      "mvp",
+      "role_mid",
+      "mvp_carry",
+    ]);
+    expect(context.facts).toMatchObject({
+      durationMinutes: 31,
+      killDiff: 1,
+      objectiveDiff: 0,
+      firstBloodSide: "red",
+      objectiveLead: 0,
     });
   });
 });

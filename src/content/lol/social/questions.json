@@ -2,23 +2,201 @@
   {
     "id": "clean-win-objectives",
     "textKey": "content.lol.social.questions.cleanWinObjectives.text",
-    "scope": { "type": "general" },
-    "personaIds": ["verified-analyst"],
-    "tones": ["professional", "analytical"],
-    "requiredTags": ["win", "neutral_objectives"],
-    "excludedTags": ["loss"],
-    "responseIds": ["credit-preparation", "stay-measured"],
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "win",
+      "neutral_objectives"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "credit-preparation",
+      "stay-measured"
+    ],
     "weight": 3
   },
   {
     "id": "underperformance-pressure",
     "textKey": "content.lol.social.questions.underperformancePressure.text",
-    "scope": { "type": "league", "leagueIds": ["default"] },
-    "personaIds": ["rift-instigator"],
-    "tones": ["spicy", "pressure"],
-    "requiredTags": ["loss", "underperformance"],
-    "excludedTags": ["win", "comeback"],
-    "responseIds": ["demand-reset", "stay-measured"],
+    "scope": {
+      "type": "league",
+      "leagueIds": [
+        "default"
+      ]
+    },
+    "personaIds": [
+      "rift-instigator"
+    ],
+    "tones": [
+      "spicy",
+      "pressure"
+    ],
+    "requiredTags": [
+      "loss",
+      "underperformance"
+    ],
+    "excludedTags": [
+      "win",
+      "comeback"
+    ],
+    "responseIds": [
+      "demand-reset",
+      "stay-measured"
+    ],
     "weight": 1
+  },
+  {
+    "id": "result-win-objectives",
+    "textKey": "content.lol.social.questions.resultWin.text",
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "win"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "stay-measured"
+    ],
+    "weight": 2
+  },
+  {
+    "id": "first-blood-impact",
+    "textKey": "content.lol.social.questions.firstBlood.text",
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "first_blood"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "stay-measured"
+    ],
+    "weight": 2
+  },
+  {
+    "id": "close-game-comeback",
+    "textKey": "content.lol.social.questions.closeGame.text",
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "close_game"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "stay-measured"
+    ],
+    "weight": 2
+  },
+  {
+    "id": "result-win-objectives",
+    "textKey": "content.lol.social.questions.resultWin.text",
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "win"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "stay-measured"
+    ],
+    "weight": 2
+  },
+  {
+    "id": "first-blood-impact",
+    "textKey": "content.lol.social.questions.firstBlood.text",
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "first_blood"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "stay-measured"
+    ],
+    "weight": 2
+  },
+  {
+    "id": "close-game-comeback",
+    "textKey": "content.lol.social.questions.closeGame.text",
+    "scope": {
+      "type": "general"
+    },
+    "personaIds": [
+      "verified-analyst"
+    ],
+    "tones": [
+      "professional",
+      "analytical"
+    ],
+    "requiredTags": [
+      "close_game"
+    ],
+    "excludedTags": [
+      "loss"
+    ],
+    "responseIds": [
+      "stay-measured"
+    ],
+    "weight": 2
   }
 ]

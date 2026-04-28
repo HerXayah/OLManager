@@ -354,19 +354,19 @@ pub(crate) fn example_academy_seed_catalog() -> &'static Vec<ExampleAcademyTeamS
             "liga-espanola",
             "Liga Espanola",
             "ES",
-            include_str!("../../../EXAMPLE/les.txt"),
+            include_str!("../../../data/erls/les.txt"),
         ));
         teams.extend(parse_example_academy_file(
             "lfl",
             "LFL",
             "FR",
-            include_str!("../../../EXAMPLE/lfl.txt"),
+            include_str!("../../../data/erls/lfl.txt"),
         ));
         teams.extend(parse_example_academy_file(
             "prime-league",
             "Prime League",
             "DE",
-            include_str!("../../../EXAMPLE/Prime League.txt"),
+            include_str!("../../../data/erls/Prime League.txt"),
         ));
         teams
     })

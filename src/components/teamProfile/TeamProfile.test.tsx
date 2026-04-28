@@ -367,7 +367,7 @@ describe("TeamProfile", () => {
     );
   });
 
-  it("resolves academy logo from EXAMPLE team list when metadata logo is missing", async () => {
+  it("resolves academy logo from data/erls team list when metadata logo is missing", async () => {
     const team = createTeam({
       id: "academy-liga-espanola-movistar-koi-fenix",
       name: "Movistar KOI Fénix",

@@ -128,6 +128,7 @@ function buildCandidates(params: {
   questions: SocialQuestion[];
   leagueId?: string;
   contextTags: string[];
+  contextFacts: Record<string, string | number | boolean>;
 }): Candidate[] {
   const outlets = filterEligibleOutlets(SOCIAL_CONTENT_PACK.outlets, { leagueId: params.leagueId });
   const personas = filterEligiblePersonas(SOCIAL_CONTENT_PACK.personas, {
@@ -144,6 +145,7 @@ function buildCandidates(params: {
       personaId: persona.id,
       allowedTones: persona.allowedTones,
       contextTags: params.contextTags,
+      contextFacts: params.contextFacts,
     });
 
     return questions.map((question) => ({
@@ -154,6 +156,29 @@ function buildCandidates(params: {
       weight: persona.weight * outlet.weight * question.weight,
     }));
   });
+}
+
+function selectDiverseQuestions(
+  candidates: Candidate[],
+  random: () => number,
+): Candidate[] {
+  const seenIds = new Set<string>();
+  const selected: Candidate[] = [];
+  
+  const sorted = [...candidates].sort((a, b) => b.weight - a.weight);
+  
+  for (const candidate of sorted) {
+    if (selected.length >= 4) break;
+    if (selected.length < 2 && candidate.weight > 0) {
+      selected.push(candidate);
+      seenIds.add(candidate.question.id);
+    } else if (!seenIds.has(candidate.question.id) && candidate.weight > 0) {
+      selected.push(candidate);
+      seenIds.add(candidate.question.id);
+    }
+  }
+  
+  return selected;
 }
 
 export function buildPressConferenceQuestions({

@@ -53,6 +53,8 @@ export interface SocialQuestion {
   tones: SocialTone[];
   requiredTags?: string[];
   excludedTags?: string[];
+  requiredFacts?: string[];
+  excludedFacts?: string[];
   responseIds: string[];
   weight: number;
 }

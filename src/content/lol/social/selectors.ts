@@ -20,6 +20,7 @@ export interface QuestionFilter extends LeagueFilter {
   personaId?: string;
   allowedTones?: SocialTone[];
   contextTags: string[];
+  contextFacts?: Record<string, string | number | boolean>;
 }
 
 export interface ResponseFilter {
@@ -46,6 +47,25 @@ function includesAll(values: ReadonlySet<string>, required: readonly string[] = 
 
 function includesNone(values: ReadonlySet<string>, excluded: readonly string[] = []): boolean {
   return excluded.every((tag) => !values.has(tag));
+}
+
+function factMatches(
+  contextFacts: Record<string, string | number | boolean> | undefined,
+  facts: readonly string[] = [],
+): boolean {
+  if (facts.length === 0) return true;
+  if (!contextFacts) return false;
+
+  return facts.every((fact) => Object.prototype.hasOwnProperty.call(contextFacts, fact));
+}
+
+function factExcludes(
+  contextFacts: Record<string, string | number | boolean> | undefined,
+  facts: readonly string[] = [],
+): boolean {
+  if (facts.length === 0 || !contextFacts) return true;
+
+  return facts.every((fact) => !Object.prototype.hasOwnProperty.call(contextFacts, fact));
 }
 
 export function filterEligibleOutlets(
@@ -81,6 +101,8 @@ export function filterEligibleQuestions(
     if (filter.allowedTones && !intersects(question.tones, filter.allowedTones)) return false;
     if (!includesAll(contextTagSet, question.requiredTags)) return false;
     if (!includesNone(contextTagSet, question.excludedTags)) return false;
+    if (!factMatches(filter.contextFacts, question.requiredFacts)) return false;
+    if (!factExcludes(filter.contextFacts, question.excludedFacts)) return false;
     return true;
   });
 }

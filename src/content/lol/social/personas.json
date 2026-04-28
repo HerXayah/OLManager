@@ -1,8 +1,8 @@
 [
   {
-    "id": "verified-analyst",
-    "displayName": "Verified Analyst",
-    "outletId": "rift-desk",
+    "id": "eros",
+    "displayName": "Marian (Eros) Stoica",
+    "outletId": "sheep-esports",
     "type": "real",
     "allowedTones": ["professional", "analytical"],
     "scope": { "type": "general" },
@@ -27,11 +27,11 @@
     "weight": 1
   },
   {
-    "id": "lec-instigator",
-    "displayName": "LEC Instigator",
-    "outletId": "lec-spotlight",
-    "type": "fictional",
-    "allowedTones": ["spicy", "pressure"],
+    "id": "laure-valee",
+    "displayName": "Laure Vallée",
+    "outletId": "lec-post-match",
+    "type": "inspired",
+    "allowedTones": ["professional"],
     "scope": { "type": "league", "leagueIds": ["lec"] },
     "weight": 1
   }

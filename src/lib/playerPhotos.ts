@@ -1,7 +1,7 @@
 import playersSeed from "../../data/lec/draft/players.json";
-import lesExampleRaw from "../../EXAMPLE/les.txt?raw";
-import lflExampleRaw from "../../EXAMPLE/lfl.txt?raw";
-import primeLeagueExampleRaw from "../../EXAMPLE/Prime League.txt?raw";
+import lesExampleRaw from "../../data/erls/les.txt?raw";
+import lflExampleRaw from "../../data/erls/lfl.txt?raw";
+import primeLeagueExampleRaw from "../../data/erls/Prime League.txt?raw";
 
 interface PlayerSeedEntry {
   ign?: string;
