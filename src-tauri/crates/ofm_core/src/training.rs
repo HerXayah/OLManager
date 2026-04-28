@@ -161,6 +161,23 @@ fn compute_scrim_gain_multiplier(own_strength: f64, opponent_strength: f64) -> f
 /// Scrims focus can gain extra efficiency from stronger weekly scrim opponents.
 /// `weekday_num` is 0=Mon .. 6=Sun (chrono Weekday::num_days_from_monday()).
 pub fn process_training(game: &mut Game, weekday_num: u32) {
+    let manager_team_id = game.manager.team_id.clone();
+    let rival_player_ids: Vec<String> = game
+        .players
+        .iter()
+        .filter(|player| {
+            player.team_id.as_ref().is_some_and(|team_id| {
+                manager_team_id
+                    .as_ref()
+                    .is_none_or(|manager_id| team_id != manager_id)
+            })
+        })
+        .map(|player| player.id.clone())
+        .collect();
+    for player_id in rival_player_ids {
+        crate::champions::ensure_training_targets_from_mastery(game, &player_id);
+    }
+
     // Collect plans for all teams (immutable borrow)
     let team_plans: Vec<TeamTrainingPlan> = game
         .teams

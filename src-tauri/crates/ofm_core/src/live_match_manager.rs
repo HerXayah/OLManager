@@ -12,6 +12,8 @@ use crate::game::Game;
 use domain::league::StandingEntry;
 use engine::{LiveMatchState, MatchCommand, MatchConfig, MatchSnapshot, MinuteResult, Side};
 
+const LOL_STARTERS_REQUIRED: usize = 5;
+
 // ---------------------------------------------------------------------------
 // MatchMode — how the user wants to experience this match
 // ---------------------------------------------------------------------------
@@ -117,6 +119,18 @@ pub fn create_live_match(
     // Build engine TeamData (starting XI = first 11 players by position)
     let (home_xi, home_bench) = build_team_with_bench(game, &home_team_id);
     let (away_xi, away_bench) = build_team_with_bench(game, &away_team_id);
+
+    if home_xi.players.len() < LOL_STARTERS_REQUIRED
+        || away_xi.players.len() < LOL_STARTERS_REQUIRED
+    {
+        return Err(format!(
+            "Cannot start match: incomplete lineup (home: {}, away: {}, required: {})",
+            home_xi.players.len(),
+            away_xi.players.len(),
+            LOL_STARTERS_REQUIRED
+        ));
+    }
+
     let config = MatchConfig::default();
 
     let mut match_state = LiveMatchState::new(

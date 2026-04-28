@@ -492,6 +492,44 @@ fn rejecting_pending_offer_closes_the_negotiation_cleanly() {
 }
 
 #[test]
+fn accepting_pending_offer_executes_transfer_even_for_reluctant_player() {
+    let mut player = make_user_player("player-accept-reluctant");
+    player.contract_end = Some("2028-06-30".to_string());
+    player.morale = 88;
+    player.stats.appearances = 28;
+    player.transfer_listed = false;
+    player.transfer_offers.push(make_pending_incoming_offer(
+        "offer-accept-reluctant",
+        950_000,
+    ));
+
+    let mut game = make_game_with_player(player, vec![], 5_000_000, 2_000_000);
+    game.teams[0].reputation = 1200;
+    game.teams[1].reputation = 900;
+    game.teams[1].finance = 6_000_000;
+    game.teams[1].transfer_budget = 3_000_000;
+
+    respond_to_offer(
+        &mut game,
+        "player-accept-reluctant",
+        "offer-accept-reluctant",
+        true,
+    )
+    .expect("accepting a pending offer should execute transfer");
+
+    let player = game
+        .players
+        .iter()
+        .find(|player| player.id == "player-accept-reluctant")
+        .unwrap();
+    assert_eq!(player.team_id.as_deref(), Some("team-2"));
+    assert_eq!(
+        player.transfer_offers[0].status,
+        TransferOfferStatus::Accepted
+    );
+}
+
+#[test]
 fn reasonable_counter_offer_is_accepted_and_executes_transfer() {
     let mut player = make_user_player("player-counter-accept");
     player.market_value = 1_000_000;

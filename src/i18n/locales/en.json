@@ -260,7 +260,12 @@
     "masteryTrainingTitle": "Champion Mastery Training",
     "noTarget": "No target",
     "currentMastery": "Mastery: {{value}}",
-    "selectChampion": "Select a champion"
+    "selectChampion": "Select a champion",
+    "gain": "Gain",
+    "high": "High",
+    "moderate": "Moderate",
+    "low": "Low",
+    "discoveryProgress": "Discovery progress"
   },
   "exitConfirm": {
     "title": "Exit to Main Menu?",
@@ -342,7 +347,8 @@
     "monthlyNet": "Monthly Net",
     "income": "Income",
     "expenses": "Expenses",
-    "noUpcomingPlayoffMatch": "No upcoming playoff match."
+    "noUpcomingPlayoffMatch": "No upcoming playoff match.",
+    "fullRoster": "Full roster"
   },
   "season": {
     "preseasonStatus": "Preseason Status",
@@ -424,7 +430,9 @@
     "academyRosterLinked": "Academy roster",
     "academyNotLinked": "Academy not linked",
     "promoting": "Promoting...",
-    "promote": "Promote"
+    "promote": "Promote",
+    "academyPlayers": "academy players",
+    "academyPlayersStartingMayus": "Academy Players"
   },
   "common": {
     "loading": "Loading...",
@@ -465,8 +473,11 @@
     "vs": "vs",
     "age": "Age",
     "ovr": "OVR",
+    "year": "Year",
+    "per_year_with_slash": "/year",
     "condition": "Condition",
     "morale": "Morale",
+    "potential": "Potential",
     "value": "Value",
     "wage": "Wage",
     "name": "Name",
@@ -640,6 +651,7 @@
   },
   "squad": {
     "title": "{{team}} Squad",
+    "detailsTitle": "Squad Details",
     "playerCount": "{{count}} Players",
     "noPlayers": "No players found in your squad.",
     "pos": "Pos",
@@ -1411,7 +1423,10 @@
     "championInsignia": "Insignia",
     "championWinRateShort": "WR",
     "championMasteryLabel": "Mastery {{value}}",
-    "championGames": "Games"
+    "championGames": "Games",
+    "promoteToMain": "Promote to main team",
+    "demoteToAcademy": "Demote to Academy",
+    "rerollWarning": "Change position rerolls atributes and can change players OVR."
   },
   "teamProfile": {
     "clubInfo": "Team Information",
@@ -1567,6 +1582,7 @@
     "events": "Events",
     "stats": "Stats",
     "lineups": "Lineups",
+    "lineup": "Lineup",
     "simSpeed": "Simulation Speed",
     "pause": "Pause",
     "slow": "Slow",

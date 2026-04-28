@@ -260,7 +260,12 @@
     "masteryTrainingTitle": "Treino de Maestria de Campeões",
     "noTarget": "Sem alvo",
     "currentMastery": "Maestria: {{value}}",
-    "selectChampion": "Selecione um campeão"
+    "selectChampion": "Selecione um campeão",
+    "gain": "Ganho",
+    "high": "Alto",
+    "moderate": "Moderado",
+    "low": "Baixo",
+    "discoveryProgress": "Progresso de descoberta"
   },
   "exitConfirm": {
     "title": "Sair para o Menu Principal?",
@@ -342,7 +347,8 @@
     "monthlyNet": "Líquido mensal",
     "income": "Receitas",
     "expenses": "Despesas",
-    "noUpcomingPlayoffMatch": "Nenhuma próxima partida de playoff."
+    "noUpcomingPlayoffMatch": "Nenhuma próxima partida de playoff.",
+    "fullRoster": "Plantel completo"
   },
   "season": {
     "preseasonStatus": "Estado da pré-época",
@@ -424,7 +430,9 @@
     "academyRosterLinked": "Elenco da academia",
     "academyNotLinked": "Academia não vinculada",
     "promoting": "Subindo...",
-    "promote": "Subir"
+    "promote": "Subir",
+    "academyPlayers": "jogadores da academia",
+    "academyPlayersStartingMayus": "Jogadores da academia"
   },
   "common": {
     "loading": "A carregar...",
@@ -465,8 +473,11 @@
     "vs": "vs",
     "age": "Idade",
     "ovr": "OVR",
+    "year": "Ano",
+    "per_year_with_slash": "/ano",
     "condition": "Condição",
     "morale": "Moral",
+    "potential": "Potencial",
     "value": "Valor",
     "wage": "Salário",
     "name": "Nome",
@@ -640,6 +651,7 @@
   },
   "squad": {
     "title": "Plantel do {{team}}",
+    "detailsTitle": "Detalhes do plantel",
     "playerCount": "{{count}} Jogadores",
     "noPlayers": "Nenhum jogador encontrado no teu plantel.",
     "pos": "Pos",
@@ -1411,7 +1423,10 @@
     "championInsignia": "Insígnia",
     "championWinRateShort": "WR",
     "championMasteryLabel": "Maestria {{value}}",
-    "championGames": "Partidas"
+    "championGames": "Partidas",
+    "promoteToMain": "Promover à equipa principal",
+    "demoteToAcademy": "Despromover para a academia",
+    "rerollWarning": "Alterar a posição recalcula atributos e pode alterar o OVR dos jogadores."
   },
   "teamProfile": {
     "clubInfo": "Informações do Clube",
@@ -1567,6 +1582,7 @@
     "events": "Eventos",
     "stats": "Estatísticas",
     "lineups": "Equipas",
+    "lineup": "Onze",
     "simSpeed": "Velocidade de Simulação",
     "pause": "Pausa",
     "slow": "Lento",

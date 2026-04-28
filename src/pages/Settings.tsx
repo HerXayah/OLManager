@@ -28,7 +28,7 @@ const CURRENCY_OPTIONS = [
   { value: "USD", label: "Dollar ($)", symbol: "$" },
 ] as const;
 
-const MATCH_MODE_KEYS = ["live", "spectator", "delegate"] as const;
+const MATCH_MODE_KEYS = ["live", "spectator"] as const;
 const MATCH_SPEED_KEYS = ["slow", "normal", "fast"] as const;
 
 export default function Settings() {

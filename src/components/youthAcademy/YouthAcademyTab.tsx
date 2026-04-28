@@ -142,7 +142,7 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
           {t("youthAcademy.title")}
         </h2>
         <Badge variant="neutral" size="sm">
-          {`${youthPlayers.length} jugadores academia`}
+          {`${youthPlayers.length} ${t("youthAcademy.academyPlayers")}`}
         </Badge>
         {academyTeam && (
           <Badge variant="primary" size="sm">
@@ -158,7 +158,7 @@ export default function YouthAcademyTab({ gameState, onSelectPlayer, onGameUpdat
               <Users className="w-5 h-5 text-gray-400 dark:text-gray-500 mx-auto mb-1" />
               <p className="font-heading font-bold text-2xl text-gray-800 dark:text-gray-100">{youthPlayers.length}</p>
               <p className="text-[10px] text-gray-400 dark:text-gray-500 font-heading uppercase tracking-wider">
-                Jugadores academia
+                {t("youthAcademy.academyPlayersStartingMayus")}
               </p>
             </div>
           </CardBody>

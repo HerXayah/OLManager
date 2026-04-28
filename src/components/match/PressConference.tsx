@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { GameStateData } from "../../store/gameStore";
@@ -25,6 +25,38 @@ interface AnswerPayload {
   player_id?: string;
 }
 
+const RECENT_PRESS_QUESTIONS_KEY = "olmanager:match:pressConference:recentQuestionIds";
+const RECENT_PRESS_QUESTIONS_LIMIT = 12;
+
+function readRecentPressQuestionIds(): string[] {
+  try {
+    const raw = window.localStorage.getItem(RECENT_PRESS_QUESTIONS_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistRecentPressQuestionIds(questionIds: string[]): void {
+  if (questionIds.length === 0) return;
+
+  try {
+    const existing = readRecentPressQuestionIds();
+    const merged = [...existing, ...questionIds].filter(
+      (id, index, ids) => ids.lastIndexOf(id) === index,
+    );
+    window.localStorage.setItem(
+      RECENT_PRESS_QUESTIONS_KEY,
+      JSON.stringify(merged.slice(-RECENT_PRESS_QUESTIONS_LIMIT)),
+    );
+  } catch {
+    // Ignore storage failures; press conference submission must remain unaffected.
+  }
+}
+
 export default function PressConference({
   snapshot,
   gameState,
@@ -34,7 +66,13 @@ export default function PressConference({
 }: PressConferenceProps) {
   const { t } = useTranslation();
   const [questions] = useState(() =>
-    buildPressConferenceQuestions({ snapshot, userSide, gameState, t }),
+    buildPressConferenceQuestions({
+      snapshot,
+      userSide,
+      gameState,
+      t,
+      recentQuestionIds: readRecentPressQuestionIds(),
+    }),
   );
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -43,6 +81,10 @@ export default function PressConference({
   const currentQ = questions[currentIdx];
   const isLastQuestion = currentIdx === questions.length - 1;
   const hasAnswered = currentQ ? !!answers[currentQ.id] : false;
+
+  useEffect(() => {
+    persistRecentPressQuestionIds(questions.map((question) => question.id));
+  }, [questions]);
 
   const handleAnswer = (responseId: string) => {
     if (!currentQ) return;

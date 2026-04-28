@@ -1,6 +1,5 @@
 use log::info;
 
-use ofm_core::contracts::contract_warning_stage;
 use ofm_core::game::Game;
 use ofm_core::player_rating::{effective_rating_for_assignment, formation_slots, natural_ovr};
 
@@ -25,6 +24,22 @@ fn build_blocker(id: &str, severity: &str, text: String, tab: &str) -> serde_jso
         "text": text,
         "tab": tab
     })
+}
+
+fn contract_days_remaining(
+    contract_end: Option<&str>,
+    current_date: chrono::NaiveDate,
+) -> Option<i64> {
+    let contract_end = contract_end?;
+    let end_date = chrono::NaiveDate::parse_from_str(contract_end, "%Y-%m-%d").ok()?;
+    Some((end_date - current_date).num_days())
+}
+
+fn should_notify_contract_risk_30d(
+    contract_end: Option<&str>,
+    current_date: chrono::NaiveDate,
+) -> bool {
+    contract_days_remaining(contract_end, current_date) == Some(30)
 }
 
 fn build_effective_healthy_starting_xi_ids(
@@ -212,7 +227,7 @@ fn key_contract_risk_blocker(
         .into_iter()
         .take(3)
         .filter(|player| {
-            contract_warning_stage(player.contract_end.as_deref(), current_date).is_some()
+            should_notify_contract_risk_30d(player.contract_end.as_deref(), current_date)
         })
         .map(|player| player.match_name.as_str())
         .collect();
@@ -239,7 +254,7 @@ fn contract_wage_risk_blocker(
         .iter()
         .copied()
         .filter(|player| {
-            contract_warning_stage(player.contract_end.as_deref(), current_date).is_some()
+            should_notify_contract_risk_30d(player.contract_end.as_deref(), current_date)
         })
         .map(|player| player.wage)
         .sum();

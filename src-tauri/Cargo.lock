@@ -828,7 +828,7 @@ dependencies = [
 
 [[package]]
 name = "db"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "domain",
@@ -992,7 +992,7 @@ dependencies = [
 
 [[package]]
 name = "domain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "log",
  "serde",
@@ -1063,7 +1063,7 @@ checksum = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
 
 [[package]]
 name = "engine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "log",
  "rand 0.10.1",
@@ -2625,7 +2625,7 @@ dependencies = [
 
 [[package]]
 name = "ofm_core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "domain",
@@ -2657,7 +2657,7 @@ dependencies = [
 
 [[package]]
 name = "openleaguemanager"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "db",

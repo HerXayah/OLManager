@@ -686,7 +686,8 @@ fn maybe_simulate_parallel_academy_leagues(game: &mut Game) {
     }
 
     if let Some(league) = game.academy_league.as_mut() {
-        for (fixture_index, home_team_id, away_team_id, home_wins, away_wins) in &simulated_results {
+        for (fixture_index, home_team_id, away_team_id, home_wins, away_wins) in &simulated_results
+        {
             if let Some(fixture) = league.fixtures.get_mut(*fixture_index) {
                 fixture.result = Some(MatchResult {
                     home_wins: *home_wins,
@@ -704,10 +705,18 @@ fn maybe_simulate_parallel_academy_leagues(game: &mut Game) {
         }
 
         for (home_team_id, away_team_id, home_wins, away_wins) in &completed_fixtures {
-            if let Some(home) = league.standings.iter_mut().find(|entry| entry.team_id == *home_team_id) {
+            if let Some(home) = league
+                .standings
+                .iter_mut()
+                .find(|entry| entry.team_id == *home_team_id)
+            {
                 home.record_result(*home_wins, *away_wins);
             }
-            if let Some(away) = league.standings.iter_mut().find(|entry| entry.team_id == *away_team_id) {
+            if let Some(away) = league
+                .standings
+                .iter_mut()
+                .find(|entry| entry.team_id == *away_team_id)
+            {
                 away.record_result(*away_wins, *home_wins);
             }
         }
@@ -730,23 +739,37 @@ fn maybe_simulate_parallel_academy_leagues(game: &mut Game) {
             .iter()
             .any(|fixture| fixture.competition == FixtureCompetition::Playoffs);
 
-        if regular_fixtures_total > 0 && regular_completed == regular_fixtures_total && !has_playoffs {
+        if regular_fixtures_total > 0
+            && regular_completed == regular_fixtures_total
+            && !has_playoffs
+        {
             let mut sorted = league.standings.clone();
             sorted.sort_by(|a, b| {
                 b.points
                     .cmp(&a.points)
-                    .then((b.goals_for as i32 - b.goals_against as i32).cmp(&(a.goals_for as i32 - a.goals_against as i32)))
+                    .then(
+                        (b.goals_for as i32 - b.goals_against as i32)
+                            .cmp(&(a.goals_for as i32 - a.goals_against as i32)),
+                    )
                     .then(b.goals_for.cmp(&a.goals_for))
             });
             if sorted.len() >= 4 {
-                let next_matchday = league.fixtures.iter().map(|fixture| fixture.matchday).max().unwrap_or(0) + 1;
+                let next_matchday = league
+                    .fixtures
+                    .iter()
+                    .map(|fixture| fixture.matchday)
+                    .max()
+                    .unwrap_or(0)
+                    + 1;
                 let semis_date = game.clock.current_date + chrono::Duration::days(7);
                 let final_date = game.clock.current_date + chrono::Duration::days(14);
                 let semifinal_pairings = vec![
                     (sorted[0].team_id.clone(), sorted[3].team_id.clone()),
                     (sorted[1].team_id.clone(), sorted[2].team_id.clone()),
                 ];
-                for (idx, (home_team_id, away_team_id)) in semifinal_pairings.into_iter().enumerate() {
+                for (idx, (home_team_id, away_team_id)) in
+                    semifinal_pairings.into_iter().enumerate()
+                {
                     league.fixtures.push(Fixture {
                         id: format!("academy-{}-po-semi-{}", league.id, idx + 1),
                         matchday: next_matchday,

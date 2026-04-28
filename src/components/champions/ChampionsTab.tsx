@@ -8,6 +8,7 @@ import { setPlayerChampionTrainingTarget } from "../../services/playerService";
 import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import { formatStaffEffectPercent, getLolStaffEffectsForTeam } from "../../lib/lolStaffEffects";
 import { resolvePlayerPhoto } from "../../lib/playerPhotos";
+import { t } from "i18next";
 
 interface ChampionsTabProps {
   gameState: GameStateData;
@@ -106,6 +107,12 @@ function championTileUrl(championId: string): string {
   };
   const canonical = overrides[normalized] ?? championId;
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${canonical}_0.jpg`;
+}
+
+function championDisplayName(championId: string): string {
+  const normalized = normalizeKey(championId);
+  if (normalized === "monkeyking") return "Wukong";
+  return championId;
 }
 
 function tierLabelClass(tier: string): string {
@@ -222,9 +229,9 @@ function expectedGainBadge(slotIndex: number, focus: string | null | undefined):
 } {
   const priorityWeight = [1.0, 0.65, 0.4][slotIndex] ?? 0.35;
   const focusMult = getFocusMultiplier(focus);
-  if (slotIndex === 0) return { label: "Alta", className: "text-emerald-300", baseMult: priorityWeight * focusMult };
-  if (slotIndex === 1) return { label: "Media", className: "text-amber-300", baseMult: priorityWeight * focusMult };
-  return { label: "Baja", className: "text-gray-300", baseMult: priorityWeight * focusMult };
+  if (slotIndex === 0) return { label: t("champions.high"), className: "text-emerald-300", baseMult: priorityWeight * focusMult };
+  if (slotIndex === 1) return { label: t("champions.moderate"), className: "text-amber-300", baseMult: priorityWeight * focusMult };
+  return { label: t("champions.low"), className: "text-gray-300", baseMult: priorityWeight * focusMult };
 }
 
 const TIER_ORDER: Array<"S" | "A" | "B" | "C" | "D"> = ["S", "A", "B", "C", "D"];
@@ -479,7 +486,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                           <div className="h-14 w-24 rounded-md border border-navy-500/80 bg-navy-800 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-yellow-300 overflow-hidden">
                             <img
                               src={championTileUrl(entry.champion_id)}
-                              alt={entry.champion_id}
+                              alt={championDisplayName(entry.champion_id)}
                               className="h-full w-full object-cover"
                               loading="lazy"
                               onError={(event) => {
@@ -487,7 +494,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                                 element.onerror = null;
                                 element.src = `https://ddragon.leagueoflegends.com/cdn/15.7.1/img/champion/${entry.champion_id}.png`;
                               }}
-                              title={`${entry.champion_id} · ${entry.role}`}
+                              title={`${championDisplayName(entry.champion_id)} · ${entry.role}`}
                             />
                           </div>
                         </div>
@@ -604,7 +611,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                             P{slotIndex + 1}
                           </p>
                           <p className={`text-[10px] font-heading uppercase tracking-wide ${gainHint.className}`}>
-                            Ganancia {gainHint.label}
+                            ${t("champions.gain")} {gainHint.label}
                           </p>
                         </div>
                         <select
@@ -624,7 +631,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                               ?? "?";
                             return (
                               <option key={`${player.id}-${slotIndex}-${champion}`} value={champion}>
-                                {`${champion} · M${mastery} · Tier ${discoveredTier}`}
+                                {`${championDisplayName(champion)} · M${mastery} · Tier ${discoveredTier}`}
                               </option>
                             );
                           })}

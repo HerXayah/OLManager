@@ -354,6 +354,7 @@ describe("MatchSimulation", function (): void {
       setGameState: setGameStateMock,
     };
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("renders the current live snapshot when get_match_snapshot succeeds", async function (): Promise<void> {
@@ -668,6 +669,66 @@ describe("MatchSimulation", function (): void {
       expect(parsed.seriesGames.map((entry: { gameIndex: number }) => entry.gameIndex)).toEqual([1, 2, 3]);
       expect(parsed.seriesGames[2].winnerSide).toBe(parsed.result.winnerSide);
     });
+  });
+
+  it("abandons incomplete stored series after app restart and resets locked champions", async function (): Promise<void> {
+    locationState = {
+      mode: "spectator",
+      snapshot: makeSnapshot(),
+    };
+
+    const gameStateWithPlayoff = makeGameState();
+    gameStateWithPlayoff.league = {
+      id: "league-1",
+      name: "Test League",
+      season: 1,
+      fixtures: [
+        {
+          id: "fixture-playoff-restart-reset",
+          matchday: 12,
+          date: "2026-08-01",
+          home_team_id: "home1",
+          away_team_id: "away1",
+          competition: "Playoffs",
+          best_of: 3,
+          status: "InProgress",
+          result: {
+            home_wins: 0,
+            away_wins: 0,
+          },
+        },
+      ],
+      standings: [],
+    };
+
+    gameStoreState = {
+      gameState: gameStateWithPlayoff,
+      setGameState: setGameStateMock,
+    };
+
+    localStorage.setItem(
+      "fixture-draft-result:fixture-playoff-restart-reset",
+      JSON.stringify({
+        snapshot: makeSnapshot(),
+        controlledSide: "blue",
+        result: { winnerSide: "blue" },
+        homeSeriesWins: 1,
+        awaySeriesWins: 0,
+        seriesUsedChampionIds: ["Aatrox", "Ahri"],
+      }),
+    );
+
+    mockedInvoke.mockResolvedValueOnce(makeSnapshot());
+
+    render(<MatchSimulation />);
+
+    await waitFor(function (): void {
+      expect(screen.getByTestId("champion-draft")).toHaveTextContent("Complete Draft (0)");
+    });
+
+    expect(
+      localStorage.getItem("fixture-draft-result:fixture-playoff-restart-reset"),
+    ).toBeNull();
   });
 
   it("returns to draft for next map while series is still open", async function (): Promise<void> {

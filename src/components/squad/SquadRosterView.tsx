@@ -320,7 +320,7 @@ export default function SquadRosterView({
 
                     <div className="hidden xl:block text-center">
                       <p className="text-[30px] leading-none font-heading font-black text-amber-300">{ovr}</p>
-                      <p className="text-[11px] uppercase tracking-wide text-blue-200/65">OVR</p>
+                      <p className="text-[11px] uppercase tracking-wide text-blue-200/65">{t("common.ovr")}</p>
                     </div>
 
                     <div className="hidden xl:flex items-center gap-1.5 justify-start">
@@ -338,7 +338,7 @@ export default function SquadRosterView({
 
                     <div className="hidden xl:block min-w-[150px]">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] uppercase tracking-wide text-blue-200/60">Moral</p>
+                        <p className="text-[10px] uppercase tracking-wide text-blue-200/60">{t("common.morale")}</p>
                         <p className="text-[11px] font-heading font-bold text-emerald-300">{player.morale}</p>
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-[#0a1b37] overflow-hidden">
@@ -348,7 +348,7 @@ export default function SquadRosterView({
 
                     <div className="hidden xl:block min-w-[150px]">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] uppercase tracking-wide text-blue-200/60">Energía</p>
+                        <p className="text-[10px] uppercase tracking-wide text-blue-200/60">{t("common.condition")}</p>
                         <p className="text-[11px] font-heading font-bold text-amber-300">{player.condition}</p>
                       </div>
                       <div className="w-full h-1.5 rounded-full bg-[#0a1b37] overflow-hidden">
@@ -358,7 +358,7 @@ export default function SquadRosterView({
 
                     <div className="hidden xl:block text-right min-w-[88px]">
                       <p className="text-sm font-heading font-bold text-white">{formatVal(annualWage)}</p>
-                      <p className="text-[11px] text-blue-200/60">/año</p>
+                      <p className="text-[11px] text-blue-200/60">{t("common.per_year_with_slash")}</p>
                     </div>
 
                     <div className="hidden xl:flex items-center justify-end gap-2 min-w-[100px] text-blue-200/70">
@@ -369,7 +369,7 @@ export default function SquadRosterView({
                     <div className="xl:hidden mt-2 grid grid-cols-2 gap-3">
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-[10px] uppercase tracking-wide text-blue-200/60">Moral</p>
+                          <p className="text-[10px] uppercase tracking-wide text-blue-200/60">{t("common.morale")}</p>
                           <p className="text-[11px] font-heading font-bold text-emerald-300">{player.morale}</p>
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-[#0a1b37] overflow-hidden">
@@ -378,7 +378,7 @@ export default function SquadRosterView({
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-[10px] uppercase tracking-wide text-blue-200/60">Energía</p>
+                          <p className="text-[10px] uppercase tracking-wide text-blue-200/60">{t("common.condition")}</p>
                           <p className="text-[11px] font-heading font-bold text-amber-300">{player.condition}</p>
                         </div>
                         <div className="w-full h-1.5 rounded-full bg-[#0a1b37] overflow-hidden">

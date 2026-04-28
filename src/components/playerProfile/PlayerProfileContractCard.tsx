@@ -105,7 +105,7 @@ export default function PlayerProfileContractCard({
                     />
                     <InfoRow
                         icon={<Heart className="w-4 h-4" />}
-                        label={t("common.energy", { defaultValue: "Energía" })}
+                        label={t("common.condition")}
                         value={`${condition}%`}
                     />
                     <InfoRow
