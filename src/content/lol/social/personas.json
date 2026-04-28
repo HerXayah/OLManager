@@ -88,5 +88,14 @@
     "allowedTones": ["calm", "professional", "analytical", "spicy"],
     "scope": { "type": "general" },
     "weight": 1
+  },
+  {
+    "id": "latertulia-interviewer",
+    "displayName": "LaTertulia",
+    "outletId": "latertulia-interviews",
+    "type": "inspired",
+    "allowedTones": ["community", "close"],
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "weight": 1
   }
 ]

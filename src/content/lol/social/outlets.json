@@ -46,5 +46,11 @@
     "name": "Kharasu Esports",
     "scope": { "type": "general" },
     "weight": 1
+  },
+  {
+    "id": "latertulia-interviews",
+    "name": "LaTertulia",
+    "scope": { "type": "general" },
+    "weight": 1
   }
 ]
