@@ -1350,6 +1350,135 @@ export default function ChampionDraft({
     usedChampionIds,
   ]);
 
+  const handleSkipDraftFast = (): void => {
+    if (finished || loading || champions.length === 0) return;
+
+    const used = new Set<string>([
+      ...lockedChampionIds,
+      ...blueBans,
+      ...redBans,
+      ...bluePicks.map((pick) => pick.championId),
+      ...redPicks.map((pick) => pick.championId),
+    ]);
+
+    const nextBlueBans = [...blueBans];
+    const nextRedBans = [...redBans];
+    const nextBluePicks = [...bluePicks];
+    const nextRedPicks = [...redPicks];
+    const nextHistory = [...draftHistory];
+
+    const selectForStep = (step: DraftAction): ChampionData | null => {
+      const available = champions.filter((champion) => !used.has(champion.id));
+      if (available.length === 0) return null;
+
+      if (step.type === "pick") {
+        const aiSide = step.side;
+        const ownPicks = aiSide === "blue" ? nextBluePicks : nextRedPicks;
+        const enemyPicks = aiSide === "blue" ? nextRedPicks : nextBluePicks;
+        const expectedRole = ROLE_ORDER[ownPicks.length] ?? null;
+        const coveredRoles = new Set<Role>();
+        ownPicks.forEach((pick) => {
+          const champion = championById.get(pick.championId);
+          champion?.roleHints.forEach((role) => coveredRoles.add(role));
+        });
+        const missingRoles = ROLE_ORDER.filter((role) => !coveredRoles.has(role));
+        const roleLockedCandidates =
+          expectedRole === null
+            ? []
+            : available.filter((champion) => champion.roleHints.includes(expectedRole));
+        const candidates = roleLockedCandidates.length > 0 ? roleLockedCandidates : available;
+
+        let bestChampion: ChampionData | null = null;
+        let bestScore = Number.NEGATIVE_INFINITY;
+
+        candidates.forEach((champion) => {
+          const mastery = resolveTeamChampionMastery(aiSide, champion.id);
+          const meta = metaScoreForChampion(champion);
+          const roleNeedBonus =
+            missingRoles.length > 0 && champion.roleHints.some((role) => missingRoles.includes(role))
+              ? 12
+              : 0;
+          let counter = 0;
+
+          enemyPicks.forEach((enemyPick) => {
+            counter += counterValue(champion.id, enemyPick.championId) * AI_WEIGHTS.pick.counterAdvantageWeight;
+            counter -= counterValue(enemyPick.championId, champion.id) * AI_WEIGHTS.pick.counterRiskWeight;
+          });
+
+          const score =
+            mastery * AI_WEIGHTS.pick.masteryWeight +
+            meta * AI_WEIGHTS.pick.metaWeight +
+            counter +
+            roleNeedBonus;
+          if (score > bestScore) {
+            bestScore = score;
+            bestChampion = champion;
+          }
+        });
+
+        return bestChampion;
+      }
+
+      const targetSide: Side = step.side === "blue" ? "red" : "blue";
+      const targetPicks = targetSide === "blue" ? nextBluePicks : nextRedPicks;
+      const alreadyCoveredRoles = new Set<Role>(
+        targetPicks
+          .map((pick) => pick.role)
+          .filter((role): role is Role => ROLE_ORDER.includes(role as Role)) as Role[],
+      );
+      const roleRelevantCandidates = available.filter((champion) => {
+        if (alreadyCoveredRoles.size === 0) return true;
+        if (champion.roleHints.length === 0) return true;
+        return !champion.roleHints.every((role) => alreadyCoveredRoles.has(role));
+      });
+      const banCandidates = roleRelevantCandidates.length > 0 ? roleRelevantCandidates : available;
+
+      let bestBan: ChampionData | null = null;
+      let bestScore = Number.NEGATIVE_INFINITY;
+
+      banCandidates.forEach((champion) => {
+        const enemyMastery = resolveTeamChampionMastery(targetSide, champion.id);
+        const meta = metaScoreForChampion(champion);
+        const score =
+          enemyMastery * AI_WEIGHTS.ban.enemyMasteryWeight +
+          meta * AI_WEIGHTS.ban.metaWeight;
+        if (score > bestScore) {
+          bestScore = score;
+          bestBan = champion;
+        }
+      });
+
+      return bestBan;
+    };
+
+    for (let idx = stepIndex; idx < DRAFT_SEQUENCE.length; idx += 1) {
+      const step = DRAFT_SEQUENCE[idx];
+      const selectedChampion = selectForStep(step);
+      if (!selectedChampion) break;
+
+      used.add(selectedChampion.id);
+      nextHistory.push(selectedChampion.id);
+
+      if (step.type === "ban") {
+        if (step.side === "blue") nextBlueBans.push(selectedChampion.id);
+        else nextRedBans.push(selectedChampion.id);
+      } else if (step.side === "blue") {
+        nextBluePicks.push({ championId: selectedChampion.id });
+      } else {
+        nextRedPicks.push({ championId: selectedChampion.id });
+      }
+    }
+
+    setBlueBans(nextBlueBans);
+    setRedBans(nextRedBans);
+    setBluePicks(nextBluePicks);
+    setRedPicks(nextRedPicks);
+    setDraftHistory(nextHistory);
+    setPendingChampionId(null);
+    setSwapSource(null);
+    setStepIndex(DRAFT_SEQUENCE.length);
+  };
+
   const scoreDraft = (side: Side): DraftScoreBreakdown => {
     const ownPicks = side === "blue" ? bluePicks : redPicks;
     const enemyPicks = side === "blue" ? redPicks : bluePicks;
@@ -2582,6 +2711,18 @@ export default function ChampionDraft({
                     {currentStep?.type === "ban"
                       ? t("match.draft.actions.ban")
                       : t("match.draft.actions.pick")}
+                  </button>
+                </div>
+              ) : null}
+
+              {!finished && !allAi ? (
+                <div className="relative flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSkipDraftFast}
+                    className="rounded-md border border-cyan-300/65 bg-cyan-500/20 px-2 py-1 text-[10px] font-heading font-bold uppercase tracking-wide text-cyan-100 transition-colors hover:bg-cyan-500/30"
+                  >
+                    {t("match.draft.skipDraftFast", { defaultValue: "Skip draft fast" })}
                   </button>
                 </div>
               ) : null}

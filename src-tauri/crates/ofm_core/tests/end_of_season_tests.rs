@@ -4,7 +4,7 @@ use domain::league::{
 };
 use domain::manager::Manager;
 use domain::player::{Player, PlayerAttributes, PlayerSeasonStats, Position};
-use domain::team::{FinancialTransactionKind, Team};
+use domain::team::{FinancialTransactionKind, Team, TeamKind};
 use ofm_core::clock::GameClock;
 use ofm_core::end_of_season::{is_season_complete, process_end_of_season};
 use ofm_core::game::{BoardObjective, Game, ObjectiveType};
@@ -800,6 +800,42 @@ fn bottom_half_gets_concerned_message() {
         "Bottom team should get concerned message, got: {}",
         msg.body
     );
+}
+
+#[test]
+fn next_season_generation_ignores_academy_team_ids() {
+    let mut game = make_completed_season_game();
+
+    for i in 3..=10 {
+        let tid = format!("team{}", i);
+        game.teams.push(make_team(&tid, &format!("Team{} FC", i)));
+    }
+
+    let mut academy = make_team("academy-1", "Academy One");
+    academy.team_kind = TeamKind::Academy;
+    academy.parent_team_id = Some("team1".to_string());
+    game.teams.push(academy);
+
+    if let Some(league) = &mut game.league {
+        league.standings = vec![
+            make_standing("team1", 14, 2, 2, 36, 18),
+            make_standing("team2", 13, 2, 3, 34, 19),
+            make_standing("team3", 11, 3, 4, 30, 22),
+            make_standing("team4", 10, 4, 4, 27, 21),
+            make_standing("team5", 9, 4, 5, 24, 23),
+            make_standing("team6", 8, 3, 7, 22, 25),
+            make_standing("team7", 6, 5, 7, 20, 26),
+            make_standing("team8", 5, 5, 8, 19, 28),
+            make_standing("team9", 4, 4, 10, 16, 31),
+            make_standing("team10", 2, 4, 12, 12, 36),
+        ];
+    }
+
+    process_end_of_season(&mut game);
+
+    let next_league = game.league.as_ref().expect("next league should exist");
+    assert_eq!(next_league.standings.len(), 10);
+    assert!(!next_league.standings.iter().any(|entry| entry.team_id == "academy-1"));
 }
 
 // ---------------------------------------------------------------------------

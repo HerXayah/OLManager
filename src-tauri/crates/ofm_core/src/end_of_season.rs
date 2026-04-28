@@ -365,7 +365,10 @@ pub fn process_end_of_season(game: &mut Game) -> EndOfSeasonSummary {
     // 7. Generate next season schedule
     let (next_league_name, next_season, next_split, next_start, round_offsets) =
         next_lec_split(&league_name, season);
-    let team_ids: Vec<String> = game.teams.iter().map(|t| t.id.clone()).collect();
+    let team_ids: Vec<String> = final_standings
+        .iter()
+        .map(|standing| standing.team_id.clone())
+        .collect();
     let mut new_league = generate_single_round_league_with_offsets_and_bo(
         &next_league_name,
         next_season,
@@ -386,7 +389,15 @@ pub fn process_end_of_season(game: &mut Game) -> EndOfSeasonSummary {
     game.league = Some(new_league);
 
     let preview_date = game.clock.current_date.to_rfc3339();
-    let team_names: Vec<String> = game.teams.iter().map(|team| team.name.clone()).collect();
+    let team_names: Vec<String> = team_ids
+        .iter()
+        .filter_map(|team_id| {
+            game.teams
+                .iter()
+                .find(|team| &team.id == team_id)
+                .map(|team| team.name.clone())
+        })
+        .collect();
     game.news.push(crate::news::season_preview_article(
         &team_names,
         &preview_date,

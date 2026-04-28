@@ -55,6 +55,7 @@ interface StoredFixtureDraftResult {
   snapshot: MatchSnapshot;
   controlledSide: "blue" | "red";
   result: DraftMatchResult;
+  draftSessionId?: string;
   seriesGames?: StoredSeriesGameResult[];
   seriesLength?: 1 | 3 | 5;
   seriesGameIndex?: number;
@@ -568,6 +569,7 @@ function buildDraftResultFromRuntime(params: {
 const PARALLEL_SIM_MAX_TICKS = 3600;
 const PARALLEL_SIM_DT_SEC = 0.2;
 const PARALLEL_SIM_SPEED = 12;
+const DRAFT_RUNTIME_SESSION_ID = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 function persistFixtureDraftResult(
   fixtureId: string,
@@ -578,7 +580,10 @@ function persistFixtureDraftResult(
   try {
     window.localStorage.setItem(
       `fixture-draft-result:${fixtureId}`,
-      JSON.stringify(payload),
+      JSON.stringify({
+        ...payload,
+        draftSessionId: DRAFT_RUNTIME_SESSION_ID,
+      }),
     );
   } catch (error) {
     console.warn("[MatchSimulation] fixtureResult:saveFailed", {
@@ -644,6 +649,16 @@ function clearActiveSeriesSession(fixtureId: string) {
     window.sessionStorage.removeItem(getSeriesSessionKey(fixtureId));
   } catch {
     // no-op
+  }
+}
+
+function isCurrentRuntimeDraftSession(fixtureId: string): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return window.sessionStorage.getItem(getSeriesSessionKey(fixtureId)) === DRAFT_RUNTIME_SESSION_ID;
+  } catch {
+    return false;
   }
 }
 
@@ -917,6 +932,11 @@ export default function MatchSimulation() {
     const stored = readStoredFixtureDraftResult(currentFixture.id);
     if (!stored) {
       markActiveSeriesSession(currentFixture.id);
+      try {
+        window.sessionStorage.setItem(getSeriesSessionKey(currentFixture.id), DRAFT_RUNTIME_SESSION_ID);
+      } catch {
+        // no-op
+      }
       return;
     }
 
@@ -928,16 +948,24 @@ export default function MatchSimulation() {
 
     if (isSeriesComplete) {
       markActiveSeriesSession(currentFixture.id);
+      try {
+        window.sessionStorage.setItem(getSeriesSessionKey(currentFixture.id), DRAFT_RUNTIME_SESSION_ID);
+      } catch {
+        // no-op
+      }
       return;
     }
 
-    if (!hasActiveSeriesSession(currentFixture.id)) {
+    if (stored.draftSessionId !== DRAFT_RUNTIME_SESSION_ID) {
       clearStoredFixtureDraftResult(currentFixture.id);
       clearActiveSeriesSession(currentFixture.id);
       return;
     }
 
-    markActiveSeriesSession(currentFixture.id);
+    // Never resume an incomplete BO-series from persisted storage.
+    // We keep only completed series results.
+    clearStoredFixtureDraftResult(currentFixture.id);
+    clearActiveSeriesSession(currentFixture.id);
   }, [currentFixture?.id, seriesLength]);
 
   useEffect(() => {
@@ -950,21 +978,41 @@ export default function MatchSimulation() {
     }
 
     const stored = readStoredFixtureDraftResult(currentFixture.id);
-    const fromResultHome = readSeriesWins(currentFixture.result?.home_wins) || readSeriesWins(currentFixture.result?.home_goals);
-    const fromResultAway = readSeriesWins(currentFixture.result?.away_wins) || readSeriesWins(currentFixture.result?.away_goals);
-    const homeWins = Math.max(fromResultHome, readSeriesWins(stored?.homeSeriesWins));
-    const awayWins = Math.max(fromResultAway, readSeriesWins(stored?.awaySeriesWins));
+    const targetSeriesWins = seriesLength === 3 ? 2 : seriesLength === 5 ? 3 : 1;
+    const fixtureIsScheduled = currentFixture.status === "Scheduled";
+    const resumeFromFixtureResult =
+      seriesLength <= 1 ||
+      (isCurrentRuntimeDraftSession(currentFixture.id) && !fixtureIsScheduled);
+    const fromResultHome = resumeFromFixtureResult
+      ? readSeriesWins(currentFixture.result?.home_wins) || readSeriesWins(currentFixture.result?.home_goals)
+      : 0;
+    const fromResultAway = resumeFromFixtureResult
+      ? readSeriesWins(currentFixture.result?.away_wins) || readSeriesWins(currentFixture.result?.away_goals)
+      : 0;
+    const storedHomeWins = readSeriesWins(stored?.homeSeriesWins);
+    const storedAwayWins = readSeriesWins(stored?.awaySeriesWins);
+    const persistedWinsEnabled = resumeFromFixtureResult;
+    const homeWins = persistedWinsEnabled ? Math.max(fromResultHome, storedHomeWins) : 0;
+    const awayWins = persistedWinsEnabled ? Math.max(fromResultAway, storedAwayWins) : 0;
+    const storedSeriesComplete =
+      storedHomeWins >= targetSeriesWins || storedAwayWins >= targetSeriesWins;
+    const canReuseStoredState = (seriesLength <= 1 || storedSeriesComplete) && resumeFromFixtureResult;
 
     setSeriesHomeWins(homeWins);
     setSeriesAwayWins(awayWins);
     setSeriesGameIndex(homeWins + awayWins);
-    setSeriesUsedChampionIds(Array.isArray(stored?.seriesUsedChampionIds) ? stored.seriesUsedChampionIds : []);
+    setSeriesUsedChampionIds(
+      canReuseStoredState && Array.isArray(stored?.seriesUsedChampionIds)
+        ? stored.seriesUsedChampionIds
+        : [],
+    );
   }, [
     currentFixture?.id,
     currentFixture?.result?.away_goals,
     currentFixture?.result?.away_wins,
     currentFixture?.result?.home_goals,
     currentFixture?.result?.home_wins,
+    seriesLength,
   ]);
 
   const normalizeTeamKey = (value: string): string =>
