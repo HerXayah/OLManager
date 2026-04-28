@@ -248,7 +248,12 @@
     "masteryTrainingTitle": "Entraînement de maîtrise des champions",
     "noTarget": "Aucune cible",
     "currentMastery": "Maîtrise : {{value}}",
-    "selectChampion": "Sélectionnez un champion"
+    "selectChampion": "Sélectionnez un champion",
+    "gain": "Gain",
+    "high": "Élevé",
+    "moderate": "Modéré",
+    "low": "Faible",
+    "discoveryProgress": "Progression de découverte"
   },
   "continueMenu": {
     "goToField": "Aller sur le Terrain",
@@ -342,7 +347,8 @@
     "monthlyNet": "Net mensuel",
     "income": "Revenus",
     "expenses": "Dépenses",
-    "noUpcomingPlayoffMatch": "Aucun prochain match de playoffs."
+    "noUpcomingPlayoffMatch": "Aucun prochain match de playoffs.",
+    "fullRoster": "Effectif complet"
   },
   "season": {
     "preseasonStatus": "État de la présaison",
@@ -424,7 +430,9 @@
     "academyRosterLinked": "Effectif de l'académie",
     "academyNotLinked": "Académie non liée",
     "promoting": "Promotion...",
-    "promote": "Promouvoir"
+    "promote": "Promouvoir",
+    "academyPlayers": "joueurs d'académie",
+    "academyPlayersStartingMayus": "Joueurs d'académie"
   },
   "common": {
     "loading": "Chargement...",
@@ -465,8 +473,11 @@
     "vs": "vs",
     "age": "Âge",
     "ovr": "OVR",
+    "year": "Année",
+    "per_year_with_slash": "/an",
     "condition": "Condition",
     "morale": "Moral",
+    "potential": "Potentiel",
     "value": "Valeur",
     "wage": "Salaire",
     "name": "Nom",
@@ -640,6 +651,7 @@
   },
   "squad": {
     "title": "Effectif de {{team}}",
+    "detailsTitle": "Détails de l'effectif",
     "playerCount": "{{count}} Joueurs",
     "noPlayers": "Aucun joueur trouvé dans votre effectif.",
     "pos": "Pos",
@@ -1417,7 +1429,10 @@
     "championInsignia": "Insigne",
     "championWinRateShort": "WR",
     "championMasteryLabel": "Maîtrise {{value}}",
-    "championGames": "Parties"
+    "championGames": "Parties",
+    "promoteToMain": "Promouvoir en équipe première",
+    "demoteToAcademy": "Rétrograder en académie",
+    "rerollWarning": "Changer de position relance les attributs et peut modifier l'OVR des joueurs."
   },
   "teamProfile": {
     "clubInfo": "Informations du Club",
@@ -1575,6 +1590,7 @@
     "events": "Événements",
     "stats": "Statistiques",
     "lineups": "Compositions",
+    "lineup": "Composition",
     "simSpeed": "Vitesse de Simulation",
     "pause": "Pause",
     "slow": "Lent",

@@ -810,9 +810,9 @@ export default function PlayerProfile({
         onSelectTeam={onSelectTeam}
         academyActionLabel={
           isOwnAcademyPlayer
-            ? "Subir al primer equipo"
+            ? t("playerProfile.promoteToMain")
             : isOwnMainPlayer && managerAcademyTeam
-              ? "Bajar a academia"
+              ? t("playerProfile.demoteToAcademy")
               : null
         }
         academyActionLoading={academyActionSubmitting}

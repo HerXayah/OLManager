@@ -342,7 +342,7 @@ export default function PlayerProfileHeroCard({
             </div>
             <div className="grid grid-cols-2 gap-3">
               <QuickStat
-                label={t("common.energy", { defaultValue: "Energía" })}
+                label={t("common.condition", { defaultValue: "Condition" })}
                 value={`${player.condition}%`}
                 color={player.condition >= 70 ? "text-primary-400" : "text-red-400"}
               />

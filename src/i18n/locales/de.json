@@ -260,7 +260,12 @@
     "masteryTrainingTitle": "Champion Mastery Training",
     "noTarget": "No target",
     "currentMastery": "Mastery: {{value}}",
-    "selectChampion": "Select a champion"
+    "selectChampion": "Select a champion",
+    "gain": "Zuwachs",
+    "high": "Hoch",
+    "moderate": "Moderat",
+    "low": "Niedrig",
+    "discoveryProgress": "Entdeckungsfortschritt"
   },
   "exitConfirm": {
     "title": "Zum Hauptmenü?",
@@ -342,7 +347,8 @@
     "monthlyNet": "Monthly Net",
     "income": "Income",
     "expenses": "Expenses",
-    "noUpcomingPlayoffMatch": "No upcoming playoff match."
+    "noUpcomingPlayoffMatch": "No upcoming playoff match.",
+    "fullRoster": "Gesamter Kader"
   },
   "season": {
     "preseasonStatus": "Status der Vorbereitung",
@@ -424,7 +430,9 @@
     "academyRosterLinked": "Academy roster",
     "academyNotLinked": "Academy not linked",
     "promoting": "Promoting...",
-    "promote": "Promote"
+    "promote": "Promote",
+    "academyPlayers": "Akademiespieler",
+    "academyPlayersStartingMayus": "Akademiespieler"
   },
   "common": {
     "loading": "Lädt...",
@@ -465,8 +473,11 @@
     "vs": "vs",
     "age": "Alter",
     "ovr": "OVR",
+    "year": "Jahr",
+    "per_year_with_slash": "/Jahr",
     "condition": "Kondition",
     "morale": "Moral",
+    "potential": "Potenzial",
     "value": "Wert",
     "wage": "Gehalt",
     "name": "Name",
@@ -640,6 +651,7 @@
   },
   "squad": {
     "title": "{{team}} Kader",
+    "detailsTitle": "Kaderdetails",
     "playerCount": "{{count}} Spieler",
     "noPlayers": "Keine Spieler in deinem Kader gefunden.",
     "pos": "Pos",
@@ -1411,7 +1423,10 @@
     "championInsignia": "Insignia",
     "championWinRateShort": "WR",
     "championMasteryLabel": "Mastery {{value}}",
-    "championGames": "Games"
+    "championGames": "Games",
+    "promoteToMain": "In die erste Mannschaft befördern",
+    "demoteToAcademy": "In die Akademie versetzen",
+    "rerollWarning": "Positionswechsel würfelt Attribute neu und kann die OVR der Spieler verändern."
   },
   "teamProfile": {
     "clubInfo": "Vereinsinformationen",
@@ -1567,6 +1582,7 @@
     "events": "Ereignisse",
     "stats": "Statistiken",
     "lineups": "Aufstellungen",
+    "lineup": "Aufstellung",
     "simSpeed": "Simulationsgeschwindigkeit",
     "pause": "Pause",
     "slow": "Langsam",
