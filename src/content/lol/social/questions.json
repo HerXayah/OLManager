@@ -2,201 +2,232 @@
   {
     "id": "clean-win-objectives",
     "textKey": "content.lol.social.questions.cleanWinObjectives.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "eros"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "win",
-      "neutral_objectives"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "credit-preparation",
-      "stay-measured"
-    ],
+    "scope": { "type": "general" },
+    "personaIds": ["eros", "verified-analyst"],
+    "tones": ["professional", "analytical"],
+    "requiredTags": ["win", "neutral_objectives"],
+    "excludedTags": ["loss"],
+    "responseIds": ["credit-preparation", "praise-shotcalling", "stay-measured"],
     "weight": 3
+  },
+  {
+    "id": "first-blood-impact",
+    "textKey": "content.lol.social.questions.firstBlood.text",
+    "scope": { "type": "general" },
+    "personaIds": ["eros", "verified-analyst"],
+    "tones": ["professional", "analytical"],
+    "requiredTags": ["first_blood"],
+    "excludedTags": ["loss"],
+    "responseIds": ["stay-measured", "praise-shotcalling"],
+    "weight": 2
+  },
+  {
+    "id": "result-win-objectives",
+    "textKey": "content.lol.social.questions.resultWin.text",
+    "scope": { "type": "general" },
+    "personaIds": ["eros", "dot-esports-reporter"],
+    "tones": ["professional", "analytical"],
+    "requiredTags": ["win"],
+    "excludedTags": ["loss"],
+    "responseIds": ["stay-measured", "keep-hungry", "credit-preparation"],
+    "weight": 2
+  },
+  {
+    "id": "close-game-comeback",
+    "textKey": "content.lol.social.questions.closeGame.text",
+    "scope": { "type": "general" },
+    "personaIds": ["eros", "laure-valee"],
+    "tones": ["professional", "close"],
+    "requiredTags": ["close_game", "comeback", "win"],
+    "excludedTags": ["loss"],
+    "responseIds": ["stay-measured", "protect-player", "keep-hungry"],
+    "weight": 2
   },
   {
     "id": "underperformance-pressure",
     "textKey": "content.lol.social.questions.underperformancePressure.text",
-    "scope": {
-      "type": "league",
-      "leagueIds": [
-        "default"
-      ]
-    },
-    "personaIds": [
-      "rift-instigator"
-    ],
-    "tones": [
-      "spicy",
-      "pressure"
-    ],
-    "requiredTags": [
-      "loss",
-      "underperformance"
-    ],
-    "excludedTags": [
-      "win",
-      "comeback"
-    ],
-    "responseIds": [
-      "demand-reset",
-      "stay-measured"
-    ],
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "personaIds": ["rift-instigator", "dexerto-reporter"],
+    "tones": ["spicy", "pressure"],
+    "requiredTags": ["loss", "underperformance"],
+    "excludedTags": ["win", "comeback"],
+    "responseIds": ["demand-reset", "take-responsibility", "challenge-roster"],
     "weight": 1
   },
   {
-    "id": "result-win-objectives",
-    "textKey": "content.lol.social.questions.resultWin.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "eros"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "win"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "stay-measured"
-    ],
+    "id": "draft-loss-question",
+    "textKey": "content.lol.social.questions.draftLoss.text",
+    "scope": { "type": "general" },
+    "personaIds": ["draft-room-critic", "verified-analyst"],
+    "tones": ["analytical", "pressure"],
+    "requiredTags": ["loss", "draft"],
+    "excludedTags": ["win"],
+    "responseIds": ["admit-draft-mistake", "defend-draft", "take-responsibility"],
+    "weight": 3
+  },
+  {
+    "id": "draft-win-flexibility",
+    "textKey": "content.lol.social.questions.draftWinFlexibility.text",
+    "scope": { "type": "general" },
+    "personaIds": ["verified-analyst", "laure-valee"],
+    "tones": ["analytical", "professional"],
+    "requiredTags": ["win", "draft"],
+    "excludedTags": ["loss"],
+    "responseIds": ["defend-draft", "credit-preparation", "stay-measured"],
+    "weight": 3
+  },
+  {
+    "id": "baron-throw-loss",
+    "textKey": "content.lol.social.questions.baronThrowLoss.text",
+    "scope": { "type": "general" },
+    "personaIds": ["dot-esports-reporter", "draft-room-critic"],
+    "tones": ["pressure", "analytical"],
+    "requiredTags": ["loss", "decisive_mistake"],
+    "excludedTags": ["win"],
+    "responseIds": ["take-responsibility", "demand-reset", "stay-measured"],
+    "weight": 3
+  },
+  {
+    "id": "baron-control-win",
+    "textKey": "content.lol.social.questions.baronControlWin.text",
+    "scope": { "type": "general" },
+    "personaIds": ["verified-analyst", "eros"],
+    "tones": ["analytical", "professional"],
+    "requiredTags": ["win", "neutral_objectives", "objective_domination"],
+    "excludedTags": ["loss"],
+    "responseIds": ["praise-shotcalling", "credit-preparation", "stay-measured"],
+    "weight": 3
+  },
+  {
+    "id": "vision-control-loss",
+    "textKey": "content.lol.social.questions.visionControlLoss.text",
+    "scope": { "type": "general" },
+    "personaIds": ["draft-room-critic", "esportmaniacos-desk"],
+    "tones": ["analytical", "pressure"],
+    "requiredTags": ["loss", "objective_control"],
+    "excludedTags": ["win"],
+    "responseIds": ["take-responsibility", "demand-reset", "stay-measured"],
     "weight": 2
   },
   {
-    "id": "first-blood-impact",
-    "textKey": "content.lol.social.questions.firstBlood.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "eros"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "first_blood"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "stay-measured"
-    ],
+    "id": "star-player-carry",
+    "textKey": "content.lol.social.questions.starPlayerCarry.text",
+    "scope": { "type": "general" },
+    "personaIds": ["laure-valee"],
+    "tones": ["professional", "close"],
+    "requiredTags": ["win", "mvp_carry"],
+    "excludedTags": ["loss"],
+    "responseIds": ["protect-player", "credit-preparation", "keep-hungry"],
     "weight": 2
   },
   {
-    "id": "close-game-comeback",
-    "textKey": "content.lol.social.questions.closeGame.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "eros"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "close_game"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "stay-measured"
-    ],
+    "id": "star-player-slump",
+    "textKey": "content.lol.social.questions.starPlayerSlump.text",
+    "scope": { "type": "general" },
+    "personaIds": ["dexerto-reporter", "rift-instigator"],
+    "tones": ["pressure", "spicy"],
+    "requiredTags": ["loss", "underperformance"],
+    "excludedTags": ["win"],
+    "responseIds": ["protect-player", "demand-reset", "take-responsibility"],
     "weight": 2
   },
   {
-    "id": "result-win-objectives",
-    "textKey": "content.lol.social.questions.resultWin.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "eros"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "win"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "stay-measured"
-    ],
+    "id": "midlane-pressure-map",
+    "textKey": "content.lol.social.questions.midlanePressureMap.text",
+    "scope": { "type": "general" },
+    "personaIds": ["dot-esports-reporter", "verified-analyst"],
+    "tones": ["analytical", "professional"],
+    "requiredTags": ["role_mid"],
+    "excludedTags": [],
+    "responseIds": ["praise-shotcalling", "stay-measured"],
     "weight": 2
   },
   {
-    "id": "first-blood-impact",
-    "textKey": "content.lol.social.questions.firstBlood.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "eros"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "first_blood"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "stay-measured"
-    ],
+    "id": "toplane-island-question",
+    "textKey": "content.lol.social.questions.toplaneIsland.text",
+    "scope": { "type": "general" },
+    "personaIds": ["esportmaniacos-desk", "sideline-human"],
+    "tones": ["community", "analytical"],
+    "requiredTags": ["role_top"],
+    "excludedTags": [],
+    "responseIds": ["protect-player", "stay-measured", "credit-preparation"],
+    "weight": 1
+  },
+  {
+    "id": "teamfight-execution-loss",
+    "textKey": "content.lol.social.questions.teamfightExecutionLoss.text",
+    "scope": { "type": "general" },
+    "personaIds": ["draft-room-critic", "dot-esports-reporter"],
+    "tones": ["pressure", "analytical"],
+    "requiredTags": ["loss", "decisive_mistake"],
+    "excludedTags": ["win"],
+    "responseIds": ["take-responsibility", "demand-reset", "stay-measured"],
     "weight": 2
   },
   {
-    "id": "close-game-comeback",
-    "textKey": "content.lol.social.questions.closeGame.text",
-    "scope": {
-      "type": "general"
-    },
-    "personaIds": [
-      "verified-analyst"
-    ],
-    "tones": [
-      "professional",
-      "analytical"
-    ],
-    "requiredTags": [
-      "close_game"
-    ],
-    "excludedTags": [
-      "loss"
-    ],
-    "responseIds": [
-      "stay-measured"
-    ],
+    "id": "mental-reset-after-loss",
+    "textKey": "content.lol.social.questions.mentalResetAfterLoss.text",
+    "scope": { "type": "general" },
+    "personaIds": ["sideline-human", "laure-valee"],
+    "tones": ["close", "professional"],
+    "requiredTags": ["loss"],
+    "excludedTags": ["win"],
+    "responseIds": ["protect-player", "focus-next-series", "take-responsibility"],
+    "weight": 3
+  },
+  {
+    "id": "rivalry-week-pressure",
+    "textKey": "content.lol.social.questions.rivalryWeekPressure.text",
+    "scope": { "type": "general" },
+    "personaIds": ["rift-instigator", "esportmaniacos-desk"],
+    "tones": ["spicy", "dramatic", "community"],
+    "requiredTags": ["rivalry"],
+    "excludedTags": [],
+    "responseIds": ["calm-rivalry", "lean-into-rivalry", "focus-next-series"],
+    "weight": 2
+  },
+  {
+    "id": "playoff-best-of-series",
+    "textKey": "content.lol.social.questions.playoffBestOfSeries.text",
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "personaIds": ["laure-valee", "verified-analyst", "kharasu-esports"],
+    "tones": ["professional", "analytical"],
+    "requiredFacts": ["leagueId"],
+    "excludedTags": [],
+    "responseIds": ["focus-next-series", "credit-preparation", "stay-measured"],
+    "weight": 1
+  },
+  {
+    "id": "comeback-loss-heartbreak",
+    "textKey": "content.lol.social.questions.comebackLossHeartbreak.text",
+    "scope": { "type": "general" },
+    "personaIds": ["sideline-human", "laure-valee"],
+    "tones": ["close", "professional"],
+    "requiredTags": ["loss", "close_game"],
+    "excludedTags": ["win"],
+    "responseIds": ["protect-player", "focus-next-series", "credit-opponent"],
+    "weight": 2
+  },
+  {
+    "id": "stomp-win-humility",
+    "textKey": "content.lol.social.questions.stompWinHumility.text",
+    "scope": { "type": "general" },
+    "personaIds": ["laure-valee", "esportmaniacos-desk"],
+    "tones": ["professional", "community"],
+    "requiredTags": ["win", "stomp"],
+    "excludedTags": ["loss"],
+    "responseIds": ["keep-hungry", "credit-opponent", "stay-measured"],
+    "weight": 2
+  },
+  {
+    "id": "stomp-loss-accountability",
+    "textKey": "content.lol.social.questions.stompLossAccountability.text",
+    "scope": { "type": "general" },
+    "personaIds": ["draft-room-critic", "rift-instigator"],
+    "tones": ["pressure", "spicy"],
+    "requiredTags": ["loss", "stomped"],
+    "excludedTags": ["win"],
+    "responseIds": ["take-responsibility", "demand-reset", "challenge-roster"],
     "weight": 2
   }
 ]

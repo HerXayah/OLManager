@@ -6,6 +6,60 @@
     "type": "real",
     "allowedTones": ["professional", "analytical"],
     "scope": { "type": "general" },
+    "weight": 3
+  },
+  {
+    "id": "dot-esports-reporter",
+    "displayName": "Dot Esports Reporter",
+    "outletId": "dot-esports-lol",
+    "type": "inspired",
+    "allowedTones": ["professional", "analytical", "pressure"],
+    "scope": { "type": "general" },
+    "weight": 2
+  },
+  {
+    "id": "dexerto-reporter",
+    "displayName": "Dexerto Reporter",
+    "outletId": "dexerto-lol",
+    "type": "inspired",
+    "allowedTones": ["professional", "spicy", "pressure"],
+    "scope": { "type": "general" },
+    "weight": 2
+  },
+  {
+    "id": "esportmaniacos-desk",
+    "displayName": "Esportmaníacos Desk",
+    "outletId": "esportmaniacos",
+    "type": "inspired",
+    "allowedTones": ["community", "spicy", "close", "analytical"],
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "weight": 3
+  },
+  {
+    "id": "laure-valee",
+    "displayName": "Laure Vallée",
+    "outletId": "lec-post-match",
+    "type": "inspired",
+    "allowedTones": ["professional", "close"],
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "weight": 2
+  },
+  {
+    "id": "verified-analyst",
+    "displayName": "Verified Analyst",
+    "outletId": "tactical-rift-review",
+    "type": "fictional",
+    "allowedTones": ["analytical", "professional"],
+    "scope": { "type": "general" },
+    "weight": 2
+  },
+  {
+    "id": "draft-room-critic",
+    "displayName": "Draft Room Critic",
+    "outletId": "tactical-rift-review",
+    "type": "fictional",
+    "allowedTones": ["analytical", "pressure"],
+    "scope": { "type": "general" },
     "weight": 2
   },
   {
@@ -14,25 +68,25 @@
     "outletId": "league-beat",
     "type": "fictional",
     "allowedTones": ["spicy", "pressure", "dramatic"],
-    "scope": { "type": "league", "leagueIds": ["default"] },
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
     "weight": 1
   },
   {
-    "id": "academy-voice",
-    "displayName": "Academy Voice",
-    "outletId": "academy-wire",
+    "id": "sideline-human",
+    "displayName": "Sideline Human Angle",
+    "outletId": "lec-post-match",
     "type": "inspired",
-    "allowedTones": ["community", "close"],
+    "allowedTones": ["professional", "community", "close"],
     "scope": { "type": "general" },
     "weight": 1
   },
   {
-    "id": "laure-valee",
-    "displayName": "Laure Vallée",
-    "outletId": "lec-post-match",
-    "type": "inspired",
-    "allowedTones": ["professional"],
-    "scope": { "type": "league", "leagueIds": ["lec"] },
+    "id": "kharasu-esports",
+    "displayName": "Kharasu",
+    "outletId": "nkharasu-esports",
+    "type": "fictional",
+    "allowedTones": ["calm", "professional", "analytical", "spicy"],
+    "scope": { "type": "general" },
     "weight": 1
   }
 ]
