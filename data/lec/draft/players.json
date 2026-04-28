@@ -30812,7 +30812,7 @@
           ]
         ],
         "photo": "https://dpm.lol/esport/players/light.webp"
-      },    
+      },
       {
         "ign": "Execute",
         "firstName": "Jeong-hoon",
@@ -30999,74 +30999,6 @@
         ],
         "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/d6/NB_Miniduke_2016.png/revision/latest?cb=20170802061055",
         "found": true
-      },
-      {
-        "ign": "Th3Antonio",
-        "firstName": "Antonio",
-        "lastName": "Espinosa",
-        "dob": "1999-03-24",
-        "nationality": "ES",
-        "residency": "EMEA",
-        "role": "Top",
-        "teamId": "fa",
-        "rating": 72,
-        "potential": 74,
-        "salary": 120000,
-        "contractEnd": "2025-11-18",
-        "marketValue": 150000,
-        "reputation": 75,
-        "personality": "quiet",
-        "champions": [
-          [
-            "Cho'Gath",
-            100
-          ],
-          [
-            "Ornn",
-            100
-          ],
-          [
-            "Sion",
-            100
-          ],
-          [
-            "Gnar",
-            50
-          ],
-          [
-            "Renekton",
-            75
-          ],
-          [
-            "Gragas",
-            75
-          ],
-          [
-            "Malphite",
-            100
-          ],
-          [
-            "K'Sante",
-            75
-          ],
-          [
-            "Poppy",
-            75
-          ],
-          [
-            "Jax",
-            50
-          ],
-          [
-            "Shen",
-            25
-          ],
-          [
-            "Trundle",
-            25
-          ]
-        ],
-        "photo": "https://dpm.lol/esport/players/th3antonio.webp"
       },
       {
         "ign": "Tyler1",
@@ -32475,6 +32407,326 @@
         ],
         "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/0/08/Skain_g2v.jpeg/revision/latest?cb=20170802132525",
         "found": true
+      },
+      {
+        "ign": "Zeniv",
+        "firstName": "Mina",
+        "lastName": "",
+        "dob": "2000-02-18",
+        "nationality": "DE",
+        "residency": "EMEA",
+        "role": "Top",
+        "teamId": "fa",
+        "rating": 74,
+        "potential": 77,
+        "salary": 165000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 290000,
+        "reputation": 71,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Gnar",
+            100
+          ],
+          [
+            "K'Sante",
+            90
+          ],
+          [
+            "Renekton",
+            85
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/7c/G2H_Zeniv_2025.png/revision/latest/scale-to-width-down/220?cb=20250216161450"
+      },
+      {
+        "ign": "Shiina",
+        "firstName": "Marta",
+        "lastName": "Mesas Garrido",
+        "dob": "2001-10-26",
+        "nationality": "ES",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "fa",
+        "rating": 73,
+        "potential": 76,
+        "salary": 156000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 270000,
+        "reputation": 70,
+        "personality": "leader",
+        "champions": [
+          [
+            "Vi",
+            100
+          ],
+          [
+            "Sejuani",
+            92
+          ],
+          [
+            "Poppy",
+            86
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/57/G2H_Shiina_2025.png/revision/latest/scale-to-width-down/220?cb=20250216161452"
+      },
+      {
+        "ign": "Rym",
+        "firstName": "Rym",
+        "lastName": "Salloum",
+        "dob": "2002-01-01",
+        "nationality": "VE",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fa",
+        "rating": 72,
+        "potential": 75,
+        "salary": 148000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 250000,
+        "reputation": 68,
+        "personality": "quiet",
+        "champions": [
+          [
+            "Azir",
+            100
+          ],
+          [
+            "Orianna",
+            90
+          ],
+          [
+            "Taliyah",
+            84
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/1/18/G2H_rym_2025.png/revision/latest/scale-to-width-down/220?cb=20250216161453"
+      },
+      {
+        "ign": "Caltys",
+        "firstName": "Maya",
+        "lastName": "Henckel",
+        "dob": "2002-05-11",
+        "nationality": "SE",
+        "residency": "EMEA",
+        "role": "ADC",
+        "teamId": "fa",
+        "rating": 74,
+        "potential": 78,
+        "salary": 171000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 300000,
+        "reputation": 72,
+        "personality": "focused",
+        "champions": [
+          [
+            "Kai'Sa",
+            100
+          ],
+          [
+            "Xayah",
+            90
+          ],
+          [
+            "Aphelios",
+            86
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b8/G2H_Caltys_2025.png/revision/latest/scale-to-width-down/220?cb=20250216161457"
+      },
+      {
+        "ign": "Colomblbl",
+        "firstName": "Ève",
+        "lastName": "Monvoisin",
+        "dob": "2002-01-01",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 71,
+        "potential": 74,
+        "salary": 142000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 235000,
+        "reputation": 67,
+        "personality": "calm",
+        "champions": [
+          [
+            "Rakan",
+            100
+          ],
+          [
+            "Nautilus",
+            88
+          ],
+          [
+            "Alistar",
+            84
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/cc/G2H_Colomblbl_2025.png/revision/latest/scale-to-width-down/220?cb=20250216161456"
+      },
+      {
+        "ign": "Starrie",
+        "firstName": "Ivy",
+        "lastName": "Starr",
+        "dob": "2002-06-26",
+        "nationality": "US",
+        "residency": "NA",
+        "role": "Top",
+        "teamId": "fa",
+        "rating": 72,
+        "potential": 75,
+        "salary": 150000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 255000,
+        "reputation": 68,
+        "personality": "ambitious",
+        "champions": [
+          [
+            "Aatrox",
+            100
+          ],
+          [
+            "Gwen",
+            90
+          ],
+          [
+            "Camille",
+            84
+          ]
+        ],
+        "photo": "https://i.imgur.com/6pwxTZx.png"
+      },
+      {
+        "ign": "Delicate",
+        "firstName": "Chara",
+        "lastName": "Giannopoulou",
+        "dob": "2002-01-01",
+        "nationality": "GR",
+        "residency": "EMEA",
+        "role": "Jungle",
+        "teamId": "fa",
+        "rating": 71,
+        "potential": 74,
+        "salary": 145000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 240000,
+        "reputation": 67,
+        "personality": "aggressive",
+        "champions": [
+          [
+            "Lee Sin",
+            100
+          ],
+          [
+            "Viego",
+            90
+          ],
+          [
+            "Xin Zhao",
+            84
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/da/Delicate_2025.jpg/revision/latest/scale-to-width-down/220?cb=20251201143054"
+      },
+      {
+        "ign": "Sashy",
+        "firstName": "Sasha",
+        "lastName": "Barrault",
+        "dob": "2002-05-27",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Mid",
+        "teamId": "fa",
+        "rating": 73,
+        "potential": 76,
+        "salary": 158000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 275000,
+        "reputation": 70,
+        "personality": "focused",
+        "champions": [
+          [
+            "Ahri",
+            100
+          ],
+          [
+            "LeBlanc",
+            90
+          ],
+          [
+            "Syndra",
+            85
+          ]
+        ],
+        "photo": "https://liquipedia.net/commons/images/thumb/7/73/ET_Sashy_LGC_Rising_2025.jpg/600px-ET_Sashy_LGC_Rising_2025.jpg"
+      },
+      {
+        "ign": "Sea",
+        "firstName": "Nova",
+        "lastName": "Jenčáková",
+        "dob": "1998-11-21",
+        "nationality": "SK",
+        "residency": "EMEA",
+        "role": "ADC",
+        "teamId": "fa",
+        "rating": 70,
+        "potential": 72,
+        "salary": 138000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 225000,
+        "reputation": 66,
+        "personality": "veteran",
+        "champions": [
+          [
+            "Jinx",
+            100
+          ],
+          [
+            "Ezreal",
+            88
+          ],
+          [
+            "Varus",
+            82
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c2/SNC_Sea_2025.jpg/revision/latest/scale-to-width-down/220?cb=20250830143850"
+      },
+      {
+        "ign": "Virtuosa",
+        "firstName": "Skylar",
+        "lastName": "Hew",
+        "dob": "2002-01-01",
+        "nationality": "US",
+        "residency": "NA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 68,
+        "potential": 71,
+        "salary": 128000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 210000,
+        "reputation": 64,
+        "personality": "calm",
+        "champions": [
+          [
+            "Thresh",
+            100
+          ],
+          [
+            "Leona",
+            88
+          ],
+          [
+            "Braum",
+            82
+          ]
+        ],
+        "photo": "https://i.imgur.com/uC72kTz.png"
       }
     ]
   }

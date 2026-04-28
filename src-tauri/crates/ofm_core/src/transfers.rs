@@ -7,12 +7,15 @@ use domain::player::TransferOfferStatus;
 use domain::season::TransferWindowStatus;
 use domain::team::TeamKind;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 
 const TRANSFER_NEGOTIATION_STALE_DAYS: i64 = 14;
+const PLAYER_INCOMING_OFFER_COOLDOWN_DAYS: i64 = 7;
 const TRANSFER_BUDGET_SELLING_REALLOCATION_PCT: i64 = 60;
 const CONTRACT_RELEASE_PENALTY_PCT: i64 = 40;
-const MAX_INCOMING_OFFERS_PER_DAY: usize = 2;
+const MAX_INCOMING_OFFERS_PER_DAY: usize = 1;
 const MAX_AI_FREE_AGENT_SIGNINGS_PER_DAY: usize = 2;
 const MAX_AI_INTERCLUB_TRANSFERS_PER_DAY: usize = 1;
 const LOL_CORE_ROLES: [&str; 5] = ["TOP", "JUNGLE", "MID", "ADC", "SUPPORT"];
@@ -206,7 +209,12 @@ fn incoming_interest_score(current_date: NaiveDate, player: &domain::player::Pla
     score
 }
 
-fn suggested_incoming_fee(current_date: NaiveDate, player: &domain::player::Player) -> u64 {
+fn suggested_incoming_fee(
+    current_date: NaiveDate,
+    player: &domain::player::Player,
+    buyer_team: &domain::team::Team,
+    buyer_id: &str,
+) -> u64 {
     let mut multiplier: f64 = if player.transfer_listed { 0.75 } else { 0.8 };
 
     if let Some(days_remaining) =
@@ -223,7 +231,29 @@ fn suggested_incoming_fee(current_date: NaiveDate, player: &domain::player::Play
         multiplier -= 0.05;
     }
 
-    let multiplier = multiplier.clamp(0.45, 0.9);
+    // Stronger clubs and richer clubs tend to bid more aggressively.
+    if buyer_team.reputation >= 1300 {
+        multiplier += 0.06;
+    } else if buyer_team.reputation >= 1100 {
+        multiplier += 0.03;
+    }
+
+    if buyer_team.transfer_budget >= 4_000_000 {
+        multiplier += 0.04;
+    } else if buyer_team.transfer_budget >= 2_000_000 {
+        multiplier += 0.02;
+    }
+
+    // Deterministic per club+player+day jitter so offers are not all identical.
+    let mut hasher = DefaultHasher::new();
+    player.id.hash(&mut hasher);
+    buyer_id.hash(&mut hasher);
+    current_date.num_days_from_ce().hash(&mut hasher);
+    let bucket = (hasher.finish() % 17) as i32; // 0..16
+    let jitter = (bucket - 8) as f64 * 0.01; // -8% .. +8%
+    multiplier += jitter;
+
+    let multiplier = multiplier.clamp(0.42, 1.0);
     ((player.market_value as f64) * multiplier).round() as u64
 }
 
@@ -244,6 +274,49 @@ fn offer_is_stale(current_date: NaiveDate, offer: &domain::player::TransferOffer
     };
 
     (current_date - offer_date).num_days() >= TRANSFER_NEGOTIATION_STALE_DAYS
+}
+
+fn has_recent_incoming_offer(
+    current_date: NaiveDate,
+    player: &domain::player::Player,
+    cooldown_days: i64,
+) -> bool {
+    player.transfer_offers.iter().any(|offer| {
+        let Ok(offer_date) = NaiveDate::parse_from_str(&offer.date, "%Y-%m-%d") else {
+            return false;
+        };
+        let age_days = (current_date - offer_date).num_days();
+        age_days >= 0 && age_days < cooldown_days
+    })
+}
+
+fn allow_unsolicited_offer_for_player(
+    current_date: NaiveDate,
+    player: &domain::player::Player,
+    owner_team: Option<&domain::team::Team>,
+) -> bool {
+    if player.transfer_listed {
+        return true;
+    }
+
+    if has_recent_incoming_offer(current_date, player, PLAYER_INCOMING_OFFER_COOLDOWN_DAYS) {
+        return false;
+    }
+
+    if let Some(team) = owner_team {
+        let is_key_player = team.starting_xi_ids.iter().any(|id| id == &player.id);
+        if is_key_player {
+            return false;
+        }
+    }
+
+    let low_morale = player.morale <= 45;
+    let low_minutes = player.stats.minutes_played <= 180;
+    let contract_short = contract_days_remaining(current_date, player.contract_end.as_deref())
+        .map(|days| days <= 365)
+        .unwrap_or(false);
+
+    low_morale || low_minutes || contract_short
 }
 
 fn expire_stale_transfer_offers(game: &mut Game) {
@@ -371,7 +444,27 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
         .map(|team| team.id.clone())
         .collect();
 
-    let mut created_offers = 0_usize;
+    let existing_offers_today = game
+        .players
+        .iter()
+        .filter(|player| {
+            player
+                .team_id
+                .as_deref()
+                .map(|team_id| managed_team_ids.contains(team_id))
+                .unwrap_or(false)
+        })
+        .flat_map(|player| player.transfer_offers.iter())
+        .filter(|offer| offer.status == TransferOfferStatus::Pending && offer.date == today)
+        .count();
+
+    if existing_offers_today >= MAX_INCOMING_OFFERS_PER_DAY {
+        simulate_ai_free_agent_signings(game, &user_team_id);
+        simulate_ai_club_to_club_transfers(game, &user_team_id);
+        return;
+    }
+
+    let mut created_offers = existing_offers_today;
     let mut academy_offer_created_today = false;
     for buyer_id in buyer_ids {
         if created_offers >= MAX_INCOMING_OFFERS_PER_DAY {
@@ -405,6 +498,10 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
                 .map(|team| team.team_kind == TeamKind::Academy)
                 .unwrap_or(false);
 
+            if !allow_unsolicited_offer_for_player(current_date, player, player_team) {
+                continue;
+            }
+
             if is_academy_player {
                 if !academy_offer_window_open {
                     continue;
@@ -427,7 +524,7 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
                 continue;
             }
 
-            let fee = suggested_incoming_fee(current_date, player);
+            let fee = suggested_incoming_fee(current_date, player, buyer_team, &buyer_id);
             if buyer_team.transfer_budget < fee as i64 || buyer_team.finance < fee as i64 {
                 continue;
             }
@@ -638,7 +735,7 @@ fn simulate_ai_club_to_club_transfers(game: &mut Game, user_team_id: &str) {
                     return None;
                 }
 
-                let fee = suggested_incoming_fee(current_date, player);
+                let fee = suggested_incoming_fee(current_date, player, buyer_team, &buyer_id);
                 if fee == 0 || (fee as i64) > budget_cap {
                     return None;
                 }
@@ -674,7 +771,7 @@ fn simulate_ai_club_to_club_transfers(game: &mut Game, user_team_id: &str) {
                     return None;
                 }
 
-                let fee = suggested_incoming_fee(current_date, player);
+                let fee = suggested_incoming_fee(current_date, player, buyer_team, &buyer_id);
                 if fee == 0 || (fee as i64) > budget_cap {
                     return None;
                 }
@@ -742,7 +839,9 @@ fn buyer_counter_offer_ceiling(
     current_offer_fee: u64,
     buyer_team: &domain::team::Team,
 ) -> u64 {
-    let baseline_fee = suggested_incoming_fee(current_date, player).max(current_offer_fee);
+    let baseline_fee =
+        suggested_incoming_fee(current_date, player, buyer_team, &buyer_team.id)
+            .max(current_offer_fee);
     let ceiling = ((baseline_fee as f64) * 1.2).round() as u64;
     ceiling
         .min(buyer_team.transfer_budget.max(0) as u64)

@@ -30,6 +30,14 @@ interface PlayersListTabProps {
 
 type SortKey = "name" | "position" | "age" | "ovr" | "value" | "team";
 
+function normalizeNick(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 export default function PlayersListTab({
   gameState,
   onSelectPlayer,
@@ -59,7 +67,30 @@ export default function PlayersListTab({
   const filterKey = `${search}|${posFilter}|${teamFilter}|${statusFilter}|${sortKey}|${sortAsc}`;
   useMemo(() => setPage(1), [filterKey]);
 
-  let filtered = gameState.players.filter((p) => {
+  const dedupedPlayers = useMemo(() => {
+    const byNick = new Map<string, (typeof gameState.players)[number]>();
+
+    gameState.players.forEach((player) => {
+      const nick = normalizeNick(player.match_name || "");
+      if (!nick) return;
+
+      const existing = byNick.get(nick);
+      if (!existing) {
+        byNick.set(nick, player);
+        return;
+      }
+
+      const currentIsContracted = player.team_id !== null;
+      const existingIsContracted = existing.team_id !== null;
+      if (currentIsContracted && !existingIsContracted) {
+        byNick.set(nick, player);
+      }
+    });
+
+    return [...byNick.values()];
+  }, [gameState.players]);
+
+  let filtered = dedupedPlayers.filter((p) => {
     if (search.length >= 2) {
       const q = search.toLowerCase();
       if (

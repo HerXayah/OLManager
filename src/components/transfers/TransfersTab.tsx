@@ -19,12 +19,12 @@ import {
 } from "lucide-react";
 import {
   getTeamName,
-  calcOvr,
   calcAge,
   formatVal,
   formatWeeklyAmount,
   positionBadgeVariant,
 } from "../../lib/helpers";
+import { calculateLolOvr } from "../../lib/lolPlayerStats";
 import {
   annualAmountToWeeklyCommitment,
 } from "../../lib/finance";
@@ -542,10 +542,7 @@ export default function TransfersTab({
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-navy-600">
                   {filteredList.map((player) => {
-                    const ovr = calcOvr(
-                      player,
-                      player.natural_position || player.position,
-                    );
+                    const ovr = calculateLolOvr(player);
                     const age = calcAge(player.date_of_birth);
                     const offersForThisPlayer = player.transfer_offers;
                     const lolRole = getLolRoleForPlayer(player);

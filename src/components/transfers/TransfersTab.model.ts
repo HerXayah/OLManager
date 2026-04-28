@@ -17,6 +17,14 @@ function normalizePlayerKey(player: PlayerData): string {
   return `${identity}|${dob}|${nationality}`;
 }
 
+function normalizeNameToken(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
 function dedupePlayersPreferAcademy(
   players: PlayerData[],
   academyTeamIds: Set<string>,
@@ -78,12 +86,23 @@ export function deriveTransferCollections(
       .forEach((team) => userClubTeamIds.add(team.id));
   }
 
+  const contractedNickSet = new Set(
+    gameState.players
+      .filter((player) => player.team_id !== null)
+      .map((player) => normalizeNameToken(player.match_name || ""))
+      .filter((token) => token.length > 0),
+  );
+
   const marketPlayers = dedupePlayersPreferAcademy(
     gameState.players.filter(
       (player) =>
         (player.team_id === null || player.transfer_listed) &&
         player.team_id !== userTeamId &&
-        !academyIdentityKeys.has(normalizePlayerKey(player)),
+        !academyIdentityKeys.has(normalizePlayerKey(player)) &&
+        !(
+          player.team_id === null &&
+          contractedNickSet.has(normalizeNameToken(player.match_name || ""))
+        ),
     ),
     academyTeamIds,
   );
