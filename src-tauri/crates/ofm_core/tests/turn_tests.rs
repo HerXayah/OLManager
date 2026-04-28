@@ -7,7 +7,7 @@ use domain::player::{
 };
 use domain::team::Team;
 use engine::Side;
-use engine::report::{GoalDetail, MatchReport, PlayerMatchStats, TeamStats};
+use engine::report::{GoalDetail, MatchReport, MatchReportEndReason, PlayerMatchStats, TeamStats};
 use ofm_core::clock::GameClock;
 use ofm_core::game::Game;
 use ofm_core::turn;
@@ -166,6 +166,7 @@ fn make_game_with_match() -> Game {
             home_team_id: "team1".to_string(),
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: FixtureStatus::Scheduled,
             result: None,
         }],
@@ -184,13 +185,18 @@ fn empty_report(home_goals: u8, away_goals: u8) -> MatchReport {
     MatchReport {
         home_goals,
         away_goals,
+        home_wins: home_goals,
+        away_wins: away_goals,
         home_stats: TeamStats::default(),
         away_stats: TeamStats::default(),
         events: vec![],
         goals: vec![],
+        kill_feed: vec![],
         player_stats: HashMap::new(),
         home_possession: 50.0,
         total_minutes: 90,
+        game_duration_seconds: 90 * 60,
+        ended_by: MatchReportEndReason::TimeLimit,
     }
 }
 
@@ -201,9 +207,9 @@ fn report_with_scorer(home_goals: u8, away_goals: u8, scorer_id: &str, side: Sid
         PlayerMatchStats {
             minutes_played: 90,
             goals: if side == Side::Home {
-                home_goals
+                home_goals.into()
             } else {
-                away_goals
+                away_goals.into()
             },
             assists: 0,
             shots: 3,
@@ -216,6 +222,7 @@ fn report_with_scorer(home_goals: u8, away_goals: u8, scorer_id: &str, side: Sid
             yellow_cards: 0,
             red_cards: 0,
             rating: 7.5,
+            ..Default::default()
         },
     );
     let goals = (0..home_goals)
@@ -246,13 +253,18 @@ fn report_with_scorer(home_goals: u8, away_goals: u8, scorer_id: &str, side: Sid
     MatchReport {
         home_goals,
         away_goals,
+        home_wins: home_goals,
+        away_wins: away_goals,
         home_stats: TeamStats::default(),
         away_stats: TeamStats::default(),
         events: vec![],
         goals,
+        kill_feed: vec![],
         player_stats,
         home_possession: 55.0,
         total_minutes: 90,
+        game_duration_seconds: 90 * 60,
+        ended_by: MatchReportEndReason::TimeLimit,
     }
 }
 
@@ -302,13 +314,18 @@ fn full_squad_report(home_goals: u8, away_goals: u8) -> MatchReport {
     MatchReport {
         home_goals,
         away_goals,
+        home_wins: home_goals,
+        away_wins: away_goals,
         home_stats: TeamStats::default(),
         away_stats: TeamStats::default(),
         events: vec![],
         goals: vec![],
+        kill_feed: vec![],
         player_stats,
         home_possession: 50.0,
         total_minutes: 90,
+        game_duration_seconds: 90 * 60,
+        ended_by: MatchReportEndReason::TimeLimit,
     }
 }
 // ---------------------------------------------------------------------------
@@ -487,8 +504,8 @@ fn apply_match_report_updates_fixture_status() {
     let fixture = &game.league.as_ref().unwrap().fixtures[0];
     assert_eq!(fixture.status, FixtureStatus::Completed);
     let result = fixture.result.as_ref().unwrap();
-    assert_eq!(result.home_goals, 2);
-    assert_eq!(result.away_goals, 1);
+    assert_eq!(result.home_wins, 2);
+    assert_eq!(result.away_wins, 1);
     let persisted_report = result
         .report
         .as_ref()
@@ -1392,15 +1409,13 @@ fn make_round_summary_game() -> Game {
                 home_team_id: "team1".to_string(),
                 away_team_id: "team2".to_string(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status: FixtureStatus::Completed,
                 result: Some(domain::league::MatchResult {
-                    home_goals: 0,
-                    away_goals: 1,
-                    home_scorers: vec![],
-                    away_scorers: vec![domain::league::GoalEvent {
-                        player_id: "t2_fwd0".to_string(),
-                        minute: 77,
-                    }],
+                    home_wins: 0,
+                    away_wins: 1,
+                    ended_by: Default::default(),
+                    game_duration_seconds: 90 * 60,
                     report: None,
                 }),
             },
@@ -1411,21 +1426,13 @@ fn make_round_summary_game() -> Game {
                 home_team_id: "team3".to_string(),
                 away_team_id: "team4".to_string(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status: FixtureStatus::Completed,
                 result: Some(domain::league::MatchResult {
-                    home_goals: 2,
-                    away_goals: 0,
-                    home_scorers: vec![
-                        domain::league::GoalEvent {
-                            player_id: "t3_fwd0".to_string(),
-                            minute: 20,
-                        },
-                        domain::league::GoalEvent {
-                            player_id: "t3_fwd0".to_string(),
-                            minute: 72,
-                        },
-                    ],
-                    away_scorers: vec![],
+                    home_wins: 2,
+                    away_wins: 0,
+                    ended_by: Default::default(),
+                    game_duration_seconds: 90 * 60,
                     report: None,
                 }),
             },

@@ -47,32 +47,14 @@ const SCOUT_REPORT_STAT_FIELD_BY_VISIBLE_STAT = {
   mentalResilience: null,
 } as const satisfies Record<string, keyof ScoutReportData | null>;
 
-const LEGACY_SCOUT_REPORT_STAT_FIELD_BY_VISIBLE_STAT = {
-  mechanics: "pace",
-  laning: "shooting",
-  teamfighting: "passing",
-  macro: "dribbling",
-  consistency: null,
-  shotcalling: null,
-  championPool: "defending",
-  discipline: "physical",
-  mentalResilience: null,
-} as const satisfies Record<string, keyof ScoutReportData | null>;
-
 function getScoutedVisibleStatValue(
   report: ScoutReportData,
   statId: keyof typeof SCOUT_REPORT_STAT_FIELD_BY_VISIBLE_STAT,
 ): number | null {
   const field = SCOUT_REPORT_STAT_FIELD_BY_VISIBLE_STAT[statId];
-  const legacyField = LEGACY_SCOUT_REPORT_STAT_FIELD_BY_VISIBLE_STAT[statId];
   const value = field ? report[field] : null;
-  const legacyValue = legacyField ? report[legacyField] : null;
 
-  return typeof value === "number"
-    ? value
-    : typeof legacyValue === "number"
-      ? legacyValue
-      : null;
+  return typeof value === "number" ? value : null;
 }
 
 export function buildPlayerAttributeGroups(

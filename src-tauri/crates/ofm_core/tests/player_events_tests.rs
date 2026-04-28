@@ -1,7 +1,5 @@
 use chrono::{TimeZone, Utc};
-use domain::league::{
-    Fixture, FixtureCompetition, FixtureStatus, GoalEvent, League, MatchResult, StandingEntry,
-};
+use domain::league::{Fixture, FixtureCompetition, FixtureStatus, League, MatchResult, StandingEntry};
 use domain::manager::Manager;
 use domain::message::{ActionOption, ActionType, MessageAction, MessageContext};
 use domain::player::{
@@ -274,15 +272,13 @@ fn bench_complaint_after_5_missed_matches() {
             home_team_id: "team1".to_string(),
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
-                home_goals: 1,
-                away_goals: 0,
-                home_scorers: vec![GoalEvent {
-                    player_id: "p_mid0".to_string(),
-                    minute: 45,
-                }],
-                away_scorers: vec![],
+                home_wins: 1,
+                away_wins: 0,
+                ended_by: Default::default(),
+                game_duration_seconds: 90 * 60,
                 report: None,
             }),
         })
@@ -332,12 +328,13 @@ fn bench_complaint_not_for_gk() {
             home_team_id: "team1".to_string(),
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
-                home_goals: 0,
-                away_goals: 0,
-                home_scorers: vec![],
-                away_scorers: vec![],
+                home_wins: 0,
+                away_wins: 0,
+                ended_by: Default::default(),
+                game_duration_seconds: 90 * 60,
                 report: None,
             }),
         })
@@ -376,12 +373,13 @@ fn bench_complaint_not_with_fewer_than_5_fixtures() {
             home_team_id: "team1".to_string(),
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
-                home_goals: 0,
-                away_goals: 0,
-                home_scorers: vec![],
-                away_scorers: vec![],
+                home_wins: 0,
+                away_wins: 0,
+                ended_by: Default::default(),
+                game_duration_seconds: 90 * 60,
                 report: None,
             }),
         })

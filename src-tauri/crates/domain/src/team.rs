@@ -605,14 +605,25 @@ impl MainFacilityModuleDefinition {
             }
             MainFacilityModuleKind::AnalysisRoom => facilities
                 .analysis_room_level
-                .unwrap_or(default_main_hub_level()),
+                .unwrap_or(facilities.training),
             MainFacilityModuleKind::BootcampArea => facilities
                 .bootcamp_area_level
-                .unwrap_or(default_main_hub_level()),
+                .unwrap_or(facilities.medical),
             MainFacilityModuleKind::RecoverySuite => facilities
                 .recovery_suite_level
                 .unwrap_or(facilities.medical),
-            MainFacilityModuleKind::ContentStudio => facilities.content_studio_level.unwrap_or(1),
+            MainFacilityModuleKind::ContentStudio => facilities.content_studio_level.unwrap_or_else(|| {
+                facilities
+                    .main_hub_level
+                    .max(facilities.training)
+                    .max(facilities.medical)
+                    .max(facilities.scouting)
+                    .max(facilities.scrims_room_level.unwrap_or(0))
+                    .max(facilities.analysis_room_level.unwrap_or(0))
+                    .max(facilities.bootcamp_area_level.unwrap_or(0))
+                    .max(facilities.recovery_suite_level.unwrap_or(0))
+                    .max(facilities.scouting_lab_level.unwrap_or(0))
+            }),
             MainFacilityModuleKind::ScoutingLab => facilities
                 .scouting_lab_level
                 .unwrap_or(facilities.scouting),
@@ -753,6 +764,7 @@ mod facility_compatibility_tests {
             training: 3,
             medical: 2,
             scouting: 1,
+            ..Default::default()
         };
 
         let catalog = main_facility_module_catalog();
@@ -785,6 +797,7 @@ mod facility_compatibility_tests {
             training: 3,
             medical: 1,
             scouting: 2,
+            ..Default::default()
         };
 
         let hub = facilities.as_main_facility_hub();
@@ -812,6 +825,7 @@ mod facility_compatibility_tests {
             training: 3,
             medical: 2,
             scouting: 1,
+            ..Default::default()
         };
 
         assert_eq!(facilities.module_level(MainFacilityModuleKind::ScrimsRoom), 3);

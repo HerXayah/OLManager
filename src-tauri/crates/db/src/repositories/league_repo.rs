@@ -211,7 +211,7 @@ pub fn needs_cleanup(conn: &Connection, active_league_id: Option<&str>) -> Resul
 mod tests {
     use super::*;
     use crate::game_database::GameDatabase;
-    use domain::league::{GoalEvent, MatchResult};
+    use domain::league::{MatchResult};
 
     fn test_db() -> GameDatabase {
         GameDatabase::open_in_memory().unwrap()
@@ -235,6 +235,7 @@ mod tests {
                 competition: FixtureCompetition::League,
                 status: FixtureStatus::Scheduled,
                 result: None,
+                best_of: 1,
             },
             Fixture {
                 id: "fix-002".to_string(),
@@ -244,14 +245,12 @@ mod tests {
                 away_team_id: "team-001".to_string(),
                 competition: FixtureCompetition::Friendly,
                 status: FixtureStatus::Completed,
+                best_of: 1,
                 result: Some(MatchResult {
-                    home_goals: 2,
-                    away_goals: 1,
-                    home_scorers: vec![GoalEvent {
-                        player_id: "p-010".to_string(),
-                        minute: 23,
-                    }],
-                    away_scorers: vec![],
+                    away_wins: 0,
+                    home_wins: 1,
+                    ended_by: domain::league::MatchEndReason::TimeLimit,
+                    game_duration_seconds: 3600,
                     report: None,
                 }),
             },
@@ -287,8 +286,8 @@ mod tests {
         assert_eq!(loaded.fixtures[1].competition, FixtureCompetition::Friendly);
         assert!(loaded.fixtures[1].result.is_some());
         let result = loaded.fixtures[1].result.as_ref().unwrap();
-        assert_eq!(result.home_goals, 2);
-        assert_eq!(result.away_goals, 1);
+        assert_eq!(result.home_wins, 1);
+        assert_eq!(result.away_wins, 0);
     }
 
     #[test]
@@ -325,6 +324,7 @@ mod tests {
             competition: FixtureCompetition::League,
             status: FixtureStatus::Scheduled,
             result: None,
+            best_of: 1,
         }];
         upsert_league(db.conn(), &league).unwrap();
 
@@ -352,6 +352,7 @@ mod tests {
                 competition: FixtureCompetition::League,
                 status: FixtureStatus::Scheduled,
                 result: None,
+                best_of: 1,
             }],
             standings: vec![
                 StandingEntry::new("team-001".to_string()),

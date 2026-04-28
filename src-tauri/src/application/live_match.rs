@@ -19,9 +19,9 @@ fn lol_role_for_position(position: &domain::player::Position) -> &'static str {
         | Position::LeftBack
         | Position::RightWingBack
         | Position::LeftWingBack => "TOP",
-        Position::AttackingMidfielder
-        | Position::RightMidfielder
-        | Position::LeftMidfielder => "MID",
+        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => {
+            "MID"
+        }
         Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => {
             "ADC"
         }
@@ -242,6 +242,7 @@ fn build_match_report_from_lol_sim(input: LolSimMatchReportInput) -> MatchReport
                 damage_dealt: 0,
                 vision_score: 0,
                 wards_placed: 0,
+                ..Default::default()
             },
         );
     }
@@ -264,6 +265,8 @@ fn build_match_report_from_lol_sim(input: LolSimMatchReportInput) -> MatchReport
     };
 
     MatchReport {
+        home_goals: home_wins,
+        away_goals: away_wins,
         home_wins,
         away_wins,
         home_stats: TeamStats {
@@ -278,6 +281,7 @@ fn build_match_report_from_lol_sim(input: LolSimMatchReportInput) -> MatchReport
                 .saturating_add(input.stats.blue.dragons)
                 .saturating_add(input.stats.blue.barons),
             possession_ticks: 0,
+            ..Default::default()
         },
         away_stats: TeamStats {
             kills: input.stats.red.kills,
@@ -291,11 +295,14 @@ fn build_match_report_from_lol_sim(input: LolSimMatchReportInput) -> MatchReport
                 .saturating_add(input.stats.red.dragons)
                 .saturating_add(input.stats.red.barons),
             possession_ticks: 0,
+            ..Default::default()
         },
         events,
+        goals: Vec::new(),
         kill_feed: Vec::new(),
         player_stats,
         home_possession: 50.0,
+        total_minutes: (input.time_sec / 60.0).round().clamp(0.0, 255.0) as u8,
         game_duration_seconds: input.time_sec.round().max(0.0) as u32,
         ended_by: if input.winner.is_some() {
             MatchReportEndReason::NexusDestroyed

@@ -137,10 +137,7 @@ function buildChampionPerformanceMap(
 
     const current = bucket.get(championId) ?? { wins: 0, games: 0 };
     current.games += 1;
-    const won = entry.result === "Win";
-    if (won) {
-      current.wins += 1;
-    }
+    if (entry.result === "Win") current.wins += 1;
     bucket.set(championId, current);
   });
 
@@ -149,10 +146,7 @@ function buildChampionPerformanceMap(
       championId,
       {
         games: value.games,
-        wr:
-          value.games > 0
-            ? Number(((value.wins / value.games) * 100).toFixed(1))
-            : 0,
+        wr: value.games > 0 ? Number(((value.wins / value.games) * 100).toFixed(1)) : 0,
       },
     ]),
   );
@@ -410,13 +404,9 @@ export default function PlayerProfile({
           playerId: player.id,
           limit: 500,
         });
-        if (!cancelled) {
-          setPlayerHistory(history);
-        }
+        if (!cancelled) setPlayerHistory(Array.isArray(history) ? history : []);
       } catch {
-        if (!cancelled) {
-          setPlayerHistory([]);
-        }
+        if (!cancelled) setPlayerHistory([]);
       }
     };
 

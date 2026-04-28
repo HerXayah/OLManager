@@ -81,16 +81,6 @@ vi.mock("../components/menu/SavesList", () => ({
   default: () => <div data-testid="saves-list" />,
 }));
 
-vi.mock("../components/menu/WorldSelect", () => ({
-  default: ({ onStart }: { onStart: () => void }) => (
-    <div data-testid="world-select">
-      <button type="button" onClick={onStart}>
-        start-world
-      </button>
-    </div>
-  ),
-}));
-
 const mockedInvoke = vi.mocked(invoke);
 
 function openCreateManagerForm(): void {

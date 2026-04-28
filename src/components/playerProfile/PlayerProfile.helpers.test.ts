@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import type { PlayerData, TeamData } from "../../store/gameStore";
 import {
-    buildPlayerAdvancedStats,
     formatPlayerMarketValue,
     formatPlayerWage,
     getAttributeColorClass,
@@ -170,87 +169,4 @@ describe("PlayerProfile.helpers", function (): void {
         );
     });
 
-    it("builds advanced stats with per-90 values, pass accuracy, and exact-position percentiles", function (): void {
-        const player = createPlayer();
-        const peers = [
-            player,
-            createPlayer({
-                id: "player-2",
-                stats: {
-                    ...player.stats,
-                    shots: 10,
-                    shots_on_target: 5,
-                    passes_completed: 70,
-                    passes_attempted: 100,
-                    tackles_won: 6,
-                    interceptions: 4,
-                    fouls_committed: 3,
-                },
-            }),
-            createPlayer({
-                id: "player-3",
-                stats: {
-                    ...player.stats,
-                    shots: 15,
-                    shots_on_target: 8,
-                    passes_completed: 75,
-                    passes_attempted: 100,
-                    tackles_won: 7,
-                    interceptions: 5,
-                    fouls_committed: 4,
-                },
-            }),
-        ];
-
-        const summary = buildPlayerAdvancedStats(player, peers, {
-            minimumMinutes: 180,
-            minimumCohortSize: 3,
-        });
-
-        expect(summary.percentileEligible).toBe(true);
-        expect(summary.metrics.shots.total).toBe(20);
-        expect(summary.metrics.shots.per90).toBe(4);
-        expect(summary.metrics.shots.percentile).toBe(100);
-        expect(summary.metrics.shotsOnTarget.per90).toBe(2);
-        expect(summary.metrics.passes.completed).toBe(80);
-        expect(summary.metrics.passes.attempted).toBe(100);
-        expect(summary.metrics.passes.accuracy).toBe(80);
-        expect(summary.metrics.passes.percentile).toBe(100);
-        expect(summary.metrics.tacklesWon.per90).toBe(1.8);
-        expect(summary.metrics.interceptions.per90).toBe(1.2);
-        expect(summary.metrics.foulsCommitted.per90).toBe(1);
-    });
-
-    it("hides percentiles when the player is below the minutes threshold or the cohort is too small", function (): void {
-        const basePlayer = createPlayer();
-        const underThresholdPlayer = createPlayer({
-            stats: {
-                ...basePlayer.stats,
-                minutes_played: 90,
-            },
-        });
-
-        const underThresholdSummary = buildPlayerAdvancedStats(
-            underThresholdPlayer,
-            [underThresholdPlayer, createPlayer({ id: "player-2" })],
-            {
-                minimumMinutes: 180,
-                minimumCohortSize: 2,
-            },
-        );
-        const smallCohortSummary = buildPlayerAdvancedStats(
-            basePlayer,
-            [basePlayer],
-            {
-                minimumMinutes: 180,
-                minimumCohortSize: 2,
-            },
-        );
-
-        expect(underThresholdSummary.percentileEligible).toBe(false);
-        expect(underThresholdSummary.metrics.shots.percentile).toBeNull();
-        expect(underThresholdSummary.metrics.passes.percentile).toBeNull();
-        expect(smallCohortSummary.metrics.shots.percentile).toBeNull();
-        expect(smallCohortSummary.metrics.passes.percentile).toBeNull();
-    });
 });

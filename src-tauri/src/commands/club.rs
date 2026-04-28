@@ -53,7 +53,10 @@ fn upgrade_facility_internal(state: &StateManager, facility: &str) -> Result<Gam
     Ok(game)
 }
 
-fn upgrade_main_facility_module_internal(state: &StateManager, module: &str) -> Result<Game, String> {
+fn upgrade_main_facility_module_internal(
+    state: &StateManager,
+    module: &str,
+) -> Result<Game, String> {
     info!("[cmd] upgrade_main_facility_module: {}", module);
     let mut game = state
         .get_game(|g| g.clone())

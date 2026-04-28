@@ -62,13 +62,7 @@ pub(crate) fn slugify_academy_key(value: &str) -> String {
     let slug: String = value
         .to_lowercase()
         .chars()
-        .map(|ch| {
-            if ch.is_ascii_alphanumeric() {
-                ch
-            } else {
-                '-'
-            }
-        })
+        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
         .collect();
     slug.trim_matches('-')
         .split('-')
@@ -146,9 +140,9 @@ fn parse_example_date(raw: &str) -> Option<String> {
 }
 
 fn generate_fallback_dob(seed: &str) -> String {
-    let hash = seed
-        .bytes()
-        .fold(0_u32, |acc, byte| acc.wrapping_mul(31).wrapping_add(u32::from(byte)));
+    let hash = seed.bytes().fold(0_u32, |acc, byte| {
+        acc.wrapping_mul(31).wrapping_add(u32::from(byte))
+    });
     let year = 2004 + (hash % 4);
     let month = 1 + ((hash / 7) % 12);
     let day = 1 + ((hash / 13) % 28);
@@ -478,7 +472,10 @@ pub(crate) fn bootstrap_example_academy_pool_from_example(
             erl_assignment: ErlAssignment {
                 erl_league_id: seed_team.league_id.clone(),
                 country_rule: ErlAssignmentRule::Domestic,
-                fallback_reason: Some(format!("Seeded from {} academy roster", seed_team.league_name)),
+                fallback_reason: Some(format!(
+                    "Seeded from {} academy roster",
+                    seed_team.league_name
+                )),
                 reputation: 60,
                 acquisition_cost: 0,
                 acquired_at: String::new(),
@@ -526,8 +523,7 @@ pub(crate) fn bootstrap_example_academy_pool_from_example(
                 player_id,
                 seed_player.nickname.clone(),
                 seed_player.full_name.clone(),
-                seed
-                    .dob
+                seed.dob
                     .clone()
                     .unwrap_or_else(|| generate_fallback_dob(&seed_player.nickname)),
                 seed_player.nationality.clone(),
@@ -572,9 +568,10 @@ pub(crate) fn bootstrap_example_academy_pool_from_example(
             continue;
         }
 
-        let Some(seed_team) = seed_catalog.iter().find(|candidate| {
-            normalize_academy_key(&candidate.team_name) == academy_alias
-        }) else {
+        let Some(seed_team) = seed_catalog
+            .iter()
+            .find(|candidate| normalize_academy_key(&candidate.team_name) == academy_alias)
+        else {
             continue;
         };
 
@@ -623,7 +620,11 @@ pub(crate) fn bootstrap_example_academy_pool_from_example(
 
 pub(crate) fn ensure_example_academy_pool(game: &mut Game) {
     let bootstrap_date = game.clock.current_date.format("%Y-%m-%d").to_string();
-    bootstrap_example_academy_pool_from_example(&mut game.teams, &mut game.players, &bootstrap_date);
+    bootstrap_example_academy_pool_from_example(
+        &mut game.teams,
+        &mut game.players,
+        &bootstrap_date,
+    );
 }
 
 fn resolve_default_world_path(app_handle: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
@@ -1711,11 +1712,7 @@ pub async fn start_new_game(
     apply_lol_seed_ratings(&mut players);
     let academy_bootstrap_date = clock.current_date.format("%Y-%m-%d").to_string();
     let mut teams = teams;
-    bootstrap_example_academy_pool_from_example(
-        &mut teams,
-        &mut players,
-        &academy_bootstrap_date,
-    );
+    bootstrap_example_academy_pool_from_example(&mut teams, &mut players, &academy_bootstrap_date);
 
     let new_game = Game::new(clock, manager, teams, players, staff, vec![]);
 

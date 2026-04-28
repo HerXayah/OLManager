@@ -141,6 +141,7 @@ fn make_game_with_fixture() -> Game {
         home_team_id: "team1".to_string(),
         away_team_id: "team2".to_string(),
         competition: FixtureCompetition::League,
+        best_of: 1,
         status: FixtureStatus::Scheduled,
         result: None,
     };

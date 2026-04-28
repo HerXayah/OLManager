@@ -1,0 +1,67 @@
+name: Feature request
+description: Propose a scoped improvement for OLManager
+title: "feat: "
+labels: ["status:needs-review", "type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature work is issue-first. Maintainers must apply `status:approved` before a PR is opened.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user or maintainer problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest useful change.
+    validations:
+      required: true
+  - type: textarea
+    id: ux
+    attributes:
+      label: UX impact
+      description: Screens, flows, commands, settings, or docs affected.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use checkboxes where possible.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Gameplay
+        - UI / UX
+        - Save system
+        - Data / provenance
+        - Documentation
+        - CI / release
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Approval pre-flight
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I understand maintainers must add `status:approved` before implementation starts.
+          required: true
+        - label: I will branch from `development` using `type/lowercase-slug` if this is approved.
+          required: true
+        - label: I identified whether this changes docs, release behavior, licensing, or data provenance.
+          required: true

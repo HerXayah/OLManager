@@ -443,6 +443,7 @@ mod tests {
                 home_team_id: "team1".to_string(),
                 away_team_id: "team2".to_string(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status: FixtureStatus::Completed,
                 result: Some(make_result(2, 1)),
             },
@@ -453,6 +454,7 @@ mod tests {
                 home_team_id: "team3".to_string(),
                 away_team_id: "team1".to_string(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status: FixtureStatus::Completed,
                 result: Some(make_result(0, 3)),
             },
@@ -490,6 +492,7 @@ mod tests {
                 home_team_id: home_team_id.to_string(),
                 away_team_id: away_team_id.to_string(),
                 competition: FixtureCompetition::League,
+                best_of: 1,
                 status,
                 result: score.map(|(home_wins, away_wins)| make_result(home_wins, away_wins)),
             }
