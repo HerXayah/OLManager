@@ -167,7 +167,9 @@ pub fn process_training(game: &mut Game, weekday_num: u32) {
         .iter()
         .filter(|player| {
             player.team_id.as_ref().is_some_and(|team_id| {
-                manager_team_id.as_ref().is_none_or(|manager_id| team_id != manager_id)
+                manager_team_id
+                    .as_ref()
+                    .is_none_or(|manager_id| team_id != manager_id)
             })
         })
         .map(|player| player.id.clone())

@@ -3,8 +3,8 @@ use domain::manager::Manager;
 use domain::player::{Player, PlayerAttributes, Position};
 use domain::staff::{Staff, StaffAttributes, StaffRole};
 use domain::team::{Team, TrainingFocus, TrainingIntensity, TrainingSchedule};
-use ofm_core::clock::GameClock;
 use ofm_core::champions::ChampionMasteryEntry;
+use ofm_core::clock::GameClock;
 use ofm_core::game::Game;
 use ofm_core::training;
 
@@ -953,7 +953,11 @@ fn rival_players_get_auto_targets_and_gain_mastery_on_training() {
     let before_azir = ofm_core::champions::mastery_for_player_champion(&game, "p-rival", "Azir");
 
     for _ in 0..40 {
-        if let Some(player) = game.players.iter_mut().find(|player| player.id == "p-rival") {
+        if let Some(player) = game
+            .players
+            .iter_mut()
+            .find(|player| player.id == "p-rival")
+        {
             player.condition = 95;
         }
         training::process_training(&mut game, 0);
@@ -965,7 +969,10 @@ fn rival_players_get_auto_targets_and_gain_mastery_on_training() {
         .find(|player| player.id == "p-rival")
         .expect("rival player should exist");
     let targets = ofm_core::champions::training_targets_for_player(rival_player);
-    assert!(!targets.is_empty(), "rival player should auto-assign mastery targets");
+    assert!(
+        !targets.is_empty(),
+        "rival player should auto-assign mastery targets"
+    );
 
     let after_azir = ofm_core::champions::mastery_for_player_champion(&game, "p-rival", "Azir");
     assert!(

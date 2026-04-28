@@ -657,7 +657,11 @@ pub fn ensure_training_targets_from_mastery(game: &mut Game, player_id: &str) {
         return;
     }
 
-    if let Some(player) = game.players.iter_mut().find(|candidate| candidate.id == player_id) {
+    if let Some(player) = game
+        .players
+        .iter_mut()
+        .find(|candidate| candidate.id == player_id)
+    {
         player.champion_training_targets.clear();
         player.champion_training_targets.extend(selected);
         player.champion_training_targets.truncate(3);
