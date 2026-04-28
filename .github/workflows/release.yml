@@ -42,11 +42,11 @@ jobs:
           import pathlib
           import re
           import sys
-          import tomllib
+          import tomli
 
           version = "${{ steps.version.outputs.version }}"
           package_version = json.loads(pathlib.Path("package.json").read_text())["version"]
-          cargo_version = tomllib.loads(pathlib.Path("src-tauri/Cargo.toml").read_text())["package"]["version"]
+          cargo_version = tomli.loads(pathlib.Path("src-tauri/Cargo.toml").read_text())["package"]["version"]
           tauri_version = json.loads(pathlib.Path("src-tauri/tauri.conf.json").read_text())["version"]
           changelog = pathlib.Path("CHANGELOG.md").read_text()
 
