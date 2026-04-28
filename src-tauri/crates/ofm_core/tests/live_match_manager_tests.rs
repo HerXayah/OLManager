@@ -222,6 +222,26 @@ fn create_live_match_bad_fixture_index_errors() {
     assert!(result.is_err());
 }
 
+#[test]
+fn create_live_match_errors_when_home_team_has_less_than_five_players() {
+    let mut game = make_game_with_fixture();
+    for player in game
+        .players
+        .iter_mut()
+        .filter(|player| player.team_id.as_deref() == Some("team1"))
+        .skip(4)
+    {
+        player.team_id = None;
+    }
+
+    let result = live_match_manager::create_live_match(&game, 0, MatchMode::Live, false);
+    assert!(result.is_err());
+    match result {
+        Err(error) => assert!(error.contains("Cannot start match: incomplete lineup")),
+        Ok(_) => panic!("expected create_live_match to fail with incomplete lineup"),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // LiveMatchSession stepping
 // ---------------------------------------------------------------------------

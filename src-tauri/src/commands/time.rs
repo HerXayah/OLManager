@@ -517,7 +517,7 @@ mod tests {
             .iter_mut()
             .find(|player| player.id == "p10")
             .unwrap();
-        first_key_player.contract_end = Some("2025-08-01".to_string());
+        first_key_player.contract_end = Some("2025-07-15".to_string());
         first_key_player.wage = 35_000;
         first_key_player.attributes.pace = 92;
         first_key_player.attributes.shooting = 94;
@@ -528,7 +528,7 @@ mod tests {
             .iter_mut()
             .find(|player| player.id == "p11")
             .unwrap();
-        second_key_player.contract_end = Some("2025-09-01".to_string());
+        second_key_player.contract_end = Some("2025-07-15".to_string());
         second_key_player.wage = 25_000;
         second_key_player.attributes.pace = 90;
         second_key_player.attributes.shooting = 91;
@@ -564,7 +564,7 @@ mod tests {
             .iter_mut()
             .find(|player| player.id == "p10")
             .unwrap();
-        first_risk.contract_end = Some("2025-08-01".to_string());
+        first_risk.contract_end = Some("2025-07-15".to_string());
         first_risk.wage = 35_000;
 
         let second_risk = game
@@ -572,7 +572,7 @@ mod tests {
             .iter_mut()
             .find(|player| player.id == "p11")
             .unwrap();
-        second_risk.contract_end = Some("2025-09-01".to_string());
+        second_risk.contract_end = Some("2025-07-15".to_string());
         second_risk.wage = 25_000;
 
         let blockers = compute_blocking_actions(&game);

@@ -99,6 +99,8 @@ interface RivalMasteryDisplayEntry {
 
 type RivalMasteryOption = Omit<RivalMasteryDisplayEntry, "source">;
 type CompactDraftTier = "short" | "mid" | "tall";
+type ChampionSortMode = "alpha" | "meta" | "mastery";
+type MetaTierFilter = "ALL" | "S" | "A" | "B" | "C" | "D";
 
 export function selectRivalMasteryKnowledgeForPlayer(
   allKnownOptions: RivalMasteryOption[],
@@ -209,6 +211,7 @@ interface ChampionDraftProps {
   snapshot: MatchSnapshot;
   onComplete: (result: ChampionDraftResultPayload) => void;
   controlledSide?: Side;
+  allAi?: boolean;
   seriesLength?: 1 | 3 | 5;
   blueSeriesWins?: number;
   redSeriesWins?: number;
@@ -449,6 +452,33 @@ function mapSeedRoleToDraftRole(role: string): Role | null {
   return null;
 }
 
+function mapSnapshotPositionToDraftRole(position: string): Role {
+  const key = normalizeKey(position);
+  if (key.includes("top") || key === "defender") return "TOP";
+  if (key.includes("jung") || key === "midfielder" || key === "centralmidfielder") return "JUNGLE";
+  if (key.includes("attackingmidfielder") || key === "mid") return "MID";
+  if (key.includes("adc") || key.includes("bot") || key === "forward" || key === "striker") return "ADC";
+  return "SUPPORT";
+}
+
+function roleOrderedSnapshotPlayers<T extends { position: string; id: string }>(players: T[]): T[] {
+  const byRole = new Map<Role, T>();
+  const used = new Set<string>();
+
+  for (const role of ROLE_ORDER) {
+    const player = players.find(
+      (candidate) => !used.has(candidate.id) && mapSnapshotPositionToDraftRole(candidate.position) === role,
+    );
+    if (!player) continue;
+    byRole.set(role, player);
+    used.add(player.id);
+  }
+
+  const remainder = players.filter((candidate) => !used.has(candidate.id));
+  const ordered = ROLE_ORDER.map((role) => byRole.get(role)).filter((value): value is T => !!value);
+  return [...ordered, ...remainder].slice(0, 5);
+}
+
 function tierToMetaScore(tier: string): number {
   const normalized = tier.toUpperCase();
   if (normalized === "S") return 20;
@@ -457,6 +487,36 @@ function tierToMetaScore(tier: string): number {
   if (normalized === "C") return 10;
   if (normalized === "D") return 7;
   return 12;
+}
+
+function metaScoreToTier(score: number): Exclude<MetaTierFilter, "ALL"> {
+  if (score >= 19) return "S";
+  if (score >= 16) return "A";
+  if (score >= 13) return "B";
+  if (score >= 9) return "C";
+  return "D";
+}
+
+function masteryBarTone(mastery: number): "gold" | "green" | "red" {
+  if (mastery >= 90) return "gold";
+  if (mastery >= 55) return "green";
+  return "red";
+}
+
+function knownMetaTierForChampion(
+  champion: ChampionData,
+  runtimeMetaScoreByChampion: Map<string, number>,
+  discoveredMetaChampionIds: Set<string>,
+): Exclude<MetaTierFilter, "ALL"> | "?" {
+  const normalizedChampionId = normalizeKey(champion.id);
+  if (!discoveredMetaChampionIds.has(normalizedChampionId)) {
+    return "?";
+  }
+  const runtime = runtimeMetaScoreByChampion.get(normalizedChampionId);
+  if (typeof runtime === "number") {
+    return metaScoreToTier(runtime);
+  }
+  return "?";
 }
 
 const CHAMPION_ROLE_HINTS = new Map<string, Role[]>();
@@ -574,6 +634,7 @@ export default function ChampionDraft({
   snapshot,
   onComplete,
   controlledSide = "blue",
+  allAi = false,
   seriesLength = 1,
   blueSeriesWins = 0,
   redSeriesWins = 0,
@@ -585,7 +646,8 @@ export default function ChampionDraft({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<"ALL" | Role>("ALL");
-  const [masteryFilter, setMasteryFilter] = useState<number>(0);
+  const [sortMode, setSortMode] = useState<ChampionSortMode>("alpha");
+  const [metaTierFilter, setMetaTierFilter] = useState<MetaTierFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [stepIndex, setStepIndex] = useState(0);
   const [blueBans, setBlueBans] = useState<string[]>([]);
@@ -690,7 +752,7 @@ export default function ChampionDraft({
 
   const handleSelectChampion = (champion: ChampionData, actor: "user" | "ai" = "user") => {
     if (!currentStep || finished) return;
-    if (actor === "user" && currentStep.side !== controlledSide) return;
+    if (actor === "user" && (allAi || currentStep.side !== controlledSide)) return;
 
     if (currentStep.type === "ban") {
       if (currentStep.side === "blue") {
@@ -739,7 +801,7 @@ export default function ChampionDraft({
     setCounterConsultUsesLeft((prev) => Math.max(0, prev - 1));
   };
 
-  const isUserTurn = !!currentStep && currentStep.side === controlledSide && !finished;
+  const isUserTurn = !!currentStep && !allAi && currentStep.side === controlledSide && !finished;
 
   const totalSteps = DRAFT_SEQUENCE.length;
   const currentStepNumber = Math.min(stepIndex + 1, totalSteps);
@@ -752,8 +814,14 @@ export default function ChampionDraft({
       ? t("match.draft.sides.blue")
       : t("match.draft.sides.red");
 
-  const bluePlayers = useMemo(() => snapshot.home_team.players.slice(0, 5), [snapshot.home_team.players]);
-  const redPlayers = useMemo(() => snapshot.away_team.players.slice(0, 5), [snapshot.away_team.players]);
+  const bluePlayers = useMemo(
+    () => roleOrderedSnapshotPlayers(snapshot.home_team.players),
+    [snapshot.home_team.players],
+  );
+  const redPlayers = useMemo(
+    () => roleOrderedSnapshotPlayers(snapshot.away_team.players),
+    [snapshot.away_team.players],
+  );
   const bluePlayerLabels = useMemo(
     () => bluePlayers.map((player) => player.name.toUpperCase()),
     [bluePlayers],
@@ -770,6 +838,15 @@ export default function ChampionDraft({
     const roleIndex = ROLE_ORDER.indexOf(role);
     if (roleIndex < 0) return 25;
     return resolvePlayerMastery(side, roleIndex, championId);
+  };
+
+  const displayMasteryForChampion = (champion: ChampionData): number => {
+    const sampleSide = currentStep?.side ?? controlledSide;
+    if (roleFilter !== "ALL") {
+      return roleMasteryForChampion(sampleSide, roleFilter, champion.id);
+    }
+    const samplePickIndex = sampleSide === "blue" ? bluePicks.length : redPicks.length;
+    return resolvePlayerMastery(sampleSide, samplePickIndex, champion.id);
   };
 
   const roleAssignmentScore = (side: Side, role: Role, championId: string): number => {
@@ -891,6 +968,14 @@ export default function ChampionDraft({
     return map;
   }, [gameState?.champion_patch?.hidden_meta]);
 
+  const discoveredMetaChampionIds = useMemo(() => {
+    const discovered = new Set<string>();
+    (gameState?.champion_patch?.discovered_champion_ids ?? []).forEach((championId) => {
+      discovered.add(normalizeKey(String(championId ?? "")));
+    });
+    return discovered;
+  }, [gameState?.champion_patch?.discovered_champion_ids]);
+
   const resolvePlayerMastery = (
     side: Side,
     pickIndex: number,
@@ -939,29 +1024,111 @@ export default function ChampionDraft({
 
   const enemySideFor = (side: Side): Side => (side === "blue" ? "red" : "blue");
 
+  const knownRivalChampionIds = useMemo(() => {
+    const rivalSide: Side = controlledSide === "blue" ? "red" : "blue";
+    const rivalPlayers = rivalSide === "blue" ? bluePlayers : redPlayers;
+    const rivalTeamSeedId = rivalSide === "blue" ? homeTeamSeed?.id : awayTeamSeed?.id;
+
+    const known = new Set<string>();
+    rivalPlayers.forEach((player) => {
+      const masteryMap = rivalTeamSeedId
+        ? playerMasteryMap.get(`${rivalTeamSeedId}:${normalizeKey(player.name)}`)
+        : undefined;
+      if (!masteryMap || masteryMap.size === 0) return;
+
+      let bestChampionKey: string | null = null;
+      let bestMastery = Number.NEGATIVE_INFINITY;
+      masteryMap.forEach((mastery, championKey) => {
+        if (mastery > bestMastery) {
+          bestMastery = mastery;
+          bestChampionKey = championKey;
+        }
+      });
+
+      if (!bestChampionKey) return;
+      const champion = championLookupByNormalizedName.get(bestChampionKey);
+      if (champion) {
+        known.add(champion.id);
+      }
+    });
+
+    return known;
+  }, [
+    awayTeamSeed?.id,
+    bluePlayers,
+    championLookupByNormalizedName,
+    controlledSide,
+    homeTeamSeed?.id,
+    playerMasteryMap,
+    redPlayers,
+  ]);
+
   const visibleChampions = useMemo(() => {
-    return champions.filter((champion) => {
+    const filtered = champions.filter((champion) => {
       if (roleFilter !== "ALL" && !champion.roleHints.includes(roleFilter)) return false;
       if (searchTerm.trim().length > 0) {
         const query = searchTerm.trim().toLowerCase();
         if (!champion.name.toLowerCase().includes(query)) return false;
       }
 
-      const sampleSide = currentStep?.side ?? controlledSide;
-      const samplePickIndex = sampleSide === "blue" ? bluePicks.length : redPicks.length;
-      const mastery = resolvePlayerMastery(sampleSide, samplePickIndex, champion.id);
-      if (mastery < masteryFilter) return false;
+      if (metaTierFilter !== "ALL") {
+        const tier = knownMetaTierForChampion(
+          champion,
+          runtimeMetaScoreByChampion,
+          discoveredMetaChampionIds,
+        );
+        if (tier !== metaTierFilter) return false;
+      }
+
+      if (
+        currentStep?.type === "pick" &&
+        currentStep.side !== controlledSide &&
+        knownRivalChampionIds.size > 0 &&
+        !knownRivalChampionIds.has(champion.id)
+      ) {
+        return false;
+      }
 
       return true;
     });
+
+    if (sortMode === "meta") {
+      return filtered.sort((left, right) => {
+        const leftKnown =
+          knownMetaTierForChampion(left, runtimeMetaScoreByChampion, discoveredMetaChampionIds) !== "?";
+        const rightKnown =
+          knownMetaTierForChampion(right, runtimeMetaScoreByChampion, discoveredMetaChampionIds) !== "?";
+        if (leftKnown !== rightKnown) return leftKnown ? -1 : 1;
+
+        const metaDelta = metaScoreForChampion(right) - metaScoreForChampion(left);
+        if (metaDelta !== 0) return metaDelta;
+        return left.name.localeCompare(right.name);
+      });
+    }
+
+    if (sortMode === "mastery") {
+      return filtered.sort((left, right) => {
+        const masteryDelta = displayMasteryForChampion(right) - displayMasteryForChampion(left);
+        if (masteryDelta !== 0) return masteryDelta;
+        return left.name.localeCompare(right.name);
+      });
+    }
+
+    return filtered.sort((left, right) => left.name.localeCompare(right.name));
   }, [
     bluePicks.length,
     champions,
     controlledSide,
     currentStep,
-    masteryFilter,
+    knownRivalChampionIds,
+    metaTierFilter,
     redPicks.length,
     roleFilter,
+    sortMode,
+    metaScoreForChampion,
+    discoveredMetaChampionIds,
+    runtimeMetaScoreByChampion,
+    displayMasteryForChampion,
     resolvePlayerMastery,
     searchTerm,
   ]);
@@ -979,6 +1146,7 @@ export default function ChampionDraft({
       const aiSide = currentStep.side;
       const ownPicks = aiSide === "blue" ? bluePicks : redPicks;
       const enemyPicks = aiSide === "blue" ? redPicks : bluePicks;
+      const expectedRole = ROLE_ORDER[ownPicks.length] ?? null;
       const coveredRoles = new Set<Role>();
       ownPicks.forEach((pick) => {
         const champion = championById.get(pick.championId);
@@ -986,7 +1154,11 @@ export default function ChampionDraft({
       });
       const missingRoles = ROLE_ORDER.filter((role) => !coveredRoles.has(role));
 
-      const candidates = available;
+      const roleLockedCandidates =
+        expectedRole === null
+          ? []
+          : available.filter((champion) => champion.roleHints.includes(expectedRole));
+      const candidates = roleLockedCandidates.length > 0 ? roleLockedCandidates : available;
 
       if (candidates.length === 0) return available[0] ?? null;
 
@@ -1068,6 +1240,7 @@ export default function ChampionDraft({
     }
 
     const ownPicks = controlledSide === "blue" ? bluePicks : redPicks;
+    const expectedRole = ROLE_ORDER[ownPicks.length] ?? null;
     const coveredRoles = new Set<Role>();
     ownPicks.forEach((pick) => {
       const champion = championById.get(pick.championId);
@@ -1078,7 +1251,15 @@ export default function ChampionDraft({
       missingRoles.some((role) => champion.roleHints.includes(role)),
     );
 
-    const pool = roleCandidates.length > 0 ? roleCandidates : available;
+    const roleLockedCandidates =
+      expectedRole === null
+        ? []
+        : available.filter((champion) => champion.roleHints.includes(expectedRole));
+    const pool = roleLockedCandidates.length > 0
+      ? roleLockedCandidates
+      : roleCandidates.length > 0
+        ? roleCandidates
+        : available;
     const randomIndex = Math.floor(Math.random() * pool.length);
     return pool[randomIndex] ?? null;
   };
@@ -1114,7 +1295,7 @@ export default function ChampionDraft({
 
   useEffect(() => {
     if (!currentStep || finished || loading || champions.length === 0) return;
-    if (currentStep.side === controlledSide) return;
+    if (!allAi && currentStep.side === controlledSide) return;
 
     const minMs = Math.min(AI_TIMING.aiMinMs, AI_TIMING.aiMaxMs);
     const maxMs = Math.max(AI_TIMING.aiMinMs, AI_TIMING.aiMaxMs);
@@ -1131,6 +1312,7 @@ export default function ChampionDraft({
 
     return () => clearTimeout(timer);
   }, [
+    allAi,
     champions,
     controlledSide,
     currentStep,
@@ -1146,13 +1328,14 @@ export default function ChampionDraft({
     if (autoResolvedStepKeyRef.current === currentStepKey) return;
 
     autoResolvedStepKeyRef.current = currentStepKey;
-    const autoChampion = currentStep.side === controlledSide
+    const autoChampion = !allAi && currentStep.side === controlledSide
       ? selectTimeoutChampionForUserTurn()
       : selectAiChampionForCurrentStep();
     if (autoChampion) {
-      handleSelectChampion(autoChampion, currentStep.side === controlledSide ? "user" : "ai");
+      handleSelectChampion(autoChampion, !allAi && currentStep.side === controlledSide ? "user" : "ai");
     }
   }, [
+    allAi,
     bluePicks,
     championById,
     champions,
@@ -2326,17 +2509,29 @@ export default function ChampionDraft({
                   ))}
                 </div>
 
-                <select
-                  className="rounded-md bg-[#111318] border border-white/15 px-2 py-1 text-[11px] md:py-1.5 md:text-xs"
-                  value={masteryFilter}
-                  onChange={(event) => setMasteryFilter(Number(event.target.value))}
-                >
-                  {[0, 10, 20, 25, 30].map((value) => (
-                    <option key={value} value={value}>
-                      {t("match.draft.masteryMin")} {value}
-                    </option>
+                <div className="flex items-center gap-1">
+                  {(["alpha", "meta", "mastery"] as const).map((mode) => (
+                    <button
+                      key={`sort-${mode}`}
+                      className={`px-2 py-1 text-[11px] border rounded ${sortMode === mode ? "border-orange-300/80 bg-orange-500/10 text-orange-100" : "border-white/20 text-gray-200"}`}
+                      onClick={() => setSortMode(mode)}
+                    >
+                      {mode === "alpha" ? "A-Z" : mode === "meta" ? "META" : "MAST"}
+                    </button>
                   ))}
-                </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {(["ALL", "S", "A", "B", "C", "D"] as const).map((tier) => (
+                    <button
+                      key={`tier-${tier}`}
+                      className={`px-2 py-1 text-[11px] border rounded ${metaTierFilter === tier ? "border-cyan-300/80 bg-cyan-400/10 text-cyan-100" : "border-white/20 text-gray-200"}`}
+                      onClick={() => setMetaTierFilter(tier)}
+                    >
+                      {tier}
+                    </button>
+                  ))}
+                </div>
 
                 <input
                   value={searchTerm}
@@ -2404,6 +2599,14 @@ export default function ChampionDraft({
                   <div className="relative grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 gap-1">
                     {visibleChampions.map((champion) => {
                       const isUsed = usedChampionIds.has(champion.id);
+                      const showMastery = roleFilter !== "ALL";
+                      const mastery = showMastery ? displayMasteryForChampion(champion) : 0;
+                      const masteryTone = masteryBarTone(mastery);
+                      const metaTier = knownMetaTierForChampion(
+                        champion,
+                        runtimeMetaScoreByChampion,
+                        discoveredMetaChampionIds,
+                      );
                       return (
                         <button
                           key={champion.id}
@@ -2422,6 +2625,20 @@ export default function ChampionDraft({
                           >
                             {champion.name}
                           </p>
+                          <div className="px-1 pb-1">
+                            <div className="flex items-center justify-between text-[9px] font-bold">
+                              <span className={metaTier === "?" ? "text-gray-500" : metaTier === "S" ? "text-red-400" : metaTier === "A" ? "text-orange-300" : "text-slate-300"}>{metaTier}</span>
+                              {showMastery ? <span className="text-gray-400">{mastery}</span> : null}
+                            </div>
+                            {showMastery ? (
+                              <div className="mt-0.5 h-1 rounded bg-black/40 overflow-hidden">
+                                <div
+                                  className={`h-full ${masteryTone === "gold" ? "bg-amber-400" : masteryTone === "green" ? "bg-emerald-400" : "bg-rose-400"}`}
+                                  style={{ width: `${Math.max(0, Math.min(100, mastery))}%` }}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
                         </button>
                       );
                     })}

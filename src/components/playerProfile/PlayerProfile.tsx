@@ -299,8 +299,19 @@ export default function PlayerProfile({
   );
   const managerTeamId = gameState.manager.team_id;
   const managerAcademyTeam = findAcademyTeamForParent(gameState.teams, managerTeamId);
+  const managedTeamIds = new Set<string>();
+  if (managerTeamId) {
+    managedTeamIds.add(managerTeamId);
+    const parentAcademyId = gameState.teams.find((team) => team.id === managerTeamId)?.academy_team_id;
+    gameState.teams.forEach((team) => {
+      if (team.team_kind !== "Academy") return;
+      if (team.parent_team_id === managerTeamId || (parentAcademyId && team.id === parentAcademyId)) {
+        managedTeamIds.add(team.id);
+      }
+    });
+  }
   const isOwnMainPlayer = managerTeamId !== null && player.team_id === managerTeamId;
-  const isOwnAcademyPlayer = managerAcademyTeam !== null && player.team_id === managerAcademyTeam.id;
+  const isOwnAcademyPlayer = player.team_id !== null && managedTeamIds.has(player.team_id) && !isOwnMainPlayer;
   const actualIsOwnClub = isOwnMainPlayer || isOwnAcademyPlayer;
   const seasonContext = resolveSeasonContext(gameState);
   const isTransferWindowOpen =

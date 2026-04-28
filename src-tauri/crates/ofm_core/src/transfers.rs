@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 const TRANSFER_NEGOTIATION_STALE_DAYS: i64 = 14;
 const PLAYER_INCOMING_OFFER_COOLDOWN_DAYS: i64 = 7;
+const MANAGED_SQUAD_INCOMING_OFFER_COOLDOWN_DAYS: i64 = 14;
 const TRANSFER_BUDGET_SELLING_REALLOCATION_PCT: i64 = 60;
 const CONTRACT_RELEASE_PENALTY_PCT: i64 = 40;
 const MAX_INCOMING_OFFERS_PER_DAY: usize = 1;
@@ -290,6 +291,31 @@ fn has_recent_incoming_offer(
     })
 }
 
+fn managed_squad_has_recent_incoming_offer(
+    game: &Game,
+    managed_team_ids: &std::collections::HashSet<String>,
+    current_date: NaiveDate,
+    cooldown_days: i64,
+) -> bool {
+    game.players
+        .iter()
+        .filter(|player| {
+            player
+                .team_id
+                .as_deref()
+                .map(|team_id| managed_team_ids.contains(team_id))
+                .unwrap_or(false)
+        })
+        .flat_map(|player| player.transfer_offers.iter())
+        .any(|offer| {
+            let Ok(offer_date) = NaiveDate::parse_from_str(&offer.date, "%Y-%m-%d") else {
+                return false;
+            };
+            let age_days = (current_date - offer_date).num_days();
+            age_days >= 0 && age_days < cooldown_days
+        })
+}
+
 fn allow_unsolicited_offer_for_player(
     current_date: NaiveDate,
     player: &domain::player::Player,
@@ -435,6 +461,17 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
         {
             managed_team_ids.insert(team.id.clone());
         }
+    }
+
+    if managed_squad_has_recent_incoming_offer(
+        game,
+        &managed_team_ids,
+        current_date,
+        MANAGED_SQUAD_INCOMING_OFFER_COOLDOWN_DAYS,
+    ) {
+        simulate_ai_free_agent_signings(game, &user_team_id);
+        simulate_ai_club_to_club_transfers(game, &user_team_id);
+        return;
     }
 
     let buyer_ids: Vec<String> = game
@@ -1255,7 +1292,7 @@ pub fn respond_to_offer(
     let from_team_id = offer.from_team_id.clone();
     let fee = offer.fee;
     let current_date = game.clock.current_date.date_naive();
-    let (openness_score, player_accepts_move) = {
+    let openness_score = {
         let owner_team = game
             .teams
             .iter()
@@ -1266,10 +1303,7 @@ pub fn respond_to_offer(
             .iter()
             .find(|team| team.id == from_team_id)
             .ok_or("Buying team not found")?;
-        (
-            player_move_openness_score(current_date, player, owner_team, buyer_team),
-            player_accepts_transfer(current_date, player, owner_team, buyer_team),
-        )
+        player_move_openness_score(current_date, player, owner_team, buyer_team)
     };
 
     // Update offer status
@@ -1284,13 +1318,7 @@ pub fn respond_to_offer(
     }
 
     if accept {
-        if player_accepts_move {
-            execute_transfer(game, player_id, &from_team_id, &user_team_id, fee)?;
-        } else if let Some(p) = game.players.iter_mut().find(|p| p.id == player_id)
-            && let Some(o) = p.transfer_offers.iter_mut().find(|o| o.id == offer_id)
-        {
-            o.status = TransferOfferStatus::Rejected;
-        }
+        execute_transfer(game, player_id, &from_team_id, &user_team_id, fee)?;
     } else if let Some(player) = game
         .players
         .iter_mut()
@@ -1386,50 +1414,6 @@ pub fn counter_offer(
     }
 
     if accepted {
-        let owner_team = game
-            .teams
-            .iter()
-            .find(|team| team.id == user_team_id)
-            .ok_or("User team not found")?;
-        let buyer_team = game
-            .teams
-            .iter()
-            .find(|team| team.id == buyer_team_id)
-            .ok_or("Buying team not found")?;
-
-        if !player_accepts_transfer(current_date, &player_snapshot, owner_team, buyer_team) {
-            if let Some(player) = game
-                .players
-                .iter_mut()
-                .find(|player| player.id == player_id)
-                && let Some(offer) = player
-                    .transfer_offers
-                    .iter_mut()
-                    .find(|offer| offer.id == offer_id)
-            {
-                offer.status = TransferOfferStatus::Rejected;
-                offer.last_manager_fee = Some(requested_fee);
-                offer.negotiation_round = round;
-                offer.suggested_counter_fee = None;
-                offer.date = date;
-            }
-
-            return Ok(transfer_outcome(
-                TransferNegotiationDecision::Rejected,
-                None,
-                true,
-                build_transfer_feedback(
-                    "transfers.transferFeedbackRejectedHeadline",
-                    "transfers.transferFeedbackPlayerRejectedDetail",
-                    NegotiationMood::Guarded,
-                    tension.saturating_add(6).min(90),
-                    patience.saturating_sub(8),
-                    round,
-                    &[("fee", requested_fee.to_string())],
-                ),
-            ));
-        }
-
         execute_transfer(
             game,
             player_id,

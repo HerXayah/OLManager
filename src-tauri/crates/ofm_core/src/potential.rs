@@ -36,13 +36,34 @@ pub fn start_potential_research(game: &mut Game, player_id: &str) -> Result<(), 
         .clone()
         .ok_or("No team assigned".to_string())?;
 
+    let mut managed_team_ids = std::collections::HashSet::new();
+    managed_team_ids.insert(manager_team_id.clone());
+    let parent_academy_id = game
+        .teams
+        .iter()
+        .find(|candidate| candidate.id == manager_team_id)
+        .and_then(|parent| parent.academy_team_id.as_deref());
+    for team in &game.teams {
+        if team.team_kind == domain::team::TeamKind::Academy
+            && (team.parent_team_id.as_deref() == Some(manager_team_id.as_str())
+                || parent_academy_id == Some(team.id.as_str()))
+        {
+            managed_team_ids.insert(team.id.clone());
+        }
+    }
+
     let player = game
         .players
         .iter_mut()
         .find(|candidate| candidate.id == player_id)
         .ok_or_else(|| format!("Player not found: {}", player_id))?;
 
-    if player.team_id.as_deref() != Some(manager_team_id.as_str()) {
+    if !player
+        .team_id
+        .as_ref()
+        .map(|team_id| managed_team_ids.contains(team_id))
+        .unwrap_or(false)
+    {
         return Err("Player does not belong to manager team".to_string());
     }
 
@@ -319,5 +340,32 @@ mod tests {
 
         player.potential_revealed = Some(92);
         assert_eq!(effective_potential_cap(&player), 92);
+    }
+
+    #[test]
+    fn allows_potential_research_for_managed_academy_player() {
+        let mut game = make_game();
+        let mut academy_team = Team::new(
+            "academy-1".to_string(),
+            "Academy One".to_string(),
+            "AC1".to_string(),
+            "England".to_string(),
+            "London".to_string(),
+            "Academy Arena".to_string(),
+            12000,
+        );
+        academy_team.team_kind = domain::team::TeamKind::Academy;
+        academy_team.parent_team_id = Some("team-1".to_string());
+
+        let academy_player = make_player("p-academy", "Academy Player", "academy-1", 74, 86);
+
+        game.teams.push(academy_team);
+        game.players.push(academy_player);
+
+        start_potential_research(&mut game, "p-academy")
+            .expect("academy player potential research should start");
+
+        let player = game.players.iter().find(|candidate| candidate.id == "p-academy").unwrap();
+        assert_eq!(player.potential_research_eta_days, Some(POTENTIAL_RESEARCH_DURATION_DAYS));
     }
 }

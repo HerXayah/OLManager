@@ -52,6 +52,59 @@ function App() {
     }
   }, [loaded, settings.language]);
 
+  useEffect(() => {
+    const blockHistoryNavigation = () => {
+      window.history.go(1);
+    };
+
+    const blockMouseBackForward = (event: MouseEvent) => {
+      if (event.button === 3 || event.button === 4) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const blockAuxClickBackForward = (event: MouseEvent) => {
+      if (event.button === 3 || event.button === 4) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const blockKeyboardHistoryShortcuts = (event: KeyboardEvent) => {
+      if (
+        event.key === "BrowserBack" ||
+        event.key === "BrowserForward" ||
+        event.code === "BrowserBack" ||
+        event.code === "BrowserForward"
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      if (event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    window.history.pushState({ navigationGuard: true }, "", window.location.href);
+    window.addEventListener("popstate", blockHistoryNavigation);
+    window.addEventListener("mousedown", blockMouseBackForward, { capture: true });
+    window.addEventListener("mouseup", blockMouseBackForward, { capture: true });
+    window.addEventListener("auxclick", blockAuxClickBackForward, { capture: true });
+    window.addEventListener("keydown", blockKeyboardHistoryShortcuts, { capture: true });
+
+    return () => {
+      window.removeEventListener("popstate", blockHistoryNavigation);
+      window.removeEventListener("mousedown", blockMouseBackForward, { capture: true });
+      window.removeEventListener("mouseup", blockMouseBackForward, { capture: true });
+      window.removeEventListener("auxclick", blockAuxClickBackForward, { capture: true });
+      window.removeEventListener("keydown", blockKeyboardHistoryShortcuts, { capture: true });
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <Suspense fallback={<LazyFallback />}>

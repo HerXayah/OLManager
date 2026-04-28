@@ -109,6 +109,12 @@ function championTileUrl(championId: string): string {
   return `https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/${canonical}_0.jpg`;
 }
 
+function championDisplayName(championId: string): string {
+  const normalized = normalizeKey(championId);
+  if (normalized === "monkeyking") return "Wukong";
+  return championId;
+}
+
 function tierLabelClass(tier: string): string {
   if (tier === "S") return "bg-red-400 text-black";
   if (tier === "A") return "bg-orange-300 text-black";
@@ -480,7 +486,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                           <div className="h-14 w-24 rounded-md border border-navy-500/80 bg-navy-800 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-yellow-300 overflow-hidden">
                             <img
                               src={championTileUrl(entry.champion_id)}
-                              alt={entry.champion_id}
+                              alt={championDisplayName(entry.champion_id)}
                               className="h-full w-full object-cover"
                               loading="lazy"
                               onError={(event) => {
@@ -488,7 +494,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                                 element.onerror = null;
                                 element.src = `https://ddragon.leagueoflegends.com/cdn/15.7.1/img/champion/${entry.champion_id}.png`;
                               }}
-                              title={`${entry.champion_id} · ${entry.role}`}
+                              title={`${championDisplayName(entry.champion_id)} · ${entry.role}`}
                             />
                           </div>
                         </div>
@@ -625,7 +631,7 @@ export default function ChampionsTab({ gameState, onGameUpdate }: ChampionsTabPr
                               ?? "?";
                             return (
                               <option key={`${player.id}-${slotIndex}-${champion}`} value={champion}>
-                                {`${champion} · M${mastery} · Tier ${discoveredTier}`}
+                                {`${championDisplayName(champion)} · M${mastery} · Tier ${discoveredTier}`}
                               </option>
                             );
                           })}

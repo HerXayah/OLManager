@@ -1420,6 +1420,8 @@ struct ChampionRuntime {
     #[serde(default)]
     ignite_source_id: Option<String>,
     last_damaged_by_champion_id: Option<String>,
+    #[serde(default)]
+    last_damaged_by_champion_at: f64,
     last_damaged_at: f64,
     state: String,
     recall_anchor: Option<Vec2>,
@@ -2069,6 +2071,7 @@ const ASSIST_RADIUS: f64 = 0.11;
 const CHAMPION_KILL_GOLD: i64 = 300;
 const CHAMPION_ASSIST_GOLD_TOTAL: i64 = 150;
 const CHAMPION_KILL_XP: i64 = 220;
+const CHAMPION_LAST_DAMAGE_KILL_CREDIT_SEC: f64 = 60.0;
 const CHAMPION_KILL_GOLD_MIN: i64 = 170;
 const CHAMPION_KILL_GOLD_MAX: i64 = 650;
 const CHAMPION_KILL_XP_MIN: i64 = 150;
@@ -2091,7 +2094,7 @@ const TOWER_NEXUS_HP: f64 = 2700.0;
 const INHIBITOR_HP: f64 = 4000.0;
 const NEXUS_HP: f64 = 5500.0;
 const EARLY_TOWER_FORTIFICATION_END_AT: f64 = 14.0 * 60.0;
-const EARLY_TOWER_DAMAGE_REDUCTION: f64 = 0.72;
+const EARLY_TOWER_DAMAGE_REDUCTION: f64 = 0.82;
 const CHAMPION_ATTACK_CADENCE_SEC: f64 = 0.85;
 const TOWER_SHOT_DAMAGE: f64 = 32.0;
 const TOWER_SHOT_DAMAGE_TO_MINION: f64 = 24.0;
@@ -2880,6 +2883,11 @@ fn seed_team(
             .as_ref()
             .map(|impact| impact.modifier.clamp(-4.0, 4.0))
             .unwrap_or(0.0);
+        let tuned_role_modifier = if role_seed.role == "JGL" {
+            role_modifier * 0.65
+        } else {
+            role_modifier
+        };
         let role_variance = role_impact
             .as_ref()
             .map(|impact| impact.variance.clamp(0.5, 4.5))
@@ -2917,17 +2925,20 @@ fn seed_team(
         let champion_pool_delta = stat_delta(champion_pool);
 
         let max_hp = (max_hp
-            * (1.0 + role_modifier * 0.012 + competitive_delta * 0.04 + teamfighting_delta * 0.02))
+            * (1.0
+                + tuned_role_modifier * 0.012
+                + competitive_delta * 0.04
+                + teamfighting_delta * 0.02))
             .clamp(120.0, 340.0);
         let attack_damage = (14.0 + rng.next_f64() * 5.0)
             * (1.0
-                + role_modifier * 0.016
+                + tuned_role_modifier * 0.016
                 + gameplay_delta * 0.06
                 + mechanics_delta * 0.03
                 + staff_tactics_modifier * 0.015);
         let move_speed = (0.043
             + rng.next_f64() * 0.008
-            + (role_modifier * 0.00035)
+            + (tuned_role_modifier * 0.00035)
             + iq_delta * 0.001
             + laning_delta * 0.0006
             + staff_tactics_modifier * 0.0004)
@@ -4753,6 +4764,27 @@ fn should_force_laner_disengage(
     structures: &[StructureRuntime],
 ) -> bool {
     if champion.role == "JGL" {
+        let hp_ratio = if champion.max_hp <= 0.0 {
+            1.0
+        } else {
+            champion.hp / champion.max_hp
+        };
+        if hp_ratio <= 0.40 {
+            return true;
+        }
+        if is_deep_enemy_tower_zone(champion, target_pos, structures, minions) {
+            return true;
+        }
+        let pressure = lane_pressure_at(
+            champion,
+            target_pos,
+            champions,
+            minions,
+            LANE_LOCAL_PRESSURE_RADIUS,
+        );
+        if pressure.enemy_score > pressure.ally_score + 0.15 {
+            return true;
+        }
         return false;
     }
     let Some(profile) = lane_role_profile(champion) else {
@@ -4813,9 +4845,6 @@ fn mark_lane_disengage(
     now: f64,
     lane_combat_state_by_champion: &mut HashMap<String, LanerCombatStateRuntime>,
 ) {
-    if champion.role == "JGL" {
-        return;
-    }
     let state = lane_combat_state_mut(lane_combat_state_by_champion, &champion.id);
     state.last_disengage_at = now;
     state.reengage_at = f64::max(state.reengage_at, now + LANE_REENGAGE_COOLDOWN_SEC);
@@ -4827,9 +4856,6 @@ fn mark_lane_trade_hit(
     now: f64,
     lane_combat_state_by_champion: &mut HashMap<String, LanerCombatStateRuntime>,
 ) {
-    if champion.role == "JGL" {
-        return;
-    }
     let state = lane_combat_state_mut(lane_combat_state_by_champion, &champion.id);
     state.recent_trade_until = f64::max(state.recent_trade_until, now + LANE_RECENT_TRADE_LOCK_SEC);
 }
@@ -4839,9 +4865,6 @@ fn lane_trade_cooldown_active(
     now: f64,
     lane_combat_state_by_champion: &HashMap<String, LanerCombatStateRuntime>,
 ) -> bool {
-    if champion.role == "JGL" {
-        return false;
-    }
     lane_combat_state_by_champion
         .get(&champion.id)
         .map(|state| now < state.reengage_at)
@@ -4853,9 +4876,6 @@ fn lane_recent_trade_lock_active(
     now: f64,
     lane_combat_state_by_champion: &HashMap<String, LanerCombatStateRuntime>,
 ) -> bool {
-    if champion.role == "JGL" {
-        return false;
-    }
     lane_combat_state_by_champion
         .get(&champion.id)
         .map(|state| now < state.recent_trade_until)
@@ -6126,7 +6146,13 @@ fn decide_champion_state(
 
     if team_buffs.baron_until > now {
         if let Some(lane) = weakest_enemy_lane_for_team(structures, &champion.team) {
-            if let Some(push_target) = baron_push_target_for_lane(structures, &champion.team, lane)
+            if let Some(push_target) = baron_push_rally_target(
+                champion,
+                minions,
+                structures,
+                &champion.team,
+                lane,
+            )
             {
                 champion.state = "objective".to_string();
                 set_champion_direct_path_hysteresis(
@@ -6169,7 +6195,7 @@ fn decide_champion_state(
 
         if champion.role == "JGL" {
             if let Some(objective_pos) =
-                pick_macro_objective_pos(champion, timers, now, team_tactics)
+                pick_macro_objective_pos(champion, champions, timers, now, team_tactics)
             {
                 champion.state = "objective".to_string();
                 set_champion_direct_path_hysteresis(
@@ -6559,6 +6585,36 @@ fn can_rotate_without_suicide(
     ally_nearby + 1 + sync_bonus >= enemy_nearby
 }
 
+fn should_jungler_commit_major_objective(
+    champion: &ChampionRuntime,
+    objective: &NeutralTimerRuntime,
+    champions: &[ChampionRuntime],
+) -> bool {
+    let hp_ratio = ratio_or_zero(champion.hp, champion.max_hp);
+    if hp_ratio < 0.52 {
+        return false;
+    }
+
+    let ally_nearby = champions
+        .iter()
+        .filter(|ally| {
+            ally.alive
+                && normalized_team(&ally.team) == normalized_team(&champion.team)
+                && dist(ally.pos, objective.pos) <= OBJECTIVE_ASSIST_RADIUS
+        })
+        .count();
+    let enemy_nearby = champions
+        .iter()
+        .filter(|enemy| {
+            enemy.alive
+                && normalized_team(&enemy.team) != normalized_team(&champion.team)
+                && dist(enemy.pos, objective.pos) <= OBJECTIVE_ASSIST_RADIUS
+        })
+        .count();
+
+    ally_nearby + 1 >= enemy_nearby
+}
+
 fn allied_nexus_under_threat_pos(
     champion: &ChampionRuntime,
     champions: &[ChampionRuntime],
@@ -6600,6 +6656,7 @@ fn allied_nexus_under_threat_pos(
 
 fn pick_macro_objective_pos(
     champion: &ChampionRuntime,
+    champions: &[ChampionRuntime],
     neutral_timers: &NeutralTimersRuntime,
     now: f64,
     team_tactics: &RuntimeTeamTactics,
@@ -6622,6 +6679,9 @@ fn pick_macro_objective_pos(
             continue;
         }
         if timer.alive {
+            if !should_jungler_commit_major_objective(champion, timer, champions) {
+                continue;
+            }
             return Some(timer.pos);
         }
         if let Some(next_spawn_at) = timer.next_spawn_at {
@@ -7290,7 +7350,6 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
                 team_damage_reduction_multiplier(runtime, &runtime.champions[champion_idx].team);
             runtime.champions[champion_idx].hp -=
                 attacker_damage * MINION_DAMAGE_TO_CHAMPION_MULTIPLIER * defender_mult;
-            runtime.champions[champion_idx].last_damaged_by_champion_id = None;
             runtime.champions[champion_idx].last_damaged_at = now;
             cancel_recall(
                 &mut runtime.champions[champion_idx],
@@ -7304,6 +7363,7 @@ fn resolve_minion_combat(runtime: &mut RuntimeState) {
                 runtime.champions[champion_idx].deaths += 1;
                 let respawn = champion_respawn_seconds(runtime.champions[champion_idx].level, now);
                 runtime.champions[champion_idx].respawn_at = now + respawn;
+                award_recent_champion_kill_credit(runtime, champion_idx, now, "minion");
             }
             continue;
         }
@@ -9438,6 +9498,7 @@ fn try_cast_ignite(runtime: &mut RuntimeState, champion_idx: usize, now: f64) ->
     runtime.champions[target_idx].ignite_dot_until = now + SUMMONER_IGNITE_DURATION_SEC;
     runtime.champions[target_idx].ignite_source_id = Some(champion_snapshot.id.clone());
     runtime.champions[target_idx].last_damaged_by_champion_id = Some(champion_snapshot.id.clone());
+    runtime.champions[target_idx].last_damaged_by_champion_at = now;
     runtime.champions[target_idx].last_damaged_at = now;
 
     if set_spell_cd(
@@ -10278,12 +10339,11 @@ fn should_engage_enemy_champion(
         && enemy_hp_ratio <= 0.55
         && hp_ratio + 0.05 >= dynamic_retreat_hp_ratio;
 
-    if attacker.role != "JGL" && hp_ratio <= dynamic_retreat_hp_ratio {
+    if hp_ratio <= dynamic_retreat_hp_ratio {
         return false;
     }
 
-    if attacker.role != "JGL"
-        && !pick_force_open
+    if !pick_force_open
         && !dive_force_open
         && !can_open_trade_window(
             attacker,
@@ -10341,6 +10401,9 @@ fn can_champion_tower_dive(
     } else {
         attacker.hp / attacker.max_hp
     };
+    if attacker_hp_ratio < 0.60 {
+        return false;
+    }
     let attacker_is_backline = attacker.attack_range >= 0.05;
     let team_tactics = team_tactics_for_runtime(runtime.extra.get("teamTactics"), &attacker.team);
     let dive_plan = team_tactics.fight_plan == "Dive";
@@ -10465,6 +10528,7 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
         let outgoing = attacker.attack_damage * attack_damage_multiplier * attacker_micro_mult;
         defender.hp -= outgoing;
         defender.last_damaged_by_champion_id = Some(attacker.id.clone());
+        defender.last_damaged_by_champion_at = now;
         defender.last_damaged_at = now;
         cancel_recall(defender, now, &mut runtime.events);
         attacker.attack_cd_until = now + CHAMPION_ATTACK_CADENCE_SEC;
@@ -10498,6 +10562,7 @@ fn attack_enemy_champion(runtime: &mut RuntimeState, attacker_idx: usize, target
         let outgoing = attacker.attack_damage * attack_damage_multiplier * attacker_micro_mult;
         defender.hp -= outgoing;
         defender.last_damaged_by_champion_id = Some(attacker.id.clone());
+        defender.last_damaged_by_champion_at = now;
         defender.last_damaged_at = now;
         cancel_recall(defender, now, &mut runtime.events);
         attacker.attack_cd_until = now + CHAMPION_ATTACK_CADENCE_SEC;
@@ -10603,6 +10668,58 @@ fn mark_tower_aggro_on_champion_attack(
     }
 }
 
+fn award_recent_champion_kill_credit(
+    runtime: &mut RuntimeState,
+    victim_idx: usize,
+    now: f64,
+    cause: &str,
+) {
+    if victim_idx >= runtime.champions.len() {
+        return;
+    }
+
+    let victim_snapshot = runtime.champions[victim_idx].clone();
+    let Some(killer_id) = victim_snapshot.last_damaged_by_champion_id.clone() else {
+        return;
+    };
+    if now - victim_snapshot.last_damaged_by_champion_at > CHAMPION_LAST_DAMAGE_KILL_CREDIT_SEC {
+        return;
+    }
+
+    let Some(killer_idx) = runtime
+        .champions
+        .iter()
+        .position(|champion| champion.id == killer_id)
+    else {
+        return;
+    };
+    if !runtime.champions[killer_idx].alive {
+        return;
+    }
+    if normalized_team(&runtime.champions[killer_idx].team)
+        == normalized_team(&victim_snapshot.team)
+    {
+        return;
+    }
+
+    let killer_snapshot = runtime.champions[killer_idx].clone();
+    runtime.champions[killer_idx].kills += 1;
+    let killer_team = runtime.champions[killer_idx].team.clone();
+
+    let (kill_gold, kill_xp) = champion_kill_rewards(&killer_snapshot, &victim_snapshot);
+    team_stats_mut(&mut runtime.stats, &killer_team).kills += 1;
+    add_gold_xp_to_champion(runtime, &killer_id, kill_gold, kill_xp);
+
+    log_event(
+        runtime,
+        &format!(
+            "{} killed {} ({})",
+            killer_snapshot.name, victim_snapshot.name, cause
+        ),
+        "kill",
+    );
+}
+
 fn apply_tower_shot_to_champion(
     runtime: &mut RuntimeState,
     structure_idx: usize,
@@ -10610,7 +10727,6 @@ fn apply_tower_shot_to_champion(
 ) {
     let now = runtime.time_sec;
     runtime.champions[champion_idx].hp -= TOWER_SHOT_DAMAGE;
-    runtime.champions[champion_idx].last_damaged_by_champion_id = None;
     runtime.champions[champion_idx].last_damaged_at = now;
     cancel_recall(
         &mut runtime.champions[champion_idx],
@@ -10624,6 +10740,7 @@ fn apply_tower_shot_to_champion(
         runtime.champions[champion_idx].deaths += 1;
         let respawn = champion_respawn_seconds(runtime.champions[champion_idx].level, now);
         runtime.champions[champion_idx].respawn_at = now + respawn;
+        award_recent_champion_kill_credit(runtime, champion_idx, now, "tower");
     }
 }
 
@@ -10917,6 +11034,47 @@ fn baron_push_target_for_lane(
         .map(|nexus| nexus.pos)
 }
 
+fn allied_wave_ready_for_baron_siege(
+    minions: &[MinionRuntime],
+    team: &str,
+    lane: &str,
+    target_pos: Vec2,
+) -> bool {
+    minions
+        .iter()
+        .filter(|minion| {
+            minion.alive
+                && normalized_team(&minion.team) == normalized_team(team)
+                && normalized_lane(&minion.lane) == normalized_lane(lane)
+                && dist(minion.pos, target_pos) <= 0.095
+        })
+        .count()
+        >= 2
+}
+
+fn baron_push_rally_target(
+    champion: &ChampionRuntime,
+    minions: &[MinionRuntime],
+    structures: &[StructureRuntime],
+    team: &str,
+    lane: &str,
+) -> Option<Vec2> {
+    let siege_target = baron_push_target_for_lane(structures, team, lane)?;
+    if allied_wave_ready_for_baron_siege(minions, team, lane, siege_target) {
+        return Some(siege_target);
+    }
+
+    let wave_front = lane_wave_front_pos(champion, minions, structures);
+    let dir = normalize(Vec2 {
+        x: wave_front.x - siege_target.x,
+        y: wave_front.y - siege_target.y,
+    });
+    Some(Vec2 {
+        x: clamp(wave_front.x + dir.x * 0.018, 0.01, 0.99),
+        y: clamp(wave_front.y + dir.y * 0.018, 0.01, 0.99),
+    })
+}
+
 fn structure_alive_by_id(structures: &[StructureRuntime], id: &str) -> bool {
     structures
         .iter()
@@ -11000,7 +11158,9 @@ fn apply_damage_to_structure(
 
     let multiplier = tower_damage_multiplier(runtime.time_sec, &runtime.structures[structure_idx]);
     let mut damage = raw_damage.max(0.0) * multiplier;
-    if runtime.structures[structure_idx].kind == "tower" {
+    if runtime.structures[structure_idx].kind == "tower"
+        && runtime.time_sec >= EARLY_TOWER_FORTIFICATION_END_AT
+    {
         let buffs = team_buffs_for_runtime(runtime.extra.get("teamBuffs"), attacker_team);
         let voidgrub_bonus = (buffs.voidgrub_stacks as f64 * VOIDGRUB_TOWER_DAMAGE_PER_STACK)
             .min(VOIDGRUB_TOWER_DAMAGE_MAX)
@@ -11916,6 +12076,7 @@ mod tests {
             ignite_dot_until: 0.0,
             ignite_source_id: None,
             last_damaged_by_champion_id: None,
+            last_damaged_by_champion_at: -999.0,
             last_damaged_at: -999.0,
             state: "lane".to_string(),
             recall_anchor: None,
@@ -12425,8 +12586,11 @@ mod tests {
         };
 
         let default_tactics = RuntimeTeamTactics::default();
-        let red_pick = pick_macro_objective_pos(&red_jgl, &neutral, 120.0, &default_tactics);
-        let blue_pick = pick_macro_objective_pos(&blue_jgl, &neutral, 120.0, &default_tactics);
+        let champions = vec![red_jgl.clone(), blue_jgl.clone()];
+        let red_pick =
+            pick_macro_objective_pos(&red_jgl, &champions, &neutral, 120.0, &default_tactics);
+        let blue_pick =
+            pick_macro_objective_pos(&blue_jgl, &champions, &neutral, 120.0, &default_tactics);
 
         assert_eq!(red_pick.map(|p| (p.x, p.y)), Some((0.48, 0.26)));
         assert_eq!(blue_pick.map(|p| (p.x, p.y)), Some((0.25, 0.46)));

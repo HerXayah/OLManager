@@ -81,6 +81,7 @@ pub fn run() {
             }
 
             app.manage(SaveManagerState(Mutex::new(save_manager)));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

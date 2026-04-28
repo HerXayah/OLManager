@@ -38,7 +38,7 @@ import {
   getUnreadMessagesCount,
 } from "../components/dashboard/dashboardHelpers";
 import { useAdvanceTime } from "../hooks/useAdvanceTime";
-import { Cpu, Eye, Gamepad2 } from "lucide-react";
+import { Eye, Gamepad2 } from "lucide-react";
 import {
   formatDateFull,
   isSeasonComplete as isLeagueSeasonComplete,
@@ -266,11 +266,11 @@ export default function Dashboard(): JSX.Element {
       dropdownColorClass: "from-indigo-600 to-indigo-700",
     },
     delegate: {
-      label: t("continueMenu.delegateAssistant"),
-      icon: <Cpu className="w-4 h-4" />,
-      desc: t("continueMenu.delegateAssistantDesc"),
-      buttonColorClass: "from-amber-500 to-amber-600",
-      dropdownColorClass: "from-amber-600 to-amber-700",
+      label: t("continueMenu.watchSpectator"),
+      icon: <Eye className="w-4 h-4" />,
+      desc: t("continueMenu.watchSpectatorDesc"),
+      buttonColorClass: "from-indigo-500 to-indigo-600",
+      dropdownColorClass: "from-indigo-600 to-indigo-700",
     },
   };
 
@@ -354,9 +354,15 @@ export default function Dashboard(): JSX.Element {
   }
 
   function handleSelectMatchMode(mode: MatchModeType): void {
-    setMatchMode(mode);
+    setMatchMode(mode === "delegate" ? "spectator" : mode);
     setShowContinueMenu(false);
   }
+
+  useEffect(() => {
+    if (matchMode === "delegate") {
+      setMatchMode("spectator");
+    }
+  }, [matchMode, setMatchMode]);
 
   function handleNavigateSettings(): void {
     navigate("/settings", { state: { from: "/dashboard" } });
