@@ -48,6 +48,7 @@ export default function Settings() {
   )
     ? settings.language
     : "es";
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
   // Where to go back to
   const returnTo = (location.state as { from?: string })?.from || "/";
@@ -231,10 +232,16 @@ export default function Settings() {
                   { value: "xlarge", label: "XL" },
                 ]}
                 value={settings.ui_scale}
-                onChange={(v) =>
-                  handleUpdate({ ui_scale: v as AppSettings["ui_scale"] })
-                }
+                onChange={(v) => {
+                  if (isAndroid) return;
+                  handleUpdate({ ui_scale: v as AppSettings["ui_scale"] });
+                }}
               />
+              {isAndroid ? (
+                <span className="text-[10px] font-heading uppercase tracking-wide text-gray-400">
+                  {t("settings.uiScaleAndroidLocked", "Bloqueado en XS en Android")}
+                </span>
+              ) : null}
             </div>
           </SettingRow>
 

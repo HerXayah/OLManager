@@ -32697,6 +32697,38 @@
         "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c2/SNC_Sea_2025.jpg/revision/latest/scale-to-width-down/220?cb=20250830143850"
       },
       {
+        "ign": "Trayton",
+        "firstName": "Jean",
+        "lastName": "Medzadourian",
+        "dob": "1998-09-26",
+        "nationality": "FR",
+        "residency": "EMEA",
+        "role": "Support",
+        "teamId": "fa",
+        "rating": 69,
+        "potential": 74,
+        "salary": 132000,
+        "contractEnd": "2026-11-18",
+        "marketValue": 220000,
+        "reputation": 67,
+        "personality": "calm",
+        "champions": [
+          [
+            "Leona",
+            100
+          ],
+          [
+            "Thresh",
+            90
+          ],
+          [
+            "Nautilus",
+            84
+          ]
+        ],
+        "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/1/1c/VIT_Trayton_2019_Split_2.png/revision/latest/scale-to-width-down/220?cb=20190611233534"
+      },
+      {
         "ign": "Virtuosa",
         "firstName": "Skylar",
         "lastName": "Hew",

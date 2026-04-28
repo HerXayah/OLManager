@@ -31,8 +31,17 @@ const DEFAULT_SETTINGS: AppSettings = {
   lol_hybrid_disengage_confidence_low: 0.32,
 };
 
+function isAndroidDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 function mergeWithDefaultSettings(settings: Partial<AppSettings> = {}): AppSettings {
-  return { ...DEFAULT_SETTINGS, ...settings };
+  const merged = { ...DEFAULT_SETTINGS, ...settings };
+  if (isAndroidDevice()) {
+    merged.ui_scale = "xsmall";
+  }
+  return merged;
 }
 
 async function persistSettings(settings: AppSettings) {
@@ -61,7 +70,11 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   updateSettings: async (partial) => {
     const previousSettings = get().settings;
-    const merged = mergeWithDefaultSettings({ ...previousSettings, ...partial });
+    const nextPartial = { ...partial };
+    if (isAndroidDevice()) {
+      nextPartial.ui_scale = "xsmall";
+    }
+    const merged = mergeWithDefaultSettings({ ...previousSettings, ...nextPartial });
     set({ settings: merged });
     try {
       await persistSettings(merged);
