@@ -365,7 +365,14 @@ mod tests {
         start_potential_research(&mut game, "p-academy")
             .expect("academy player potential research should start");
 
-        let player = game.players.iter().find(|candidate| candidate.id == "p-academy").unwrap();
-        assert_eq!(player.potential_research_eta_days, Some(POTENTIAL_RESEARCH_DURATION_DAYS));
+        let player = game
+            .players
+            .iter()
+            .find(|candidate| candidate.id == "p-academy")
+            .unwrap();
+        assert_eq!(
+            player.potential_research_eta_days,
+            Some(POTENTIAL_RESEARCH_DURATION_DAYS)
+        );
     }
 }

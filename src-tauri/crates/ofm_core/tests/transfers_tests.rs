@@ -498,9 +498,10 @@ fn accepting_pending_offer_executes_transfer_even_for_reluctant_player() {
     player.morale = 88;
     player.stats.appearances = 28;
     player.transfer_listed = false;
-    player
-        .transfer_offers
-        .push(make_pending_incoming_offer("offer-accept-reluctant", 950_000));
+    player.transfer_offers.push(make_pending_incoming_offer(
+        "offer-accept-reluctant",
+        950_000,
+    ));
 
     let mut game = make_game_with_player(player, vec![], 5_000_000, 2_000_000);
     game.teams[0].reputation = 1200;
@@ -508,8 +509,13 @@ fn accepting_pending_offer_executes_transfer_even_for_reluctant_player() {
     game.teams[1].finance = 6_000_000;
     game.teams[1].transfer_budget = 3_000_000;
 
-    respond_to_offer(&mut game, "player-accept-reluctant", "offer-accept-reluctant", true)
-        .expect("accepting a pending offer should execute transfer");
+    respond_to_offer(
+        &mut game,
+        "player-accept-reluctant",
+        "offer-accept-reluctant",
+        true,
+    )
+    .expect("accepting a pending offer should execute transfer");
 
     let player = game
         .players
@@ -517,7 +523,10 @@ fn accepting_pending_offer_executes_transfer_even_for_reluctant_player() {
         .find(|player| player.id == "player-accept-reluctant")
         .unwrap();
     assert_eq!(player.team_id.as_deref(), Some("team-2"));
-    assert_eq!(player.transfer_offers[0].status, TransferOfferStatus::Accepted);
+    assert_eq!(
+        player.transfer_offers[0].status,
+        TransferOfferStatus::Accepted
+    );
 }
 
 #[test]

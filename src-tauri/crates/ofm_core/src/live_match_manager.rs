@@ -120,7 +120,9 @@ pub fn create_live_match(
     let (home_xi, home_bench) = build_team_with_bench(game, &home_team_id);
     let (away_xi, away_bench) = build_team_with_bench(game, &away_team_id);
 
-    if home_xi.players.len() < LOL_STARTERS_REQUIRED || away_xi.players.len() < LOL_STARTERS_REQUIRED {
+    if home_xi.players.len() < LOL_STARTERS_REQUIRED
+        || away_xi.players.len() < LOL_STARTERS_REQUIRED
+    {
         return Err(format!(
             "Cannot start match: incomplete lineup (home: {}, away: {}, required: {})",
             home_xi.players.len(),
