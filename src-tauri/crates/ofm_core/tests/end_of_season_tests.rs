@@ -835,7 +835,12 @@ fn next_season_generation_ignores_academy_team_ids() {
 
     let next_league = game.league.as_ref().expect("next league should exist");
     assert_eq!(next_league.standings.len(), 10);
-    assert!(!next_league.standings.iter().any(|entry| entry.team_id == "academy-1"));
+    assert!(
+        !next_league
+            .standings
+            .iter()
+            .any(|entry| entry.team_id == "academy-1")
+    );
 }
 
 // ---------------------------------------------------------------------------

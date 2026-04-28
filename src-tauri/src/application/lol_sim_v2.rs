@@ -6146,13 +6146,8 @@ fn decide_champion_state(
 
     if team_buffs.baron_until > now {
         if let Some(lane) = weakest_enemy_lane_for_team(structures, &champion.team) {
-            if let Some(push_target) = baron_push_rally_target(
-                champion,
-                minions,
-                structures,
-                &champion.team,
-                lane,
-            )
+            if let Some(push_target) =
+                baron_push_rally_target(champion, minions, structures, &champion.team, lane)
             {
                 champion.state = "objective".to_string();
                 set_champion_direct_path_hysteresis(

@@ -876,9 +876,8 @@ fn buyer_counter_offer_ceiling(
     current_offer_fee: u64,
     buyer_team: &domain::team::Team,
 ) -> u64 {
-    let baseline_fee =
-        suggested_incoming_fee(current_date, player, buyer_team, &buyer_team.id)
-            .max(current_offer_fee);
+    let baseline_fee = suggested_incoming_fee(current_date, player, buyer_team, &buyer_team.id)
+        .max(current_offer_fee);
     let ceiling = ((baseline_fee as f64) * 1.2).round() as u64;
     ceiling
         .min(buyer_team.transfer_budget.max(0) as u64)

@@ -26,7 +26,10 @@ fn build_blocker(id: &str, severity: &str, text: String, tab: &str) -> serde_jso
     })
 }
 
-fn contract_days_remaining(contract_end: Option<&str>, current_date: chrono::NaiveDate) -> Option<i64> {
+fn contract_days_remaining(
+    contract_end: Option<&str>,
+    current_date: chrono::NaiveDate,
+) -> Option<i64> {
     let contract_end = contract_end?;
     let end_date = chrono::NaiveDate::parse_from_str(contract_end, "%Y-%m-%d").ok()?;
     Some((end_date - current_date).num_days())
@@ -223,7 +226,9 @@ fn key_contract_risk_blocker(
     let risky_key_players: Vec<&str> = effective_xi_players
         .into_iter()
         .take(3)
-        .filter(|player| should_notify_contract_risk_30d(player.contract_end.as_deref(), current_date))
+        .filter(|player| {
+            should_notify_contract_risk_30d(player.contract_end.as_deref(), current_date)
+        })
         .map(|player| player.match_name.as_str())
         .collect();
 
@@ -248,7 +253,9 @@ fn contract_wage_risk_blocker(
     let at_risk_wages: u32 = roster
         .iter()
         .copied()
-        .filter(|player| should_notify_contract_risk_30d(player.contract_end.as_deref(), current_date))
+        .filter(|player| {
+            should_notify_contract_risk_30d(player.contract_end.as_deref(), current_date)
+        })
         .map(|player| player.wage)
         .sum();
 
