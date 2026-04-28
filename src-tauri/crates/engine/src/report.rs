@@ -13,6 +13,20 @@ pub enum MatchReportEndReason {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TeamStats {
+    #[serde(default, skip_serializing)]
+    pub goals: u8,
+    #[serde(default, skip_serializing)]
+    pub shots: u16,
+    #[serde(default, skip_serializing)]
+    pub shots_on_target: u16,
+    #[serde(default, skip_serializing)]
+    pub yellow_cards: u16,
+    #[serde(default, skip_serializing)]
+    pub red_cards: u16,
+    #[serde(default, skip_serializing)]
+    pub corners: u16,
+    #[serde(default, skip_serializing)]
+    pub free_kicks: u16,
     pub kills: u16,
     pub deaths: u16,
     pub gold_earned: u32,
@@ -21,8 +35,38 @@ pub struct TeamStats {
     pub possession_ticks: u32,
 }
 
+impl TeamStats {
+    pub fn pass_accuracy(&self) -> f64 {
+        0.0
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlayerMatchStats {
+    #[serde(default, skip_serializing)]
+    pub minutes_played: u16,
+    #[serde(default, skip_serializing)]
+    pub yellow_cards: u8,
+    #[serde(default, skip_serializing)]
+    pub red_cards: u8,
+    #[serde(default, skip_serializing)]
+    pub rating: f32,
+    #[serde(default, skip_serializing)]
+    pub goals: u16,
+    #[serde(default, skip_serializing)]
+    pub shots: u16,
+    #[serde(default, skip_serializing)]
+    pub shots_on_target: u16,
+    #[serde(default, skip_serializing)]
+    pub passes_completed: u16,
+    #[serde(default, skip_serializing)]
+    pub passes_attempted: u16,
+    #[serde(default, skip_serializing)]
+    pub tackles_won: u16,
+    #[serde(default, skip_serializing)]
+    pub interceptions: u16,
+    #[serde(default, skip_serializing)]
+    pub fouls_committed: u16,
     pub role: Option<LolRole>,
     pub duration_seconds: u32,
     pub kills: u16,
@@ -44,15 +88,32 @@ pub struct KillDetail {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GoalDetail {
+    pub minute: u8,
+    pub scorer_id: String,
+    pub assist_id: Option<String>,
+    pub is_penalty: bool,
+    pub side: Side,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MatchReport {
+    #[serde(default, skip_serializing)]
+    pub home_goals: u8,
+    #[serde(default, skip_serializing)]
+    pub away_goals: u8,
     pub home_wins: u8,
     pub away_wins: u8,
     pub home_stats: TeamStats,
     pub away_stats: TeamStats,
     pub events: Vec<MatchEvent>,
+    #[serde(default, skip_serializing)]
+    pub goals: Vec<GoalDetail>,
     pub kill_feed: Vec<KillDetail>,
     pub player_stats: HashMap<String, PlayerMatchStats>,
     pub home_possession: f64,
+    #[serde(default, skip_serializing)]
+    pub total_minutes: u8,
     pub game_duration_seconds: u32,
     pub ended_by: MatchReportEndReason,
 }
@@ -258,16 +319,32 @@ impl MatchReport {
             Side::Home => (1, 0),
             Side::Away => (0, 1),
         };
+        let goals = kill_feed
+            .iter()
+            .map(|kill| GoalDetail {
+                minute: kill.minute,
+                scorer_id: kill.killer_id.clone(),
+                assist_id: None,
+                is_penalty: false,
+                side: kill.side,
+            })
+            .collect();
+        home_stats.goals = home_wins.into();
+        away_stats.goals = away_wins.into();
 
         Self {
+            home_goals: home_wins,
+            away_goals: away_wins,
             home_wins,
             away_wins,
             home_stats,
             away_stats,
             events,
+            goals,
             kill_feed,
             player_stats,
             home_possession,
+            total_minutes,
             game_duration_seconds: u32::from(total_minutes) * 60,
             ended_by,
         }
@@ -335,7 +412,8 @@ fn populate_duration_seconds(
     }
 
     for (player_id, minutes_played) in minutes_by_player {
-        player_stats.entry(player_id).or_default().duration_seconds =
-            u32::from(minutes_played) * 60;
+        let stats = player_stats.entry(player_id).or_default();
+        stats.minutes_played = minutes_played.into();
+        stats.duration_seconds = u32::from(minutes_played) * 60;
     }
 }

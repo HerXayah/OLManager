@@ -20,7 +20,11 @@ pub use lol_map::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MatchPhase {
+    PreKickOff,
     PreGame,
+    FirstHalf,
+    HalfTime,
+    SecondHalf,
     Live,
     Finished,
 }
@@ -224,7 +228,10 @@ impl LiveMatchState {
     /// Step one minute forward. Returns the events that occurred.
     pub fn step_minute<R: Rng>(&mut self, rng: &mut R) -> MinuteResult {
         match self.phase {
+            MatchPhase::PreKickOff => self.start_match(rng),
             MatchPhase::PreGame => self.start_match(rng),
+            MatchPhase::FirstHalf => self.play_minute(rng),
+            MatchPhase::HalfTime | MatchPhase::SecondHalf => self.play_minute(rng),
             MatchPhase::Live => self.play_minute(rng),
             MatchPhase::Finished => self.make_result(true),
         }

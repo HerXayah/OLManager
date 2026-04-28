@@ -14,6 +14,7 @@ use log::debug;
 
 fn compact_team_stats(stats: &engine::TeamStats) -> CompactTeamMatchStats {
     CompactTeamMatchStats {
+        possession_pct: 0,
         kills: stats.kills,
         deaths: stats.deaths,
         gold_earned: stats.gold_earned,
@@ -47,6 +48,7 @@ fn compact_match_report(report: &engine::MatchReport) -> CompactMatchReport {
         .collect();
 
     CompactMatchReport {
+        total_minutes: report.total_minutes.into(),
         game_duration_seconds: report.game_duration_seconds,
         home_stats: compact_team_stats(&report.home_stats),
         away_stats: compact_team_stats(&report.away_stats),

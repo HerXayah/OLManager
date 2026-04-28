@@ -98,24 +98,11 @@ vi.mock("react-i18next", () => ({
       if (key === "playerProfile.renewalFeedbackFirmDetail")
         return "The discussion is still open, but wage level and contract length need to feel clearly worthwhile from their side.";
       if (key === "playerProfile.attributes") return "Attributes";
-      if (key === "playerProfile.seasonStats") return "Season Stats";
-      if (key === "playerProfile.advancedStats") return "Advanced Stats";
-      if (key === "playerProfile.shots") return "Shots";
-      if (key === "playerProfile.shotsOnTarget") return "Shots On Target";
-      if (key === "playerProfile.passes") return "Passes";
-      if (key === "playerProfile.tacklesWon") return "Tackles Won";
-      if (key === "playerProfile.interceptions") return "Interceptions";
-      if (key === "playerProfile.foulsCommitted") return "Fouls Committed";
-      if (key === "playerProfile.per90") return "Per 90";
-      if (key === "playerProfile.passAccuracy") return "Pass Accuracy";
-      if (key === "playerProfile.percentile") return "Percentile";
-      if (key === "playerProfile.percentileUnavailable")
-        return "Percentile unavailable";
-      if (key === "playerProfile.recentMatches") return "Recent Matches";
-      if (key === "playerProfile.vs") return "vs";
-      if (key === "playerProfile.noRecentMatches") return "No recent match data";
-      if (key === "playerProfile.careerHistory") return "Career History";
-      if (key === "playerProfile.noCareer") return "No Career";
+      if (key === "playerProfile.championPoolTitle") return "Champion Pool";
+      if (key === "playerProfile.championInsignia") return "Insignia";
+      if (key === "playerProfile.championWinRateShort") return "WR";
+      if (key === "playerProfile.championMasteryLabel") return "Mastery";
+      if (key === "playerProfile.championGames") return "games";
       if (key === "finances.wagePerWeek") return "Wage/wk";
       return key;
     },
@@ -276,34 +263,7 @@ function createGameState(player: PlayerData): GameStateData {
   };
 }
 
-function createAdvancedStatsSummary() {
-  return {
-    percentileEligible: false,
-    metrics: {
-      shots: { total: 0, per90: null, percentile: null },
-      shotsOnTarget: { total: 0, per90: null, percentile: null },
-      passes: {
-        completed: 0,
-        attempted: 0,
-        accuracy: null,
-        percentile: null,
-      },
-      tacklesWon: { total: 0, per90: null, percentile: null },
-      interceptions: { total: 0, per90: null, percentile: null },
-      foulsCommitted: { total: 0, per90: null, percentile: null },
-    },
-  };
-}
-
 function defaultInvokeResponse(command: string) {
-  if (command === "get_player_stats_overview") {
-    return createAdvancedStatsSummary();
-  }
-
-  if (command === "get_player_match_history") {
-    return [];
-  }
-
   return createGameState(createPlayer());
 }
 
@@ -474,169 +434,6 @@ describe("PlayerProfile contract surfaces", () => {
     fireEvent.click(screen.getByRole("button", { name: "Alpha FC" }));
 
     expect(onSelectTeam).toHaveBeenCalledWith("team-1");
-  });
-
-  it("does not render advanced football stat panels", async () => {
-    const player = createPlayer({
-      stats: {
-        appearances: 10,
-        goals: 4,
-        assists: 3,
-        clean_sheets: 0,
-        yellow_cards: 1,
-        red_cards: 0,
-        avg_rating: 7.2,
-        minutes_played: 450,
-        shots: 20,
-        shots_on_target: 10,
-        passes_completed: 80,
-        passes_attempted: 100,
-        tackles_won: 9,
-        interceptions: 6,
-        fouls_committed: 5,
-      },
-    });
-    const peerA = createPlayer({
-      id: "player-2",
-      match_name: "A. Peer",
-      full_name: "Alpha Peer",
-      stats: {
-        ...player.stats,
-        shots: 10,
-        shots_on_target: 5,
-        passes_completed: 70,
-        passes_attempted: 100,
-        tackles_won: 6,
-        interceptions: 4,
-        fouls_committed: 3,
-      },
-    });
-    const peerB = createPlayer({
-      id: "player-3",
-      match_name: "B. Peer",
-      full_name: "Bravo Peer",
-      stats: {
-        ...player.stats,
-        shots: 15,
-        shots_on_target: 8,
-        passes_completed: 75,
-        passes_attempted: 100,
-        tackles_won: 7,
-        interceptions: 5,
-        fouls_committed: 4,
-      },
-    });
-    const gameState = {
-      ...createGameState(player),
-      players: [player, peerA, peerB],
-    };
-
-    vi.mocked(invoke).mockImplementation(async (command: string) => {
-      if (command === "get_player_stats_overview") {
-        return {
-          percentileEligible: true,
-          metrics: {
-            shots: { total: 33, per90: 6.6, percentile: 88 },
-            shotsOnTarget: { total: 14, per90: 2.8, percentile: 81 },
-            passes: {
-              completed: 144,
-              attempted: 180,
-              accuracy: 80,
-              percentile: 77,
-            },
-            tacklesWon: { total: 15, per90: 3, percentile: 72 },
-            interceptions: { total: 11, per90: 2.2, percentile: 70 },
-            foulsCommitted: { total: 8, per90: 1.6, percentile: 41 },
-          },
-        };
-      }
-
-      if (command === "get_player_match_history") {
-        return [];
-      }
-
-      return defaultInvokeResponse(command);
-    });
-
-    render(
-      <PlayerProfile
-        player={player}
-        gameState={gameState}
-        isOwnClub
-        onClose={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByText("Advanced Stats")).not.toBeInTheDocument();
-      expect(screen.queryByText("Season Stats")).not.toBeInTheDocument();
-      expect(screen.queryByText("Career History")).not.toBeInTheDocument();
-      expect(screen.queryByText("Recent Matches")).not.toBeInTheDocument();
-    });
-  });
-
-  it("does not request recent match history panel data", async () => {
-    const player = createPlayer({
-      stats: {
-        appearances: 10,
-        goals: 4,
-        assists: 3,
-        clean_sheets: 0,
-        yellow_cards: 1,
-        red_cards: 0,
-        avg_rating: 7.2,
-        minutes_played: 450,
-        shots: 20,
-        shots_on_target: 10,
-        passes_completed: 80,
-        passes_attempted: 100,
-        tackles_won: 9,
-        interceptions: 6,
-        fouls_committed: 5,
-      },
-    });
-    vi.mocked(invoke).mockImplementation(async (command: string) => {
-      if (command === "get_player_match_history") {
-        return [
-          {
-            fixture_id: "fixture-1",
-            date: "2025-06-17",
-            competition: "League",
-            matchday: 2,
-            opponent_team_id: "team-3",
-            opponent_name: "Bravo FC",
-            team_goals: 3,
-            opponent_goals: 0,
-            minutes_played: 88,
-            goals: 2,
-            assists: 1,
-            shots: 5,
-            shots_on_target: 3,
-            rating: 8.4,
-          },
-        ];
-      }
-
-      return defaultInvokeResponse(command);
-    });
-
-    render(
-      <PlayerProfile
-        player={player}
-        gameState={createGameState(player)}
-        isOwnClub
-        onClose={vi.fn()}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByText("Recent Matches")).not.toBeInTheDocument();
-    });
-
-    expect(invoke).not.toHaveBeenCalledWith("get_player_match_history", {
-      playerId: "player-1",
-      limit: 5,
-    });
   });
 
   it("validates renewal offers before submission", async () => {

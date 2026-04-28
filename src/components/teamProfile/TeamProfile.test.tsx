@@ -39,7 +39,6 @@ vi.mock("react-i18next", () => ({
         "teamProfile.squadSize": "Squad Size",
         "teamProfile.leagueStanding": "League Standing",
         "teamProfile.winRate": "WR",
-        "teamProfile.advancedStats": "Team Stats",
         "teamProfile.matchesPlayed": "Matches",
         "teamProfile.wins": "Wins",
         "teamProfile.losses": "Losses",

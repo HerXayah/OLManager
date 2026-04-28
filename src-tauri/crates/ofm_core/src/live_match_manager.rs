@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use crate::game::Game;
 
 use domain::league::StandingEntry;
-use engine::ai::AiProfile;
 use engine::{LiveMatchState, MatchCommand, MatchConfig, MatchSnapshot, MinuteResult, Side};
 
 // ---------------------------------------------------------------------------
@@ -41,8 +40,6 @@ pub struct LiveMatchSession {
     pub home_team_id: String,
     pub away_team_id: String,
     pub user_side: Option<Side>,
-    pub ai_home: AiProfile,
-    pub ai_away: AiProfile,
 }
 
 impl LiveMatchSession {
@@ -141,29 +138,6 @@ pub fn create_live_match(
         }
     });
 
-    // Build AI profiles from team reputation
-    let home_rep = game
-        .teams
-        .iter()
-        .find(|t| t.id == home_team_id)
-        .map(|t| t.reputation)
-        .unwrap_or(500);
-    let away_rep = game
-        .teams
-        .iter()
-        .find(|t| t.id == away_team_id)
-        .map(|t| t.reputation)
-        .unwrap_or(500);
-
-    let ai_home = AiProfile {
-        reputation: home_rep,
-        experience: (home_rep / 10).min(100) as u8,
-    };
-    let ai_away = AiProfile {
-        reputation: away_rep,
-        experience: (away_rep / 10).min(100) as u8,
-    };
-
     let home_name = game
         .teams
         .iter()
@@ -191,7 +165,5 @@ pub fn create_live_match(
         home_team_id,
         away_team_id,
         user_side,
-        ai_home,
-        ai_away,
     })
 }

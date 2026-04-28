@@ -67,6 +67,8 @@ pub struct MatchResult {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(default)]
 pub struct CompactMatchReport {
+    #[serde(default, skip_serializing)]
+    pub total_minutes: u32,
     pub game_duration_seconds: u32,
     pub home_stats: CompactTeamMatchStats,
     pub away_stats: CompactTeamMatchStats,
@@ -76,6 +78,8 @@ pub struct CompactMatchReport {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(default)]
 pub struct CompactTeamMatchStats {
+    #[serde(default, skip_serializing)]
+    pub possession_pct: u8,
     pub kills: u16,
     pub deaths: u16,
     pub gold_earned: u32,

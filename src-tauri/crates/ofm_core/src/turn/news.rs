@@ -406,7 +406,7 @@ mod tests {
     use domain::news::NewsCategory;
     use domain::player::{Player, PlayerAttributes, Position};
     use domain::team::Team;
-    use engine::{GoalDetail, MatchReport, Side, TeamStats};
+    use engine::{GoalDetail, MatchReport, MatchReportEndReason, Side, TeamStats};
     use std::collections::HashMap;
 
     fn make_team(id: &str, name: &str) -> Team {
@@ -449,12 +449,13 @@ mod tests {
             home_team_id: home_team_id.to_string(),
             away_team_id: away_team_id.to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status,
             result: result.map(|(home_goals, away_goals)| MatchResult {
-                home_goals,
-                away_goals,
-                home_scorers: vec![],
-                away_scorers: vec![],
+                home_wins: home_goals,
+                away_wins: away_goals,
+                ended_by: Default::default(),
+                game_duration_seconds: 90 * 60,
                 report: None,
             }),
         }
@@ -502,13 +503,18 @@ mod tests {
         MatchReport {
             home_goals,
             away_goals,
+            home_wins: home_goals,
+            away_wins: away_goals,
             home_stats: TeamStats::default(),
             away_stats: TeamStats::default(),
             events: vec![],
             goals,
+            kill_feed: vec![],
             player_stats: HashMap::new(),
             home_possession: 50.0,
             total_minutes: 90,
+            game_duration_seconds: 90 * 60,
+            ended_by: MatchReportEndReason::TimeLimit,
         }
     }
 

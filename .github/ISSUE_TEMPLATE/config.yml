@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions and discussions
-    url: https://github.com/chasemrs/OLManager/discussions
+    url: https://discord.com/invite/wZnSvJzyPE
     about: Ask open-ended questions here instead of opening an issue.
   - name: Security policy
-    url: https://github.com/chasemrs/OLManager/security/policy
+    url: https://github.com/OpenLeagueManager/OLManager/security/policy
     about: Report vulnerabilities privately. Do not open public security issues.

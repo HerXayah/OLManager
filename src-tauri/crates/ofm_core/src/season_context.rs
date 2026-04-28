@@ -138,6 +138,7 @@ mod tests {
             home_team_id: "team1".to_string(),
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: status.clone(),
             result: (status == FixtureStatus::Completed).then_some(make_result(1, 0)),
         }

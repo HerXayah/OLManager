@@ -184,6 +184,7 @@ fn calc_upkeep_uses_canonical_modular_hub_contract() {
         training: 3,
         medical: 2,
         scouting: 1,
+        ..Default::default()
     };
 
     let breakdown = finances::facility_upkeep_breakdown(&game.teams[0].facilities);
@@ -323,6 +324,7 @@ fn monthly_upkeep_is_deducted_on_first_monday_of_the_month() {
         training: 3,
         medical: 2,
         scouting: 1,
+        ..Default::default()
     };
     let initial_finance = game.teams[0].finance;
 
@@ -577,6 +579,7 @@ fn home_match_generates_income() {
             home_team_id: "team1".to_string(),
             away_team_id: "team2".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
                 home_wins: 1,
@@ -623,6 +626,7 @@ fn away_match_no_income() {
             home_team_id: "team2".to_string(), // team1 is away
             away_team_id: "team1".to_string(),
             competition: FixtureCompetition::League,
+            best_of: 1,
             status: FixtureStatus::Completed,
             result: Some(MatchResult {
                 home_wins: 0,

@@ -57,6 +57,7 @@ fn upgrade_facility_rejects_when_funds_are_insufficient() {
         training: 1,
         medical: 1,
         scouting: 1,
+        ..Default::default()
     };
 
     let result = club::upgrade_facility(&mut game.teams[0], FacilityType::Training);
