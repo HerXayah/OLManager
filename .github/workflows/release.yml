@@ -59,7 +59,7 @@ jobs:
           if mismatches:
               print("Version mismatch: " + ", ".join(mismatches), file=sys.stderr)
               sys.exit(1)
-          if not re.search(rf"^## \\[{re.escape(version)}\\]", changelog, re.MULTILINE):
+          if not re.search(rf"^## \[{re.escape(version)}\]", changelog, re.MULTILINE):
               print(f"CHANGELOG.md is missing a ## [{version}] section", file=sys.stderr)
               sys.exit(1)
 
