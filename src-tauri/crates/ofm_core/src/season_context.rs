@@ -79,7 +79,11 @@ fn derive_transfer_window_context(
     let closes_on = season_start;
 
     let (status, days_until_opens, days_remaining) = if current_date < season_start {
-        (TransferWindowStatus::Open, None, Some((season_start - current_date).num_days()))
+        (
+            TransferWindowStatus::Open,
+            None,
+            Some((season_start - current_date).num_days()),
+        )
     } else {
         (TransferWindowStatus::Closed, None, None)
     };

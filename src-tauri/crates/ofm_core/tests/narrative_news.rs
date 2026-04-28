@@ -29,7 +29,12 @@ fn assert_lol_news_copy(text: &str) {
 fn league_roundup_and_standings_use_lol_esports_framing() {
     let results = vec![
         ("Alpha Esports".to_string(), 2, "Beta Gaming".to_string(), 0),
-        ("Gamma Esports".to_string(), 1, "Delta Gaming".to_string(), 2),
+        (
+            "Gamma Esports".to_string(),
+            1,
+            "Delta Gaming".to_string(),
+            2,
+        ),
     ];
     let standings = vec![
         ("Alpha Esports".to_string(), 12, 5),
@@ -87,7 +92,15 @@ fn league_roundup_and_standings_use_lol_esports_framing() {
 fn season_digest_and_storylines_use_lol_social_media_copy() {
     let teams = vec!["Alpha Esports".to_string(), "Beta Gaming".to_string()];
     let preview = season_preview_article(&teams, "2026-04-25");
-    let digest = weekly_digest_article("digest", "2026-04-20", "Alpha Esports", "Kai", 9, 3, "2026-04-25");
+    let digest = weekly_digest_article(
+        "digest",
+        "2026-04-20",
+        "Alpha Esports",
+        "Kai",
+        9,
+        3,
+        "2026-04-25",
+    );
     let title_race = title_race_storyline_article(
         "race",
         "team1",
@@ -97,7 +110,8 @@ fn season_digest_and_storylines_use_lol_social_media_copy() {
         1,
         "2026-04-25",
     );
-    let streak = unbeaten_streak_storyline_article("streak", "team1", "Alpha Esports", 5, "2026-04-25");
+    let streak =
+        unbeaten_streak_storyline_article("streak", "team1", "Alpha Esports", 5, "2026-04-25");
 
     assert!(preview.body.contains("teams entering the split"));
     assert!(preview.body.contains("draft prep"));
@@ -108,7 +122,10 @@ fn season_digest_and_storylines_use_lol_social_media_copy() {
 
     assert!(digest.body.contains("power rankings"));
     assert!(digest.body.contains("kill participation charts"));
-    assert_eq!(digest.i18n_params.get("topPerformer"), Some(&"Kai".to_string()));
+    assert_eq!(
+        digest.i18n_params.get("topPerformer"),
+        Some(&"Kai".to_string())
+    );
     assert!(digest.i18n_params.get("topScorer").is_none());
     assert_lol_news_copy(&digest.headline);
     assert_lol_news_copy(&digest.body);
@@ -132,18 +149,21 @@ fn backend_news_locales_avoid_obvious_football_framing() {
         ("es", include_str!("../../../../src/i18n/locales/es.json")),
         ("fr", include_str!("../../../../src/i18n/locales/fr.json")),
         ("it", include_str!("../../../../src/i18n/locales/it.json")),
-        ("pt-BR", include_str!("../../../../src/i18n/locales/pt-BR.json")),
+        (
+            "pt-BR",
+            include_str!("../../../../src/i18n/locales/pt-BR.json"),
+        ),
         ("pt", include_str!("../../../../src/i18n/locales/pt.json")),
     ];
 
     for (locale_name, locale_json) in locales {
         let locale: serde_json::Value = serde_json::from_str(locale_json)
             .unwrap_or_else(|err| panic!("{locale_name} locale should parse: {err}"));
-    let backend = &locale["be"];
-    let mut visible_values = Vec::new();
-    collect_string_values(&backend["source"], &mut visible_values);
-    collect_string_values(&backend["news"], &mut visible_values);
-    let serialized = visible_values.join("\n");
+        let backend = &locale["be"];
+        let mut visible_values = Vec::new();
+        collect_string_values(&backend["source"], &mut visible_values);
+        collect_string_values(&backend["news"], &mut visible_values);
+        let serialized = visible_values.join("\n");
 
         assert_lol_news_copy(&serialized);
         assert!(

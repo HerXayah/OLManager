@@ -211,7 +211,7 @@ pub fn needs_cleanup(conn: &Connection, active_league_id: Option<&str>) -> Resul
 mod tests {
     use super::*;
     use crate::game_database::GameDatabase;
-    use domain::league::{MatchResult};
+    use domain::league::MatchResult;
 
     fn test_db() -> GameDatabase {
         GameDatabase::open_in_memory().unwrap()

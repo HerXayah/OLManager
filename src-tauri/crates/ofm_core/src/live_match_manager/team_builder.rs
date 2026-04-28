@@ -56,7 +56,10 @@ pub(super) fn build_team_with_bench(game: &Game, team_id: &str) -> (TeamData, Ve
             .then_with(|| right.condition.cmp(&left.condition))
     });
 
-    let starting_xi = starters.into_iter().map(to_engine_player).collect::<Vec<_>>();
+    let starting_xi = starters
+        .into_iter()
+        .map(to_engine_player)
+        .collect::<Vec<_>>();
     let bench = bench_domain
         .into_iter()
         .map(to_engine_player)

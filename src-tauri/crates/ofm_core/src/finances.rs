@@ -2,8 +2,8 @@ use crate::game::Game;
 use chrono::Datelike;
 use domain::message::*;
 use domain::team::{
-    main_facility_module_catalog, Facilities, MainFacilityModuleKind, Sponsorship,
-    SponsorshipBonusCriterion, Team,
+    Facilities, MainFacilityModuleKind, Sponsorship, SponsorshipBonusCriterion, Team,
+    main_facility_module_catalog,
 };
 use rand::RngExt;
 
@@ -87,8 +87,8 @@ pub fn calc_upkeep(team: &Team) -> i64 {
 
 pub fn facility_upkeep_breakdown(facilities: &Facilities) -> FacilityUpkeepBreakdown {
     let hub_level = facilities.as_main_facility_hub().level;
-    let hub_extra_level_total = i64::from(hub_level.saturating_sub(1))
-        * MAIN_HUB_UPKEEP_PER_EXTRA_LEVEL;
+    let hub_extra_level_total =
+        i64::from(hub_level.saturating_sub(1)) * MAIN_HUB_UPKEEP_PER_EXTRA_LEVEL;
     let module_extra_level_total = main_facility_module_catalog()
         .iter()
         .map(|definition| canonical_module_upkeep(facilities, definition.kind))
@@ -278,7 +278,8 @@ pub fn process_weekly_finances(game: &mut Game) {
             .sponsorship
             .as_ref()
             .map(|sponsorship| {
-                let base_income = calc_sponsorship_income(current_position, &team.form, sponsorship);
+                let base_income =
+                    calc_sponsorship_income(current_position, &team.form, sponsorship);
                 let facility_mult = facility_module_sponsorship_multiplier(&team.facilities);
                 (base_income as f64 * facility_mult).round() as i64
             })

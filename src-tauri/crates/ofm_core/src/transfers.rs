@@ -357,7 +357,8 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
     let mut managed_team_ids = std::collections::HashSet::new();
     managed_team_ids.insert(user_team_id.clone());
     for team in &game.teams {
-        if team.team_kind == TeamKind::Academy && team.parent_team_id.as_deref() == Some(&user_team_id)
+        if team.team_kind == TeamKind::Academy
+            && team.parent_team_id.as_deref() == Some(&user_team_id)
         {
             managed_team_ids.insert(team.id.clone());
         }
@@ -409,7 +410,8 @@ pub fn generate_incoming_transfer_offers(game: &mut Game) {
                     continue;
                 }
 
-                if player_team.and_then(|team| team.parent_team_id.as_deref()) == Some(buyer_id.as_str())
+                if player_team.and_then(|team| team.parent_team_id.as_deref())
+                    == Some(buyer_id.as_str())
                 {
                     continue;
                 }
@@ -559,8 +561,11 @@ fn simulate_ai_free_agent_signings(game: &mut Game, user_team_id: &str) {
             .filter(|player| lol_role_for_position(&player.natural_position) == preferred_role)
             .filter_map(|player| {
                 let asking_price = (player.market_value as i64).max(25_000) / 5;
-                (asking_price > 0 && asking_price <= budget_cap)
-                    .then_some((player.id.clone(), asking_price as u64, player.market_value))
+                (asking_price > 0 && asking_price <= budget_cap).then_some((
+                    player.id.clone(),
+                    asking_price as u64,
+                    player.market_value,
+                ))
             })
             .max_by_key(|(_, _, market_value)| *market_value);
 
@@ -570,8 +575,11 @@ fn simulate_ai_free_agent_signings(game: &mut Game, user_team_id: &str) {
             .filter(|player| player.team_id.is_none())
             .filter_map(|player| {
                 let asking_price = (player.market_value as i64).max(25_000) / 5;
-                (asking_price > 0 && asking_price <= budget_cap)
-                    .then_some((player.id.clone(), asking_price as u64, player.market_value))
+                (asking_price > 0 && asking_price <= budget_cap).then_some((
+                    player.id.clone(),
+                    asking_price as u64,
+                    player.market_value,
+                ))
             })
             .max_by_key(|(_, _, market_value)| *market_value);
 
@@ -637,7 +645,11 @@ fn simulate_ai_club_to_club_transfers(game: &mut Game, user_team_id: &str) {
 
                 let attractiveness = incoming_interest_score(current_date, player)
                     + if player.transfer_listed { 20 } else { 0 }
-                    + if player.market_value >= 1_000_000 { 10 } else { 0 };
+                    + if player.market_value >= 1_000_000 {
+                        10
+                    } else {
+                        0
+                    };
 
                 (attractiveness >= 35).then_some((
                     player.id.clone(),
@@ -669,7 +681,11 @@ fn simulate_ai_club_to_club_transfers(game: &mut Game, user_team_id: &str) {
 
                 let attractiveness = incoming_interest_score(current_date, player)
                     + if player.transfer_listed { 20 } else { 0 }
-                    + if player.market_value >= 1_000_000 { 10 } else { 0 };
+                    + if player.market_value >= 1_000_000 {
+                        10
+                    } else {
+                        0
+                    };
 
                 (attractiveness >= 35).then_some((
                     player.id.clone(),
@@ -699,7 +715,10 @@ fn ai_team_priority_role(game: &Game, team_id: &str) -> &'static str {
         }
 
         let role = lol_role_for_position(&player.natural_position);
-        if let Some(index) = LOL_CORE_ROLES.iter().position(|candidate| *candidate == role) {
+        if let Some(index) = LOL_CORE_ROLES
+            .iter()
+            .position(|candidate| *candidate == role)
+        {
             role_counts[index] = role_counts[index].saturating_add(1);
         }
     }
@@ -1077,11 +1096,16 @@ fn execute_free_agent_signing(
     to_team_id: &str,
     fee: u64,
 ) -> Result<(), String> {
-    if let Some(player) = game.players.iter_mut().find(|player| player.id == player_id) {
+    if let Some(player) = game
+        .players
+        .iter_mut()
+        .find(|player| player.id == player_id)
+    {
         player.team_id = Some(to_team_id.to_string());
         player.transfer_listed = false;
         player.loan_listed = false;
-        player.transfer_offers
+        player
+            .transfer_offers
             .retain(|offer| offer.status == TransferOfferStatus::Accepted);
         if player.contract_end.is_none() {
             let renewal_year = game.clock.current_date.year() + 2;
@@ -1414,7 +1438,9 @@ fn remove_player_from_team_references(team: &mut domain::team::Team, player_id: 
 }
 
 fn remaining_contract_salary(player: &domain::player::Player, current_date: NaiveDate) -> i64 {
-    let Some(days_remaining) = contract_days_remaining(current_date, player.contract_end.as_deref()) else {
+    let Some(days_remaining) =
+        contract_days_remaining(current_date, player.contract_end.as_deref())
+    else {
         return 0;
     };
 
@@ -1480,7 +1506,8 @@ pub fn release_player_contract(game: &mut Game, player_id: &str) -> Result<i64, 
     let mut managed_team_ids = std::collections::HashSet::new();
     managed_team_ids.insert(user_team_id.clone());
     for team in &game.teams {
-        if team.team_kind == TeamKind::Academy && team.parent_team_id.as_deref() == Some(&user_team_id)
+        if team.team_kind == TeamKind::Academy
+            && team.parent_team_id.as_deref() == Some(&user_team_id)
         {
             managed_team_ids.insert(team.id.clone());
         }
@@ -1533,7 +1560,11 @@ pub fn release_player_contract(game: &mut Game, player_id: &str) -> Result<i64, 
     team.season_expenses += penalty;
     remove_player_from_team_references(team, player_id);
 
-    if let Some(player) = game.players.iter_mut().find(|player| player.id == player_id) {
+    if let Some(player) = game
+        .players
+        .iter_mut()
+        .find(|player| player.id == player_id)
+    {
         player.team_id = None;
         player.contract_end = None;
         player.wage = 0;
@@ -1568,8 +1599,12 @@ fn lol_role_for_position(position: &Position) -> &'static str {
         | Position::LeftBack
         | Position::RightWingBack
         | Position::LeftWingBack => "TOP",
-        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => "MID",
-        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => "ADC",
+        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => {
+            "MID"
+        }
+        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => {
+            "ADC"
+        }
         Position::Goalkeeper | Position::DefensiveMidfielder => "SUPPORT",
         Position::Midfielder | Position::CentralMidfielder => "JUNGLE",
     }
@@ -1607,7 +1642,11 @@ fn try_assign_free_agent_by_role(game: &mut Game, academy_team_id: &str, role: &
         return false;
     };
 
-    if let Some(player) = game.players.iter_mut().find(|player| player.id == candidate_id) {
+    if let Some(player) = game
+        .players
+        .iter_mut()
+        .find(|player| player.id == candidate_id)
+    {
         player.team_id = Some(academy_team_id.to_string());
         player.transfer_listed = false;
         player.loan_listed = false;
@@ -1669,7 +1708,8 @@ fn ensure_academy_roster_continuity(
             break;
         }
 
-        let target_role = missing_role.unwrap_or_else(|| lol_role_for_position(&template.natural_position));
+        let target_role =
+            missing_role.unwrap_or_else(|| lol_role_for_position(&template.natural_position));
         if !try_assign_free_agent_by_role(game, academy_team_id, target_role) {
             spawn_academy_replacement(game, academy_team_id, template, target_role);
         }

@@ -504,7 +504,11 @@ mod tests {
 
         let fixtures = generate_winter_playoffs(&seeds, start, 10);
         assert!(!fixtures.is_empty());
-        let max_matchday = fixtures.iter().map(|fixture| fixture.matchday).max().unwrap();
+        let max_matchday = fixtures
+            .iter()
+            .map(|fixture| fixture.matchday)
+            .max()
+            .unwrap();
 
         for fixture in fixtures {
             if fixture.matchday == max_matchday {

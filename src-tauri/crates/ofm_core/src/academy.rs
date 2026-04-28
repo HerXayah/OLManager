@@ -48,10 +48,21 @@ pub struct ErlAcademyCandidate {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AcademyError {
-    ParentMustBeMainTeam { team_id: String },
-    AcademyAlreadyExists { parent_team_id: String, academy_team_id: String },
-    InsufficientFunds { available: i64, required: i64 },
-    UnrelatedAcademy { parent_team_id: String, academy_team_id: String },
+    ParentMustBeMainTeam {
+        team_id: String,
+    },
+    AcademyAlreadyExists {
+        parent_team_id: String,
+        academy_team_id: String,
+    },
+    InsufficientFunds {
+        available: i64,
+        required: i64,
+    },
+    UnrelatedAcademy {
+        parent_team_id: String,
+        academy_team_id: String,
+    },
 }
 
 pub fn eligible_academy_acquisition_options(

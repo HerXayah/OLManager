@@ -1,4 +1,6 @@
-use ofm_core::random_events::{build_fan_petition_from_narrative, build_media_story_from_narrative};
+use ofm_core::random_events::{
+    build_fan_petition_from_narrative, build_media_story_from_narrative,
+};
 
 #[test]
 fn positive_media_story_uses_lol_esports_registry_framing() {
@@ -66,12 +68,9 @@ fn negative_media_story_preserves_player_context_with_lol_pressure_copy() {
 
 #[test]
 fn fan_petition_uses_lol_supporter_campaign_copy_and_preserves_response_options() {
-    let message = build_fan_petition_from_narrative(
-        "fan_petition_2026-04-25",
-        "G2 Esports",
-        "2026-04-25",
-    )
-    .expect("fan petition should resolve through narrative registry");
+    let message =
+        build_fan_petition_from_narrative("fan_petition_2026-04-25", "G2 Esports", "2026-04-25")
+            .expect("fan petition should resolve through narrative registry");
 
     assert!(
         message.subject.contains("Fan Petition") && message.subject.contains("Draft"),

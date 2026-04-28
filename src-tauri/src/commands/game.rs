@@ -661,10 +661,12 @@ fn resolve_default_world_path(app_handle: &tauri::AppHandle) -> Result<std::path
     }
 
     let embedded_world_json = include_str!("../../databases/lec_world.json");
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Default LEC world database not found and app data dir is unavailable: {}", e))?;
+    let app_data_dir = app_handle.path().app_data_dir().map_err(|e| {
+        format!(
+            "Default LEC world database not found and app data dir is unavailable: {}",
+            e
+        )
+    })?;
     let db_dir = app_data_dir.join("databases");
     std::fs::create_dir_all(&db_dir)
         .map_err(|e| format!("Failed to create fallback databases directory: {}", e))?;

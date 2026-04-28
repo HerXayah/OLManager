@@ -78,19 +78,19 @@ fn expand_main_facility_hub_deducts_funds_and_unlocks_next_module_level() {
     assert_eq!(game.teams[0].finance, initial_finance - cost);
     assert_eq!(game.teams[0].facilities.as_main_facility_hub().level, 2);
     assert_eq!(game.teams[0].facilities.training, 1);
-    assert!(game.teams[0]
-        .facilities
-        .can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+    assert!(
+        game.teams[0]
+            .facilities
+            .can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite)
+    );
 }
 
 #[test]
 fn upgrade_main_facility_module_requires_the_next_hub_level_to_be_unlocked() {
     let mut game = make_game();
 
-    let result = club::upgrade_main_facility_module(
-        &mut game.teams[0],
-        MainFacilityModuleKind::ScoutingLab,
-    );
+    let result =
+        club::upgrade_main_facility_module(&mut game.teams[0], MainFacilityModuleKind::ScoutingLab);
 
     assert!(result.is_err());
     assert_eq!(game.teams[0].finance, 2_000_000);

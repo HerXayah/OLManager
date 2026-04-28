@@ -61,7 +61,12 @@ fn make_user_player(id: &str) -> Player {
     player
 }
 
-fn make_player_with_position(id: &str, position: Position, team_id: Option<&str>, market_value: u64) -> Player {
+fn make_player_with_position(
+    id: &str,
+    position: Position,
+    team_id: Option<&str>,
+    market_value: u64,
+) -> Player {
     let mut player = Player::new(
         id.to_string(),
         format!("{}. Test", id),
@@ -775,9 +780,17 @@ fn academy_sale_replenishes_roster_and_role_coverage() {
 
     assert!(academy_players.len() >= 5);
 
-    let has_top = academy_players
-        .iter()
-        .any(|player| matches!(player.natural_position, Position::Defender | Position::RightBack | Position::CenterBack | Position::LeftBack | Position::RightWingBack | Position::LeftWingBack));
+    let has_top = academy_players.iter().any(|player| {
+        matches!(
+            player.natural_position,
+            Position::Defender
+                | Position::RightBack
+                | Position::CenterBack
+                | Position::LeftBack
+                | Position::RightWingBack
+                | Position::LeftWingBack
+        )
+    });
     let has_jungle = academy_players.iter().any(|player| {
         matches!(
             player.natural_position,
@@ -897,7 +910,10 @@ fn incoming_offers_can_target_players_in_user_academy() {
 
     assert_eq!(academy_player.transfer_offers.len(), 1);
     assert_eq!(academy_player.transfer_offers[0].from_team_id, "team-2");
-    assert_eq!(academy_player.transfer_offers[0].status, TransferOfferStatus::Pending);
+    assert_eq!(
+        academy_player.transfer_offers[0].status,
+        TransferOfferStatus::Pending
+    );
 }
 
 #[test]
@@ -932,13 +948,35 @@ fn ai_free_agent_signing_prioritizes_missing_role() {
     let players = vec![
         make_player_with_position("ai-top", Position::Defender, Some("team-2"), 900_000),
         make_player_with_position("ai-jungle", Position::Midfielder, Some("team-2"), 850_000),
-        make_player_with_position("ai-mid", Position::AttackingMidfielder, Some("team-2"), 920_000),
-        make_player_with_position("ai-support", Position::DefensiveMidfielder, Some("team-2"), 870_000),
-        make_player_with_position("fa-mid-premium", Position::AttackingMidfielder, None, 1_600_000),
+        make_player_with_position(
+            "ai-mid",
+            Position::AttackingMidfielder,
+            Some("team-2"),
+            920_000,
+        ),
+        make_player_with_position(
+            "ai-support",
+            Position::DefensiveMidfielder,
+            Some("team-2"),
+            870_000,
+        ),
+        make_player_with_position(
+            "fa-mid-premium",
+            Position::AttackingMidfielder,
+            None,
+            1_600_000,
+        ),
         make_player_with_position("fa-adc-needed", Position::Forward, None, 1_050_000),
     ];
 
-    let mut game = Game::new(clock, manager, vec![user_team, ai_team], players, vec![], vec![]);
+    let mut game = Game::new(
+        clock,
+        manager,
+        vec![user_team, ai_team],
+        players,
+        vec![],
+        vec![],
+    );
     game.season_context.transfer_window.status = TransferWindowStatus::Open;
 
     generate_incoming_transfer_offers(&mut game);
@@ -1017,9 +1055,24 @@ fn ai_club_transfer_prioritizes_missing_role() {
 
     let players = vec![
         make_player_with_position("buyer-top", Position::Defender, Some("team-2"), 900_000),
-        make_player_with_position("buyer-jungle", Position::Midfielder, Some("team-2"), 880_000),
-        make_player_with_position("buyer-mid", Position::AttackingMidfielder, Some("team-2"), 920_000),
-        make_player_with_position("buyer-support", Position::DefensiveMidfielder, Some("team-2"), 870_000),
+        make_player_with_position(
+            "buyer-jungle",
+            Position::Midfielder,
+            Some("team-2"),
+            880_000,
+        ),
+        make_player_with_position(
+            "buyer-mid",
+            Position::AttackingMidfielder,
+            Some("team-2"),
+            920_000,
+        ),
+        make_player_with_position(
+            "buyer-support",
+            Position::DefensiveMidfielder,
+            Some("team-2"),
+            870_000,
+        ),
         seller_mid,
         seller_adc,
     ];

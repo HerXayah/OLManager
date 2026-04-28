@@ -295,10 +295,7 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
                     goals_for: 0,
                     goals_against: 0,
                 });
-            let points = record
-                .won
-                .saturating_mul(3)
-                .saturating_add(record.drawn);
+            let points = record.won.saturating_mul(3).saturating_add(record.drawn);
             let goal_diff = record.goals_for as i32 - record.goals_against as i32;
             (
                 team.id.clone(),
@@ -328,15 +325,7 @@ fn maybe_push_weekly_academy_report(game: &mut Game, today: &str) {
         .iter()
         .take(3)
         .enumerate()
-        .map(|(index, row)| {
-            format!(
-                "{}. {} {}-{}",
-                index + 1,
-                row.1,
-                row.5,
-                row.6
-            )
-        })
+        .map(|(index, row)| format!("{}. {} {}-{}", index + 1, row.1, row.5, row.6))
         .collect::<Vec<_>>()
         .join(" | ");
 
@@ -515,7 +504,11 @@ fn round_robin_pairings(team_ids: &[String], round_index: usize) -> Vec<(String,
 }
 
 fn ensure_team_season_record(team: &mut Team, season: u32) -> &mut TeamSeasonRecord {
-    if let Some(index) = team.history.iter().position(|record| record.season == season) {
+    if let Some(index) = team
+        .history
+        .iter()
+        .position(|record| record.season == season)
+    {
         return &mut team.history[index];
     }
 
@@ -540,7 +533,8 @@ fn register_parallel_result(
     conceded: u8,
     won_series: bool,
 ) {
-    team.form.push(if won_series { "W" } else { "L" }.to_string());
+    team.form
+        .push(if won_series { "W" } else { "L" }.to_string());
     if team.form.len() > 5 {
         let overflow = team.form.len() - 5;
         team.form.drain(0..overflow);
@@ -563,7 +557,11 @@ fn maybe_simulate_parallel_academy_leagues(game: &mut Game) {
     }
 
     let mut academy_groups: HashMap<String, Vec<String>> = HashMap::new();
-    for team in game.teams.iter().filter(|team| team.team_kind == TeamKind::Academy) {
+    for team in game
+        .teams
+        .iter()
+        .filter(|team| team.team_kind == TeamKind::Academy)
+    {
         let Some(metadata) = team.academy.as_ref() else {
             continue;
         };
@@ -686,7 +684,8 @@ fn maybe_schedule_playoffs(game: &mut Game) {
     }
 
     let has_pending_playoffs = league.fixtures.iter().any(|fixture| {
-        fixture.competition == FixtureCompetition::Playoffs && fixture.status != FixtureStatus::Completed
+        fixture.competition == FixtureCompetition::Playoffs
+            && fixture.status != FixtureStatus::Completed
     });
     if has_pending_playoffs {
         return;
@@ -786,7 +785,8 @@ fn playoff_round_fixtures(league: &League, round: u32) -> Vec<&Fixture> {
         .fixtures
         .iter()
         .filter(|fixture| {
-            fixture.competition == FixtureCompetition::Playoffs && fixture.matchday == target_matchday
+            fixture.competition == FixtureCompetition::Playoffs
+                && fixture.matchday == target_matchday
         })
         .collect()
 }
@@ -888,10 +888,16 @@ fn next_winter_playoff_pairings(
     let (w4, l4) = outcome_for_pair(&r1, &seeds[2], &seeds[5])?;
 
     if r2.is_empty() {
-        return Some((vec![(l1.clone(), l2.clone()), (l3.clone(), l4.clone())], false));
+        return Some((
+            vec![(l1.clone(), l2.clone()), (l3.clone(), l4.clone())],
+            false,
+        ));
     }
     if r3.is_empty() {
-        return Some((vec![(w1.clone(), w2.clone()), (w3.clone(), w4.clone())], false));
+        return Some((
+            vec![(w1.clone(), w2.clone()), (w3.clone(), w4.clone())],
+            false,
+        ));
     }
 
     let (wlb1_a, _llb1_a) = outcome_for_pair(&r2, &l1, &l2)?;
@@ -900,7 +906,13 @@ fn next_winter_playoff_pairings(
     let (wwb2_b, lwb2_b) = outcome_for_pair(&r3, &w3, &w4)?;
 
     if r4.is_empty() {
-        return Some((vec![(wlb1_a.clone(), lwb2_a.clone()), (wlb1_b.clone(), lwb2_b.clone())], false));
+        return Some((
+            vec![
+                (wlb1_a.clone(), lwb2_a.clone()),
+                (wlb1_b.clone(), lwb2_b.clone()),
+            ],
+            false,
+        ));
     }
     if r5.is_empty() {
         return Some((vec![(wwb2_a.clone(), wwb2_b.clone())], false));
@@ -1073,8 +1085,14 @@ fn simulate_series(
 
     let mut possession_sum = 0.0_f64;
     for report in reports {
-        merged.home_stats.kills = merged.home_stats.kills.saturating_add(report.home_stats.kills);
-        merged.home_stats.deaths = merged.home_stats.deaths.saturating_add(report.home_stats.deaths);
+        merged.home_stats.kills = merged
+            .home_stats
+            .kills
+            .saturating_add(report.home_stats.kills);
+        merged.home_stats.deaths = merged
+            .home_stats
+            .deaths
+            .saturating_add(report.home_stats.deaths);
         merged.home_stats.gold_earned = merged
             .home_stats
             .gold_earned
@@ -1092,8 +1110,14 @@ fn simulate_series(
             .possession_ticks
             .saturating_add(report.home_stats.possession_ticks);
 
-        merged.away_stats.kills = merged.away_stats.kills.saturating_add(report.away_stats.kills);
-        merged.away_stats.deaths = merged.away_stats.deaths.saturating_add(report.away_stats.deaths);
+        merged.away_stats.kills = merged
+            .away_stats
+            .kills
+            .saturating_add(report.away_stats.kills);
+        merged.away_stats.deaths = merged
+            .away_stats
+            .deaths
+            .saturating_add(report.away_stats.deaths);
         merged.away_stats.gold_earned = merged
             .away_stats
             .gold_earned
@@ -1123,7 +1147,9 @@ fn simulate_series(
             if entry.role.is_none() {
                 entry.role = stats.role;
             }
-            entry.duration_seconds = entry.duration_seconds.saturating_add(stats.duration_seconds);
+            entry.duration_seconds = entry
+                .duration_seconds
+                .saturating_add(stats.duration_seconds);
             entry.kills = entry.kills.saturating_add(stats.kills);
             entry.deaths = entry.deaths.saturating_add(stats.deaths);
             entry.assists = entry.assists.saturating_add(stats.assists);

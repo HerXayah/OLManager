@@ -122,7 +122,10 @@ pub fn process_potential_research(game: &mut Game) {
         .with_i18n(
             "be.msg.potentialReport.subject",
             "be.msg.potentialReport.body",
-            params(&[("player", &player.match_name), ("potential", &revealed.to_string())]),
+            params(&[
+                ("player", &player.match_name),
+                ("potential", &revealed.to_string()),
+            ]),
         )
         .with_sender_i18n("be.sender.performanceStaff", "be.role.performanceStaff")
         .with_context(MessageContext {

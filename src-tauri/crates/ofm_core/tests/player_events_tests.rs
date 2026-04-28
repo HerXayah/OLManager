@@ -1,5 +1,7 @@
 use chrono::{TimeZone, Utc};
-use domain::league::{Fixture, FixtureCompetition, FixtureStatus, League, MatchResult, StandingEntry};
+use domain::league::{
+    Fixture, FixtureCompetition, FixtureStatus, League, MatchResult, StandingEntry,
+};
 use domain::manager::Manager;
 use domain::message::{ActionOption, ActionType, MessageAction, MessageContext};
 use domain::player::{

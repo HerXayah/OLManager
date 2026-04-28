@@ -34,9 +34,13 @@ fn set_module_level(facilities: &mut Facilities, module: MainFacilityModuleKind,
     }
 
     let scrims = facilities.scrims_room_level.unwrap_or(facilities.training);
-    let analysis = facilities.analysis_room_level.unwrap_or(facilities.training);
+    let analysis = facilities
+        .analysis_room_level
+        .unwrap_or(facilities.training);
     let bootcamp = facilities.bootcamp_area_level.unwrap_or(facilities.medical);
-    let recovery = facilities.recovery_suite_level.unwrap_or(facilities.medical);
+    let recovery = facilities
+        .recovery_suite_level
+        .unwrap_or(facilities.medical);
     let scouting_lab = facilities.scouting_lab_level.unwrap_or(facilities.scouting);
 
     facilities.training = scrims.max(analysis);
@@ -59,7 +63,11 @@ pub fn expand_main_facility_hub(team: &mut Team) -> Result<i64, String> {
 
     team.finance -= cost;
     team.season_expenses += cost;
-    team.facilities.main_hub_level = team.facilities.as_main_facility_hub().level.saturating_add(1);
+    team.facilities.main_hub_level = team
+        .facilities
+        .as_main_facility_hub()
+        .level
+        .saturating_add(1);
 
     Ok(cost)
 }
@@ -83,7 +91,11 @@ pub fn upgrade_main_facility_module(
 
     team.finance -= cost;
     team.season_expenses += cost;
-    set_module_level(&mut team.facilities, module, current_level.saturating_add(1));
+    set_module_level(
+        &mut team.facilities,
+        module,
+        current_level.saturating_add(1),
+    );
 
     Ok(cost)
 }

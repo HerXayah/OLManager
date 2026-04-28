@@ -905,9 +905,7 @@ fn apply_patch(game: &mut Game) {
     };
     let body = format!(
         "Patch {} deployed.\n\nBuffed: {}\nNerfed: {}\n\nYour staff is already scouting the new tier shifts.",
-        label,
-        buffed_list,
-        nerfed_list,
+        label, buffed_list, nerfed_list,
     );
 
     let msg = InboxMessage::new(
@@ -923,7 +921,11 @@ fn apply_patch(game: &mut Game) {
     .with_i18n(
         "be.msg.patchNotes.subject",
         "be.msg.patchNotes.body",
-        params(&[("label", &label), ("buffed", &buffed_list), ("nerfed", &nerfed_list)]),
+        params(&[
+            ("label", &label),
+            ("buffed", &buffed_list),
+            ("nerfed", &nerfed_list),
+        ]),
     )
     .with_sender_i18n("be.sender.leagueOffice", "be.role.competitionSecretary");
 

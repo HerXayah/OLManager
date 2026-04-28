@@ -74,7 +74,10 @@ fn bench_happy_and_contract_conversations_preserve_actions_without_football_fram
             "conversation still has football framing: {}",
             message.body
         );
-        let action = message.actions.first().expect("conversation should remain actionable");
+        let action = message
+            .actions
+            .first()
+            .expect("conversation should remain actionable");
         assert_eq!(action.id, "respond");
     }
 

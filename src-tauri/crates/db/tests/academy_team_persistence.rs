@@ -106,7 +106,10 @@ fn academy_team_roundtrips_parent_link_and_erl_metadata() {
     let metadata = loaded.academy.expect("academy metadata should roundtrip");
     assert_eq!(metadata.lifecycle, AcademyLifecycle::Active);
     assert_eq!(metadata.erl_assignment.erl_league_id, "prime-league");
-    assert_eq!(metadata.erl_assignment.country_rule, ErlAssignmentRule::Domestic);
+    assert_eq!(
+        metadata.erl_assignment.country_rule,
+        ErlAssignmentRule::Domestic
+    );
     assert_eq!(metadata.erl_assignment.reputation, 8);
     assert_eq!(metadata.erl_assignment.acquisition_cost, 750_000);
     assert_eq!(metadata.erl_assignment.acquired_at, "2026-04-26T18:45:00Z");

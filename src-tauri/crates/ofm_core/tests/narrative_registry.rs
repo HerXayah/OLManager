@@ -24,9 +24,11 @@ fn default_lol_narrative_pack_loads_source_controlled_events_and_conversations()
         "expected source-controlled LoL player conversation with stable effect id"
     );
     assert!(
-        pack.news.iter().any(|template| template.id == "league-roundup-maps"
-            && template.template_key == "be.news.roundup.body"
-            && template.tags == vec!["roundup", "maps"]),
+        pack.news
+            .iter()
+            .any(|template| template.id == "league-roundup-maps"
+                && template.template_key == "be.news.roundup.body"
+                && template.tags == vec!["roundup", "maps"]),
         "expected source-controlled LoL news/social template metadata"
     );
 }
@@ -49,27 +51,38 @@ fn invalid_narrative_pack_reports_missing_references_and_unsafe_real_tones() {
     let errors = validate_content_pack(&pack).expect_err("invalid pack should fail fast");
 
     assert!(
-        errors.iter().any(|error| error.contains("personas[0].outletId references missing outlet 'missing-outlet'")),
+        errors.iter().any(|error| error
+            .contains("personas[0].outletId references missing outlet 'missing-outlet'")),
         "expected missing outlet error, got {errors:?}"
     );
     assert!(
-        errors.iter().any(|error| error.contains("personas[0].allowedTones contains unsafe tone 'spicy' for real persona 'real-host'")),
+        errors.iter().any(|error| error.contains(
+            "personas[0].allowedTones contains unsafe tone 'spicy' for real persona 'real-host'"
+        )),
         "expected unsafe real persona tone error, got {errors:?}"
     );
     assert!(
-        errors.iter().any(|error| error.contains("events[0].personaIds[0] references missing persona 'missing-persona'")),
+        errors.iter().any(|error| error
+            .contains("events[0].personaIds[0] references missing persona 'missing-persona'")),
         "expected missing event persona error, got {errors:?}"
     );
     assert!(
-        errors.iter().any(|error| error.contains("events[0].effectId references missing effect 'missing-effect'")),
+        errors
+            .iter()
+            .any(|error| error
+                .contains("events[0].effectId references missing effect 'missing-effect'")),
         "expected missing event effect error, got {errors:?}"
     );
     assert!(
-        errors.iter().any(|error| error.contains("conversations[0].weight must be greater than 0")),
+        errors
+            .iter()
+            .any(|error| error.contains("conversations[0].weight must be greater than 0")),
         "expected invalid conversation weight error, got {errors:?}"
     );
     assert!(
-        errors.iter().any(|error| error.contains("news[0].scope.leagueIds must include at least one league id for league scope")),
+        errors.iter().any(|error| error.contains(
+            "news[0].scope.leagueIds must include at least one league id for league scope"
+        )),
         "expected invalid news scope error, got {errors:?}"
     );
 }
@@ -99,9 +112,13 @@ fn selectors_filter_scope_persona_tone_and_tags_before_weighted_pick() {
         .select_conversation(Some("default"), &["underperformance", "pressure"])
         .expect("conversation should match league scope and required tags");
     assert_eq!(eligible_conversation.id, "player-pressure-reset");
-    assert_eq!(eligible_conversation.effect_id, "player_conversation_pressure_reset");
+    assert_eq!(
+        eligible_conversation.effect_id,
+        "player_conversation_pressure_reset"
+    );
 
-    let wrong_league = selector.select_conversation(Some("other-league"), &["underperformance", "pressure"]);
+    let wrong_league =
+        selector.select_conversation(Some("other-league"), &["underperformance", "pressure"]);
     assert!(
         wrong_league.is_none(),
         "league-scoped conversation must not leak into unrelated leagues"

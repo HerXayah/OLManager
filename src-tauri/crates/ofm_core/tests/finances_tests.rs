@@ -5,7 +5,9 @@ use domain::league::{
 use domain::manager::Manager;
 use domain::player::{Player, PlayerAttributes, Position};
 use domain::staff::{Staff, StaffAttributes, StaffRole};
-use domain::team::{Facilities, MainFacilityModuleKind, Sponsorship, SponsorshipBonusCriterion, Team};
+use domain::team::{
+    Facilities, MainFacilityModuleKind, Sponsorship, SponsorshipBonusCriterion, Team,
+};
 use ofm_core::clock::GameClock;
 use ofm_core::finances;
 use ofm_core::game::Game;

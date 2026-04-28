@@ -121,15 +121,30 @@ pub enum EffectTarget {
 pub fn load_default_content_pack() -> Result<NarrativeContentPack, String> {
     let pack = NarrativeContentPack {
         schema_version: 1,
-        outlets: parse_json("outlets", include_str!("../../../../../src/content/lol/social/outlets.json"))?,
-        personas: parse_json("personas", include_str!("../../../../../src/content/lol/social/personas.json"))?,
-        effects: parse_json("effects", include_str!("../../../../../src/content/lol/social/effects.json"))?,
-        events: parse_json("events", include_str!("../../../../../src/content/lol/social/events.json"))?,
+        outlets: parse_json(
+            "outlets",
+            include_str!("../../../../../src/content/lol/social/outlets.json"),
+        )?,
+        personas: parse_json(
+            "personas",
+            include_str!("../../../../../src/content/lol/social/personas.json"),
+        )?,
+        effects: parse_json(
+            "effects",
+            include_str!("../../../../../src/content/lol/social/effects.json"),
+        )?,
+        events: parse_json(
+            "events",
+            include_str!("../../../../../src/content/lol/social/events.json"),
+        )?,
         conversations: parse_json(
             "conversations",
             include_str!("../../../../../src/content/lol/social/conversations.json"),
         )?,
-        news: parse_json("news", include_str!("../../../../../src/content/lol/social/news.json"))?,
+        news: parse_json(
+            "news",
+            include_str!("../../../../../src/content/lol/social/news.json"),
+        )?,
     };
 
     validate_content_pack(&pack).map_err(|errors| errors.join("; "))?;
@@ -142,43 +157,64 @@ pub fn validate_content_pack(pack: &NarrativeContentPack) -> Result<(), Vec<Stri
     let persona_ids = ids(&pack.personas);
     let effect_ids = ids(&pack.effects);
 
-    validate_collection("outlets", &pack.outlets, &mut errors, |path, outlet, errors| {
-        validate_weight(path, outlet.weight, errors);
-        validate_scope(path, &outlet.scope, errors);
-    });
-    validate_collection("personas", &pack.personas, &mut errors, |path, persona, errors| {
-        validate_weight(path, persona.weight, errors);
-        validate_scope(path, &persona.scope, errors);
-        if !outlet_ids.contains(&persona.outlet_id) {
-            errors.push(format!(
-                "{path}.outletId references missing outlet '{}'",
-                persona.outlet_id
-            ));
-        }
-        if persona.persona_type == PersonaType::Real {
-            for tone in &persona.allowed_tones {
-                if !is_real_persona_safe_tone(*tone) {
+    validate_collection(
+        "outlets",
+        &pack.outlets,
+        &mut errors,
+        |path, outlet, errors| {
+            validate_weight(path, outlet.weight, errors);
+            validate_scope(path, &outlet.scope, errors);
+        },
+    );
+    validate_collection(
+        "personas",
+        &pack.personas,
+        &mut errors,
+        |path, persona, errors| {
+            validate_weight(path, persona.weight, errors);
+            validate_scope(path, &persona.scope, errors);
+            if !outlet_ids.contains(&persona.outlet_id) {
+                errors.push(format!(
+                    "{path}.outletId references missing outlet '{}'",
+                    persona.outlet_id
+                ));
+            }
+            if persona.persona_type == PersonaType::Real {
+                for tone in &persona.allowed_tones {
+                    if !is_real_persona_safe_tone(*tone) {
+                        errors.push(format!(
+                            "{path}.allowedTones contains unsafe tone '{}' for real persona '{}'",
+                            tone.as_json_value(),
+                            persona.id
+                        ));
+                    }
+                }
+            }
+        },
+    );
+    validate_collection(
+        "effects",
+        &pack.effects,
+        &mut errors,
+        |_path, _effect, _errors| {},
+    );
+    validate_collection(
+        "events",
+        &pack.events,
+        &mut errors,
+        |path, event, errors| {
+            validate_weight(path, event.weight, errors);
+            validate_scope(path, &event.scope, errors);
+            for (index, persona_id) in event.persona_ids.iter().enumerate() {
+                if !persona_ids.contains(persona_id) {
                     errors.push(format!(
-                        "{path}.allowedTones contains unsafe tone '{}' for real persona '{}'",
-                        tone.as_json_value(), persona.id
+                        "{path}.personaIds[{index}] references missing persona '{persona_id}'"
                     ));
                 }
             }
-        }
-    });
-    validate_collection("effects", &pack.effects, &mut errors, |_path, _effect, _errors| {});
-    validate_collection("events", &pack.events, &mut errors, |path, event, errors| {
-        validate_weight(path, event.weight, errors);
-        validate_scope(path, &event.scope, errors);
-        for (index, persona_id) in event.persona_ids.iter().enumerate() {
-            if !persona_ids.contains(persona_id) {
-                errors.push(format!(
-                    "{path}.personaIds[{index}] references missing persona '{persona_id}'"
-                ));
-            }
-        }
-        validate_effect_ref(path, &event.effect_id, &effect_ids, errors);
-    });
+            validate_effect_ref(path, &event.effect_id, &effect_ids, errors);
+        },
+    );
     validate_collection(
         "conversations",
         &pack.conversations,
@@ -333,7 +369,10 @@ fn validate_effect_ref(
 fn is_real_persona_safe_tone(tone: SocialTone) -> bool {
     matches!(
         tone,
-        SocialTone::Professional | SocialTone::Analytical | SocialTone::Community | SocialTone::Close
+        SocialTone::Professional
+            | SocialTone::Analytical
+            | SocialTone::Community
+            | SocialTone::Close
     )
 }
 
@@ -354,7 +393,9 @@ impl SocialTone {
 fn scope_matches(scope: &ContentScope, league_id: Option<&str>) -> bool {
     match scope {
         ContentScope::General => true,
-        ContentScope::League { league_ids } => league_id.is_some_and(|id| league_ids.iter().any(|league_id| league_id == id)),
+        ContentScope::League { league_ids } => {
+            league_id.is_some_and(|id| league_ids.iter().any(|league_id| league_id == id))
+        }
     }
 }
 

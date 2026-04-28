@@ -1,8 +1,8 @@
 use domain::team::{Team, TeamKind};
 use ofm_core::academy::{
-    eligible_academy_acquisition_options, validate_academy_acquisition,
-    validate_parent_academy_link, AcademyAcquisitionOption, AcademyError, ErlAcademyCandidate,
-    ErlAssignmentRule, ErlLeagueDefinition,
+    AcademyAcquisitionOption, AcademyError, ErlAcademyCandidate, ErlAssignmentRule,
+    ErlLeagueDefinition, eligible_academy_acquisition_options, validate_academy_acquisition,
+    validate_parent_academy_link,
 };
 
 fn team(id: &str, country: &str, finance: i64) -> Team {
@@ -19,7 +19,13 @@ fn team(id: &str, country: &str, finance: i64) -> Team {
     team
 }
 
-fn erl(id: &str, country: &str, region: &str, reputation: u8, nearby: &[&str]) -> ErlLeagueDefinition {
+fn erl(
+    id: &str,
+    country: &str,
+    region: &str,
+    reputation: u8,
+    nearby: &[&str],
+) -> ErlLeagueDefinition {
     ErlLeagueDefinition {
         id: id.to_string(),
         name: id.to_string(),
@@ -30,7 +36,13 @@ fn erl(id: &str, country: &str, region: &str, reputation: u8, nearby: &[&str]) -
     }
 }
 
-fn candidate(id: &str, league_id: &str, country: &str, reputation: u8, development_level: u8) -> ErlAcademyCandidate {
+fn candidate(
+    id: &str,
+    league_id: &str,
+    country: &str,
+    reputation: u8,
+    development_level: u8,
+) -> ErlAcademyCandidate {
     ErlAcademyCandidate {
         source_team_id: id.to_string(),
         name: id.to_string(),
@@ -59,9 +71,11 @@ fn acquisition_options_include_candidates_from_all_configured_erl_leagues() {
 
     assert_eq!(options.len(), 2);
     assert!(options.iter().any(|option| option.source_team_id == "kcb"));
-    assert!(options
-        .iter()
-        .any(|option| option.source_team_id == "heretics"));
+    assert!(
+        options
+            .iter()
+            .any(|option| option.source_team_id == "heretics")
+    );
 }
 
 #[test]

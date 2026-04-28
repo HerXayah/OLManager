@@ -16,8 +16,12 @@ fn lol_role_from_position(position: &domain::player::Position) -> &'static str {
         | Position::LeftBack
         | Position::RightWingBack
         | Position::LeftWingBack => "TOP",
-        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => "MID",
-        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => "ADC",
+        Position::AttackingMidfielder | Position::RightMidfielder | Position::LeftMidfielder => {
+            "MID"
+        }
+        Position::Forward | Position::RightWinger | Position::LeftWinger | Position::Striker => {
+            "ADC"
+        }
         Position::Goalkeeper | Position::DefensiveMidfielder => "SUPPORT",
         Position::Midfielder | Position::CentralMidfielder => "JUNGLE",
     }
@@ -53,7 +57,10 @@ pub fn send_scout(game: &mut Game, scout_id: &str, player_id: &str) -> Result<()
         .teams
         .iter()
         .find(|team| team.id == user_team_id.as_str())
-        .map(|team| team.facilities.module_level(MainFacilityModuleKind::ScoutingLab))
+        .map(|team| {
+            team.facilities
+                .module_level(MainFacilityModuleKind::ScoutingLab)
+        })
         .unwrap_or(1);
 
     // Validate scout exists and belongs to user's team

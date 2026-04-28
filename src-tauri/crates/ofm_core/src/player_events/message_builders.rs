@@ -392,11 +392,8 @@ pub fn build_player_conversation_from_narrative(
     let selector = NarrativeSelector::new(&pack);
     let tags = conversation_tags(conversation_kind)?;
     let template = selector.select_conversation(Some("default"), &tags)?;
-    let (subject, body, sender, priority, options) = conversation_copy_and_options(
-        conversation_kind,
-        player_name,
-        context_value,
-    )?;
+    let (subject, body, sender, priority, options) =
+        conversation_copy_and_options(conversation_kind, player_name, context_value)?;
 
     Some(
         InboxMessage::new(
@@ -487,7 +484,13 @@ fn conversation_copy_and_options(
     conversation_kind: &str,
     player_name: &str,
     context_value: Option<i64>,
-) -> Option<(String, String, &'static str, MessagePriority, Vec<ActionOption>)> {
+) -> Option<(
+    String,
+    String,
+    &'static str,
+    MessagePriority,
+    Vec<ActionOption>,
+)> {
     match conversation_kind {
         "low_morale" => Some((
             format!("{} — Mental Reset Needed", player_name),
@@ -500,9 +503,27 @@ fn conversation_copy_and_options(
             "Player",
             MessagePriority::High,
             vec![
-                option("encourage", "Encourage them", "be.msg.playerEvent.options.moraleCrisis.encourage.label", "Show empathy and help them reset around scrims and stage pressure.", "be.msg.playerEvent.options.moraleCrisis.encourage.description"),
-                option("promise_time", "Promise more stage time", "be.msg.playerEvent.options.moraleCrisis.promiseTime.label", "Tell them they'll get their chance in an upcoming series — bigger morale boost but sets expectations.", "be.msg.playerEvent.options.moraleCrisis.promiseTime.description"),
-                option("work_harder", "Challenge their preparation", "be.msg.playerEvent.options.moraleCrisis.workHarder.label", "Tough love around practice discipline — could backfire or motivate them.", "be.msg.playerEvent.options.moraleCrisis.workHarder.description"),
+                option(
+                    "encourage",
+                    "Encourage them",
+                    "be.msg.playerEvent.options.moraleCrisis.encourage.label",
+                    "Show empathy and help them reset around scrims and stage pressure.",
+                    "be.msg.playerEvent.options.moraleCrisis.encourage.description",
+                ),
+                option(
+                    "promise_time",
+                    "Promise more stage time",
+                    "be.msg.playerEvent.options.moraleCrisis.promiseTime.label",
+                    "Tell them they'll get their chance in an upcoming series — bigger morale boost but sets expectations.",
+                    "be.msg.playerEvent.options.moraleCrisis.promiseTime.description",
+                ),
+                option(
+                    "work_harder",
+                    "Challenge their preparation",
+                    "be.msg.playerEvent.options.moraleCrisis.workHarder.label",
+                    "Tough love around practice discipline — could backfire or motivate them.",
+                    "be.msg.playerEvent.options.moraleCrisis.workHarder.description",
+                ),
             ],
         )),
         "bench_complaint" => Some((
@@ -515,9 +536,27 @@ fn conversation_copy_and_options(
             "Player",
             MessagePriority::Normal,
             vec![
-                option("explain", "Explain the rotation", "be.msg.playerEvent.options.benchComplaint.explain.label", "Calmly explain roster competition and map-specific plans. Steady morale boost.", "be.msg.playerEvent.options.benchComplaint.explain.description"),
-                option("promise_chance", "Promise a chance soon", "be.msg.playerEvent.options.benchComplaint.promiseChance.label", "They'll be happier but will expect to start in an upcoming series.", "be.msg.playerEvent.options.benchComplaint.promiseChance.description"),
-                option("prove_yourself", "Tell them to prove it in scrims", "be.msg.playerEvent.options.benchComplaint.proveYourself.label", "Challenge them to earn their place. Risky — could motivate or frustrate.", "be.msg.playerEvent.options.benchComplaint.proveYourself.description"),
+                option(
+                    "explain",
+                    "Explain the rotation",
+                    "be.msg.playerEvent.options.benchComplaint.explain.label",
+                    "Calmly explain roster competition and map-specific plans. Steady morale boost.",
+                    "be.msg.playerEvent.options.benchComplaint.explain.description",
+                ),
+                option(
+                    "promise_chance",
+                    "Promise a chance soon",
+                    "be.msg.playerEvent.options.benchComplaint.promiseChance.label",
+                    "They'll be happier but will expect to start in an upcoming series.",
+                    "be.msg.playerEvent.options.benchComplaint.promiseChance.description",
+                ),
+                option(
+                    "prove_yourself",
+                    "Tell them to prove it in scrims",
+                    "be.msg.playerEvent.options.benchComplaint.proveYourself.label",
+                    "Challenge them to earn their place. Risky — could motivate or frustrate.",
+                    "be.msg.playerEvent.options.benchComplaint.proveYourself.description",
+                ),
             ],
         )),
         "happy_player" => Some((
@@ -530,9 +569,27 @@ fn conversation_copy_and_options(
             "Player",
             MessagePriority::Low,
             vec![
-                option("praise_back", "Return the praise", "be.msg.playerEvent.options.happyPlayer.praiseBack.label", "Tell them how much you value their contribution.", "be.msg.playerEvent.options.happyPlayer.praiseBack.description"),
-                option("stay_professional", "Stay professional", "be.msg.playerEvent.options.happyPlayer.stayProfessional.label", "Acknowledge their form but keep things measured.", "be.msg.playerEvent.options.happyPlayer.stayProfessional.description"),
-                option("higher_expectations", "Set higher expectations", "be.msg.playerEvent.options.happyPlayer.higherExpectations.label", "Challenge them to reach an even higher level. Could push or pressure.", "be.msg.playerEvent.options.happyPlayer.higherExpectations.description"),
+                option(
+                    "praise_back",
+                    "Return the praise",
+                    "be.msg.playerEvent.options.happyPlayer.praiseBack.label",
+                    "Tell them how much you value their contribution.",
+                    "be.msg.playerEvent.options.happyPlayer.praiseBack.description",
+                ),
+                option(
+                    "stay_professional",
+                    "Stay professional",
+                    "be.msg.playerEvent.options.happyPlayer.stayProfessional.label",
+                    "Acknowledge their form but keep things measured.",
+                    "be.msg.playerEvent.options.happyPlayer.stayProfessional.description",
+                ),
+                option(
+                    "higher_expectations",
+                    "Set higher expectations",
+                    "be.msg.playerEvent.options.happyPlayer.higherExpectations.label",
+                    "Challenge them to reach an even higher level. Could push or pressure.",
+                    "be.msg.playerEvent.options.happyPlayer.higherExpectations.description",
+                ),
             ],
         )),
         "contract_concern" => Some((
@@ -546,9 +603,27 @@ fn conversation_copy_and_options(
             "Assistant Manager",
             MessagePriority::High,
             vec![
-                option("reassure", "Reassure them about renewal", "be.msg.playerEvent.options.contractConcern.reassure.label", "Tell them you want them to stay. Big morale boost.", "be.msg.playerEvent.options.contractConcern.reassure.description"),
-                option("noncommittal", "Be noncommittal", "be.msg.playerEvent.options.contractConcern.noncommittal.label", "Keep your options open. Player may become unsettled.", "be.msg.playerEvent.options.contractConcern.noncommittal.description"),
-                option("no_renewal", "Tell them you won't renew", "be.msg.playerEvent.options.contractConcern.noRenewal.label", "Honest but brutal. Morale will tank.", "be.msg.playerEvent.options.contractConcern.noRenewal.description"),
+                option(
+                    "reassure",
+                    "Reassure them about renewal",
+                    "be.msg.playerEvent.options.contractConcern.reassure.label",
+                    "Tell them you want them to stay. Big morale boost.",
+                    "be.msg.playerEvent.options.contractConcern.reassure.description",
+                ),
+                option(
+                    "noncommittal",
+                    "Be noncommittal",
+                    "be.msg.playerEvent.options.contractConcern.noncommittal.label",
+                    "Keep your options open. Player may become unsettled.",
+                    "be.msg.playerEvent.options.contractConcern.noncommittal.description",
+                ),
+                option(
+                    "no_renewal",
+                    "Tell them you won't renew",
+                    "be.msg.playerEvent.options.contractConcern.noRenewal.label",
+                    "Honest but brutal. Morale will tank.",
+                    "be.msg.playerEvent.options.contractConcern.noRenewal.description",
+                ),
             ],
         )),
         _ => None,

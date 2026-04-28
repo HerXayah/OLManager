@@ -313,7 +313,9 @@ mod training_focus_tests {
 
 #[cfg(test)]
 mod academy_team_metadata_tests {
-    use super::{AcademyLifecycle, AcademyMetadata, ErlAssignment, ErlAssignmentRule, Team, TeamKind};
+    use super::{
+        AcademyLifecycle, AcademyMetadata, ErlAssignment, ErlAssignmentRule, Team, TeamKind,
+    };
 
     #[test]
     fn new_teams_default_to_main_without_academy_links() {
@@ -546,7 +548,10 @@ pub enum FacilityType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct Facilities {
-    #[serde(default = "default_main_hub_level", skip_serializing_if = "is_default_main_hub_level")]
+    #[serde(
+        default = "default_main_hub_level",
+        skip_serializing_if = "is_default_main_hub_level"
+    )]
     pub main_hub_level: u8,
     pub training: u8,
     pub medical: u8,
@@ -606,27 +611,29 @@ impl MainFacilityModuleDefinition {
             MainFacilityModuleKind::AnalysisRoom => facilities
                 .analysis_room_level
                 .unwrap_or(facilities.training),
-            MainFacilityModuleKind::BootcampArea => facilities
-                .bootcamp_area_level
-                .unwrap_or(facilities.medical),
+            MainFacilityModuleKind::BootcampArea => {
+                facilities.bootcamp_area_level.unwrap_or(facilities.medical)
+            }
             MainFacilityModuleKind::RecoverySuite => facilities
                 .recovery_suite_level
                 .unwrap_or(facilities.medical),
-            MainFacilityModuleKind::ContentStudio => facilities.content_studio_level.unwrap_or_else(|| {
-                facilities
-                    .main_hub_level
-                    .max(facilities.training)
-                    .max(facilities.medical)
-                    .max(facilities.scouting)
-                    .max(facilities.scrims_room_level.unwrap_or(0))
-                    .max(facilities.analysis_room_level.unwrap_or(0))
-                    .max(facilities.bootcamp_area_level.unwrap_or(0))
-                    .max(facilities.recovery_suite_level.unwrap_or(0))
-                    .max(facilities.scouting_lab_level.unwrap_or(0))
-            }),
-            MainFacilityModuleKind::ScoutingLab => facilities
-                .scouting_lab_level
-                .unwrap_or(facilities.scouting),
+            MainFacilityModuleKind::ContentStudio => {
+                facilities.content_studio_level.unwrap_or_else(|| {
+                    facilities
+                        .main_hub_level
+                        .max(facilities.training)
+                        .max(facilities.medical)
+                        .max(facilities.scouting)
+                        .max(facilities.scrims_room_level.unwrap_or(0))
+                        .max(facilities.analysis_room_level.unwrap_or(0))
+                        .max(facilities.bootcamp_area_level.unwrap_or(0))
+                        .max(facilities.recovery_suite_level.unwrap_or(0))
+                        .max(facilities.scouting_lab_level.unwrap_or(0))
+                })
+            }
+            MainFacilityModuleKind::ScoutingLab => {
+                facilities.scouting_lab_level.unwrap_or(facilities.scouting)
+            }
         }
     }
 }
@@ -755,7 +762,7 @@ impl Facilities {
 
 #[cfg(test)]
 mod facility_compatibility_tests {
-    use super::{main_facility_module_catalog, Facilities, MainFacilityModuleKind};
+    use super::{Facilities, MainFacilityModuleKind, main_facility_module_catalog};
 
     #[test]
     fn canonical_module_catalog_is_the_single_source_for_hub_order_and_levels() {
@@ -828,12 +835,30 @@ mod facility_compatibility_tests {
             ..Default::default()
         };
 
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScrimsRoom), 3);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::AnalysisRoom), 3);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::BootcampArea), 2);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::RecoverySuite), 2);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ContentStudio), 4);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScoutingLab), 1);
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ScrimsRoom),
+            3
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::AnalysisRoom),
+            3
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::BootcampArea),
+            2
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::RecoverySuite),
+            2
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ContentStudio),
+            4
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ScoutingLab),
+            1
+        );
     }
 
     #[test]
@@ -844,8 +869,14 @@ mod facility_compatibility_tests {
             ..Facilities::default()
         };
 
-        assert_eq!(default_facilities.recovery_suite_condition_multiplier(), 1.0);
-        assert_eq!(upgraded_facilities.recovery_suite_condition_multiplier(), 1.3);
+        assert_eq!(
+            default_facilities.recovery_suite_condition_multiplier(),
+            1.0
+        );
+        assert_eq!(
+            upgraded_facilities.recovery_suite_condition_multiplier(),
+            1.3
+        );
     }
 
     #[test]
@@ -872,7 +903,9 @@ mod facility_compatibility_tests {
         let mut facilities = Facilities::default();
 
         assert_eq!(facilities.as_main_facility_hub().level, 1);
-        assert!(!facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+        assert!(
+            !facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite)
+        );
 
         facilities.main_hub_level = 2;
         let hub = facilities.as_main_facility_hub();
@@ -888,7 +921,9 @@ mod facility_compatibility_tests {
 
         assert_eq!(facilities.as_main_facility_hub().level, 3);
         assert!(facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::ScoutingLab));
-        assert!(!facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite));
+        assert!(
+            !facilities.can_upgrade_main_facility_module(MainFacilityModuleKind::RecoverySuite)
+        );
     }
 
     #[test]
@@ -900,12 +935,30 @@ mod facility_compatibility_tests {
         assert_eq!(facilities.medical, 2);
         assert_eq!(facilities.scouting, 1);
         assert_eq!(hub.level, 5);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScrimsRoom), 5);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::AnalysisRoom), 5);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::BootcampArea), 2);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::RecoverySuite), 2);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ContentStudio), 5);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ScoutingLab), 1);
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ScrimsRoom),
+            5
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::AnalysisRoom),
+            5
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::BootcampArea),
+            2
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::RecoverySuite),
+            2
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ContentStudio),
+            5
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ScoutingLab),
+            1
+        );
     }
 
     #[test]
@@ -915,8 +968,14 @@ mod facility_compatibility_tests {
         );
 
         assert_eq!(facilities.as_main_facility_hub().level, 4);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::ContentStudio), 4);
-        assert_eq!(facilities.module_level(MainFacilityModuleKind::RecoverySuite), 3);
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::ContentStudio),
+            4
+        );
+        assert_eq!(
+            facilities.module_level(MainFacilityModuleKind::RecoverySuite),
+            3
+        );
         assert_eq!(
             facilities.to_persisted_json_value().unwrap(),
             serde_json::json!({

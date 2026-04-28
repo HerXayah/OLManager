@@ -1202,14 +1202,13 @@ mod tests {
                 bonus_amount: 25_000,
             }],
         });
-        game.messages
-            .push(domain::message::InboxMessage::new(
-                "finance-note".to_string(),
-                "Finance note".to_string(),
-                "Keep the books tidy.".to_string(),
-                "Board".to_string(),
-                "2026-08-15".to_string(),
-            ));
+        game.messages.push(domain::message::InboxMessage::new(
+            "finance-note".to_string(),
+            "Finance note".to_string(),
+            "Keep the books tidy.".to_string(),
+            "Board".to_string(),
+            "2026-08-15".to_string(),
+        ));
 
         let save_id = sm.create_save(&game, "Finance Career").unwrap();
 

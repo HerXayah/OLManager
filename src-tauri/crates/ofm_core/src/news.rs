@@ -481,10 +481,7 @@ mod tests {
         assert_eq!(article.body_key.as_deref(), Some("be.news.roundup.body"));
         assert_valid_roundup_source_pair(&article.source, article.source_key.as_deref().unwrap());
         assert_eq!(article.i18n_params.get("matchday"), Some(&"4".to_string()));
-        assert_eq!(
-            article.i18n_params.get("totalMaps"),
-            Some(&"5".to_string())
-        );
+        assert_eq!(article.i18n_params.get("totalMaps"), Some(&"5".to_string()));
         assert_eq!(
             article.i18n_params.get("matchCount"),
             Some(&"2".to_string())
@@ -508,7 +505,11 @@ mod tests {
 
         let article = league_roundup_article(5, &results, "2025-08-19");
 
-        assert!(!article.body.contains("recorded the cleanest closeout of the day"));
+        assert!(
+            !article
+                .body
+                .contains("recorded the cleanest closeout of the day")
+        );
         assert_eq!(
             article.i18n_params.get("biggestWinner"),
             Some(&String::new())
@@ -585,10 +586,7 @@ mod tests {
         assert_eq!(article.id, "season_preview");
         assert_eq!(article.category, NewsCategory::SeasonPreview);
         assert_eq!(article.source, "Riot Games Newsroom");
-        assert_eq!(
-            article.source_key.as_deref(),
-            Some("be.source.riftHerald")
-        );
+        assert_eq!(article.source_key.as_deref(), Some("be.source.riftHerald"));
         assert!(
             [
                 "be.news.seasonPreview.headline0",

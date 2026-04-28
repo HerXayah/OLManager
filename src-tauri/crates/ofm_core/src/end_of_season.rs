@@ -1,7 +1,7 @@
 use crate::game::Game;
 use crate::schedule::{
-    append_fixtures, generate_preseason_friendlies,
-    generate_single_round_league_with_offsets_and_bo, parse_lec_split, regular_best_of, LecSplit,
+    LecSplit, append_fixtures, generate_preseason_friendlies,
+    generate_single_round_league_with_offsets_and_bo, parse_lec_split, regular_best_of,
 };
 use crate::season_awards::compute_season_awards;
 use chrono::{TimeZone, Utc};
@@ -68,20 +68,25 @@ pub fn is_league_complete(league: &League) -> bool {
     regular_complete && playoffs_complete
 }
 
-fn next_lec_split(current_name: &str, current_season: u32) -> (String, u32, LecSplit, chrono::DateTime<Utc>, [i64; 9]) {
+fn next_lec_split(
+    current_name: &str,
+    current_season: u32,
+) -> (String, u32, LecSplit, chrono::DateTime<Utc>, [i64; 9]) {
     match parse_lec_split(current_name) {
         Some(LecSplit::Winter) => (
             "LEC Spring".to_string(),
             current_season,
             LecSplit::Spring,
-            Utc.with_ymd_and_hms(current_season as i32, 3, 29, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(current_season as i32, 3, 29, 0, 0, 0)
+                .unwrap(),
             [0, 7, 14, 21, 28, 35, 42, 49, 56],
         ),
         Some(LecSplit::Spring) => (
             "LEC Summer".to_string(),
             current_season,
             LecSplit::Summer,
-            Utc.with_ymd_and_hms(current_season as i32, 8, 2, 0, 0, 0).unwrap(),
+            Utc.with_ymd_and_hms(current_season as i32, 8, 2, 0, 0, 0)
+                .unwrap(),
             [0, 7, 14, 21, 28, 35, 42, 49, 56],
         ),
         _ => {
@@ -90,7 +95,8 @@ fn next_lec_split(current_name: &str, current_season: u32) -> (String, u32, LecS
                 "LEC Winter".to_string(),
                 next_season,
                 LecSplit::Winter,
-                Utc.with_ymd_and_hms(next_season as i32, 1, 18, 0, 0, 0).unwrap(),
+                Utc.with_ymd_and_hms(next_season as i32, 1, 18, 0, 0, 0)
+                    .unwrap(),
                 [0, 1, 2, 7, 8, 9, 14, 15, 16],
             )
         }

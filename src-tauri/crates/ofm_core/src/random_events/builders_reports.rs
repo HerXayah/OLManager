@@ -220,7 +220,11 @@ pub fn build_fan_petition_from_narrative(
 ) -> Option<InboxMessage> {
     let pack = load_default_content_pack().ok()?;
     let selector = NarrativeSelector::new(&pack);
-    let template = selector.select_event(Some("default"), &["fan", "petition"], &["spicy", "community"])?;
+    let template = selector.select_event(
+        Some("default"),
+        &["fan", "petition"],
+        &["spicy", "community"],
+    )?;
 
     Some(
         InboxMessage::new(

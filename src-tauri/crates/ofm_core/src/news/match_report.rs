@@ -404,7 +404,10 @@ mod tests {
         );
         assert_eq!(article.i18n_params.get("winner"), None);
         assert_eq!(article.i18n_params.get("loser"), None);
-        assert_eq!(article.i18n_params.get("playerOfMatch"), Some(&"N/A".to_string()));
+        assert_eq!(
+            article.i18n_params.get("playerOfMatch"),
+            Some(&"N/A".to_string())
+        );
         assert!(article.player_ids.is_empty());
     }
 }
