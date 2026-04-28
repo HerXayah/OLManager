@@ -508,11 +508,21 @@ fn ensure_initial_patch_state(game: &mut Game) {
         })
         .collect();
 
-    let year = two_digit_year(game);
+    let fallback_year = two_digit_year(game);
+    let year = if game.champion_patch.patch_year == 0 {
+        fallback_year
+    } else {
+        game.champion_patch.patch_year
+    };
+    let patch_index = if game.champion_patch.patch_index_in_year == 0 {
+        1
+    } else {
+        game.champion_patch.patch_index_in_year
+    };
     game.champion_patch.current_patch = game.champion_patch.current_patch.max(1);
     game.champion_patch.patch_year = year;
-    game.champion_patch.patch_index_in_year = 1;
-    game.champion_patch.current_patch_label = format_patch_label(year, 1);
+    game.champion_patch.patch_index_in_year = patch_index;
+    game.champion_patch.current_patch_label = format_patch_label(year, patch_index);
     game.champion_patch.last_patch_date = Some(today_str(game));
     game.champion_patch.hidden_meta = initial_meta;
     game.champion_patch.patch_notes.clear();

@@ -1449,6 +1449,16 @@ fn apply_lol_seed_ratings(players: &mut [Player]) {
     }
 }
 
+fn apply_default_initial_contract_end(players: &mut [Player]) {
+    const DEFAULT_INITIAL_CONTRACT_END: &str = "2025-12-20";
+
+    for player in players.iter_mut() {
+        if player.contract_end.is_none() {
+            player.contract_end = Some(DEFAULT_INITIAL_CONTRACT_END.to_string());
+        }
+    }
+}
+
 fn seed_is_free_agent(seed: &DraftPlayerSeed) -> bool {
     seed.team_id
         .as_deref()
@@ -1712,6 +1722,7 @@ pub async fn start_new_game(
 
     inject_seed_free_agents(&mut players);
     apply_lol_seed_ratings(&mut players);
+    apply_default_initial_contract_end(&mut players);
     let academy_bootstrap_date = clock.current_date.format("%Y-%m-%d").to_string();
     let mut teams = teams;
     bootstrap_example_academy_pool_from_example(&mut teams, &mut players, &academy_bootstrap_date);
