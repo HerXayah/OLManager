@@ -10,7 +10,7 @@ export interface AppSettings {
   match_speed: "slow" | "normal" | "fast";
   show_match_commentary: boolean;
   confirm_advance: boolean;
-  ui_scale: "small" | "normal" | "large" | "xlarge";
+  ui_scale: "xsmall" | "small" | "normal" | "large" | "xlarge";
   high_contrast: boolean;
   lol_hybrid_open_trade_confidence_high: number;
   lol_hybrid_disengage_confidence_low: number;

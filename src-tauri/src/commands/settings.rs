@@ -13,7 +13,7 @@ pub struct AppSettings {
     pub show_match_commentary: bool,
     pub confirm_advance: bool,
     #[serde(default = "default_ui_scale")]
-    pub ui_scale: String, // "small" | "normal" | "large" | "xlarge"
+    pub ui_scale: String, // "xsmall" | "small" | "normal" | "large" | "xlarge"
     #[serde(default)]
     pub high_contrast: bool,
     #[serde(default = "default_lol_hybrid_open_trade_confidence_high")]

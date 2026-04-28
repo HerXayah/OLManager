@@ -392,6 +392,7 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
   const [running, setRunning] = useState(true);
   const [isSkipping, setIsSkipping] = useState(false);
   const [skipWarningOpen, setSkipWarningOpen] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [speed, setSpeed] = useState(4);
   const aiMode: LolSimV1AiMode = "hybrid";
   const { settings } = useSettingsStore();
@@ -411,6 +412,23 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
   }, [championSelections]);
   const [championProfilesById, setChampionProfilesById] = useState<Record<string, ChampionCombatProfile>>({});
   const [championUltimatesById, setChampionUltimatesById] = useState<Record<string, LolChampionUltimateProfile>>({});
+
+  useEffect(() => {
+    const updateMobileLayout = () => {
+      const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+      const hasTouch = navigator.maxTouchPoints > 0;
+      const isAndroid = /Android/i.test(navigator.userAgent);
+      const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const looksLikePhoneScreen = Math.min(window.screen.width, window.screen.height) <= 900;
+      const hasTightHeight = window.innerHeight <= 920;
+
+      setIsMobileLayout(isAndroid || isIos || ((isCoarsePointer || hasTouch || looksLikePhoneScreen) && hasTightHeight));
+    };
+
+    updateMobileLayout();
+    window.addEventListener("resize", updateMobileLayout);
+    return () => window.removeEventListener("resize", updateMobileLayout);
+  }, []);
 
   const runtimeModifierByChampionId = useMemo<Record<string, number>>(() => {
     const next: Record<string, number> = {};
@@ -1031,52 +1049,54 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
           </div>
 
           <div className="flex w-full max-w-[1500px] flex-col items-center gap-3 px-2 lg:flex-row lg:items-stretch lg:justify-center">
-            <div className="w-full max-w-[260px] lg:w-[246px]">
-              <div className="flex flex-col gap-[7px]">
-                {leftEventFeed.length > 0 ? leftEventFeed.map((entry) => (
-                  <div
-                    key={entry.key}
-                    className={`lol-feed-entry rounded-[4px] border bg-black/75 px-[8px] py-[6px] shadow-[0_8px_20px_rgba(0,0,0,0.45)] ${entry.side === "red" ? "border-red-500/40" : "border-cyan-500/30"}`}
-                  >
-                    <div className={`mb-[4px] h-[1px] w-full bg-gradient-to-r from-transparent ${entry.side === "red" ? "via-red-300/70" : "via-cyan-300/70"} to-transparent`} />
-                    {entry.type === "kill" ? (
-                      <div className="flex items-center gap-[7px]">
-                        <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45">
-                          {entry.killerIcon
-                            ? <img src={entry.killerIcon} className="h-full w-full object-cover" alt={t("match.liveA11y.killerIcon")} loading="lazy" />
-                            : <div className={`flex h-full w-full items-center justify-center text-[11px] font-bold ${entry.side === "red" ? "bg-[#22151a] text-red-200" : "bg-[#151a26] text-cyan-200"}`}>{actorInitials(entry.killerLabel, "K")}</div>}
+            {!isMobileLayout ? (
+              <div className="w-full max-w-[260px] lg:w-[246px]">
+                <div className="flex flex-col gap-[7px]">
+                  {leftEventFeed.length > 0 ? leftEventFeed.map((entry) => (
+                    <div
+                      key={entry.key}
+                      className={`lol-feed-entry rounded-[4px] border bg-black/75 px-[8px] py-[6px] shadow-[0_8px_20px_rgba(0,0,0,0.45)] ${entry.side === "red" ? "border-red-500/40" : "border-cyan-500/30"}`}
+                    >
+                      <div className={`mb-[4px] h-[1px] w-full bg-gradient-to-r from-transparent ${entry.side === "red" ? "via-red-300/70" : "via-cyan-300/70"} to-transparent`} />
+                      {entry.type === "kill" ? (
+                        <div className="flex items-center gap-[7px]">
+                          <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45">
+                            {entry.killerIcon
+                              ? <img src={entry.killerIcon} className="h-full w-full object-cover" alt={t("match.liveA11y.killerIcon")} loading="lazy" />
+                              : <div className={`flex h-full w-full items-center justify-center text-[11px] font-bold ${entry.side === "red" ? "bg-[#22151a] text-red-200" : "bg-[#151a26] text-cyan-200"}`}>{actorInitials(entry.killerLabel, "K")}</div>}
+                          </div>
+                          <div className={`flex h-[26px] w-[26px] items-center justify-center rounded-[3px] border text-[13px] ${entry.side === "red" ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"}`}>⚔</div>
+                          <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45">
+                            {entry.victimIcon
+                              ? <img src={entry.victimIcon} className="h-full w-full object-cover" alt={t("match.liveA11y.victimIcon")} loading="lazy" />
+                              : <div className={`flex h-full w-full items-center justify-center text-[11px] font-bold ${entry.side === "red" ? "bg-[#22151a] text-red-200" : "bg-[#151a26] text-cyan-200"}`}>{actorInitials(entry.victimLabel, "V")}</div>}
+                          </div>
+                          <span className="ml-auto text-[11px] font-bold text-white/75">{entry.minute}'</span>
                         </div>
-                        <div className={`flex h-[26px] w-[26px] items-center justify-center rounded-[3px] border text-[13px] ${entry.side === "red" ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-cyan-400/40 bg-cyan-500/10 text-cyan-200"}`}>⚔</div>
-                        <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45">
-                          {entry.victimIcon
-                            ? <img src={entry.victimIcon} className="h-full w-full object-cover" alt={t("match.liveA11y.victimIcon")} loading="lazy" />
-                            : <div className={`flex h-full w-full items-center justify-center text-[11px] font-bold ${entry.side === "red" ? "bg-[#22151a] text-red-200" : "bg-[#151a26] text-cyan-200"}`}>{actorInitials(entry.victimLabel, "V")}</div>}
+                      ) : (
+                        <div className="flex items-center gap-[7px]">
+                          <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45 p-[4px]">
+                            {entry.objectiveIcon
+                              ? <img src={entry.objectiveIcon} className="h-full w-full object-contain" alt={entry.type} loading="lazy" />
+                              : null}
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span className={`truncate text-[10px] font-semibold uppercase tracking-[0.5px] ${entry.side === "red" ? "text-red-200" : "text-cyan-200"}`}>{entry.type}</span>
+                            <span className="truncate text-[10px] text-white/75">{entry.text}</span>
+                          </div>
+                          <span className="text-[11px] font-bold text-white/75">{entry.minute}'</span>
                         </div>
-                        <span className="ml-auto text-[11px] font-bold text-white/75">{entry.minute}'</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-[7px]">
-                        <div className="h-[36px] w-[36px] overflow-hidden rounded-[3px] border border-white/25 bg-black/45 p-[4px]">
-                          {entry.objectiveIcon
-                            ? <img src={entry.objectiveIcon} className="h-full w-full object-contain" alt={entry.type} loading="lazy" />
-                            : null}
-                        </div>
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className={`truncate text-[10px] font-semibold uppercase tracking-[0.5px] ${entry.side === "red" ? "text-red-200" : "text-cyan-200"}`}>{entry.type}</span>
-                          <span className="truncate text-[10px] text-white/75">{entry.text}</span>
-                        </div>
-                        <span className="text-[11px] font-bold text-white/75">{entry.minute}'</span>
-                      </div>
-                    )}
-                    <div className={`mt-[5px] h-[2px] w-full bg-gradient-to-r ${entry.side === "red" ? "from-red-500/40 via-red-300 to-red-500/40" : "from-cyan-500/40 via-cyan-300 to-cyan-500/40"}`} />
-                  </div>
-                )) : (
-                  <div className="rounded-[4px] border border-cyan-500/30 bg-black/75 px-2 py-1 text-[10px] text-white/65">
-                    {t("match.waitingFirstSkirmish")}
-                  </div>
-                )}
+                      )}
+                      <div className={`mt-[5px] h-[2px] w-full bg-gradient-to-r ${entry.side === "red" ? "from-red-500/40 via-red-300 to-red-500/40" : "from-cyan-500/40 via-cyan-300 to-cyan-500/40"}`} />
+                    </div>
+                  )) : (
+                    <div className="rounded-[4px] border border-cyan-500/30 bg-black/75 px-2 py-1 text-[10px] text-white/65">
+                      {t("match.waitingFirstSkirmish")}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div className="relative flex min-w-0 flex-1 items-center justify-center">
               <canvas
