@@ -18,7 +18,7 @@ managed through migrations.
 ### 1. One Database Per Save
 
 ```
-~/.local/share/com.openfootmanager/
+~/.local/share/com.openleaguemanager.olmanager/
 ├── saves/
 │   ├── <uuid1>.db          # Save session 1
 │   ├── <uuid2>.db          # Save session 2

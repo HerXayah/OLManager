@@ -12,12 +12,15 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   source-release:
     name: source-release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,6 +37,7 @@ jobs:
             VERSION="${GITHUB_REF_NAME#v}"
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag_name=v$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Verify version files and changelog
         shell: python
@@ -69,19 +73,35 @@ jobs:
           mkdir -p dist-release
           git archive --format=tar.gz --prefix="olmanager-${{ steps.version.outputs.version }}/" HEAD > "dist-release/olmanager-${{ steps.version.outputs.version }}-source.tar.gz"
 
-      - name: Generate checksums
-        shell: bash
+      - name: Extract release notes
+        shell: python
         run: |
-          cd dist-release
-          sha256sum * > SHA256SUMS.txt
+          import pathlib
+          import re
+
+          version = "${{ steps.version.outputs.version }}"
+          changelog = pathlib.Path("CHANGELOG.md").read_text()
+          match = re.search(
+              rf"^## \[{re.escape(version)}\].*?(?=^## \[|\Z)",
+              changelog,
+              re.MULTILINE | re.DOTALL,
+          )
+          notes = match.group(0).strip() if match else f"OLManager {version}"
+          pathlib.Path("dist-release/RELEASE_NOTES.md").write_text(notes + "\n")
 
       - name: Record signing status
         shell: bash
         run: |
           cat > dist-release/SIGNING_STATUS.txt <<'EOF'
-          Source archive release only.
-          Platform binaries, signing, and notarization are not enabled until maintainers configure release secrets and document support policy.
+          Platform binaries are generated on GitHub-hosted runners.
+          Windows and macOS bundles are unsigned; macOS notarization is not enabled until maintainers configure signing/notarization secrets and document support policy.
           EOF
+
+      - name: Generate source checksums
+        shell: bash
+        run: |
+          cd dist-release
+          sha256sum * > SHA256SUMS.txt
 
       - name: Upload source artifacts
         uses: actions/upload-artifact@v4
@@ -89,3 +109,129 @@ jobs:
           name: olmanager-${{ steps.version.outputs.version }}-source
           path: dist-release/
           if-no-files-found: error
+
+      - name: Publish source assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release upload "$TAG_NAME" dist-release/* --clobber
+          else
+            gh release create "$TAG_NAME" dist-release/* --title "OLManager $VERSION" --notes-file dist-release/RELEASE_NOTES.md --target "$GITHUB_SHA"
+          fi
+
+  build-tauri:
+    name: build-tauri (${{ matrix.platform }})
+    needs: source-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+          - platform: linux
+            os: ubuntu-22.04
+          - platform: macos
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux Tauri dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri bundle
+        run: npm run tauri build
+
+      - name: Collect bundle artifacts
+        env:
+          VERSION: ${{ needs.source-release.outputs.version }}
+          PLATFORM: ${{ matrix.platform }}
+        shell: python
+        run: |
+          import hashlib
+          import pathlib
+          import shutil
+          import sys
+
+          version = "${{ env.VERSION }}"
+          platform = "${{ env.PLATFORM }}"
+          bundle_dir = pathlib.Path("src-tauri/target/release/bundle")
+          out_dir = pathlib.Path("dist-bundle")
+          out_dir.mkdir(exist_ok=True)
+
+          allowed_suffixes = (
+              ".AppImage",
+              ".deb",
+              ".dmg",
+              ".exe",
+              ".msi",
+              ".rpm",
+          )
+          allowed_double_suffixes = (".app.tar.gz",)
+
+          if not bundle_dir.exists():
+              print(f"Missing Tauri bundle directory: {bundle_dir}", file=sys.stderr)
+              sys.exit(1)
+
+          copied = []
+          for path in bundle_dir.rglob("*"):
+              if not path.is_file():
+                  continue
+              name = path.name
+              if not (name.endswith(allowed_suffixes) or name.endswith(allowed_double_suffixes)):
+                  continue
+              destination = out_dir / f"olmanager-{version}-{platform}-{name}"
+              shutil.copy2(path, destination)
+              copied.append(destination)
+
+          if not copied:
+              print(f"No distributable Tauri bundles found under {bundle_dir}", file=sys.stderr)
+              sys.exit(1)
+
+          checksum_file = out_dir / f"SHA256SUMS-{platform}.txt"
+          checksum_file.write_text(
+              "".join(
+                  f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n"
+                  for path in sorted(copied)
+              )
+          )
+
+      - name: Upload bundle artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: olmanager-${{ needs.source-release.outputs.version }}-${{ matrix.platform }}
+          path: dist-bundle/
+          if-no-files-found: error
+
+      - name: Publish bundle assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ needs.source-release.outputs.tag_name }}
+        shell: bash
+        run: gh release upload "$TAG_NAME" dist-bundle/* --clobber

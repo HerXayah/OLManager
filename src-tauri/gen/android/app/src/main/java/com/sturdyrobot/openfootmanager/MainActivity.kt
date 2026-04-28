@@ -1,4 +1,4 @@
-package com.sturdyrobot.openfootmanager
+package com.openleaguemanager.olmanager
 
 import android.os.Bundle
 import androidx.core.view.WindowCompat

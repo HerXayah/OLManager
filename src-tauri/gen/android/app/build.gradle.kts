@@ -15,10 +15,10 @@ val tauriProperties = Properties().apply {
 
 android {
     compileSdk = 36
-    namespace = "com.sturdyrobot.openfootmanager"
+    namespace = "com.openleaguemanager.olmanager"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
-        applicationId = "com.sturdyrobot.openfootmanager"
+        applicationId = "com.openleaguemanager.olmanager"
         minSdk = 24
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
