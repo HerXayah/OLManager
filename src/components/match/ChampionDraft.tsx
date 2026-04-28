@@ -152,6 +152,16 @@ export function calculateStaffRevealBudget(metaDiscovery: number): number {
   return Math.max(1, Math.min(5, 1 + Math.round(normalized * 4)));
 }
 
+function calculateCounterRevealBudget(metaDiscovery: number): number {
+  if (metaDiscovery < 1.0) return 2;
+  if (metaDiscovery < 1.1) return 3;
+  return 4;
+}
+
+function calculateCounterConsultCharges(metaDiscovery: number): number {
+  return metaDiscovery >= 1.05 ? 2 : 1;
+}
+
 export function selectStaffRevealEntries(
   candidates: RivalMasteryDisplayEntry[],
   budget: number,
@@ -591,11 +601,20 @@ export default function ChampionDraft({
   const [turnStartedAt, setTurnStartedAt] = useState<number>(() => Date.now());
   const [turnRemainingMs, setTurnRemainingMs] = useState<number>(AI_TIMING.userTurnMs);
   const [showFinalRoleReassignFx, setShowFinalRoleReassignFx] = useState(false);
+  const [counterConsultUsesLeft, setCounterConsultUsesLeft] = useState<number>(1);
+  const [consultedCounterChampionIds, setConsultedCounterChampionIds] = useState<Set<string>>(() => new Set());
   const autoResolvedStepKeyRef = useRef<string | null>(null);
   const finalRoleReassignFxPlayedRef = useRef(false);
 
   const bluePlayerIds = snapshot.home_team.players.map((player) => player.id);
   const redPlayerIds = snapshot.away_team.players.map((player) => player.id);
+  const userTeamId = controlledSide === "blue" ? snapshot.home_team.id : snapshot.away_team.id;
+  const userStaffEffects = getLolStaffEffectsForTeam(gameState, userTeamId);
+
+  useEffect(() => {
+    setCounterConsultUsesLeft(calculateCounterConsultCharges(userStaffEffects.metaDiscovery));
+    setConsultedCounterChampionIds(new Set());
+  }, [userStaffEffects.metaDiscovery, userTeamId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -707,6 +726,17 @@ export default function ChampionDraft({
     const champion = championById.get(pendingChampionId);
     if (!champion) return;
     handleSelectChampion(champion, "user");
+  };
+
+  const handleConsultStaffCounterIntel = (): void => {
+    if (!pendingChampionId || counterConsultUsesLeft <= 0) return;
+    setConsultedCounterChampionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(pendingChampionId)) return prev;
+      next.add(pendingChampionId);
+      return next;
+    });
+    setCounterConsultUsesLeft((prev) => Math.max(0, prev - 1));
   };
 
   const isUserTurn = !!currentStep && currentStep.side === controlledSide && !finished;
@@ -990,10 +1020,23 @@ export default function ChampionDraft({
     }
 
     const targetSide = enemySideFor(currentStep.side);
+    const targetPicks = targetSide === "blue" ? bluePicks : redPicks;
+    const alreadyCoveredRoles = new Set<Role>(
+      targetPicks
+        .map((pick) => pick.role)
+        .filter((role): role is Role => ROLE_ORDER.includes(role as Role)) as Role[],
+    );
+    const roleRelevantCandidates = available.filter((champion) => {
+      if (alreadyCoveredRoles.size === 0) return true;
+      if (champion.roleHints.length === 0) return true;
+      return !champion.roleHints.every((role) => alreadyCoveredRoles.has(role));
+    });
+    const banCandidates = roleRelevantCandidates.length > 0 ? roleRelevantCandidates : available;
+
     let bestBan: ChampionData | null = null;
     let bestScore = Number.NEGATIVE_INFINITY;
 
-    available.forEach((champion) => {
+    banCandidates.forEach((champion) => {
       const enemyMastery = resolveTeamChampionMastery(targetSide, champion.id);
       const meta = metaScoreForChampion(champion);
       const score =
@@ -1006,6 +1049,38 @@ export default function ChampionDraft({
     });
 
     return bestBan;
+  };
+
+  const selectTimeoutChampionForUserTurn = (): ChampionData | null => {
+    if (!currentStep || currentStep.side !== controlledSide) return null;
+
+    const available = getAvailableChampions();
+    if (available.length === 0) return null;
+
+    if (pendingChampionId) {
+      const marked = championById.get(pendingChampionId);
+      if (marked && !usedChampionIds.has(marked.id)) return marked;
+    }
+
+    if (currentStep.type === "ban") {
+      const randomIndex = Math.floor(Math.random() * available.length);
+      return available[randomIndex] ?? null;
+    }
+
+    const ownPicks = controlledSide === "blue" ? bluePicks : redPicks;
+    const coveredRoles = new Set<Role>();
+    ownPicks.forEach((pick) => {
+      const champion = championById.get(pick.championId);
+      champion?.roleHints.forEach((role) => coveredRoles.add(role));
+    });
+    const missingRoles = ROLE_ORDER.filter((role) => !coveredRoles.has(role));
+    const roleCandidates = available.filter((champion) =>
+      missingRoles.some((role) => champion.roleHints.includes(role)),
+    );
+
+    const pool = roleCandidates.length > 0 ? roleCandidates : available;
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    return pool[randomIndex] ?? null;
   };
 
   const currentStepKey = currentStep
@@ -1071,16 +1146,23 @@ export default function ChampionDraft({
     if (autoResolvedStepKeyRef.current === currentStepKey) return;
 
     autoResolvedStepKeyRef.current = currentStepKey;
-    const autoChampion = selectAiChampionForCurrentStep();
+    const autoChampion = currentStep.side === controlledSide
+      ? selectTimeoutChampionForUserTurn()
+      : selectAiChampionForCurrentStep();
     if (autoChampion) {
-      handleSelectChampion(autoChampion, "ai");
+      handleSelectChampion(autoChampion, currentStep.side === controlledSide ? "user" : "ai");
     }
   }, [
+    bluePicks,
+    championById,
     champions,
+    controlledSide,
     currentStep,
     currentStepKey,
     finished,
     loading,
+    pendingChampionId,
+    redPicks,
     turnRemainingMs,
     usedChampionIds,
   ]);
@@ -1324,6 +1406,83 @@ export default function ChampionDraft({
     rivalTeamSeed,
     snapshot.away_team.id,
     snapshot.home_team.id,
+    usedChampionIds,
+  ]);
+
+  const selectedChampionCounterIntel = useMemo(() => {
+    if (!pendingChampionId || !currentStep || currentStep.type !== "pick" || currentStep.side !== controlledSide) {
+      return null;
+    }
+
+    const selectedChampion = championById.get(pendingChampionId);
+    if (!selectedChampion) return null;
+
+    const revealBudget = calculateCounterRevealBudget(userStaffEffects.metaDiscovery);
+    const consulted = consultedCounterChampionIds.has(selectedChampion.id);
+    const enemyPicks = controlledSide === "blue" ? redPicks : bluePicks;
+    const enemyPickedIds = new Set(enemyPicks.map((pick) => pick.championId));
+
+    const availableForEnemy = champions.filter(
+      (champion) => !usedChampionIds.has(champion.id) || enemyPickedIds.has(champion.id),
+    );
+
+    const favorableAll = availableForEnemy
+      .map((enemyChampion) => ({
+        champion: enemyChampion,
+        value: counterValue(selectedChampion.id, enemyChampion.id),
+        isPicked: enemyPickedIds.has(enemyChampion.id),
+      }))
+      .filter((row) => row.value >= 1)
+      .sort((a, b) => b.value - a.value);
+
+    const riskyAll = availableForEnemy
+      .map((enemyChampion) => ({
+        champion: enemyChampion,
+        value: counterValue(enemyChampion.id, selectedChampion.id),
+        isPicked: enemyPickedIds.has(enemyChampion.id),
+      }))
+      .filter((row) => row.value >= 1)
+      .sort((a, b) => b.value - a.value);
+
+    const withPickedPriority = (rows: Array<{ champion: ChampionData; value: number; isPicked: boolean }>) => {
+      if (consulted) return rows;
+      const top = rows.slice(0, revealBudget);
+      const selected = new Set(top.map((row) => row.champion.id));
+      const pickedMissing = rows
+        .filter((row) => row.isPicked && !selected.has(row.champion.id))
+        .sort((a, b) => b.value - a.value);
+      if (pickedMissing.length === 0) return top;
+      const merged = [...top];
+      pickedMissing.forEach((row) => {
+        if (merged.length >= revealBudget) merged.pop();
+        merged.push(row);
+      });
+      return merged.sort((a, b) => {
+        if (a.isPicked !== b.isPicked) return a.isPicked ? -1 : 1;
+        return b.value - a.value;
+      });
+    };
+
+    const favorable = withPickedPriority(favorableAll);
+    const risky = withPickedPriority(riskyAll);
+
+    return {
+      selectedChampion,
+      revealBudget,
+      consulted,
+      favorable,
+      risky,
+    };
+  }, [
+    bluePicks,
+    champions,
+    championById,
+    controlledSide,
+    currentStep,
+    pendingChampionId,
+    redPicks,
+    consultedCounterChampionIds,
+    userStaffEffects.metaDiscovery,
     usedChampionIds,
   ]);
 
@@ -2272,43 +2431,139 @@ export default function ChampionDraft({
             </div>
 
             <aside className={`${isCompactLayout ? "flex" : "hidden xl:flex"} h-full flex-col rounded-md border border-cyan-400/25 bg-[#0a0b0f] p-2 min-h-0 overflow-y-auto scrollbar-draft pr-1`}>
-              <p className="text-[11px] font-heading uppercase tracking-wide text-gray-200 mb-2 text-right">
-                {t("match.draft.enemyComfortTitle")}
-              </p>
-              <div className="space-y-1">
-                {rivalMasteryDisplay.length === 0 ? (
-                  <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
-                    {t("match.draft.enemyComfortUnknown")}
+              {selectedChampionCounterIntel ? (
+                <>
+                  <p className="text-[11px] font-heading uppercase tracking-wide text-gray-200 mb-2 text-right">
+                    {t("match.draft.counterIntelTitle", {
+                      defaultValue: "Counter intel · {{champion}}",
+                      champion: selectedChampionCounterIntel.selectedChampion.name,
+                    })}
+                  </p>
+                  <p className="text-[10px] text-cyan-200/80 mb-2 text-right">
+                    {selectedChampionCounterIntel.consulted
+                      ? t("match.draft.counterIntelScaleFull", {
+                        defaultValue: "Consulta aplicada: vista completa de counters",
+                      })
+                      : t("match.draft.counterIntelScale", {
+                        defaultValue: "Meta reading: top {{count}} each side",
+                        count: selectedChampionCounterIntel.revealBudget,
+                      })}
+                  </p>
+                  <div className="mb-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleConsultStaffCounterIntel}
+                      disabled={
+                        !pendingChampionId
+                        || counterConsultUsesLeft <= 0
+                        || consultedCounterChampionIds.has(pendingChampionId)
+                      }
+                      className="rounded-md border border-cyan-300/40 bg-cyan-500/10 hover:bg-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-cyan-100 px-2 py-1 text-[10px] font-heading font-bold uppercase tracking-wide"
+                    >
+                      {t("match.draft.counterIntelConsult", { defaultValue: "Consulta al staff" })}
+                      {` (${counterConsultUsesLeft})`}
+                    </button>
                   </div>
-                ) : null}
-                {rivalMasteryDisplay.map(({ champion, mastery, playerName, source }) => (
-                  <div key={`rival-row-${champion.id}-${playerName}-${source}`} className="rounded-sm border border-white/10 bg-[#111318] p-1">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={champion.image}
-                        alt={champion.name}
-                        className="w-10 h-10 object-cover rounded-sm"
-                        loading="lazy"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] truncate">{champion.name}</p>
-                        <p className="text-[10px] text-gray-400 truncate">{playerName}</p>
-                        <p className="text-[9px] uppercase tracking-wide text-cyan-200/70 truncate">
-                          {source === "insignia"
-                            ? t("match.draft.masterySourceSignature")
-                            : source === "scouting"
-                              ? t("match.draft.masterySourceScouting")
-                              : t("match.draft.masterySourceStaff")}
-                        </p>
-                        <div className="mt-1 h-1.5 bg-black/35 rounded overflow-hidden">
-                          <div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, mastery)}%` }} />
+
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-heading uppercase tracking-wide text-cyan-200">
+                      {t("match.draft.counterIntelPros", { defaultValue: "In your favor" })}
+                    </p>
+                    {selectedChampionCounterIntel.favorable.length === 0 ? (
+                      <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
+                        {t("match.draft.counterIntelNoPros", { defaultValue: "No clear favorable counters detected." })}
+                      </div>
+                    ) : null}
+                    {selectedChampionCounterIntel.favorable.map((row) => (
+                      <div
+                        key={`counter-pro-${row.champion.id}`}
+                        className={`rounded-sm border p-1 ${row.isPicked ? "border-cyan-300/70 bg-cyan-500/10" : "border-white/10 bg-[#111318]"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <img src={row.champion.image} alt={row.champion.name} className="w-9 h-9 object-cover rounded-sm" loading="lazy" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] truncate">{row.champion.name}</p>
+                            <p className={`text-[9px] uppercase tracking-wide ${row.isPicked ? "text-cyan-200" : "text-gray-400"}`}>
+                              {row.isPicked
+                                ? t("match.draft.counterIntelPicked", { defaultValue: "Already picked by rival" })
+                                : t("match.draft.counterIntelPotential", { defaultValue: "Potential rival pick" })}
+                            </p>
+                          </div>
+                          <p className="text-[11px] text-cyan-300 font-semibold">+{row.value}</p>
                         </div>
                       </div>
-                      <p className="text-[11px] text-cyan-300 font-semibold">{mastery}</p>
-                    </div>
+                    ))}
+
+                    <p className="pt-1 text-[10px] font-heading uppercase tracking-wide text-orange-200">
+                      {t("match.draft.counterIntelCons", { defaultValue: "Against your pick" })}
+                    </p>
+                    {selectedChampionCounterIntel.risky.length === 0 ? (
+                      <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
+                        {t("match.draft.counterIntelNoCons", { defaultValue: "No immediate hard counters found." })}
+                      </div>
+                    ) : null}
+                    {selectedChampionCounterIntel.risky.map((row) => (
+                      <div
+                        key={`counter-con-${row.champion.id}`}
+                        className={`rounded-sm border p-1 ${row.isPicked ? "border-orange-300/75 bg-orange-500/10" : "border-white/10 bg-[#111318]"}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <img src={row.champion.image} alt={row.champion.name} className="w-9 h-9 object-cover rounded-sm" loading="lazy" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] truncate">{row.champion.name}</p>
+                            <p className={`text-[9px] uppercase tracking-wide ${row.isPicked ? "text-orange-200" : "text-gray-400"}`}>
+                              {row.isPicked
+                                ? t("match.draft.counterIntelPicked", { defaultValue: "Already picked by rival" })
+                                : t("match.draft.counterIntelPotential", { defaultValue: "Potential rival pick" })}
+                            </p>
+                          </div>
+                          <p className="text-[11px] text-orange-300 font-semibold">-{row.value}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[11px] font-heading uppercase tracking-wide text-gray-200 mb-2 text-right">
+                    {t("match.draft.enemyComfortTitle")}
+                  </p>
+                  <div className="space-y-1">
+                    {rivalMasteryDisplay.length === 0 ? (
+                      <div className="rounded-sm border border-white/10 bg-[#111318] p-2 text-[10px] text-gray-500 text-center">
+                        {t("match.draft.enemyComfortUnknown")}
+                      </div>
+                    ) : null}
+                    {rivalMasteryDisplay.map(({ champion, mastery, playerName, source }) => (
+                      <div key={`rival-row-${champion.id}-${playerName}-${source}`} className="rounded-sm border border-white/10 bg-[#111318] p-1">
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={champion.image}
+                            alt={champion.name}
+                            className="w-10 h-10 object-cover rounded-sm"
+                            loading="lazy"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] truncate">{champion.name}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{playerName}</p>
+                            <p className="text-[9px] uppercase tracking-wide text-cyan-200/70 truncate">
+                              {source === "insignia"
+                                ? t("match.draft.masterySourceSignature")
+                                : source === "scouting"
+                                  ? t("match.draft.masterySourceScouting")
+                                  : t("match.draft.masterySourceStaff")}
+                            </p>
+                            <div className="mt-1 h-1.5 bg-black/35 rounded overflow-hidden">
+                              <div className="h-full bg-cyan-400" style={{ width: `${Math.min(100, mastery)}%` }} />
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-cyan-300 font-semibold">{mastery}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </aside>
           </div>
         </section>
