@@ -408,7 +408,7 @@ export default function DashboardHeader({
             </div>
 
             {showContinueMenu && (
-              <div className="absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-navy-600 dark:bg-navy-700">
+              <div className="absolute right-0 top-full z-50 mt-1 w-64 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-navy-600 dark:bg-navy-700">
                 {(["live", "spectator", "delegate"] as const).map((mode) => {
                   const isActive = matchMode === mode;
                   const optionMeta = modeMeta[mode];
