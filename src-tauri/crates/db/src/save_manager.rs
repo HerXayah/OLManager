@@ -489,6 +489,7 @@ mod tests {
             messages: vec![],
             news: vec![],
             league: None,
+            academy_league: None,
             scouting_assignments: vec![],
             board_objectives: vec![],
             season_context: domain::season::SeasonContext::default(),

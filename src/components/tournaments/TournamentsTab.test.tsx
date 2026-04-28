@@ -264,4 +264,76 @@ describe("TournamentsTab", () => {
     fireEvent.click(screen.getByRole("button", { name: /Fixtures/i }));
     expect(screen.getAllByText("2 - 1").length).toBeGreaterThan(0);
   });
+
+  it("renders academy league standings block when academy league exists", () => {
+    const gameState = createGameState(true);
+    gameState.teams.push(
+      createTeam({
+        id: "academy-1",
+        name: "Alpha Academy",
+        short_name: "AAC",
+        manager_id: "",
+        team_kind: "Academy",
+        parent_team_id: "team-1",
+      }),
+      createTeam({
+        id: "academy-2",
+        name: "Beta Academy",
+        short_name: "BAC",
+        manager_id: "",
+        team_kind: "Academy",
+      }),
+    );
+    gameState.academy_league = {
+      id: "erl-test",
+      name: "ERL Test Academy",
+      season: 1,
+      fixtures: [
+        createFixture({
+          id: "academy-po-1",
+          competition: "Playoffs",
+          home_team_id: "academy-1",
+          away_team_id: "academy-2",
+          matchday: 10,
+          best_of: 5,
+          result: {
+            home_goals: 0,
+            away_goals: 0,
+            home_scorers: [],
+            away_scorers: [],
+            home_wins: 3,
+            away_wins: 1,
+          },
+        }),
+      ],
+      standings: [
+        {
+          team_id: "academy-1",
+          played: 3,
+          won: 2,
+          drawn: 0,
+          lost: 1,
+          goals_for: 7,
+          goals_against: 5,
+          points: 6,
+        },
+        {
+          team_id: "academy-2",
+          played: 3,
+          won: 1,
+          drawn: 0,
+          lost: 2,
+          goals_for: 5,
+          goals_against: 7,
+          points: 3,
+        },
+      ],
+    };
+
+    render(<TournamentsTab gameState={gameState} onSelectTeam={vi.fn()} />);
+
+    expect(screen.getByText("ERL Test Academy")).toBeInTheDocument();
+    expect(screen.getAllByText("Alpha Academy").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("schedule.playoffs · Bracket").length).toBeGreaterThan(0);
+  });
 });

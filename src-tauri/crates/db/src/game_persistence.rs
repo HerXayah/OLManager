@@ -141,6 +141,7 @@ impl GamePersistenceReader {
             messages,
             news,
             league,
+            academy_league: None,
             scouting_assignments,
             board_objectives,
             season_context: domain::season::SeasonContext::default(),

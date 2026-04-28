@@ -687,6 +687,7 @@ export interface GameStateData {
   messages: MessageData[];
   news: NewsArticle[];
   league: LeagueData | null;
+  academy_league?: LeagueData | null;
   scouting_assignments: ScoutingAssignment[];
   board_objectives: BoardObjective[];
   season_context?: SeasonContextData;

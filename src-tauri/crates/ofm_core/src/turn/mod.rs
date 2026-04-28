@@ -552,65 +552,241 @@ fn register_parallel_result(
 }
 
 fn maybe_simulate_parallel_academy_leagues(game: &mut Game) {
-    if game.clock.current_date.weekday().num_days_from_monday() != 0 {
+    let weekday = game.clock.current_date.weekday().num_days_from_monday();
+    if weekday != 0 {
         return;
     }
 
-    let mut academy_groups: HashMap<String, Vec<String>> = HashMap::new();
-    for team in game
+    let Some(parent_team_id) = game.manager.team_id.clone() else {
+        return;
+    };
+    let Some(parent_team) = game.teams.iter().find(|team| team.id == parent_team_id) else {
+        return;
+    };
+    let Some(academy_team_id) = parent_team.academy_team_id.clone().or_else(|| {
+        game.teams
+            .iter()
+            .find(|team| {
+                team.team_kind == TeamKind::Academy
+                    && team.parent_team_id.as_deref() == Some(parent_team.id.as_str())
+            })
+            .map(|team| team.id.clone())
+    }) else {
+        return;
+    };
+    let Some(academy_team) = game.teams.iter().find(|team| team.id == academy_team_id) else {
+        return;
+    };
+    let Some(metadata) = academy_team.academy.as_ref() else {
+        return;
+    };
+
+    let erl_league_id = metadata.erl_assignment.erl_league_id.clone();
+    let season = game.clock.current_date.year() as u32;
+    let mut ordered_team_ids: Vec<String> = game
         .teams
         .iter()
-        .filter(|team| team.team_kind == TeamKind::Academy)
-    {
-        let Some(metadata) = team.academy.as_ref() else {
-            continue;
-        };
-        academy_groups
-            .entry(metadata.erl_assignment.erl_league_id.clone())
-            .or_default()
-            .push(team.id.clone());
+        .filter(|team| {
+            team.team_kind == TeamKind::Academy
+                && team
+                    .academy
+                    .as_ref()
+                    .map(|academy| academy.erl_assignment.erl_league_id.as_str())
+                    == Some(erl_league_id.as_str())
+        })
+        .map(|team| team.id.clone())
+        .collect();
+    ordered_team_ids.sort();
+
+    if ordered_team_ids.len() < 2 {
+        return;
     }
 
-    let season = game.clock.current_date.year() as u32;
-    let round_index = game.clock.current_date.iso_week().week() as usize;
-
-    for team_ids in academy_groups.values() {
-        if team_ids.len() < 2 {
-            continue;
+    let league_name = format!("{} Academy", academy_team.name);
+    let should_rebuild = match game.academy_league.as_ref() {
+        None => true,
+        Some(league) => {
+            league.id != erl_league_id
+                || league.season != season
+                || league.standings.len() != ordered_team_ids.len()
         }
-        let mut ordered = team_ids.clone();
-        ordered.sort();
-        let pairings = round_robin_pairings(&ordered, round_index);
+    };
 
-        for (home_team_id, away_team_id) in pairings {
-            let home_data = build_engine_team(game, &home_team_id);
-            let away_data = build_engine_team(game, &away_team_id);
-            let report = engine::simulate(&home_data, &away_data, &engine::MatchConfig::default());
-            let home_won = if report.home_wins == report.away_wins {
-                home_team_id <= away_team_id
-            } else {
-                report.home_wins > report.away_wins
-            };
-            let away_won = !home_won;
+    if should_rebuild {
+        game.academy_league = Some(League::new(
+            erl_league_id.clone(),
+            league_name,
+            season,
+            &ordered_team_ids,
+        ));
+        if let Some(league) = game.academy_league.as_mut() {
+            let mut start_date = game.clock.current_date;
+            while start_date.weekday().num_days_from_monday() != 0 {
+                start_date += chrono::Duration::days(1);
+            }
+            let total_rounds = ordered_team_ids.len().saturating_sub(1);
+            for round in 0..total_rounds {
+                let pairings = round_robin_pairings(&ordered_team_ids, round);
+                let date = (start_date + chrono::Duration::days((round as i64) * 7))
+                    .format("%Y-%m-%d")
+                    .to_string();
+                for (idx, (home_team_id, away_team_id)) in pairings.into_iter().enumerate() {
+                    league.fixtures.push(Fixture {
+                        id: format!("academy-{}-md{}-{}", league.id, round + 1, idx + 1),
+                        matchday: (round + 1) as u32,
+                        date: date.clone(),
+                        home_team_id,
+                        away_team_id,
+                        competition: FixtureCompetition::League,
+                        best_of: 3,
+                        status: FixtureStatus::Scheduled,
+                        result: None,
+                    });
+                }
+            }
+        }
+    }
 
-            if let Some(home_team) = game.teams.iter_mut().find(|team| team.id == home_team_id) {
-                register_parallel_result(
-                    home_team,
-                    season,
-                    report.home_wins,
-                    report.away_wins,
-                    home_won,
-                );
+    let today = game.clock.current_date.format("%Y-%m-%d").to_string();
+    let mut completed_fixtures: Vec<(String, String, u8, u8)> = Vec::new();
+    let fixtures_to_play: Vec<(usize, String, String)> = game
+        .academy_league
+        .as_ref()
+        .map(|league| {
+            league
+                .fixtures
+                .iter()
+                .enumerate()
+                .filter(|(_, fixture)| {
+                    fixture.status == FixtureStatus::Scheduled && fixture.date == today
+                })
+                .map(|(index, fixture)| {
+                    (
+                        index,
+                        fixture.home_team_id.clone(),
+                        fixture.away_team_id.clone(),
+                    )
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let mut simulated_results: Vec<(usize, String, String, u8, u8)> = Vec::new();
+    for (fixture_index, home_team_id, away_team_id) in fixtures_to_play {
+        let home_data = build_engine_team(game, &home_team_id);
+        let away_data = build_engine_team(game, &away_team_id);
+        let report = engine::simulate(&home_data, &away_data, &engine::MatchConfig::default());
+        simulated_results.push((
+            fixture_index,
+            home_team_id,
+            away_team_id,
+            report.home_wins,
+            report.away_wins,
+        ));
+    }
+
+    if let Some(league) = game.academy_league.as_mut() {
+        for (fixture_index, home_team_id, away_team_id, home_wins, away_wins) in &simulated_results {
+            if let Some(fixture) = league.fixtures.get_mut(*fixture_index) {
+                fixture.result = Some(MatchResult {
+                    home_wins: *home_wins,
+                    away_wins: *away_wins,
+                    ..MatchResult::default()
+                });
+                fixture.status = FixtureStatus::Completed;
             }
-            if let Some(away_team) = game.teams.iter_mut().find(|team| team.id == away_team_id) {
-                register_parallel_result(
-                    away_team,
-                    season,
-                    report.away_wins,
-                    report.home_wins,
-                    away_won,
-                );
+            completed_fixtures.push((
+                home_team_id.clone(),
+                away_team_id.clone(),
+                *home_wins,
+                *away_wins,
+            ));
+        }
+
+        for (home_team_id, away_team_id, home_wins, away_wins) in &completed_fixtures {
+            if let Some(home) = league.standings.iter_mut().find(|entry| entry.team_id == *home_team_id) {
+                home.record_result(*home_wins, *away_wins);
             }
+            if let Some(away) = league.standings.iter_mut().find(|entry| entry.team_id == *away_team_id) {
+                away.record_result(*away_wins, *home_wins);
+            }
+        }
+
+        let regular_fixtures_total = league
+            .fixtures
+            .iter()
+            .filter(|fixture| fixture.competition == FixtureCompetition::League)
+            .count();
+        let regular_completed = league
+            .fixtures
+            .iter()
+            .filter(|fixture| {
+                fixture.competition == FixtureCompetition::League
+                    && fixture.status == FixtureStatus::Completed
+            })
+            .count();
+        let has_playoffs = league
+            .fixtures
+            .iter()
+            .any(|fixture| fixture.competition == FixtureCompetition::Playoffs);
+
+        if regular_fixtures_total > 0 && regular_completed == regular_fixtures_total && !has_playoffs {
+            let mut sorted = league.standings.clone();
+            sorted.sort_by(|a, b| {
+                b.points
+                    .cmp(&a.points)
+                    .then((b.goals_for as i32 - b.goals_against as i32).cmp(&(a.goals_for as i32 - a.goals_against as i32)))
+                    .then(b.goals_for.cmp(&a.goals_for))
+            });
+            if sorted.len() >= 4 {
+                let next_matchday = league.fixtures.iter().map(|fixture| fixture.matchday).max().unwrap_or(0) + 1;
+                let semis_date = game.clock.current_date + chrono::Duration::days(7);
+                let final_date = game.clock.current_date + chrono::Duration::days(14);
+                let semifinal_pairings = vec![
+                    (sorted[0].team_id.clone(), sorted[3].team_id.clone()),
+                    (sorted[1].team_id.clone(), sorted[2].team_id.clone()),
+                ];
+                for (idx, (home_team_id, away_team_id)) in semifinal_pairings.into_iter().enumerate() {
+                    league.fixtures.push(Fixture {
+                        id: format!("academy-{}-po-semi-{}", league.id, idx + 1),
+                        matchday: next_matchday,
+                        date: semis_date.format("%Y-%m-%d").to_string(),
+                        home_team_id,
+                        away_team_id,
+                        competition: FixtureCompetition::Playoffs,
+                        best_of: 5,
+                        status: FixtureStatus::Scheduled,
+                        result: None,
+                    });
+                }
+                league.fixtures.push(Fixture {
+                    id: format!("academy-{}-po-final", league.id),
+                    matchday: next_matchday + 1,
+                    date: final_date.format("%Y-%m-%d").to_string(),
+                    home_team_id: sorted[0].team_id.clone(),
+                    away_team_id: sorted[1].team_id.clone(),
+                    competition: FixtureCompetition::Playoffs,
+                    best_of: 5,
+                    status: FixtureStatus::Scheduled,
+                    result: None,
+                });
+            }
+        }
+    }
+
+    for (home_team_id, away_team_id, home_wins, away_wins) in completed_fixtures {
+        let home_won = if home_wins == away_wins {
+            home_team_id <= away_team_id
+        } else {
+            home_wins > away_wins
+        };
+        let away_won = !home_won;
+
+        if let Some(home_team) = game.teams.iter_mut().find(|team| team.id == home_team_id) {
+            register_parallel_result(home_team, season, home_wins, away_wins, home_won);
+        }
+        if let Some(away_team) = game.teams.iter_mut().find(|team| team.id == away_team_id) {
+            register_parallel_result(away_team, season, away_wins, home_wins, away_won);
         }
     }
 }
