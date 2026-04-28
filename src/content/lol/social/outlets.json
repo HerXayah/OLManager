@@ -3,24 +3,48 @@
     "id": "sheep-esports",
     "name": "Sheep Esports",
     "scope": { "type": "general" },
-    "weight": 3
+    "weight": 4
   },
   {
-    "id": "league-beat",
-    "name": "League Beat",
-    "scope": { "type": "league", "leagueIds": ["default"] },
+    "id": "dot-esports-lol",
+    "name": "Dot Esports - League of Legends",
+    "scope": { "type": "general" },
     "weight": 2
   },
   {
-    "id": "academy-wire",
-    "name": "Academy Wire",
+    "id": "dexerto-lol",
+    "name": "Dexerto - League of Legends",
     "scope": { "type": "general" },
-    "weight": 1
+    "weight": 2
+  },
+  {
+    "id": "esportmaniacos",
+    "name": "Esportmaníacos",
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "weight": 3
   },
   {
     "id": "lec-post-match",
     "name": "LEC Post-Match Interviews",
-    "scope": { "type": "league", "leagueIds": ["lec"] },
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "weight": 2
+  },
+  {
+    "id": "league-beat",
+    "name": "League Beat",
+    "scope": { "type": "league", "leagueIds": ["default", "lec"] },
+    "weight": 2
+  },
+  {
+    "id": "tactical-rift-review",
+    "name": "Tactical Rift Review",
+    "scope": { "type": "general" },
+    "weight": 1
+  },
+  {
+    "id": "nkharasu-esports",
+    "name": "Kharasu Esports",
+    "scope": { "type": "general" },
     "weight": 1
   }
 ]

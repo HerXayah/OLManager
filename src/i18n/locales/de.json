@@ -8,38 +8,139 @@
       "social": {
         "questions": {
           "cleanWinObjectives": {
-            "text": "Your bot lane stacked dragons and controlled Baron. How much of this win came from objective setup?"
+            "text": "Eure Botlane hat Drachen gesammelt und den Baron kontrolliert. Wie viel von diesem Sieg kam aus der Vorbereitung auf die Objectives?"
+          },
+          "firstBlood": {
+            "text": "Ihr habt das First Blood geholt, und danach hat sich die Karte geöffnet. War das ein vorbereiteter Spielzug oder eine spontane Lesart?"
+          },
+          "resultWin": {
+            "text": "Ein wichtiger Sieg mit starkem Objective-Kontrollspiel. Wie bewerten Sie die Leistung des Teams heute?"
+          },
+          "closeGame": {
+            "text": "Das Spiel wurde schwierig, aber ihr habt spät noch das Comeback gefunden. Was hat sich in der Kommunikation des Teams verändert?"
           },
           "underperformancePressure": {
-            "text": "Your bot lane struggled under pressure tonight. Is this becoming a pattern?"
+            "text": "Eure Botlane hatte heute Abend unter Druck große Probleme. Entwickelt sich das zu einem Muster?"
+          },
+          "draftLoss": {
+            "text": "Nach dem Draft wirkte es, als hätten euch Werkzeuge für die entscheidenden Kämpfe gefehlt. Akzeptieren Sie, dass dort ein Teil der Serie verloren ging?"
+          },
+          "draftWinFlexibility": {
+            "text": "Der Draft gab euch mehrere Win Conditions und das Team wirkte beim Planwechsel sehr sicher. War diese Flexibilität die zentrale Idee?"
+          },
+          "baronThrowLoss": {
+            "text": "Der Call rund um den Baron hat das Spiel am Ende gedreht. War das ein Shotcalling-Fehler oder ein Fehler in der Ausführung?"
+          },
+          "baronControlWin": {
+            "text": "Eure Baron-Kontrolle war sehr sauber und zwang den Gegner spät zu reagieren. Wie intensiv hattet ihr dieses Setup vorbereitet?"
+          },
+          "visionControlLoss": {
+            "text": "Der Gegner hat euch in den entscheidenden Momenten die Sicht genommen, und das hat die Objectives geprägt. Was ist in eurer Map-Kontrolle zusammengebrochen?"
+          },
+          "starPlayerCarry": {
+            "text": "Euer Carry hat wieder ein riesiges Spiel entschieden. Wie geben Sie ihm Raum zu glänzen, ohne ihm zu viel Verantwortung aufzubürden?"
+          },
+          "starPlayerSlump": {
+            "text": "Einer eurer Schlüsselspieler findet seit einigen Wochen nicht zu seinem Niveau. Macht Ihnen sein Selbstvertrauen Sorgen?"
+          },
+          "midlanePressureMap": {
+            "text": "Der Druck auf der Midlane hat viele Bewegungen auf der Karte bestimmt. War Mid von Beginn an der Bereich, den ihr aktivieren wolltet?"
+          },
+          "toplaneIsland": {
+            "text": "Euer Toplaner war über weite Strecken isoliert, fast auf einer Insel. War das taktisch geplant oder eine Anpassung an den gegnerischen Draft?"
+          },
+          "teamfightExecutionLoss": {
+            "text": "In den entscheidenden Teamfights fehlte die Koordination, und der Gegner hat jeden Engage bestraft. Was hat euch gefehlt, um diese Kämpfe zu beenden?"
+          },
+          "mentalResetAfterLoss": {
+            "text": "Das ist eine harte Niederlage für die Gruppe. Wie schützen Sie die Kabine, damit sie nicht in die nächste Serie mitgenommen wird?"
+          },
+          "rivalryWeekPressure": {
+            "text": "Rivalitätswoche bringt viel Lärm außerhalb des Spiels und Druck auf dem Rift. Fühlt sich die Vorbereitung auf dieses Match anders an?"
+          },
+          "playoffBestOfSeries": {
+            "text": "In einer Best-of-Serie sind Anpassungen enorm wichtig. Wie entscheidend ist es, zwischen den Spielen schnell zu adaptieren?"
+          },
+          "comebackLossHeartbreak": {
+            "text": "Ihr wart sehr nah dran, das Comeback zu vollenden, aber am Ende ist es euch entglitten. Wie verarbeitet man so eine Niederlage?"
+          },
+          "stompWinHumility": {
+            "text": "Ihr habt sehr dominant gewonnen und dem Gegner kaum einen Zugang gelassen. Wie halten Sie das Team nach so einem Spiel bodenständig?"
+          },
+          "stompLossAccountability": {
+            "text": "Die Niederlage war von den ersten Minuten an deutlich. Welche Verantwortung übernehmen Sie als Staff für ein so schwieriges Spiel?"
           }
         },
         "responses": {
           "creditPreparation": {
-            "label": "Professional",
-            "text": "The players earned that through draft prep and clean objective calls."
+            "label": "Professionell",
+            "text": "Die Spieler haben sich das durch Draft-Vorbereitung und klare Calls rund um die Objectives verdient."
+          },
+          "admitDraftMistake": {
+            "label": "Draft-Fehler eingestehen",
+            "text": "Der Draft hat uns nicht die besten Werkzeuge gegeben, und das liegt in unserer Verantwortung. Daraus müssen wir lernen, ohne uns zu verstecken."
+          },
+          "calmRivalry": {
+            "label": "Rivalität beruhigen",
+            "text": "Wir wissen, was das für die Fans bedeutet, aber für uns muss es weiterhin ein gut vorbereitetes Spiel mit klarem Kopf sein."
+          },
+          "challengeRoster": {
+            "label": "Kader herausfordern",
+            "text": "Dieses Niveau reicht nicht. Spieler und Staff müssen ab der ersten Minute mit mehr Präsenz auftreten."
+          },
+          "creditOpponent": {
+            "label": "Gegner anerkennen",
+            "text": "Der Gegner hat die Schlüsselmomente besser gespielt. Das anzuerkennen ist der erste Schritt, um zu korrigieren, was uns gefehlt hat."
           },
           "demandReset": {
-            "label": "Demand reset",
-            "text": "We have to reset standards immediately; pressure is part of playing at this level."
+            "label": "Reset einfordern",
+            "text": "Wir müssen die Standards sofort neu setzen; Druck gehört dazu, wenn man auf diesem Niveau spielt."
+          },
+          "defendDraft": {
+            "label": "Draft verteidigen",
+            "text": "Der Draft-Plan ergab Sinn für das, was wir spielen wollten. Der Unterschied lag darin, wie wir die wichtigen Fenster ausgespielt haben."
+          },
+          "focusNextSeries": {
+            "label": "Auf die nächste Serie fokussieren",
+            "text": "Wir müssen ehrlich reviewen, aber wir dürfen hier nicht hängen bleiben. Die nächste Serie beginnt mit unserem mentalen Reset."
+          },
+          "keepHungry": {
+            "label": "Hungrig bleiben",
+            "text": "Das ist ein guter Sieg, aber er ändert unsere Standards nicht. Wenn wir oben mitspielen wollen, arbeiten wir morgen genauso weiter."
+          },
+          "leanIntoRivalry": {
+            "label": "Rivalität annehmen",
+            "text": "Diese Spiele haben etwas Zusätzliches. Wir mögen diesen Druck und wollen, dass unsere Fans spüren, dass wir alles holen wollen."
+          },
+          "praiseShotcalling": {
+            "label": "Shotcalling loben",
+            "text": "Die Calls waren sehr klar, besonders rund um Waves und Objectives. Wenn das Team so kommuniziert, wirkt der Plan viel stärker."
+          },
+          "protectPlayer": {
+            "label": "Spieler schützen",
+            "text": "Ich werde keinen Spieler öffentlich herausgreifen. Wir gewinnen und verlieren als Team, und die Analyse machen wir intern."
           },
           "stayMeasured": {
-            "label": "Stay measured",
-            "text": "One result does not define our form. We review it and move forward."
+            "label": "Besonnen bleiben",
+            "text": "Ein Ergebnis definiert nicht unsere Form. Wir arbeiten es auf und gehen weiter."
+          },
+          "takeResponsibility": {
+            "label": "Verantwortung übernehmen",
+            "text": "Verantwortung beginnt bei mir. Wenn das Team für diese Momente nicht bereit war, müssen wir das im Staff korrigieren."
           }
         },
         "conversations": {
           "playerPressureReset": {
-            "body": "{{player}} has asked for a private reset after a rough scrim block. Their morale is at {{morale}}, and they feel stage pressure is starting to affect team comms.\n\n\"I need to reset before this pressure follows me into the next series, coach.\""
+            "body": "{{player}} hat nach einem schwierigen Scrim-Block um einen privaten Reset gebeten. Die Moral liegt bei {{morale}}, und der Bühnendruck beginnt spürbar die Team-Kommunikation zu belasten.\n\n\"Ich muss resetten, bevor dieser Druck mich in die nächste Serie begleitet, Coach.\""
           },
           "playerStageTimeRequest": {
-            "body": "{{player}} came in frustrated about limited stage reps. They feel their scrims have been strong and want clarity on what earns a spot in the next series.\n\n\"If I'm not in the stage plan, I need to know what has to change.\""
+            "body": "{{player}} kam frustriert wegen begrenzter Stage-Einsätze vorbei. Die Scrims fühlen sich stark an, und es braucht Klarheit darüber, was einen Platz in der nächsten Serie verdient.\n\n\"Wenn ich nicht im Stage-Plan bin, muss ich wissen, was sich ändern muss.\""
           },
           "playerHighFormCheckin": {
-            "body": "{{player}} checked in after a strong run of solo queue and team practice. They're enjoying the draft room clarity and believe the roster is close to finding another level.\n\n\"Keep the structure like this and I'll bring that confidence onto stage.\""
+            "body": "{{player}} meldete sich nach einer starken Phase in Solo Queue und Teamtraining. Die Klarheit im Draft Room tut gut, und der Kader scheint kurz davor zu sein, ein neues Niveau zu erreichen.\n\n\"Behaltet diese Struktur bei, dann bringe ich dieses Selbstvertrauen auf die Bühne.\""
           },
           "playerContractPressure": {
-            "body": "{{player}} wants clarity before the next league window. With {{days}} days left on the deal, they ask whether they remain part of the roster plan or should prepare for other offers.\n\n\"I need to know if this project still has a place for me after the split.\""
+            "body": "{{player}} möchte vor dem nächsten Ligafenster Klarheit. Bei noch {{days}} Tagen Vertragslaufzeit stellt sich die Frage, ob weiterhin mit einem Platz im Roster geplant wird oder ob andere Angebote vorbereitet werden sollten.\n\n\"Ich muss wissen, ob dieses Projekt nach dem Split noch einen Platz für mich hat.\""
           }
         }
       }

@@ -10,8 +10,65 @@
           "cleanWinObjectives": {
             "text": "Tu bot lane acumuló dragones y controló el Barón. ¿Cuánto de esta victoria nació de la preparación de objetivos?"
           },
+          "firstBlood": {
+            "text": "Conseguisteis la first blood y desde ahí el mapa pareció abrirse. ¿Fue una jugada preparada o una lectura del momento?"
+          },
+          "resultWin": {
+            "text": "Victoria importante y con buen control de objetivos. ¿Qué lectura haces del rendimiento del equipo hoy?"
+          },
+          "closeGame": {
+            "text": "La partida se puso cuesta arriba, pero encontrasteis la remontada en los últimos minutos. ¿Qué cambió en la comunicación del equipo?"
+          },
           "underperformancePressure": {
             "text": "Tu bot lane sufrió mucho bajo presión esta noche. ¿Empieza a ser un patrón?"
+          },
+          "draftLoss": {
+            "text": "Después del draft parecía que os faltaban herramientas para las peleas clave. ¿Asumes que ahí se os fue parte de la serie?"
+          },
+          "draftWinFlexibility": {
+            "text": "El draft os dio varias condiciones de victoria y el equipo pareció cómodo cambiando el plan. ¿Era esa flexibilidad la idea principal?"
+          },
+          "baronThrowLoss": {
+            "text": "La decisión alrededor del Barón acabó girando la partida. ¿Fue un error de llamada o de ejecución?"
+          },
+          "baronControlWin": {
+            "text": "Vuestro control del Barón fue muy limpio y obligó al rival a responder tarde. ¿Cuánto habíais trabajado ese setup?"
+          },
+          "visionControlLoss": {
+            "text": "El rival os negó visión en los momentos decisivos y eso condicionó los objetivos. ¿Qué falló en el control del mapa?"
+          },
+          "starPlayerCarry": {
+            "text": "Tu carry volvió a decidir una partida enorme. ¿Cómo equilibras darle protagonismo sin cargarle demasiada responsabilidad?"
+          },
+          "starPlayerSlump": {
+            "text": "Uno de vuestros jugadores clave no está encontrando su nivel estas semanas. ¿Te preocupa su confianza?"
+          },
+          "midlanePressureMap": {
+            "text": "La presión de mid marcó muchas rotaciones del mapa. ¿Era el carril central la pieza que queríais activar desde el principio?"
+          },
+          "toplaneIsland": {
+            "text": "El top laner pasó gran parte de la partida aislado, casi en una isla. ¿Fue una decisión táctica o una adaptación al draft rival?"
+          },
+          "teamfightExecutionLoss": {
+            "text": "En las teamfights decisivas faltó coordinación y el rival castigó cada entrada. ¿Qué os faltó para cerrar esas peleas?"
+          },
+          "mentalResetAfterLoss": {
+            "text": "Es una derrota dura para el grupo. ¿Cómo se protege el vestuario para que esto no pese en la próxima serie?"
+          },
+          "rivalryWeekPressure": {
+            "text": "Semana de rivalidad, mucho ruido fuera y tensión dentro de la Grieta. ¿Se siente diferente preparar este partido?"
+          },
+          "playoffBestOfSeries": {
+            "text": "En una serie al mejor de varios mapas los ajustes pesan muchísimo. ¿Qué importancia tiene adaptarse rápido entre partidas?"
+          },
+          "comebackLossHeartbreak": {
+            "text": "Llegasteis a rozar la remontada, pero el cierre se escapó. ¿Cómo se digiere una derrota así?"
+          },
+          "stompWinHumility": {
+            "text": "Ganasteis con mucha autoridad, casi sin dar opciones. ¿Cómo mantienes la humildad del equipo después de una partida así?"
+          },
+          "stompLossAccountability": {
+            "text": "La derrota fue muy clara desde los primeros minutos. ¿Qué responsabilidad asumes como staff por un partido tan cuesta arriba?"
           }
         },
         "responses": {
@@ -19,13 +76,57 @@
             "label": "Profesional",
             "text": "Los jugadores se lo ganaron con preparación de draft y llamadas limpias alrededor de objetivos."
           },
+          "admitDraftMistake": {
+            "label": "Admitir error de draft",
+            "text": "El draft no nos dejó las mejores herramientas y eso es responsabilidad nuestra. Tenemos que aprenderlo sin esconderlo."
+          },
+          "calmRivalry": {
+            "label": "Rebajar rivalidad",
+            "text": "Entendemos lo que significa para la afición, pero para nosotros tiene que seguir siendo una partida preparada con cabeza fría."
+          },
+          "challengeRoster": {
+            "label": "Exigir más al roster",
+            "text": "Este nivel no nos vale. Todos, jugadores y staff, tenemos que competir con más personalidad desde el primer minuto."
+          },
+          "creditOpponent": {
+            "label": "Dar mérito al rival",
+            "text": "El rival jugó mejor los momentos clave. Reconocerlo es el primer paso para corregir lo que nos faltó."
+          },
           "demandReset": {
             "label": "Exigir reset",
             "text": "Tenemos que resetear estándares de inmediato; la presión forma parte de competir a este nivel."
           },
+          "defendDraft": {
+            "label": "Defender el draft",
+            "text": "El plan de draft tenía sentido para lo que queríamos jugar. La diferencia estuvo en cómo ejecutamos las ventanas importantes."
+          },
+          "focusNextSeries": {
+            "label": "Pensar en la próxima serie",
+            "text": "Hay que revisar con honestidad, pero no podemos quedarnos anclados aquí. La próxima serie empieza con nuestro reset mental."
+          },
+          "keepHungry": {
+            "label": "Mantener hambre",
+            "text": "Es una buena victoria, pero no cambia nuestros estándares. Si queremos competir arriba, mañana toca volver a trabajar igual."
+          },
+          "leanIntoRivalry": {
+            "label": "Encender la rivalidad",
+            "text": "Estos partidos se juegan con algo más. Nos gusta esa presión y queremos que nuestra afición sienta que salimos a por todo."
+          },
+          "praiseShotcalling": {
+            "label": "Elogiar shotcalling",
+            "text": "Las llamadas fueron muy claras, sobre todo alrededor de oleadas y objetivos. Cuando el equipo comunica así, el plan se ve mucho mejor."
+          },
+          "protectPlayer": {
+            "label": "Proteger al jugador",
+            "text": "No voy a señalar a un jugador en público. Ganamos y perdemos como equipo, y el análisis lo haremos dentro."
+          },
           "stayMeasured": {
             "label": "Medido",
             "text": "Un resultado no define nuestro estado de forma. Lo revisamos y seguimos adelante."
+          },
+          "takeResponsibility": {
+            "label": "Asumir responsabilidad",
+            "text": "La responsabilidad empieza en mí. Si el equipo no llegó preparado para esos momentos, tenemos que corregirlo desde el staff."
           }
         },
         "conversations": {

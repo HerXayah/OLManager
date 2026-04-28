@@ -10,8 +10,65 @@
           "cleanWinObjectives": {
             "text": "Your bot lane stacked dragons and controlled Baron. How much of this win came from objective setup?"
           },
+          "firstBlood": {
+            "text": "You found first blood and the map opened up from there. Was that a prepared play or a read in the moment?"
+          },
+          "resultWin": {
+            "text": "An important win with strong objective control. How do you assess the team's performance today?"
+          },
+          "closeGame": {
+            "text": "The game got difficult, but you found the comeback late. What changed in the team's communication?"
+          },
           "underperformancePressure": {
             "text": "Your bot lane struggled under pressure tonight. Is this becoming a pattern?"
+          },
+          "draftLoss": {
+            "text": "After draft, it looked like you lacked tools for the key fights. Do you accept that part of the series was lost there?"
+          },
+          "draftWinFlexibility": {
+            "text": "The draft gave you several win conditions and the team looked comfortable changing plans. Was that flexibility the main idea?"
+          },
+          "baronThrowLoss": {
+            "text": "The call around Baron ended up turning the game. Was that a shotcalling mistake or an execution mistake?"
+          },
+          "baronControlWin": {
+            "text": "Your Baron control was very clean and forced the opponent to answer late. How much had you worked on that setup?"
+          },
+          "visionControlLoss": {
+            "text": "The opponent denied you vision in the decisive moments, and that shaped the objectives. What broke down in your map control?"
+          },
+          "starPlayerCarry": {
+            "text": "Your carry decided another huge game. How do you give them space to shine without putting too much responsibility on them?"
+          },
+          "starPlayerSlump": {
+            "text": "One of your key players has not found their level in recent weeks. Are you concerned about their confidence?"
+          },
+          "midlanePressureMap": {
+            "text": "Mid lane pressure shaped a lot of the map movements. Was mid the piece you wanted to activate from the start?"
+          },
+          "toplaneIsland": {
+            "text": "Your top laner spent much of the game isolated, almost on an island. Was that tactical or an adaptation to the opponent's draft?"
+          },
+          "teamfightExecutionLoss": {
+            "text": "In the decisive teamfights, the coordination was missing and the opponent punished every engage. What did you lack to close those fights?"
+          },
+          "mentalResetAfterLoss": {
+            "text": "That is a tough loss for the group. How do you protect the room so it does not carry into the next series?"
+          },
+          "rivalryWeekPressure": {
+            "text": "Rivalry week brings noise outside the game and pressure on the Rift. Does preparing this match feel different?"
+          },
+          "playoffBestOfSeries": {
+            "text": "In a best-of series, adjustments matter so much. How important is it to adapt quickly between games?"
+          },
+          "comebackLossHeartbreak": {
+            "text": "You came very close to completing the comeback, but the finish slipped away. How do you process a loss like that?"
+          },
+          "stompWinHumility": {
+            "text": "You won with real authority and barely gave them a way in. How do you keep the team humble after a game like that?"
+          },
+          "stompLossAccountability": {
+            "text": "The loss was clear from the opening minutes. What responsibility do you take as staff for a game that difficult?"
           }
         },
         "responses": {
@@ -19,13 +76,57 @@
             "label": "Professional",
             "text": "The players earned that through draft prep and clean objective calls."
           },
+          "admitDraftMistake": {
+            "label": "Admit draft mistake",
+            "text": "The draft did not give us the best tools, and that is on us. We have to learn from it without hiding from it."
+          },
+          "calmRivalry": {
+            "label": "Calm the rivalry",
+            "text": "We understand what it means to the fans, but for us it still has to be a well-prepared game played with a clear head."
+          },
+          "challengeRoster": {
+            "label": "Challenge the roster",
+            "text": "That level is not enough. Players and staff alike have to compete with more presence from the first minute."
+          },
+          "creditOpponent": {
+            "label": "Credit opponent",
+            "text": "The opponent played the key moments better. Recognising that is the first step toward fixing what we lacked."
+          },
           "demandReset": {
             "label": "Demand reset",
             "text": "We have to reset standards immediately; pressure is part of playing at this level."
           },
+          "defendDraft": {
+            "label": "Defend draft",
+            "text": "The draft plan made sense for what we wanted to play. The difference was how we executed the important windows."
+          },
+          "focusNextSeries": {
+            "label": "Focus next series",
+            "text": "We need to review honestly, but we cannot stay stuck here. The next series starts with our mental reset."
+          },
+          "keepHungry": {
+            "label": "Keep hungry",
+            "text": "It is a good win, but it does not change our standards. If we want to compete at the top, tomorrow we work the same way."
+          },
+          "leanIntoRivalry": {
+            "label": "Lean into rivalry",
+            "text": "These games are played with something extra. We like that pressure, and we want our fans to feel we came for everything."
+          },
+          "praiseShotcalling": {
+            "label": "Praise shotcalling",
+            "text": "The calls were very clear, especially around waves and objectives. When the team communicates like that, the plan looks much stronger."
+          },
+          "protectPlayer": {
+            "label": "Protect player",
+            "text": "I am not going to single out a player publicly. We win and lose as a team, and we will do the analysis inside."
+          },
           "stayMeasured": {
             "label": "Stay measured",
             "text": "One result does not define our form. We review it and move forward."
+          },
+          "takeResponsibility": {
+            "label": "Take responsibility",
+            "text": "Responsibility starts with me. If the team was not ready for those moments, we have to correct that from the staff."
           }
         },
         "conversations": {

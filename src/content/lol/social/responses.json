@@ -8,6 +8,14 @@
     "target": "squad"
   },
   {
+    "id": "stay-measured",
+    "labelKey": "content.lol.social.responses.stayMeasured.label",
+    "textKey": "content.lol.social.responses.stayMeasured.text",
+    "tone": "analytical",
+    "effectId": "press_no_effect",
+    "target": "none"
+  },
+  {
     "id": "demand-reset",
     "labelKey": "content.lol.social.responses.demandReset.label",
     "textKey": "content.lol.social.responses.demandReset.text",
@@ -16,11 +24,99 @@
     "target": "player"
   },
   {
-    "id": "stay-measured",
-    "labelKey": "content.lol.social.responses.stayMeasured.label",
-    "textKey": "content.lol.social.responses.stayMeasured.text",
+    "id": "protect-player",
+    "labelKey": "content.lol.social.responses.protectPlayer.label",
+    "textKey": "content.lol.social.responses.protectPlayer.text",
+    "tone": "professional",
+    "effectId": "press_no_effect",
+    "target": "none"
+  },
+  {
+    "id": "take-responsibility",
+    "labelKey": "content.lol.social.responses.takeResponsibility.label",
+    "textKey": "content.lol.social.responses.takeResponsibility.text",
+    "tone": "professional",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
+  },
+  {
+    "id": "praise-shotcalling",
+    "labelKey": "content.lol.social.responses.praiseShotcalling.label",
+    "textKey": "content.lol.social.responses.praiseShotcalling.text",
+    "tone": "analytical",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
+  },
+  {
+    "id": "keep-hungry",
+    "labelKey": "content.lol.social.responses.keepHungry.label",
+    "textKey": "content.lol.social.responses.keepHungry.text",
+    "tone": "professional",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
+  },
+  {
+    "id": "challenge-roster",
+    "labelKey": "content.lol.social.responses.challengeRoster.label",
+    "textKey": "content.lol.social.responses.challengeRoster.text",
+    "tone": "pressure",
+    "effectId": "press_player_pressure_small_down",
+    "target": "player"
+  },
+  {
+    "id": "defend-draft",
+    "labelKey": "content.lol.social.responses.defendDraft.label",
+    "textKey": "content.lol.social.responses.defendDraft.text",
     "tone": "analytical",
     "effectId": "press_no_effect",
     "target": "none"
+  },
+  {
+    "id": "admit-draft-mistake",
+    "labelKey": "content.lol.social.responses.admitDraftMistake.label",
+    "textKey": "content.lol.social.responses.admitDraftMistake.text",
+    "tone": "pressure",
+    "effectId": "press_player_pressure_small_down",
+    "target": "player"
+  },
+  {
+    "id": "highlight-rookie-growth",
+    "labelKey": "content.lol.social.responses.highlightRookieGrowth.label",
+    "textKey": "content.lol.social.responses.highlightRookieGrowth.text",
+    "tone": "close",
+    "effectId": "press_no_effect",
+    "target": "none"
+  },
+  {
+    "id": "calm-rivalry",
+    "labelKey": "content.lol.social.responses.calmRivalry.label",
+    "textKey": "content.lol.social.responses.calmRivalry.text",
+    "tone": "professional",
+    "effectId": "press_no_effect",
+    "target": "none"
+  },
+  {
+    "id": "lean-into-rivalry",
+    "labelKey": "content.lol.social.responses.leanIntoRivalry.label",
+    "textKey": "content.lol.social.responses.leanIntoRivalry.text",
+    "tone": "spicy",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
+  },
+  {
+    "id": "focus-next-series",
+    "labelKey": "content.lol.social.responses.focusNextSeries.label",
+    "textKey": "content.lol.social.responses.focusNextSeries.text",
+    "tone": "professional",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
+  },
+  {
+    "id": "credit-opponent",
+    "labelKey": "content.lol.social.responses.creditOpponent.label",
+    "textKey": "content.lol.social.responses.creditOpponent.text",
+    "tone": "professional",
+    "effectId": "press_squad_morale_small_up",
+    "target": "squad"
   }
 ]
