@@ -1,8 +1,8 @@
 [package]
-name = "openfootmanager"
-version = "0.2.0"
-description = "Openfoot Manager"
-authors = ["Sturdy Robot (admin@esportsmanager.net)"]
+name = "openleaguemanager"
+version = "0.1.0"
+description = "Open League Manager"
+authors = ["KOI Noboris Development Team <noboriskoi@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

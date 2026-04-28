@@ -2656,8 +2656,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "openfootmanager"
-version = "0.2.0"
+name = "openleaguemanager"
+version = "0.1.0"
 dependencies = [
  "chrono",
  "db",
