@@ -224,6 +224,7 @@ export default function Settings() {
               <Type className="w-4 h-4 text-gray-400" />
               <SegmentedControl
                 options={[
+                  { value: "xsmall", label: "XS" },
                   { value: "small", label: "S" },
                   { value: "normal", label: "M" },
                   { value: "large", label: "L" },

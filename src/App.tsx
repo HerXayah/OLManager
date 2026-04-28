@@ -19,6 +19,7 @@ function LazyFallback() {
 }
 
 const SCALE_MAP: Record<string, string> = {
+  xsmall: "9px",
   small: "14px",
   normal: "16px",
   large: "18px",
