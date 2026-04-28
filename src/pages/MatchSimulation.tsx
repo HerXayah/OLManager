@@ -9,6 +9,7 @@ import {
   MatchEvent,
   MatchDayStage,
 } from "../components/match/types";
+import { mapRuntimeEventsToMatchEvents, mergeRuntimeEventsIntoSnapshot } from "../components/match/matchRuntimeEvents";
 import { resolveMatchFixture } from "../components/match/helpers";
 import PreMatchSetup from "../components/match/PreMatchSetup";
 import ChampionDraft from "../components/match/ChampionDraft";
@@ -1066,14 +1067,7 @@ export default function MatchSimulation() {
     console.info("[MatchSimulation] handleFullTime");
     const source = meta?.source ?? "live";
     setFinalRuntimeState(finalRuntimeState);
-    const mappedEvents: MatchEvent[] = (finalRuntimeState.events ?? []).map((event) => ({
-      minute: Math.max(0, Math.floor((event.t ?? 0) / 60)),
-      event_type: event.type,
-      side: event.text?.toUpperCase().includes("RED") ? "Away" : "Home",
-      zone: "mid",
-      player_id: null,
-      secondary_player_id: null,
-    }));
+    const mappedEvents = mapRuntimeEventsToMatchEvents(finalRuntimeState.events);
     setImportantEvents(mappedEvents);
 
     const safeDraftPayload = normalizeDraftPayload(draftPayload, championSelections, renderSnapshotWithTactics ?? null);
@@ -1088,6 +1082,8 @@ export default function MatchSimulation() {
       })();
       return;
     }
+
+    setSnapshot(mergeRuntimeEventsIntoSnapshot(snapshotForResult, finalRuntimeState.events));
 
     const runtimeBasedResult = buildDraftResultFromRuntime({
       runtime: finalRuntimeState,
@@ -1539,7 +1535,7 @@ export default function MatchSimulation() {
     case "press":
       return (
         <PressConference
-          snapshot={snapshot}
+          snapshot={finalRuntimeState ? mergeRuntimeEventsIntoSnapshot(snapshot, finalRuntimeState.events) : snapshot}
           gameState={gameState}
           userSide={userSide || "Home"}
           onFinish={handleFinishMatch}

@@ -13,6 +13,7 @@ import {
 import type { SocialQuestion } from "../../content/lol/social/schema";
 import type { GameStateData } from "../../store/gameStore";
 import type { MatchEvent, MatchSnapshot } from "./types";
+import { DraftTeamObjectives } from "./draftResultSimulator";
 
 export interface PressResponse {
   id: string;
@@ -62,14 +63,65 @@ function deathsFor(events: MatchEvent[], playerId: string): number {
   ).length;
 }
 
+function eventTypeToTimelineType(eventType: string): string {
+  const normalized = eventType.toLowerCase();
+  switch (normalized) {
+    case "firstblood":
+    case "first_blood":
+      return "first_blood";
+    case "voidgrub":
+    case "voidgrubs":
+      return "voidgrubs";
+    case "dragonsoul":
+    case "dragon_soul":
+      return "dragon_soul";
+    case "elderdragon":
+    case "elder":
+      return "elder";
+    case "baron":
+    case "herald":
+    case "dragon":
+    case "inhibitor":
+    case "tower":
+      return normalized;
+    case "nexusdestroyed":
+    case "nexus":
+      return "nexus";
+    default:
+      return normalized;
+  }
+}
+
 function snapshotToSummary(snapshot: MatchSnapshot, userSide: UserSide): CompatibleMatchSummary {
   const enemySide = userSide === "Home" ? "Away" : "Home";
   const userTeam = userSide === "Home" ? snapshot.home_team : snapshot.away_team;
   const enemyTeam = userSide === "Home" ? snapshot.away_team : snapshot.home_team;
   const userRegistrySide = registrySide(userSide);
   const enemyRegistrySide = registrySide(enemySide);
-  const userKills = countEvents(snapshot.events, userSide, ["Kill", "Goal", "PenaltyGoal"]);
-  const enemyKills = countEvents(snapshot.events, enemySide, ["Kill", "Goal", "PenaltyGoal"]);
+  const userKills = countEvents(snapshot.events, userSide, ["Kill", "FirstBlood", "Goal", "PenaltyGoal"]);
+  const enemyKills = countEvents(snapshot.events, enemySide, ["Kill", "FirstBlood", "Goal", "PenaltyGoal"]);
+
+  const userRegistrySideData: DraftTeamObjectives = {
+    voidgrubs: countEvents(snapshot.events, userSide, ["VoidGrub", "VoidGrubs"]),
+    dragons: countEvents(snapshot.events, userSide, ["Dragon"]),
+    dragonSoul: countEvents(snapshot.events, userSide, ["DragonSoul"]) > 0,
+    elderDragons: countEvents(snapshot.events, userSide, ["ElderDragon"]),
+    heralds: countEvents(snapshot.events, userSide, ["Herald"]),
+    barons: countEvents(snapshot.events, userSide, ["Baron"]),
+    towers: countEvents(snapshot.events, userSide, ["Tower"]),
+    inhibitors: countEvents(snapshot.events, userSide, ["Inhibitor"]),
+  };
+
+  const enemyRegistrySideData: DraftTeamObjectives = {
+    voidgrubs: countEvents(snapshot.events, enemySide, ["VoidGrub", "VoidGrubs"]),
+    dragons: countEvents(snapshot.events, enemySide, ["Dragon"]),
+    dragonSoul: countEvents(snapshot.events, enemySide, ["DragonSoul"]) > 0,
+    elderDragons: countEvents(snapshot.events, enemySide, ["ElderDragon"]),
+    heralds: countEvents(snapshot.events, enemySide, ["Herald"]),
+    barons: countEvents(snapshot.events, enemySide, ["Baron"]),
+    towers: countEvents(snapshot.events, enemySide, ["Tower"]),
+    inhibitors: countEvents(snapshot.events, enemySide, ["Inhibitor"]),
+  };
 
   return {
     winnerSide:
@@ -79,26 +131,8 @@ function snapshotToSummary(snapshot: MatchSnapshot, userSide: UserSide): Compati
     blueKills: userRegistrySide === "blue" ? userKills : enemyKills,
     redKills: userRegistrySide === "red" ? userKills : enemyKills,
     objectives: {
-      [userRegistrySide]: {
-        voidgrubs: countEvents(snapshot.events, userSide, ["VoidGrub", "VoidGrubs"]),
-        dragons: countEvents(snapshot.events, userSide, ["Dragon"]),
-        dragonSoul: countEvents(snapshot.events, userSide, ["DragonSoul"]) > 0,
-        elderDragons: countEvents(snapshot.events, userSide, ["ElderDragon"]),
-        heralds: countEvents(snapshot.events, userSide, ["Herald"]),
-        barons: countEvents(snapshot.events, userSide, ["Baron"]),
-        towers: countEvents(snapshot.events, userSide, ["Tower"]),
-        inhibitors: countEvents(snapshot.events, userSide, ["Inhibitor"]),
-      },
-      [enemyRegistrySide]: {
-        voidgrubs: countEvents(snapshot.events, enemySide, ["VoidGrub", "VoidGrubs"]),
-        dragons: countEvents(snapshot.events, enemySide, ["Dragon"]),
-        dragonSoul: countEvents(snapshot.events, enemySide, ["DragonSoul"]) > 0,
-        elderDragons: countEvents(snapshot.events, enemySide, ["ElderDragon"]),
-        heralds: countEvents(snapshot.events, enemySide, ["Herald"]),
-        barons: countEvents(snapshot.events, enemySide, ["Baron"]),
-        towers: countEvents(snapshot.events, enemySide, ["Tower"]),
-        inhibitors: countEvents(snapshot.events, enemySide, ["Inhibitor"]),
-      },
+      red: userRegistrySide === "red" ? userRegistrySideData : enemyRegistrySideData,
+      blue: userRegistrySide === "blue" ? userRegistrySideData : enemyRegistrySideData,
     },
     playerResults: [
       ...userTeam.players.map((player) => {
@@ -121,6 +155,11 @@ function snapshotToSummary(snapshot: MatchSnapshot, userSide: UserSide): Compati
         rating: 6,
       })),
     ],
+    timelineEvents: snapshot.events.map((event) => ({
+      minute: event.minute,
+      side: registrySide(event.side),
+      type: eventTypeToTimelineType(event.event_type),
+    })),
   };
 }
 
@@ -199,6 +238,7 @@ export function buildPressConferenceQuestions({
       questions: SOCIAL_CONTENT_PACK.questions,
       leagueId,
       contextTags: context.tags,
+      contextFacts: context.facts,
     }),
     random,
   );

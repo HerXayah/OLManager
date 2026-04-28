@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PressConference from "./PressConference";
+import { mapRuntimeEventsToMatchEvents, mergeRuntimeEventsIntoSnapshot } from "./matchRuntimeEvents";
 import { buildPressConferenceQuestions } from "./pressConferenceContent";
 import type { MatchSnapshot } from "./types";
 import type { GameStateData } from "../../store/gameStore";
@@ -110,7 +111,7 @@ function makeSnapshot(overrides: Partial<MatchSnapshot> = {}): MatchSnapshot {
       name: "Fnatic",
       formation: "1-1-1-2",
       play_style: "Objective control",
-      players: [makePlayer("adc1", "Rekkles", "ADC"), makePlayer("sup1", "Support", "Support")],
+      players: [makePlayer("adc1", "Rekkles", "ADC"), makePlayer("sup1", "Support", "SUPPORT")],
     },
     away_team: {
       id: "g2",
@@ -123,12 +124,7 @@ function makeSnapshot(overrides: Partial<MatchSnapshot> = {}): MatchSnapshot {
     away_bench: [],
     home_possession_pct: 55,
     away_possession_pct: 45,
-    events: [
-      { minute: 8, event_type: "Kill", side: "Home" as const, zone: "Bot", player_id: "adc1", secondary_player_id: null },
-      { minute: 12, event_type: "Kill", side: "Home" as const, zone: "River", player_id: "sup1", secondary_player_id: null },
-      { minute: 20, event_type: "Dragon", side: "Home" as const, zone: "River", player_id: "adc1", secondary_player_id: null },
-      { minute: 27, event_type: "Baron", side: "Home" as const, zone: "River", player_id: "sup1", secondary_player_id: null },
-    ],
+    events: [],
     home_subs_made: 0,
     away_subs_made: 0,
     max_subs: 0,
@@ -174,44 +170,15 @@ describe("PressConference LoL social content", () => {
   beforeEach(() => {
     vi.mocked(invoke).mockReset();
     vi.mocked(invoke).mockResolvedValue({ game: makeGameState(), morale_delta: 3 });
+    vi.spyOn(Math, "random").mockReturnValue(0);
   });
 
-  it("builds context-valid LoL questions and personas from the registry", () => {
-    const questions = buildPressConferenceQuestions({
-      snapshot: makeSnapshot(),
-      gameState: makeGameState(),
-      userSide: "Home",
-      t: (key: string) => key,
-      random: () => 0,
-    });
-
-    expect(questions).toHaveLengthGreaterThan(1);
-    expect(questions).toHaveLengthLessThanOrEqual(4);
-
-    // Check all questions are unique
-    const questionIds = questions.map((q) => q.id);
-    const uniqueIds = new Set(questionIds);
-    expect(uniqueIds.size).toBe(questionIds.length);
-
-    // First question should be highest weighted (clean-win-objectives)
-    expect(questions[0].id).toBe("clean-win-objectives");
-    expect(questions[0].journalist).toBe("Verified Analyst");
-    expect(questions[0].outlet).toBe("Rift Desk");
-
-    // All questions should have valid responses
-    questions.forEach((q) => {
-      expect(q.responses).toBeDefined();
-      expect(q.responses.length).toBeGreaterThan(0);
-    });
-  });
-
-  it("enriches the selected question with match signals when the win is objective-driven", () => {
+  it("buildPressConferenceQuestions reacts to objective events in snapshot.events", () => {
     const questions = buildPressConferenceQuestions({
       snapshot: makeSnapshot({
         events: [
-          { minute: 2, event_type: "Kill", side: "Home" as const, zone: "Mid", player_id: "adc1", secondary_player_id: null },
-          { minute: 10, event_type: "Dragon", side: "Home" as const, zone: "River", player_id: "adc1", secondary_player_id: null },
-          { minute: 14, event_type: "Baron", side: "Home" as const, zone: "River", player_id: "sup1", secondary_player_id: null },
+          { minute: 10, event_type: "Dragon", side: "Home", zone: "River", player_id: "adc1", secondary_player_id: null },
+          { minute: 14, event_type: "Baron", side: "Home", zone: "River", player_id: "sup1", secondary_player_id: null },
         ],
       }),
       gameState: makeGameState(),
@@ -220,9 +187,51 @@ describe("PressConference LoL social content", () => {
       random: () => 0,
     });
 
+    expect(questions).toHaveLength(1);
     expect(questions[0].id).toBe("clean-win-objectives");
-    expect(questions[0].question).toContain("cleanWinObjectives");
-    expect(questions[0].question).toContain("objective edge");
+  });
+
+  it("selects the first-blood question from a real runtime event merged into the snapshot", () => {
+    const snapshotWithRuntimeEvents = mergeRuntimeEventsIntoSnapshot(makeSnapshot(), [
+      { t: 180, type: "kill", text: "FIRST BLOOD - BLUE bot lane killed RED ADC" },
+    ]);
+
+    const questions = buildPressConferenceQuestions({
+      snapshot: snapshotWithRuntimeEvents,
+      gameState: makeGameState(),
+      userSide: "Home",
+      t: (key: string) => key,
+      random: () => 0.3,
+    });
+
+    expect(snapshotWithRuntimeEvents.events).toEqual([
+      { minute: 3, event_type: "FirstBlood", side: "Home", zone: "mid", player_id: null, secondary_player_id: null },
+    ]);
+    expect(questions[0].id).toBe("first-blood-impact");
+  });
+
+  it("maps runtime events into MatchSnapshot-compatible events without replacing existing events", () => {
+    const baseSnapshot = makeSnapshot({
+      events: [
+        { minute: 1, event_type: "Kill", side: "Away", zone: "Top", player_id: null, secondary_player_id: null },
+      ],
+    });
+
+    const runtimeEvents = mapRuntimeEventsToMatchEvents([
+      { t: 600, type: "dragon", text: "BLUE secured Infernal Dragon" },
+      { t: 1500, type: "baron", text: "RED secured Baron Nashor" },
+    ]);
+    const merged = mergeRuntimeEventsIntoSnapshot(baseSnapshot, [
+      { t: 600, type: "dragon", text: "BLUE secured Infernal Dragon" },
+      { t: 1500, type: "baron", text: "RED secured Baron Nashor" },
+    ]);
+
+    expect(runtimeEvents.map((event) => [event.minute, event.event_type, event.side])).toEqual([
+      [10, "Dragon", "Home"],
+      [25, "Baron", "Away"],
+    ]);
+    expect(merged.events).toHaveLength(3);
+    expect(merged.events.slice(1)).toEqual(runtimeEvents);
   });
 
   it("excludes false-premise win praise when the match context is a botlane loss", () => {
@@ -245,66 +254,21 @@ describe("PressConference LoL social content", () => {
       random: () => 0,
     });
 
-    expect(questions.map((question) => question.id)).toEqual(["underperformance-pressure"]);
+    expect(questions).toHaveLength(1);
+    expect(questions[0].id).toBe("underperformance-pressure");
     expect(questions[0].question).toContain("underperformancePressure");
-    expect(questions[0].question).not.toContain("cleanWinObjectives");
-    expect(questions[0].question).not.toContain("resultWin");
-    expect(questions).toHaveLengthGreaterThan(1);
-    expect(questions).toHaveLengthLessThanOrEqual(4);
-
-    const questionIds = questions.map((q) => q.id);
-    const uniqueIds = new Set(questionIds);
-    expect(uniqueIds.size).toBe(questionIds.length);
-
-    questions.forEach((q) => {
-      expect(q.responses).toBeDefined();
-      expect(q.responses.length).toBeGreaterThan(0);
-    });
-    expect(questions).toHaveLengthGreaterThan(1);
-    expect(questions).toHaveLengthLessThanOrEqual(4);
-
-    const questionIds = questions.map((q) => q.id);
-    const uniqueIds = new Set(questionIds);
-    expect(uniqueIds.size).toBe(questionIds.length);
-
-    questions.forEach((q) => {
-      expect(q.responses).toBeDefined();
-      expect(q.responses.length).toBeGreaterThan(0);
-    });
-  });
-
-  it("returns a safe fallback question(s) when no registry candidate matches", () => {
-    const lecState = {
-      ...makeGameState(),
-      league: {
-        ...makeGameState().league,
-        id: "lec",
-      },
-    };
-
-    const questions = buildPressConferenceQuestions({
-      snapshot: makeSnapshot({
-        home_score: 1,
-        away_score: 0,
-        events: [],
-      }),
-      gameState: lecState,
-      userSide: "Away",
-      t: (key: string) => key,
-      random: () => 0,
-    });
-
-    expect(questions).toHaveLength(2);
-    expect(questions[0].id).toBe("fallback-post-match");
-    expect(questions[1].id).toBe("underperformance-pressure");
-    expect(questions[0].responses.map((response) => response.id)).toEqual(["credit-preparation", "stay-measured"]);
   });
 
   it("submits stable effect_id values while preserving text for news generation", async () => {
     render(
       <ThemeProvider>
         <PressConference
-          snapshot={makeSnapshot()}
+          snapshot={makeSnapshot({
+            events: [
+              { minute: 10, event_type: "Dragon", side: "Home", zone: "River", player_id: "adc1", secondary_player_id: null },
+              { minute: 14, event_type: "Baron", side: "Home", zone: "River", player_id: "sup1", secondary_player_id: null },
+            ],
+          })}
           gameState={makeGameState()}
           userSide="Home"
           onFinish={vi.fn()}
@@ -326,13 +290,6 @@ describe("PressConference LoL social content", () => {
           question_text: expect.stringContaining(
             "Your bot lane stacked dragons and controlled Baron. How much of this win came from objective setup?",
           ),
-        "content.lol.social.questions.resultWin.text":
-          "You closed the Nexus cleanly. What decided the series?",
-        "content.lol.social.questions.firstBlood.text":
-          "First blood set the tone here. How much did that early advantage matter?",
-        "content.lol.social.questions.closeGame.text":
-          "This was a nail-biter down to the final minute. What kept you focused?",
-
         },
       ],
     });

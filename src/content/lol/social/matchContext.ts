@@ -225,6 +225,7 @@ export function extractMatchContext(params: ExtractMatchContextParams): MatchCon
   const bloodSide = firstBloodSide(match);
   if (bloodSide) {
     facts.firstBloodSide = bloodSide;
+    addTag(tags, "first_blood");
     addTag(tags, bloodSide === userSide ? "first_blood_for_us" : "first_blood_against_us");
   }
 

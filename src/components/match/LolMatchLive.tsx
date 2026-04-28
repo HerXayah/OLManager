@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { MatchEvent, MatchSnapshot } from "./types";
+import { mergeMatchEvents, mapRuntimeEventsToMatchEvents } from "./matchRuntimeEvents";
 import { getWalls } from "./lol-prototype/assets/map";
 import { NavGrid } from "./lol-prototype/engine/navigation";
 import { PrototypeSimulation } from "./lol-prototype/engine/simulation";
@@ -739,6 +740,10 @@ export default function LolMatchLive({ gameState, snapshot, championSelections, 
           current_minute: Math.floor(state.timeSec / 60),
           home_score: state.winner === "blue" ? 1 : 0,
           away_score: state.winner === "red" ? 1 : 0,
+          events: mergeMatchEvents(snapshot.events, [
+            ...mapRuntimeEventsToMatchEvents(state.events),
+            evt,
+          ]),
         });
         const finalState = {
           ...state,
