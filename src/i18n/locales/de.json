@@ -199,11 +199,11 @@
       "home": "Startseite",
       "inbox": "Posteingang",
       "manager": "Head Coach",
-      "squad": "Kader",
+      "squad": "Team",
       "tactics": "Taktik",
       "training": "Training",
       "champions": "Champions",
-      "staff": "Staff",
+      "staff": "Mitarbeiter",
       "finances": "Finanzen",
       "transfers": "Transfers",
       "players": "Spieler",
@@ -215,9 +215,9 @@
       "exitToMenu": "Zum Menü",
       "continue": "Weiter",
       "simulating": "Simuliere...",
-      "loading": "Spielstand wird geladen...",
+      "loading": "Lade Spielstand...",
       "noResults": "Keine Ergebnisse gefunden.",
-      "searchPlaceholder": "Spieler, Teams suchen...",
+      "searchPlaceholder": "Spieler & Teams suchen...",
       "sectionClub": "Verein",
       "sectionWorld": "Welt",
       "searchTeams": "Teams",
@@ -231,20 +231,20 @@
       "expandSidebar": "Seitenleiste ausklappen",
       "alerts": {
          "exhausted": "{{count}} Spieler in kritischer Verfassung (<25%)",
-         "injuredStartingXi": "{{count}} verletzte(r) Spieler in der Startelf — ersetze sie",
+         "injuredStartingXi": "{{count}} verletzte(r) Spieler in der Startelf — tausche sie aus",
          "incompleteStartingXi": "Startelf unvollständig — stelle deine Aufstellung ein",
          "urgentUnread": "{{count}} dringende Nachricht(en) ungelesen",
-         "matchTodayStartingXi": "Heute ist Spieltag! Stelle deine Startelf ein"
+         "matchTodayStartingXi": "Heute ist Matchday! Stelle dein Team auf"
       },
       "unemployedBanner": "Sie sind derzeit ohne Verein. Jobangebote könnten in Ihrem Posteingang eintreffen."
    },
    "continueMenu": {
       "goToField": "Aufs Spielfeld",
-      "goToFieldDesc": "Volle Spielkontrolle",
+      "goToFieldDesc": "Volle Kontrolle",
       "watchSpectator": "Als Zuschauer",
       "watchSpectatorDesc": "Spiel anschauen ohne Kontrolle",
       "delegateAssistant": "An Assistent delegieren",
-      "delegateAssistantDesc": "KI übernimmt alles",
+      "delegateAssistantDesc": "Assistent übernimmt alles",
       "skipToMatchDay": "Zum Spieltag springen",
       "skipToMatchDayDesc": "Vorspulen bis zum nächsten Spiel",
       "matchDayTitle": "Spieltag",
@@ -268,16 +268,16 @@
       "discoveryProgress": "Entdeckungsfortschritt"
    },
    "exitConfirm": {
-      "title": "Zum Hauptmenü?",
+      "title": "Zurück zum Hauptmenü?",
       "message": "Dein Spiel wird automatisch gespeichert, bevor du zum Hauptmenü zurückkehrst.",
       "cancel": "Abbrechen",
       "saveExit": "Speichern & Beenden",
       "savingTitle": "Spiel wird gespeichert...",
-      "savingMessage": "Bitte warte, während dein Fortschritt gespeichert wird und du zum Hauptmenü zurückkehrst."
+      "savingMessage": "Bitte warte, während dein Fortschritt gespeichert wird."
    },
    "closeConfirm": {
       "title": "Nicht gespeicherte Änderungen",
-      "message": "Du hast nicht gespeicherte Änderungen. Was möchtest du tun?",
+      "message": "Du hast nicht gespeicherte Änderungen.",
       "saveQuit": "Speichern & Beenden",
       "quitNoSave": "Ohne Speichern beenden"
    },
